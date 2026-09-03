@@ -17,6 +17,7 @@
 | [architecture/event-system.md](./architecture/event-system.md) | typed route、typed event 和 main 内部调用规则 |
 | [architecture/shared-skills/spec.md](./architecture/shared-skills/spec.md) | 全局 Skills、Agent binding、迁移和运行时授权合同 |
 | [guides/getting-started.md](./guides/getting-started.md) | 当前代码入口和本地开发命令 |
+| [guides/dev-windows.md](./guides/dev-windows.md) | Windows 下原生模块与开发环境的差异与坑 |
 | [guides/cli.md](./guides/cli.md) | 随包 CLI 的能力、生命周期、安全边界和 benchmark 合同 |
 | [guides/plugin-packaging.md](./guides/plugin-packaging.md) | `.dcplugin` 打包、内置分发和 release 规则 |
 | [release-flow.md](./release-flow.md) | 版本、分支、tag 和平台构建流程 |
