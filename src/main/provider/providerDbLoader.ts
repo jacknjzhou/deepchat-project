@@ -13,6 +13,21 @@ const DEFAULT_PROVIDER_DB_URL =
   'https://raw.githubusercontent.com/ThinkInAIXYZ/PublicProviderConf/refs/heads/dev/dist/all.json'
 const MAX_PROVIDER_DB_PAYLOAD_BYTES = 10 * 1024 * 1024
 
+/**
+ * Runtime hard stop. When DEEPCHAT_PROVIDER_DB_OFFLINE=1 we treat the bundled
+ * `resources/model-db/providers.json` as the single source of truth: no remote
+ * fetch, no user-level cache fallback. The cache file (if any) is removed on
+ * the first offline boot so we never serve stale data.
+ *
+ * Mirrors the build-time short-circuit in `scripts/fetch-provider-db.mjs`.
+ */
+function isOfflineProviderDbMode(): boolean {
+  const raw = process.env.DEEPCHAT_PROVIDER_DB_OFFLINE
+  if (!raw) return false
+  const normalized = raw.trim().toLowerCase()
+  return normalized === '1' || normalized === 'true' || normalized === 'yes'
+}
+
 async function readResponseTextWithLimit(
   response: Response,
   maxBytes: number
@@ -106,6 +121,28 @@ export class ProviderDbLoader {
 
   // Public: initialize on app start (non-blocking refresh)
   async initialize(): Promise<void> {
+    if (isOfflineProviderDbMode()) {
+      // Offline / fixed local file mode: drop any user-level cache so the next
+      // boot is guaranteed to read from `resources/model-db/providers.json`
+      // instead of returning a stale snapshot.
+      this.purgeUserCacheQuietly()
+      this.cache = this.loadFromBuiltIn()
+      if (this.cache) {
+        this.notifyCatalogChanged({
+          reason: 'loaded',
+          providersCount: Object.keys(this.cache.providers || {}).length
+        })
+        console.info(
+          '[ProviderDbLoader] DEEPCHAT_PROVIDER_DB_OFFLINE=1 — using built-in providers.json only, remote fetch disabled'
+        )
+      } else {
+        console.warn(
+          '[ProviderDbLoader] DEEPCHAT_PROVIDER_DB_OFFLINE=1 but resources/model-db/providers.json is missing or invalid'
+        )
+      }
+      return
+    }
+
     // Load from cache or built-in
     this.cache = this.loadFromCache() ?? this.loadFromBuiltIn()
     if (this.cache) {
@@ -134,7 +171,11 @@ export class ProviderDbLoader {
   getDb(): ProviderAggregate | null {
     if (this.cache) return this.cache
     // Lazy try again if not initialized yet
-    this.cache = this.loadFromCache() ?? this.loadFromBuiltIn()
+    if (isOfflineProviderDbMode()) {
+      this.cache = this.loadFromBuiltIn()
+    } else {
+      this.cache = this.loadFromCache() ?? this.loadFromBuiltIn()
+    }
     return this.cache
   }
 
@@ -203,6 +244,22 @@ export class ProviderDbLoader {
     fs.renameSync(tmp, this.cacheFilePath)
   }
 
+  /**
+   * Best-effort cleanup of any leftover user-level provider DB cache. Called
+   * when `DEEPCHAT_PROVIDER_DB_OFFLINE=1` so the next read goes straight to
+   * the bundled `resources/model-db/providers.json` instead of a stale
+   * snapshot previously fetched from upstream.
+   */
+  private purgeUserCacheQuietly(): void {
+    for (const file of [this.cacheFilePath, this.metaFilePath]) {
+      try {
+        if (fs.existsSync(file)) fs.unlinkSync(file)
+      } catch (error) {
+        console.warn('[ProviderDbLoader] Failed to purge user cache', file, error)
+      }
+    }
+  }
+
   private now(): number {
     return Date.now()
   }
@@ -224,6 +281,11 @@ export class ProviderDbLoader {
     } = {}
   ): Promise<ProviderDbRefreshResult> {
     const meta = this.readMeta()
+    if (isOfflineProviderDbMode()) {
+      // Defensive: even if a future caller ignores `initialize`'s short-circuit,
+      // do not issue a network request while offline mode is on.
+      return this.createResult('skipped', meta, 'offline mode')
+    }
     if (options.automatic && this.isAutomaticRefreshBlocked()) {
       return this.createResult('skipped', meta)
     }
