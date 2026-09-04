@@ -783,6 +783,9 @@ export const lucideIconCollection = {
     'help-circle': {
       parent: 'circle-question-mark'
     },
+    'loader-2': {
+      parent: 'loader-circle'
+    },
     'message-circle-question': {
       parent: 'message-circle-question-mark'
     },

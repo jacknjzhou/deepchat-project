@@ -149,6 +149,7 @@ export const GENERATED_ICON_WHITELIST: Record<GeneratedIconCollectionKey, readon
     'list-checks',
     'list-plus',
     'list-tree',
+    'loader-2',
     'loader-circle',
     'lock',
     'lock-keyhole',
