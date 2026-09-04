@@ -117,7 +117,7 @@ const searchQueryBase = ref('')
 const searchQuery = refDebounced(searchQueryBase, 150)
 
 const catalogProviders = computed(() =>
-  providerStore.sortedProviders.filter((provider) => provider.id !== 'acp')
+  providerStore.sortedDefaultProviders.filter((provider) => provider.id !== 'acp')
 )
 
 const filteredProviders = computed(() => {

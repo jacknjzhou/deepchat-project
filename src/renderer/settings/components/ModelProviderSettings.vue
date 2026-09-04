@@ -561,8 +561,11 @@ const filterProviders = (providers: LLM_PROVIDER[]) => {
 const configuredList = computed(() =>
   filterProviders(providerStore.configuredProviders.filter((provider) => provider.id !== 'acp'))
 )
+// "Browse all providers" page count must match what the catalog actually shows;
+// therefore use `sortedDefaultProviders` (the bundled DEFAULT_PROVIDERS whitelist)
+// not `sortedProviders` (which would include user-added custom providers).
 const catalogProviders = computed(() =>
-  providerStore.sortedProviders.filter((provider) => provider.id !== 'acp')
+  providerStore.sortedDefaultProviders.filter((provider) => provider.id !== 'acp')
 )
 // Guided onboarding needs a clickable provider row; before anything is
 // configured those rows live in the catalog view instead of the sidebar.

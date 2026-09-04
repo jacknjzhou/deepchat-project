@@ -117,6 +117,12 @@ export const useProviderStore = defineStore('provider', () => {
 
   const sortedProviders = computed(() => sortProviders(providers.value, true))
 
+  // "Default" catalog order: applies persisted user ordering to the bundled
+  // `DEFAULT_PROVIDERS` snapshot returned by `providersListDefaultsRoute`.
+  // Used by the "Browse all providers" page; deliberately separate from
+  // `sortedProviders` so user-added custom providers never leak into the catalog.
+  const sortedDefaultProviders = computed(() => sortProviders(defaultProviders.value, true))
+
   const hasStoredCredentials = (provider: LLM_PROVIDER) =>
     Boolean(provider.apiKey?.trim() || provider.oauthToken)
 
@@ -711,6 +717,7 @@ export const useProviderStore = defineStore('provider', () => {
   return {
     providers,
     defaultProviders,
+    sortedDefaultProviders,
     sortedProviders,
     configuredProviders,
     unconfiguredProviders,

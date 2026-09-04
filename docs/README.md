@@ -16,6 +16,7 @@
 | [architecture/tape-system.md](./architecture/tape-system.md) | Tape、ViewManifest、回放和 Subagent lineage |
 | [architecture/event-system.md](./architecture/event-system.md) | typed route、typed event 和 main 内部调用规则 |
 | [architecture/provider-db-source.md](./architecture/provider-db-source.md) | Provider DB 来源（远端 / 内置 / 离线开关）合同 |
+| [architecture/provider-catalog-source.md](./architecture/provider-catalog-source.md) | 浏览全部服务商页面的数据源与过滤规则 |
 | [architecture/shared-skills/spec.md](./architecture/shared-skills/spec.md) | 全局 Skills、Agent binding、迁移和运行时授权合同 |
 | [guides/getting-started.md](./guides/getting-started.md) | 当前代码入口和本地开发命令 |
 | [guides/dev-windows.md](./guides/dev-windows.md) | Windows 下原生模块与开发环境的差异与坑 |
