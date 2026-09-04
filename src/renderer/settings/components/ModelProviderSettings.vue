@@ -107,6 +107,13 @@
                     :dir="languageStore.dir"
                     >{{ t(provider.name) }}</span
                   >
+                  <span
+                    v-if="provider.instanceLabel"
+                    class="shrink-0 max-w-[8rem] truncate rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground"
+                    :title="provider.instanceLabel"
+                  >
+                    {{ provider.instanceLabel }}
+                  </span>
                 </template>
                 <span
                   v-if="!provider.enable"
@@ -136,6 +143,12 @@
                           : t('settings.provider.menu.enable')
                       "
                       @select="toggleProviderStatus(provider)"
+                    />
+                    <DcDropdownActionItem
+                      :data-testid="`provider-menu-duplicate-${provider.id}`"
+                      icon="lucide:copy"
+                      :label="t('settings.provider.menu.duplicate')"
+                      @select="openDuplicateProviderDialog(provider)"
                     />
                     <DcDropdownActionItem
                       v-if="provider.custom"
@@ -248,6 +261,12 @@
       @update:open="(value: boolean) => !value && (providerPendingDelete = null)"
       @confirm="confirmDeleteProvider"
     />
+    <DuplicateProviderDialog
+      v-model:open="duplicateDialogOpen"
+      :source-provider="providerPendingDuplicate"
+      @cancel="providerPendingDuplicate = null"
+      @confirm="handleDuplicateProviderConfirm"
+    />
   </div>
 
   <GuidedOnboardingOverlay
@@ -328,6 +347,7 @@ import ProviderCatalog from './ProviderCatalog.vue'
 import ModelIcon from '@/components/icons/ModelIcon.vue'
 import { Icon } from '@iconify/vue'
 import AddProviderFlow from './AddProviderFlow.vue'
+import DuplicateProviderDialog from './DuplicateProviderDialog.vue'
 import { useI18n } from 'vue-i18n'
 import type { AWS_BEDROCK_PROVIDER, LLM_PROVIDER } from '@shared/types/provider'
 import { Input } from '@shadcn/components/ui/input'
@@ -396,6 +416,8 @@ const startupWorkloadStore = (() => {
 })()
 const addFlowCounter = ref(0)
 const providerPendingDelete = ref<LLM_PROVIDER | null>(null)
+const providerPendingDuplicate = ref<LLM_PROVIDER | null>(null)
+const duplicateDialogOpen = ref(false)
 
 const continueProviderGuide = async (
   state: Awaited<ReturnType<typeof selectProviderGuide.completeStep>> | null | undefined
@@ -795,6 +817,30 @@ const toggleProviderStatus = async (provider: LLM_PROVIDER) => {
 
 const requestDeleteProvider = (provider: LLM_PROVIDER) => {
   providerPendingDelete.value = provider
+}
+
+const openDuplicateProviderDialog = (provider: LLM_PROVIDER) => {
+  providerPendingDuplicate.value = provider
+  duplicateDialogOpen.value = true
+}
+
+const handleDuplicateProviderConfirm = async (label: string) => {
+  const source = providerPendingDuplicate.value
+  if (!source) {
+    return
+  }
+
+  try {
+    const created = await providerStore.duplicateProvider(source.id, {
+      instanceLabel: label || undefined
+    })
+    duplicateDialogOpen.value = false
+    providerPendingDuplicate.value = null
+    // Open the newly created instance so the user can fill in credentials.
+    setActiveProvider(created.id)
+  } catch (error) {
+    console.error('Failed to duplicate provider:', error)
+  }
 }
 
 const confirmDeleteProvider = async () => {

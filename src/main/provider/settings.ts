@@ -4,6 +4,7 @@ import type {
   MODEL_META,
   ModelConfig,
   ModelRouteConfig,
+  ProviderGroupMeta,
   RENDERER_MODEL_META,
   IModelConfig
 } from '@shared/types/provider'
@@ -22,7 +23,7 @@ import {
   resolveModelFunctionCall,
   resolveModelVision
 } from '@shared/modelConfigDefaults'
-import { DEFAULT_PROVIDERS } from '@/provider/defaults'
+import { DEFAULT_PROVIDERS, PROVIDER_GROUPS } from '@/provider/defaults'
 import path from 'path'
 import { app } from 'electron'
 import fs from 'fs'
@@ -272,6 +273,7 @@ export interface ProviderSettingsPort {
   batchSetModelStatusQuiet(providerId: string, modelStatusMap: Record<string, boolean>): void
   getBatchModelStatus(providerId: string, modelIds: string[]): Record<string, boolean>
   getDefaultProviders(): LLM_PROVIDER[]
+  getDefaultProviderGroups(): ProviderGroupMeta[]
   isKnownModel(providerId: string, modelId: string): boolean
   getModelRouteConfig(modelId: string, providerId?: string): ModelRouteConfig
   getModelConfig(
@@ -348,6 +350,7 @@ export class ProviderSettings implements ProviderSettingsPort {
       store: this.store,
       setSetting: this.setSetting.bind(this),
       defaultProviders,
+      providerGroups: PROVIDER_GROUPS,
       publishEvent: this.publishEvent
     })
 
@@ -1275,6 +1278,10 @@ export class ProviderSettings implements ProviderSettingsPort {
 
   public getDefaultProviders(): LLM_PROVIDER[] {
     return this.providerHelper.getDefaultProviders()
+  }
+
+  public getDefaultProviderGroups(): ProviderGroupMeta[] {
+    return this.providerHelper.getDefaultProviderGroups()
   }
 
   /** Return only persisted fields that may participate in route selection. */

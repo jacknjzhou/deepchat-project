@@ -1355,6 +1355,15 @@
         "content": "Are you sure you want to delete provider \"{name}\"? This action cannot be undone.",
         "confirm": "Delete"
       },
+      "duplicate": {
+        "title": "Duplicate Provider Configuration",
+        "description": "Create a new instance of {name} with its own API key and model selection.",
+        "instanceLabel": "Instance label",
+        "instanceLabelPlaceholder": "e.g. Work, Personal",
+        "instanceLabelHint": "Leave blank to use the original name. The API key will be cleared for security.",
+        "securityHint": "For security, the new instance will not keep the original API key.",
+        "confirm": "Duplicate"
+      },
       "deleteModel": {
         "title": "Confirm Delete Model",
         "content": "Are you sure you want to delete model \"{name}\"? This action cannot be undone.",
@@ -1587,6 +1596,7 @@
       "enable": "Enable",
       "disable": "Disable",
       "rename": "Rename",
+      "duplicate": "Duplicate configuration",
       "delete": "Delete"
     },
     "health": {

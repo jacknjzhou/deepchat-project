@@ -386,6 +386,8 @@ export const LlmProviderSchema = z.looseObject({
   disabledModels: z.array(z.string()).optional(),
   custom: z.boolean().optional(),
   oauthToken: z.string().optional(),
+  baseProviderId: z.string().optional(),
+  instanceLabel: z.string().optional(),
   websites: z
     .object({
       official: z.string(),
@@ -431,6 +433,14 @@ export const LlmProviderSummarySchema = LlmProviderSchema.omit({
   customModels: true,
   enabledModels: true,
   disabledModels: true
+})
+
+export const ProviderGroupMetaSchema = z.object({
+  id: z.string().min(1),
+  displayName: z.string(),
+  icon: z.string(),
+  order: z.number().int(),
+  description: z.string().optional()
 })
 
 export const FileItemSchema = z.looseObject({

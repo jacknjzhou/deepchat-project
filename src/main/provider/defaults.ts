@@ -1,4 +1,64 @@
-import type { LLM_PROVIDER_BASE } from '@shared/types/provider'
+import type { LLM_PROVIDER_BASE, ProviderGroupMeta } from '@shared/types/provider'
+
+/**
+ * Static metadata for provider *groups* (the logical families users see in
+ * the sidebar). A group is the bucket that holds multiple `LLM_PROVIDER`
+ * instances of the same underlying service (e.g. two OpenAI accounts).
+ *
+ * - `id` matches `LLM_PROVIDER.capabilityProviderId` for built-in families.
+ * - `icon` is a lucide icon name used by the sidebar group header.
+ * - `order` controls sidebar group ordering; gaps are reserved for future
+ *   additions so new groups slot in without renumbering.
+ * - `description` is shown next to the group name on hover.
+ *
+ * Groups are *display-only* metadata. They never gate IPC, persistence,
+ * or model selection. If a provider family has no entry here, the UI falls
+ * back to the provider's own `name` and `capabilityProviderId ?? id`.
+ */
+export const PROVIDER_GROUPS: ProviderGroupMeta[] = [
+  {
+    id: 'openai',
+    displayName: 'OpenAI',
+    icon: 'lucide:brain',
+    order: 10,
+    description: 'OpenAI / Azure OpenAI / OpenAI-compatible'
+  },
+  {
+    id: 'anthropic',
+    displayName: 'Anthropic',
+    icon: 'lucide:sparkles',
+    order: 20,
+    description: 'Anthropic Claude'
+  },
+  {
+    id: 'google',
+    displayName: 'Google',
+    icon: 'lucide:globe',
+    order: 30,
+    description: 'Google Gemini / Vertex AI'
+  },
+  {
+    id: 'deepseek',
+    displayName: 'DeepSeek',
+    icon: 'lucide:layers',
+    order: 40,
+    description: 'DeepSeek'
+  },
+  {
+    id: 'ollama',
+    displayName: 'Ollama',
+    icon: 'lucide:server',
+    order: 50,
+    description: 'Local Ollama runtime'
+  },
+  {
+    id: 'openai-completions',
+    displayName: 'OpenAI-compatible',
+    icon: 'lucide:plug',
+    order: 60,
+    description: 'Generic OpenAI-compatible endpoints'
+  }
+]
 
 export const DEFAULT_PROVIDERS: LLM_PROVIDER_BASE[] = [
   {

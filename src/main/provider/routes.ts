@@ -47,6 +47,7 @@ import {
   providersImportApplyRoute,
   providersImportScanRoute,
   providersListDefaultsRoute,
+  providersListGroupsRoute,
   providersListModelsRoute,
   providersListOllamaModelsRoute,
   providersListOllamaRunningModelsRoute,
@@ -231,6 +232,15 @@ export function createProviderRoutes(deps: {
         providersListDefaultsRoute.input.parse(rawInput)
         return providersListDefaultsRoute.output.parse({
           providers: providerSettings.getDefaultProviders()
+        })
+      }
+    ],
+    [
+      providersListGroupsRoute.name,
+      async (rawInput) => {
+        providersListGroupsRoute.input.parse(rawInput)
+        return providersListGroupsRoute.output.parse({
+          groups: providerSettings.getDefaultProviderGroups()
         })
       }
     ],

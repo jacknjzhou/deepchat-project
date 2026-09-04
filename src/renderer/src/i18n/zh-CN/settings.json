@@ -1460,6 +1460,15 @@
         "content": "是否确认删除服务商 \"{name}\"？此操作不可恢复。",
         "confirm": "删除"
       },
+      "duplicate": {
+        "title": "复制服务商配置",
+        "description": "基于 {name} 创建一个新的实例，可拥有独立的 API Key 和模型选择。",
+        "instanceLabel": "实例标签",
+        "instanceLabelPlaceholder": "例如：工作、个人",
+        "instanceLabelHint": "留空则使用原名称。出于安全考虑，新实例不会保留原 API Key。",
+        "securityHint": "出于安全考虑，新实例不会保留原 API Key。",
+        "confirm": "复制"
+      },
       "deleteModel": {
         "title": "确认删除模型",
         "content": "是否确认删除模型 \"{name}\"？此操作不可恢复。",
@@ -1587,6 +1596,7 @@
       "enable": "启用",
       "disable": "停用",
       "rename": "重命名",
+      "duplicate": "复制配置",
       "delete": "删除"
     },
     "health": {

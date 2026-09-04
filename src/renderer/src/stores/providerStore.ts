@@ -5,7 +5,7 @@ import { createProviderClient } from '../../api/ProviderClient'
 import { createConfigClient } from '../../api/ConfigClient'
 import { useIpcQuery } from '@/composables/useIpcQuery'
 import type { ProviderHealthEntry } from '@shared/contracts/routes'
-import type { AWS_BEDROCK_PROVIDER, LLM_PROVIDER, VERTEX_PROVIDER } from '@shared/types/provider'
+import type { AWS_BEDROCK_PROVIDER, LLM_PROVIDER, ProviderGroupMeta, VERTEX_PROVIDER } from '@shared/types/provider'
 import { canonicalizeProviderCustomHeaders } from '@shared/providerCustomHeaders'
 
 type VoiceAIConfig = {
@@ -55,6 +55,13 @@ export const useProviderStore = defineStore('provider', () => {
     gcTime: 300_000
   })
 
+  const providerGroupsQuery = useIpcQuery({
+    key: () => ['providers', 'groups'],
+    query: () => providerClient.getProviderGroups(),
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000
+  })
+
   const providerOrder = ref<string[]>([])
   const providerTimestamps = ref<Record<string, number>>({})
   const configuredProviderIds = ref<string[]>([])
@@ -73,6 +80,38 @@ export const useProviderStore = defineStore('provider', () => {
   const defaultProviders = computed<LLM_PROVIDER[]>(() => {
     const data = defaultProvidersQuery.data.value as LLM_PROVIDER[] | undefined
     return data ?? []
+  })
+
+  const providerGroups = computed<ProviderGroupMeta[]>(() => {
+    const data = providerGroupsQuery.data.value as ProviderGroupMeta[] | undefined
+    return data ?? []
+  })
+
+  /**
+   * Resolve the *display-only* group id of a provider row. Falls back to
+   * `capabilityProviderId`, then `id`, so legacy rows that pre-date the
+   * multi-instance work still group sensibly.
+   */
+  const resolveGroupId = (provider: LLM_PROVIDER): string => {
+    return provider.baseProviderId || provider.capabilityProviderId || provider.id
+  }
+
+  /**
+   * Map of `groupId -> sorted providers` for sidebar grouping.
+   * Only includes providers the user has actually configured (enable ||
+   * custom || has stored credentials), so the catalog browse view stays
+   * distinct.
+   */
+  const providerInstancesByGroupId = computed(() => {
+    const map = new Map<string, LLM_PROVIDER[]>()
+    const ordered = sortedProviders.value
+    for (const provider of ordered) {
+      const gid = resolveGroupId(provider)
+      const list = map.get(gid) ?? []
+      list.push(provider)
+      map.set(gid, list)
+    }
+    return map
   })
 
   const ensureOrderIncludesProviders = (order: string[], list: LLM_PROVIDER[]) => {
@@ -348,6 +387,14 @@ export const useProviderStore = defineStore('provider', () => {
     await defaultProvidersQuery.refetch()
   }
 
+  const ensureProviderGroupsReady = async () => {
+    if (providerGroupsQuery.data.value) {
+      return
+    }
+
+    await providerGroupsQuery.refetch()
+  }
+
   const setupProviderListeners = () => {
     if (listenersRegistered.value) return
     listenersRegistered.value = true
@@ -458,6 +505,43 @@ export const useProviderStore = defineStore('provider', () => {
     delete (newProvider as any).websites
     await providerClient.addProviderAtomic(newProvider)
     await refreshProviders()
+  }
+
+  /**
+   * Duplicate an existing provider as a new instance of the same logical
+   * family. The new row keeps the same `apiType` / `baseUrl` /
+   * `capabilityProviderId` / `baseProviderId` but gets a fresh id, a
+   * user-supplied label, and a blank apiKey / oauthToken for safety.
+   */
+  const duplicateProvider = async (
+    sourceId: string,
+    options: { instanceLabel?: string } = {}
+  ): Promise<LLM_PROVIDER> => {
+    const source = providers.value.find((p) => p.id === sourceId)
+    if (!source) {
+      throw new Error(`Provider ${sourceId} not found`)
+    }
+
+    const { nanoid } = await import('nanoid')
+    const duplicated: LLM_PROVIDER = {
+      ...source,
+      id: nanoid(),
+      name: options.instanceLabel || source.name,
+      instanceLabel: options.instanceLabel,
+      // Inherit the family grouping if the source already has one; otherwise
+      // use the source's capabilityProviderId as the family anchor so the
+      // duplicate appears under the same group in the sidebar.
+      baseProviderId: source.baseProviderId || source.capabilityProviderId || source.id,
+      apiKey: '',
+      oauthToken: '',
+      enable: false,
+      custom: true
+    }
+
+    delete (duplicated as any).websites
+    const created = await providerClient.addProviderAtomic(duplicated)
+    await refreshProviders()
+    return created
   }
 
   // Runs "Connect and load models" against a draft configuration. Nothing is
@@ -719,6 +803,8 @@ export const useProviderStore = defineStore('provider', () => {
     defaultProviders,
     sortedDefaultProviders,
     sortedProviders,
+    providerGroups,
+    providerInstancesByGroupId,
     configuredProviders,
     unconfiguredProviders,
     configuredProviderIds,
@@ -734,6 +820,7 @@ export const useProviderStore = defineStore('provider', () => {
     primeProviders,
     refreshProviders,
     ensureDefaultProvidersReady,
+    ensureProviderGroupsReady,
     updateProvider,
     updateProviderConfig,
     updateProviderApi,
@@ -746,6 +833,7 @@ export const useProviderStore = defineStore('provider', () => {
     loadProviderTimestamps,
     saveProviderTimestamps,
     addCustomProvider,
+    duplicateProvider,
     validateDraftProvider,
     commitValidatedDraft,
     stageProviderApiChange,
