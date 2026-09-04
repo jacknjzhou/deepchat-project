@@ -994,6 +994,17 @@ export class ProviderSettings implements ProviderSettingsPort {
     return this.providerHelper.getProviderById(id)
   }
 
+  /**
+   * Resolve the *family* provider id for a duplicated provider instance.
+   * Duplicated providers keep a unique id but share the model catalog and
+   * stored models of their logical family (baseProviderId / capabilityProviderId).
+   * Falls back to the provider's own id for non-duplicated providers.
+   */
+  private resolveProviderFamilyId(providerId: string): string {
+    const provider = this.providerHelper.getProviderById(providerId)
+    return provider?.baseProviderId || provider?.capabilityProviderId || providerId
+  }
+
   setProviderById(id: string, provider: LLM_PROVIDER): void {
     this.providerHelper.setProviderById(id, provider)
   }
@@ -1045,7 +1056,8 @@ export class ProviderSettings implements ProviderSettingsPort {
   }
 
   getBatchModelStatus(providerId: string, modelIds: string[]): Record<string, boolean> {
-    return this.modelStatusHelper.getBatchModelStatus(providerId, modelIds)
+    const familyId = this.resolveProviderFamilyId(providerId)
+    return this.modelStatusHelper.getBatchModelStatusWithFallback(providerId, modelIds, familyId)
   }
 
   setModelStatus(providerId: string, modelId: string, enabled: boolean): void {
@@ -1081,10 +1093,16 @@ export class ProviderSettings implements ProviderSettingsPort {
   }
 
   getProviderModels(providerId: string): MODEL_META[] {
-    return this.resolveEffectiveModels(
-      this.providerModelHelper.getProviderModels(providerId),
-      providerId
-    )
+    const familyId = this.resolveProviderFamilyId(providerId)
+    let models = this.providerModelHelper.getProviderModels(providerId)
+
+    // Duplicated providers start with an empty per-id model store. Fall back to
+    // the family provider's stored models so the instance is usable immediately.
+    if (models.length === 0 && familyId !== providerId) {
+      models = this.providerModelHelper.getProviderModels(familyId)
+    }
+
+    return this.resolveEffectiveModels(models, providerId)
   }
 
   resolveEffectiveModels(models: MODEL_META[], providerId: string): MODEL_META[] {
@@ -1152,9 +1170,10 @@ export class ProviderSettings implements ProviderSettingsPort {
 
   // 基于聚合 Provider DB 的标准模型（只读映射，不落库）
   getDbProviderModels(providerId: string): RENDERER_MODEL_META[] {
+    const familyId = this.resolveProviderFamilyId(providerId)
     const db = providerDbLoader.getDb()
     const resolvedId =
-      modelCapabilities.resolveProviderId(providerId.toLowerCase()) || providerId.toLowerCase()
+      modelCapabilities.resolveProviderId(familyId.toLowerCase()) || familyId.toLowerCase()
     const provider = db?.providers?.[resolvedId]
     if (!provider || !Array.isArray(provider.models)) return []
     return provider.models.map((m) => ({
@@ -1219,10 +1238,14 @@ export class ProviderSettings implements ProviderSettingsPort {
   }
 
   getCustomModels(providerId: string): MODEL_META[] {
-    return this.resolveEffectiveModels(
-      this.providerModelHelper.getCustomModels(providerId),
-      providerId
-    )
+    const familyId = this.resolveProviderFamilyId(providerId)
+    let models = this.providerModelHelper.getCustomModels(providerId)
+
+    if (models.length === 0 && familyId !== providerId) {
+      models = this.providerModelHelper.getCustomModels(familyId)
+    }
+
+    return this.resolveEffectiveModels(models, providerId)
   }
 
   isKnownModel(providerId: string, modelId: string): boolean {

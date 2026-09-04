@@ -163,4 +163,41 @@ describe('ModelStatusHelper.ensureModelStatus', () => {
     expect(store.has('model_status_openai_gpt-5-4')).toBe(false)
     expect(store.has('model_status_anthropic_claude-3-5-sonnet')).toBe(true)
   })
+
+  it('falls back to family provider status when duplicated provider has no own status', () => {
+    const store = new MockElectronStore()
+    store.set('model_status_openai_gpt-5-4', true)
+    store.set('model_status_openai_gpt-4-1', false)
+
+    const helper = new ModelStatusHelper({
+      store: store as any,
+      setSetting: (key, value) => store.set(key, value),
+      publishEvent: () => undefined
+    })
+
+    const duplicatedId = 'openai-copy-123'
+    expect(
+      helper.getBatchModelStatusWithFallback(duplicatedId, ['gpt-5.4', 'gpt-4.1', 'gpt-3.5'], 'openai')
+    ).toEqual({
+      'gpt-5.4': true,
+      'gpt-4.1': false,
+      'gpt-3.5': false
+    })
+  })
+
+  it('prefers duplicated provider status over family fallback', () => {
+    const store = new MockElectronStore()
+    store.set('model_status_openai_gpt-5-4', true)
+    store.set('model_status_openai-copy-123_gpt-5-4', false)
+
+    const helper = new ModelStatusHelper({
+      store: store as any,
+      setSetting: (key, value) => store.set(key, value),
+      publishEvent: () => undefined
+    })
+
+    expect(helper.getBatchModelStatusWithFallback('openai-copy-123', ['gpt-5.4'], 'openai')).toEqual({
+      'gpt-5.4': false
+    })
+  })
 })

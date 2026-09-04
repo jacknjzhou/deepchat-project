@@ -133,7 +133,38 @@ export class ModelStatusHelper {
     return result
   }
 
-  private hasStoredStatus(statusKey: string): boolean {
+  getBatchModelStatusWithFallback(
+    providerId: string,
+    modelIds: string[],
+    fallbackProviderId?: string
+  ): Record<string, boolean> {
+    const result = this.getBatchModelStatus(providerId, modelIds)
+
+    if (!fallbackProviderId || fallbackProviderId === providerId) {
+      return result
+    }
+
+    const fallbackModelIds = modelIds.filter((modelId) => {
+      const statusKey = this.getStatusKey(providerId, modelId)
+      return !this.hasStoredStatus(statusKey)
+    })
+
+    if (fallbackModelIds.length === 0) {
+      return result
+    }
+
+    const fallbackResult = this.getBatchModelStatus(fallbackProviderId, fallbackModelIds)
+
+    for (const modelId of fallbackModelIds) {
+      if (result[modelId] === false && fallbackResult[modelId] === true) {
+        result[modelId] = true
+      }
+    }
+
+    return result
+  }
+
+  hasStoredStatus(statusKey: string): boolean {
     const statusSnapshot = this.getStatusSnapshot()
     if (statusSnapshot) {
       return statusSnapshot.has(statusKey)
