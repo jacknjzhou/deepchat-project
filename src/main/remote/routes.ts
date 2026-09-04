@@ -8,7 +8,6 @@ import {
   remoteControlGetChannelPairingSnapshotRoute,
   remoteControlGetChannelSettingsRoute,
   remoteControlGetChannelStatusRoute,
-  remoteControlGetTelegramStatusRoute,
   remoteControlGetWeixinIlinkStatusRoute,
   remoteControlListChannelsRoute,
   remoteControlRemoveChannelBindingRoute,
@@ -112,15 +111,6 @@ export function createRemoteRoutes(remoteService: RemoteServicePort): DeepchatRo
         const input = remoteControlClearChannelPairCodeRoute.input.parse(rawInput)
         await remoteService.clearChannelPairCode(input.channel)
         return remoteControlClearChannelPairCodeRoute.output.parse({ cleared: true })
-      }
-    ],
-    [
-      remoteControlGetTelegramStatusRoute.name,
-      async (rawInput) => {
-        remoteControlGetTelegramStatusRoute.input.parse(rawInput)
-        return remoteControlGetTelegramStatusRoute.output.parse({
-          status: await remoteService.getTelegramStatus()
-        })
       }
     ],
     [

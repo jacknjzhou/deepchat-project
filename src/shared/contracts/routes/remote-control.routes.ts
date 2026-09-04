@@ -11,29 +11,21 @@ import type {
   FeishuInstallResult,
   FeishuInstallSession,
   RemotePairingSnapshot,
-  TelegramRemoteStatus,
   WeixinIlinkLoginResult,
   WeixinIlinkLoginSession,
   WeixinIlinkRemoteStatus
 } from '@shared/types/remote'
 import { defineRouteContract } from '../common'
 
-export const RemoteChannelSchema = z.enum([
-  'telegram',
-  'feishu',
-  'qqbot',
-  'discord',
-  'weixin-ilink'
-])
+export const RemoteChannelSchema = z.enum(['feishu', 'qqbot', 'weixin-ilink'])
 
-export const PairableRemoteChannelSchema = z.enum(['telegram', 'feishu', 'qqbot', 'discord'])
+export const PairableRemoteChannelSchema = z.enum(['feishu', 'qqbot'])
 
 const RemoteChannelDescriptorSchema = z.custom<RemoteChannelDescriptor>()
 const RemoteChannelSettingsSchema = z.custom<RemoteChannelSettings>()
 const RemoteChannelStatusSchema = z.custom<RemoteChannelStatus>()
 const RemoteBindingSummarySchema = z.custom<RemoteBindingSummary>()
 const RemotePairingSnapshotSchema = z.custom<RemotePairingSnapshot>()
-const TelegramRemoteStatusSchema = z.custom<TelegramRemoteStatus>()
 const FeishuAuthSessionSchema = z.object({
   sessionKey: z.string().min(1),
   authUrl: z.string().url().nullable(),
@@ -170,14 +162,6 @@ export const remoteControlClearChannelPairCodeRoute = defineRouteContract({
   }),
   output: z.object({
     cleared: z.literal(true)
-  })
-})
-
-export const remoteControlGetTelegramStatusRoute = defineRouteContract({
-  name: 'remoteControl.getTelegramStatus',
-  input: z.object({}),
-  output: z.object({
-    status: TelegramRemoteStatusSchema
   })
 })
 

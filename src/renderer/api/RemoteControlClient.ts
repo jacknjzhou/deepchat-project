@@ -8,7 +8,6 @@ import {
   remoteControlGetChannelPairingSnapshotRoute,
   remoteControlGetChannelSettingsRoute,
   remoteControlGetChannelStatusRoute,
-  remoteControlGetTelegramStatusRoute,
   remoteControlGetWeixinIlinkStatusRoute,
   remoteControlListChannelsRoute,
   remoteControlRemoveChannelBindingRoute,
@@ -88,11 +87,6 @@ export function createRemoteControlClient(bridge: DeepchatBridge = getDeepchatBr
     await bridge.invoke(remoteControlClearChannelPairCodeRoute.name, { channel })
   }
 
-  async function getTelegramStatus() {
-    const result = await bridge.invoke(remoteControlGetTelegramStatusRoute.name, {})
-    return result.status
-  }
-
   async function startFeishuAuth(input?: {
     brand?: 'feishu' | 'lark'
     appId?: string
@@ -160,7 +154,6 @@ export function createRemoteControlClient(bridge: DeepchatBridge = getDeepchatBr
     getChannelPairingSnapshot,
     createChannelPairCode,
     clearChannelPairCode,
-    getTelegramStatus,
     startFeishuAuth,
     waitForFeishuAuth,
     cancelFeishuAuth,

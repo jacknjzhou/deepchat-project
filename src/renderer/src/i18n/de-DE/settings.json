@@ -2728,14 +2728,7 @@
   },
   "remote": {
     "title": "Remote",
-    "description": "Telegram, Feishu / Lark, QQBot, Discord und WeChat iLink für Fernsteuerung zentral konfigurieren.",
-    "telegram": {
-      "title": "Telegram",
-      "description": "Telegram Bot anbinden, unterstützt Fernsteuerung über Direktnachrichten, Gruppen und Themen-Threads.",
-      "botToken": "Bot Token",
-      "botTokenPlaceholder": "Telegram Bot Token",
-      "botTokenDescription": "Bot Token für die Telegram-Fernsteuerung eintragen."
-    },
+    "description": "Feishu / Lark, QQBot und WeChat iLink für Fernsteuerung zentral konfigurieren.",
     "feishu": {
       "title": "Feishu / Lark",
       "description": "Feishu Bot anbinden, unterstützt Fernsteuerung über Direktnachrichten, Gruppen und Themen-Threads.",
@@ -2811,15 +2804,6 @@
       "streamingCards": "CardKit-Streaming-Karten",
       "streamingCardsDescription": "Streamen Sie KI-Antworten in Echtzeit über Feishu / Lark CardKit. Erfordert die Berechtigungen im:message und cardkit:card:write; DeepChat fällt auf normale Nachrichten zurück, wenn CardKit fehlschlägt."
     },
-    "discord": {
-      "title": "Discord",
-      "description": "Discord Bot anbinden, unterstützt Fernsteuerung über Direktnachrichten, Kanal-Erwähnungen und Slash Commands.",
-      "botToken": "Bot Token",
-      "botTokenPlaceholder": "Discord Bot Token",
-      "remoteControlDescription": "Discord-Fernsteuerung verwendet einen eigenen Bot Token, Gateway- und REST-Ablauf.",
-      "accessRule1": "Senden Sie /pair [Kopplungscode] in einer Direktnachricht oder im Zielkanal, um den aktuellen DM oder Kanal für DeepChat zu autorisieren.",
-      "accessRule2": "Kanalnachrichten gelangen nur bei Bot-Erwähnung in die Sitzung, um normale Chats nicht versehentlich zu verarbeiten."
-    },
     "sections": {
       "credentials": "Zugangsdaten",
       "remoteControl": "Fernsteuerung",
@@ -2842,9 +2826,7 @@
       "pairCodeExpiresAt": "Ablaufzeit: {time}",
       "pairDialogTitle": "{channel}-Kopplung",
       "pairDialogDescription": "Nach dem Erzeugen des Kopplungscodes bitte im entsprechenden {channel}-Bot koppeln.",
-      "pairDialogInstructionTelegram": "Diese Anweisung an den Telegram-Bot senden:",
       "pairDialogInstructionFeishu": "Send this command in a Feishu / Lark bot direct chat; it adds the sender to the same authorized-principal list used by scan authorization:",
-      "pairDialogInstructionDiscord": "Diese Anweisung per Direktnachricht oder im Zielkanal an den Discord-Bot senden:",
       "bindingsDialogTitle": "{channel}-Bindungen",
       "bindingsDialogDescription": "Remote-Einstiege einzeln von DeepChat-Sitzungen lösen.",
       "bindingsEmpty": "Aktuell keine gebundenen Sitzungen.",
@@ -2858,14 +2840,6 @@
       "sessionBindingsDescription": "Jeder Remote-Einstieg unten ist aktuell an eine DeepChat-Sitzung gebunden.",
       "acpDefaultWorkdirRequiredTitle": "Standardverzeichnis erforderlich",
       "acpDefaultWorkdirRequiredDescription": "ACP-Agenten benötigen einen lokalen Arbeitsbereich. Wähle vor dem Speichern ein Standardverzeichnis."
-    },
-    "hooks": {
-      "title": "Telegram Hook-Benachrichtigungen",
-      "description": "Denselben Telegram Bot für Hook-Benachrichtigungen wiederverwenden.",
-      "chatId": "Chat-ID",
-      "chatIdPlaceholder": "Z. B. 123456789",
-      "threadId": "Themen-ID (optional)",
-      "threadIdPlaceholder": "Optionale Themen-ID"
     },
     "status": {
       "title": "Laufzeitstatus",
@@ -2882,12 +2856,8 @@
       "bindingOnly": "Bindungen: {count}, gekoppelte Subjekte: {paired}"
     },
     "overview": {
-      "telegram": "{bindingCount} Bindungen, {pairedCount} gekoppelte Benutzer",
       "feishu": "{bindingCount} Bindungen, {pairedCount} gekoppelte Benutzer",
-      "hooksOn": "Ein",
-      "hooksOff": "Aus",
       "qqbot": "{bindingCount} Bindungen, {pairedCount} gekoppelte Benutzer",
-      "discord": "{bindingCount} Bindungen, {pairedCount} gekoppelte Kanäle",
       "weixinIlink": "{bindingCount} Bindungen, {accountCount} Konten, {connectedCount} verbunden"
     },
     "bindingKinds": {

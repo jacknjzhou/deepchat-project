@@ -353,12 +353,6 @@ const setup = async (options: SetupOptions = {}) => {
   const remoteControlClient = {
     listRemoteChannels: vi.fn(async () => [
       {
-        id: 'telegram' as const,
-        titleKey: 'settings.remote.telegram.title',
-        descriptionKey: 'settings.remote.telegram.description',
-        supportsCronDelivery: true
-      },
-      {
         id: 'feishu' as const,
         titleKey: 'settings.remote.feishu.title',
         descriptionKey: 'settings.remote.feishu.description',
@@ -371,12 +365,6 @@ const setup = async (options: SetupOptions = {}) => {
         supportsCronDelivery: false
       },
       {
-        id: 'discord' as const,
-        titleKey: 'settings.remote.discord.title',
-        descriptionKey: 'settings.remote.discord.description',
-        supportsCronDelivery: true
-      },
-      {
         id: 'weixin-ilink' as const,
         titleKey: 'settings.remote.weixinIlink.title',
         descriptionKey: 'settings.remote.weixinIlink.description',
@@ -384,68 +372,38 @@ const setup = async (options: SetupOptions = {}) => {
       }
     ]),
     getChannelStatus: vi.fn(
-      async (channel: 'telegram' | 'feishu' | 'qqbot' | 'discord' | 'weixin-ilink') =>
-        channel === 'telegram'
+      async (channel: 'feishu' | 'qqbot' | 'weixin-ilink') =>
+        channel === 'feishu'
           ? {
-              channel: 'telegram' as const,
+              channel: 'feishu' as const,
               enabled: remoteStatus.enabled,
               state: remoteStatus.state,
-              pollOffset: 0,
               bindingCount: 0,
-              allowedUserCount: 0,
+              pairedUserCount: 0,
               lastError: null,
               botUser: null
             }
-          : {
-              channel:
-                channel === 'weixin-ilink'
-                  ? ('weixin-ilink' as const)
-                  : channel === 'discord'
-                    ? ('discord' as const)
-                    : channel === 'qqbot'
-                      ? ('qqbot' as const)
-                      : ('feishu' as const),
-              enabled: false,
-              state: 'disabled' as const,
-              ...(channel === 'discord'
-                ? {
-                    bindingCount: 0,
-                    pairedChannelCount: 0,
-                    lastError: null,
-                    botUser: null
-                  }
-                : channel === 'qqbot'
-                  ? {
-                      bindingCount: 0,
-                      pairedUserCount: 0,
-                      lastError: null,
-                      botUser: null
-                    }
-                  : channel === 'weixin-ilink'
-                    ? {
-                        bindingCount: 0,
-                        accountCount: 0,
-                        connectedAccountCount: 0,
-                        lastError: null,
-                        accounts: []
-                      }
-                    : {
-                        bindingCount: 0,
-                        pairedUserCount: 0,
-                        lastError: null,
-                        botUser: null
-                      })
-            }
-    ),
-    getTelegramStatus: vi.fn().mockResolvedValue({
-      enabled: remoteStatus.enabled,
-      state: remoteStatus.state,
-      pollOffset: 0,
-      bindingCount: 0,
-      allowedUserCount: 0,
-      lastError: null,
-      botUser: null
-    })
+          : channel === 'qqbot'
+            ? {
+                channel: 'qqbot' as const,
+                enabled: false,
+                state: 'disabled' as const,
+                bindingCount: 0,
+                pairedUserCount: 0,
+                lastError: null,
+                botUser: null
+              }
+            : {
+                channel: 'weixin-ilink' as const,
+                enabled: false,
+                state: 'disabled' as const,
+                bindingCount: 0,
+                accountCount: 0,
+                connectedAccountCount: 0,
+                lastError: null,
+                accounts: []
+              }
+    )
   }
 
   vi.doMock('@/stores/ui/agent', () => ({
@@ -2835,7 +2793,7 @@ describe('WindowSideBar agent switch', () => {
 
     expect(router.push).toHaveBeenLastCalledWith({
       name: 'plugins-detail',
-      params: { pluginId: 'remote:telegram' }
+      params: { pluginId: 'remote:feishu' }
     })
     expect(warn).toHaveBeenCalledWith(
       '[WindowSideBar] Failed to refresh remote control status:',
@@ -2854,25 +2812,24 @@ describe('WindowSideBar agent switch', () => {
       }
     })
 
-    let resolveStaleTelegramStatus: (() => void) | undefined
+    let resolveStaleFeishuStatus: (() => void) | undefined
     remoteControlClient.getChannelStatus.mockImplementationOnce(
       () =>
         new Promise((resolve) => {
-          resolveStaleTelegramStatus = () =>
+          resolveStaleFeishuStatus = () =>
             resolve({
-              channel: 'telegram' as const,
+              channel: 'feishu' as const,
               enabled: true,
               state: 'stopped' as const,
-              pollOffset: 0,
               bindingCount: 0,
-              allowedUserCount: 0,
+              pairedUserCount: 0,
               lastError: null,
               botUser: null
             })
         })
     )
 
-    // Poll tick starts a refresh whose telegram status request hangs.
+    // Poll tick starts a refresh whose feishu status request hangs.
     vi.advanceTimersByTime(2_000)
     await flushPromises()
 
@@ -2893,7 +2850,7 @@ describe('WindowSideBar agent switch', () => {
       )
 
       // The first refresh resolves last with stale data; its snapshot must be discarded.
-      resolveStaleTelegramStatus?.()
+      resolveStaleFeishuStatus?.()
       await flushPromises()
 
       expect(wrapper.find('[data-testid="remote-control-button"]').attributes('title')).toContain(
@@ -2918,7 +2875,7 @@ describe('WindowSideBar agent switch', () => {
     await flushPromises()
     expect(router.push).toHaveBeenCalledWith({
       name: 'plugins-detail',
-      params: { pluginId: 'remote:telegram' }
+      params: { pluginId: 'remote:feishu' }
     })
     expect(settingsClient.openSettings).not.toHaveBeenCalled()
 

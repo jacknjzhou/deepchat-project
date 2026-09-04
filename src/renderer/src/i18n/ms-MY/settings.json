@@ -2728,14 +2728,7 @@
   },
   "remote": {
     "title": "jauh",
-    "description": "Konfigurasi bersatu alat kawalan jauh Telegram, Feishu/Lark, QQBot, Discord dan WeChat iLink.",
-    "telegram": {
-      "title": "Telegram",
-      "description": "Sambung ke Telegram Bot untuk menyokong sembang peribadi, sembang kumpulan dan kawalan jauh benang topik.",
-      "botToken": "Robot Token",
-      "botTokenPlaceholder": "Robot Telegram Token",
-      "botTokenDescription": "Isikan robot Token untuk kawalan jauh Telegram."
-    },
+    "description": "Konfigurasi bersatu alat kawalan jauh Feishu/Lark, QQBot dan WeChat iLink.",
     "feishu": {
       "title": "Feishu / Lark",
       "description": "Disambungkan kepada Feishu Bot, ia menyokong sembang peribadi, sembang kumpulan dan kawalan jauh benang topik.",
@@ -2811,15 +2804,6 @@
       "streamingCards": "Kad Strim CardKit",
       "streamingCardsDescription": "Strim balasan AI melalui Feishu / Lark CardKit dalam masa nyata. Memerlukan keizinan im:message dan cardkit:card:write; DeepChat akan kembali ke mesej biasa jika CardKit gagal."
     },
-    "discord": {
-      "title": "Discord",
-      "description": "Akses Discord Bot, sokong sembang peribadi, sebutan saluran dan alat kawalan jauh Slash Commands.",
-      "botToken": "Bot Token",
-      "botTokenPlaceholder": "Discord Bot Token",
-      "remoteControlDescription": "Alat kawalan jauh Discord menggunakan proses Bot Token, Gateway dan REST bebas.",
-      "accessRule1": "Hantar /pair [kod berpasangan] dalam sembang peribadi atau saluran untuk membenarkan DM atau saluran semasa kepada DeepChat.",
-      "accessRule2": "Mesej saluran hanya akan memasuki perbualan apabila bot disebut, untuk mengelakkan salah pengendalian sembang biasa."
-    },
     "sections": {
       "credentials": "sijil",
       "remoteControl": "alat kawalan jauh",
@@ -2842,9 +2826,7 @@
       "pairCodeExpiresAt": "Tarikh luput: {time}",
       "pairDialogTitle": "{channel} berpasangan",
       "pairDialogDescription": "Selepas menjana kod pasangan, sila pergi ke robot {channel} yang sepadan untuk melengkapkan gandingan.",
-      "pairDialogInstructionTelegram": "Pergi ke robot Telegram dan hantar arahan ini:",
       "pairDialogInstructionFeishu": "Send this command in a Feishu / Lark bot direct chat; it adds the sender to the same authorized-principal list used by scan authorization:",
-      "pairDialogInstructionDiscord": "Pergi ke sembang peribadi atau saluran sasaran robot Discord dan hantar arahan ini:",
       "bindingsDialogTitle": "{channel} mengikat",
       "bindingsDialogDescription": "Keluarkan hubungan mengikat antara portal jauh dan sesi DeepChat satu demi satu.",
       "bindingsEmpty": "Pada masa ini tiada sesi terikat.",
@@ -2858,14 +2840,6 @@
       "sessionBindingsDescription": "Setiap portal jauh di bawah terikat pada sesi DeepChat pada masa ini.",
       "acpDefaultWorkdirRequiredTitle": "Direktori lalai diperlukan",
       "acpDefaultWorkdirRequiredDescription": "Ejen ACP memerlukan ruang kerja tempatan. Pilih direktori lalai sebelum menyimpan."
-    },
-    "hooks": {
-      "title": "Notis Telegram Hook",
-      "description": "Gunakan semula Telegram Bot yang sama untuk menghantar pemberitahuan Hook.",
-      "chatId": "Sembang ID",
-      "chatIdPlaceholder": "Contohnya 123456789",
-      "threadId": "Topik ID (pilihan)",
-      "threadIdPlaceholder": "Topik pilihan ID"
     },
     "status": {
       "title": "Status berjalan",
@@ -2882,12 +2856,8 @@
       "bindingOnly": "Bilangan pengikatan: {count}, prinsipal berpasangan: {paired}"
     },
     "overview": {
-      "telegram": "Pengikatan {bindingCount}, pengguna berpasangan {pairedCount}",
       "feishu": "Pengikatan {bindingCount}, pengguna berpasangan {pairedCount}",
-      "hooksOn": "hidupkan",
-      "hooksOff": "penutupan",
       "qqbot": "Pengikatan {bindingCount}, pengguna berpasangan {pairedCount}",
-      "discord": "Pengikatan {bindingCount}, saluran berpasangan {pairedCount}",
       "weixinIlink": "{bindingCount} terikat, akaun {accountCount}, {connectedCount} disambungkan"
     },
     "bindingKinds": {

@@ -128,7 +128,7 @@ const actionItems: Array<{
     id: 'open-remote',
     titleKey: 'routes.settings-remote',
     icon: 'lucide:smartphone',
-    keywords: ['remote', 'telegram', 'feishu', '远程']
+    keywords: ['remote', 'feishu', '远程']
   }
 ]
 

@@ -25,7 +25,6 @@ import {
 } from '../types'
 import { resolveAcpAgentAlias } from '@shared/utils/acpAgentAlias'
 import { buildAssistantDeliverySegments } from '@shared/lib/assistantDeliverySegments'
-import { safeParseAssistantBlocks } from '../channels/telegram/telegramOutbound'
 import {
   REMOTE_NO_RESPONSE_TEXT,
   REMOTE_WAITING_STATUS_TEXT,
@@ -51,6 +50,34 @@ import type {
 
 const sleep = async (ms: number): Promise<void> => {
   await new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+const safeParseAssistantBlocks = (content: string): AssistantMessageBlock[] => {
+  try {
+    const parsed = JSON.parse(content) as AssistantMessageBlock[] | string
+    if (typeof parsed === 'string') {
+      return [
+        {
+          type: 'content',
+          content: parsed,
+          status: 'success',
+          timestamp: Date.now()
+        }
+      ]
+    }
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return content.trim()
+      ? [
+          {
+            type: 'content',
+            content: content.trim(),
+            status: 'success',
+            timestamp: Date.now()
+          }
+        ]
+      : []
+  }
 }
 
 const REMOTE_ASSET_ROOT = '.deepchat/remote-assets'
@@ -812,17 +839,13 @@ export class RemoteConversationRunner {
   }
 
   private getChannelDefaultWorkdir(endpointKey: string): string | null {
-    const channelDefaultWorkdir = endpointKey.startsWith('telegram:')
-      ? this.bindingStore.getTelegramDefaultWorkdir?.()
-      : endpointKey.startsWith('feishu:')
-        ? this.bindingStore.getFeishuDefaultWorkdir?.()
-        : endpointKey.startsWith('qqbot:')
-          ? this.bindingStore.getQQBotDefaultWorkdir?.()
-          : endpointKey.startsWith('discord:')
-            ? this.bindingStore.getDiscordDefaultWorkdir?.()
-            : endpointKey.startsWith('weixin-ilink:')
-              ? this.bindingStore.getWeixinIlinkDefaultWorkdir?.()
-              : ''
+    const channelDefaultWorkdir = endpointKey.startsWith('feishu:')
+      ? this.bindingStore.getFeishuDefaultWorkdir?.()
+      : endpointKey.startsWith('qqbot:')
+        ? this.bindingStore.getQQBotDefaultWorkdir?.()
+        : endpointKey.startsWith('weixin-ilink:')
+          ? this.bindingStore.getWeixinIlinkDefaultWorkdir?.()
+          : ''
 
     const normalized = channelDefaultWorkdir?.trim()
     return normalized || null

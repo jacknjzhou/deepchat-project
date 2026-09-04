@@ -2792,14 +2792,7 @@
   },
   "remote": {
     "title": "远程",
-    "description": "统一配置 Telegram、飞书 / Lark、QQBot、Discord 和微信 iLink 远程控制。",
-    "telegram": {
-      "title": "Telegram",
-      "description": "接入 Telegram Bot，支持私聊、群聊和会话远程控制。",
-      "botToken": "机器人 Token",
-      "botTokenPlaceholder": "Telegram 机器人 Token",
-      "botTokenDescription": "填写用于 Telegram 远程控制的机器人 Token。"
-    },
+    "description": "统一配置飞书 / Lark、QQBot 和微信 iLink 远程控制。",
     "feishu": {
       "title": "飞书 / Lark",
       "description": "接入飞书 / Lark Bot，支持私聊、群聊和会话远程控制。",
@@ -2875,15 +2868,6 @@
       "streamingCards": "CardKit 流式卡片",
       "streamingCardsDescription": "开启后，AI 回复会使用飞书 / Lark CardKit 流式卡片实时更新；需要应用具备 im:message 和 cardkit:card:write 权限，失败时会自动回退为普通消息。"
     },
-    "discord": {
-      "title": "Discord",
-      "description": "接入 Discord Bot，支持私聊、频道提及和 Slash Commands 远程控制。",
-      "botToken": "Bot Token",
-      "botTokenPlaceholder": "Discord Bot Token",
-      "remoteControlDescription": "Discord 远控使用独立的 Bot Token、Gateway 和 REST 流程。",
-      "accessRule1": "私聊或频道里发送 /pair [配对码]，把当前 DM 或频道授权给 DeepChat。",
-      "accessRule2": "频道消息只有在提及机器人时才会进入会话，避免误处理普通聊天。"
-    },
     "sections": {
       "credentials": "凭证",
       "remoteControl": "远程控制",
@@ -2906,9 +2890,7 @@
       "pairCodeExpiresAt": "过期时间：{time}",
       "pairDialogTitle": "{channel} 配对",
       "pairDialogDescription": "生成配对码后，请去对应的 {channel} 机器人里完成配对。",
-      "pairDialogInstructionTelegram": "去 Telegram 机器人里发送这条命令：",
       "pairDialogInstructionFeishu": "在飞书 / Lark 机器人私聊中发送这条命令；它会把当前发送者加入与扫码授权相同的授权主体列表：",
-      "pairDialogInstructionDiscord": "去 Discord 机器人的私聊或目标频道里发送这条命令：",
       "bindingsDialogTitle": "{channel} 绑定",
       "bindingsDialogDescription": "逐条移除远程入口与 DeepChat 会话的绑定关系。",
       "bindingsEmpty": "当前还没有绑定的会话。",
@@ -2922,14 +2904,6 @@
       "sessionBindingsDescription": "下方每个远程入口当前都绑定到了一个 DeepChat 会话。",
       "acpDefaultWorkdirRequiredTitle": "需要先设置默认目录",
       "acpDefaultWorkdirRequiredDescription": "ACP 智能体需要本地工作目录。请先在「默认目录」中选择一个目录，再保存。"
-    },
-    "hooks": {
-      "title": "Telegram Hook 通知",
-      "description": "复用同一个 Telegram Bot 发送 Hook 通知。",
-      "chatId": "聊天 ID",
-      "chatIdPlaceholder": "例如 123456789",
-      "threadId": "话题 ID（可选）",
-      "threadIdPlaceholder": "可选的话题 ID"
     },
     "status": {
       "title": "运行状态",
@@ -2946,12 +2920,8 @@
       "bindingOnly": "绑定数：{count}，已配对主体：{paired}"
     },
     "overview": {
-      "telegram": "{bindingCount} 个绑定，{pairedCount} 个已配对用户",
       "feishu": "{bindingCount} 个绑定，{pairedCount} 个已配对用户",
-      "hooksOn": "开启",
-      "hooksOff": "关闭",
       "qqbot": "{bindingCount} 个绑定，{pairedCount} 个已配对用户",
-      "discord": "{bindingCount} 个绑定，{pairedCount} 个已配对频道",
       "weixinIlink": "{bindingCount} 个绑定，{accountCount} 个账号，{connectedCount} 个已连接"
     },
     "bindingKinds": {

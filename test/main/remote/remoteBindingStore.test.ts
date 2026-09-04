@@ -16,10 +16,10 @@ describe('RemoteBindingStore', () => {
     const providerSettings = createProviderSettings()
     const firstStore = new RemoteBindingStore(providerSettings as any)
 
-    firstStore.setBinding('telegram:100:0', 'session-1')
+    firstStore.setBinding('feishu:oc_x:root', 'session-1')
 
     const secondStore = new RemoteBindingStore(providerSettings as any)
-    expect(secondStore.getBinding('telegram:100:0')).toEqual(
+    expect(secondStore.getBinding('feishu:oc_x:root')).toEqual(
       expect.objectContaining({
         sessionId: 'session-1',
         updatedAt: expect.any(Number)
@@ -31,8 +31,8 @@ describe('RemoteBindingStore', () => {
     const providerSettings = createProviderSettings()
     const store = new RemoteBindingStore(providerSettings as any)
 
-    store.setBinding('telegram:100:0', 'session-1')
-    store.setBinding('telegram:200:0', 'session-2')
+    store.setBinding('feishu:oc_x:root', 'session-1')
+    store.setBinding('feishu:oc_y:root', 'session-2')
 
     expect(store.clearBindings()).toBe(2)
     expect(store.countBindings()).toBe(0)
@@ -42,13 +42,13 @@ describe('RemoteBindingStore', () => {
     const providerSettings = createProviderSettings()
     const store = new RemoteBindingStore(providerSettings as any)
 
-    store.setBinding('telegram:100:0', 'session-1')
-    store.setBinding('telegram:200:0', 'session-2')
+    store.setBinding('feishu:oc_x:root', 'session-1')
+    store.setBinding('feishu:oc_y:root', 'session-2')
 
-    store.clearBinding('telegram:100:0')
+    store.clearBinding('feishu:oc_x:root')
 
-    expect(store.getBinding('telegram:100:0')).toBeNull()
-    expect(store.getBinding('telegram:200:0')).toEqual(
+    expect(store.getBinding('feishu:oc_x:root')).toBeNull()
+    expect(store.getBinding('feishu:oc_y:root')).toEqual(
       expect.objectContaining({
         sessionId: 'session-2',
         updatedAt: expect.any(Number)
@@ -56,82 +56,19 @@ describe('RemoteBindingStore', () => {
     )
   })
 
-  it('stores and restores poll offset', () => {
-    const providerSettings = createProviderSettings()
-    const store = new RemoteBindingStore(providerSettings as any)
-
-    store.setPollOffset(42)
-
-    const reloaded = new RemoteBindingStore(providerSettings as any)
-    expect(reloaded.getPollOffset()).toBe(42)
-  })
-
-  it('normalizes empty defaultAgentId to deepchat while preserving streamMode', () => {
+  it('normalizes empty defaultAgentId to deepchat', () => {
     const providerSettings = createProviderSettings()
     providerSettings.set('remoteControl', {
-      telegram: {
-        enabled: false,
-        allowlist: [],
-        streamMode: 'final',
-        defaultAgentId: '  ',
-        pollOffset: 0,
-        pairing: {
-          code: null,
-          expiresAt: null
-        },
-        bindings: {}
+      feishu: {
+        appId: 'cli_a',
+        appSecret: 'secret',
+        defaultAgentId: '  '
       }
     })
 
     const store = new RemoteBindingStore(providerSettings as any)
 
-    expect(store.getDefaultAgentId()).toBe('deepchat')
-    expect(store.getTelegramConfig().streamMode).toBe('final')
-  })
-
-  it('migrates legacy root-level telegram config into the nested structure', () => {
-    const providerSettings = createProviderSettings()
-    providerSettings.set('remoteControl', {
-      enabled: true,
-      allowlist: ['123', 456],
-      streamMode: 'final',
-      defaultAgentId: 'legacy-agent',
-      pollOffset: 9,
-      lastFatalError: 'boom',
-      pairing: {
-        code: '654321',
-        expiresAt: 123
-      },
-      bindings: {
-        'telegram:100:0': {
-          sessionId: 'session-1',
-          updatedAt: 1
-        }
-      }
-    })
-
-    const store = new RemoteBindingStore(providerSettings as any)
-
-    expect(store.getTelegramConfig()).toEqual(
-      expect.objectContaining({
-        enabled: true,
-        allowlist: [123, 456],
-        defaultAgentId: 'legacy-agent',
-        pollOffset: 9,
-        lastFatalError: 'boom',
-        pairing: expect.objectContaining({
-          code: '654321',
-          expiresAt: 123,
-          failedAttempts: 0
-        })
-      })
-    )
-    expect(store.getBinding('telegram:100:0')).toEqual(
-      expect.objectContaining({
-        sessionId: 'session-1',
-        updatedAt: 1
-      })
-    )
+    expect(store.getFeishuDefaultAgentId()).toBe('deepchat')
   })
 
   it('migrates legacy root-level feishu config into the nested structure', () => {
@@ -183,57 +120,9 @@ describe('RemoteBindingStore', () => {
     )
   })
 
-  it('migrates legacy root-level discord config into the nested structure', () => {
-    const providerSettings = createProviderSettings()
-    providerSettings.set('remoteControl', {
-      botToken: 'discord-token',
-      enabled: true,
-      defaultAgentId: 'deepchat',
-      defaultWorkdir: 'C:/discord',
-      pairedChannelIds: ['channel-1', 'channel-2'],
-      lastFatalError: 'fatal discord',
-      pairing: {
-        code: '654321',
-        expiresAt: 999
-      },
-      bindings: {
-        'discord:dm:channel-1': {
-          sessionId: 'session-discord',
-          updatedAt: 3
-        }
-      }
-    })
-
-    const store = new RemoteBindingStore(providerSettings as any)
-
-    expect(store.getDiscordConfig()).toEqual(
-      expect.objectContaining({
-        botToken: 'discord-token',
-        enabled: true,
-        defaultWorkdir: 'C:/discord',
-        pairedChannelIds: ['channel-1', 'channel-2'],
-        lastFatalError: 'fatal discord',
-        pairing: expect.objectContaining({
-          code: '654321',
-          expiresAt: 999,
-          failedAttempts: 0
-        })
-      })
-    )
-    expect(store.getBinding('discord:dm:channel-1')).toEqual(
-      expect.objectContaining({
-        sessionId: 'session-discord',
-        updatedAt: 3
-      })
-    )
-  })
-
   it('enables configured channels when legacy enabled flags are missing', () => {
     const providerSettings = createProviderSettings()
     providerSettings.set('remoteControl', {
-      telegram: {
-        botToken: 'telegram-token'
-      },
       feishu: {
         appId: 'cli_a',
         appSecret: 'secret'
@@ -241,10 +130,6 @@ describe('RemoteBindingStore', () => {
       qqbot: {
         appId: 'qq-app',
         clientSecret: 'qq-secret'
-      },
-      discord: {
-        botToken: 'discord-token',
-        enabled: false
       },
       weixinIlink: {
         accounts: [
@@ -258,37 +143,22 @@ describe('RemoteBindingStore', () => {
 
     const store = new RemoteBindingStore(providerSettings as any)
 
-    expect(store.getTelegramConfig().enabled).toBe(true)
     expect(store.getFeishuConfig().enabled).toBe(true)
     expect(store.getQQBotConfig().enabled).toBe(true)
-    expect(store.getDiscordConfig().enabled).toBe(false)
     expect(store.getWeixinIlinkConfig().enabled).toBe(true)
 
     const rootProviderSettings = createProviderSettings()
     rootProviderSettings.set('remoteControl', {
-      botToken: 'legacy-telegram-token'
+      appId: 'legacy-app',
+      appSecret: 'legacy-secret'
     })
 
-    expect(new RemoteBindingStore(rootProviderSettings as any).getTelegramConfig().enabled).toBe(
-      true
-    )
+    expect(new RemoteBindingStore(rootProviderSettings as any).getFeishuConfig().enabled).toBe(true)
   })
 
   it('removes authorized principals without touching other entries', () => {
     const providerSettings = createProviderSettings()
     providerSettings.set('remoteControl', {
-      telegram: {
-        enabled: true,
-        allowlist: [123, 456],
-        streamMode: 'draft',
-        defaultAgentId: 'deepchat',
-        pollOffset: 0,
-        pairing: {
-          code: null,
-          expiresAt: null
-        },
-        bindings: {}
-      },
       feishu: {
         appId: 'cli_a',
         appSecret: 'secret',
@@ -319,55 +189,30 @@ describe('RemoteBindingStore', () => {
           failedAttempts: 0
         },
         bindings: {}
-      },
-      discord: {
-        botToken: 'discord-token',
-        enabled: true,
-        defaultAgentId: 'deepchat',
-        defaultWorkdir: '',
-        pairedChannelIds: ['channel-1', 'channel-2'],
-        lastFatalError: null,
-        pairing: {
-          code: null,
-          expiresAt: null,
-          failedAttempts: 0
-        },
-        bindings: {}
       }
     })
 
     const store = new RemoteBindingStore(providerSettings as any)
 
-    store.removeAllowedUser(456)
     store.removeFeishuPairedUser('ou_2')
     store.removeQQBotPairedUser('user_openid_2')
-    store.removeDiscordPairedChannel('channel-2')
 
-    expect(store.getAllowedUserIds()).toEqual([123])
     expect(store.getFeishuPairedUserOpenIds()).toEqual(['ou_1'])
     expect(store.getQQBotPairedUserIds()).toEqual(['user_openid_1'])
-    expect(store.getDiscordPairedChannelIds()).toEqual(['channel-1'])
   })
 
   it('keeps valid bindings when another binding is malformed', () => {
     const providerSettings = createProviderSettings()
     providerSettings.set('remoteControl', {
-      telegram: {
-        enabled: true,
-        allowlist: [123],
-        streamMode: 'draft',
-        defaultAgentId: 'deepchat',
-        pollOffset: 7,
-        pairing: {
-          code: null,
-          expiresAt: null
-        },
+      feishu: {
+        appId: 'cli_a',
+        appSecret: 'secret',
         bindings: {
-          'telegram:100:0': {
+          'feishu:oc_x:root': {
             sessionId: 'session-1',
             updatedAt: 1
           },
-          'telegram:200:0': {
+          'feishu:oc_y:root': {
             sessionId: 123
           }
         }
@@ -376,67 +221,20 @@ describe('RemoteBindingStore', () => {
 
     const store = new RemoteBindingStore(providerSettings as any)
 
-    expect(store.getPollOffset()).toBe(7)
-    expect(store.getBinding('telegram:100:0')).toEqual(
+    expect(store.getBinding('feishu:oc_x:root')).toEqual(
       expect.objectContaining({
         sessionId: 'session-1',
         updatedAt: 1
       })
     )
-    expect(store.getBinding('telegram:200:0')).toBeNull()
-  })
-
-  it('keeps model menus in memory and clears them after rebinding the endpoint', () => {
-    const providerSettings = createProviderSettings()
-    const store = new RemoteBindingStore(providerSettings as any)
-
-    const token = store.createModelMenuState('telegram:100:0', 'session-1', [
-      {
-        providerId: 'openai',
-        providerName: 'OpenAI',
-        models: [{ modelId: 'gpt-5', modelName: 'GPT-5' }]
-      }
-    ])
-
-    expect(store.getModelMenuState(token, 10 * 60 * 1000)).toEqual(
-      expect.objectContaining({
-        endpointKey: 'telegram:100:0',
-        sessionId: 'session-1'
-      })
-    )
-
-    store.setBinding('telegram:100:0', 'session-2')
-
-    expect(store.getModelMenuState(token, 10 * 60 * 1000)).toBeNull()
-  })
-
-  it('keeps pending interaction tokens in memory and clears them after rebinding the endpoint', () => {
-    const providerSettings = createProviderSettings()
-    const store = new RemoteBindingStore(providerSettings as any)
-
-    const token = store.createPendingInteractionState('telegram:100:0', {
-      messageId: 'assistant-1',
-      toolCallId: 'tool-1'
-    })
-
-    expect(store.getPendingInteractionState(token)).toEqual(
-      expect.objectContaining({
-        endpointKey: 'telegram:100:0',
-        messageId: 'assistant-1',
-        toolCallId: 'tool-1'
-      })
-    )
-
-    store.setBinding('telegram:100:0', 'session-2')
-
-    expect(store.getPendingInteractionState(token)).toBeNull()
+    expect(store.getBinding('feishu:oc_y:root')).toBeNull()
   })
 
   it('keeps remote delivery state in memory and clears it after rebinding the endpoint', () => {
     const providerSettings = createProviderSettings()
     const store = new RemoteBindingStore(providerSettings as any)
 
-    store.rememberRemoteDeliveryState('telegram:100:0', {
+    store.rememberRemoteDeliveryState('feishu:oc_x:root', {
       sourceMessageId: 'msg-1',
       segments: [
         {
@@ -454,7 +252,7 @@ describe('RemoteBindingStore', () => {
       ]
     })
 
-    expect(store.getRemoteDeliveryState('telegram:100:0')).toEqual({
+    expect(store.getRemoteDeliveryState('feishu:oc_x:root')).toEqual({
       sourceMessageId: 'msg-1',
       segments: [
         {
@@ -472,116 +270,80 @@ describe('RemoteBindingStore', () => {
       ]
     })
 
-    store.setBinding('telegram:100:0', 'session-2')
+    store.setBinding('feishu:oc_x:root', 'session-2')
 
-    expect(store.getRemoteDeliveryState('telegram:100:0')).toBeNull()
+    expect(store.getRemoteDeliveryState('feishu:oc_x:root')).toBeNull()
   })
 
   it('normalizes binding meta channel from the endpoint key', () => {
     const providerSettings = createProviderSettings()
     const store = new RemoteBindingStore(providerSettings as any)
 
-    store.setBinding('telegram:100:0', 'session-1', {
-      channel: 'feishu',
+    store.setBinding('feishu:oc_x:root', 'session-1', {
+      channel: 'qqbot',
       kind: 'dm',
-      chatId: '100',
+      chatId: 'oc_x',
       threadId: null
     })
 
-    expect(store.getBinding('telegram:100:0')).toEqual(
+    expect(store.getBinding('feishu:oc_x:root')).toEqual(
       expect.objectContaining({
         sessionId: 'session-1',
         meta: expect.objectContaining({
-          channel: 'telegram'
+          channel: 'feishu'
         })
       })
     )
 
-    store.clearBinding('telegram:100:0')
+    store.clearBinding('feishu:oc_x:root')
 
-    expect(store.getBinding('telegram:100:0')).toBeNull()
+    expect(store.getBinding('feishu:oc_x:root')).toBeNull()
   })
 
   it('expires a pairing code after too many failures and resets failures for a new code', () => {
     const providerSettings = createProviderSettings()
     const store = new RemoteBindingStore(providerSettings as any)
 
-    const pairing = store.createPairCode('telegram')
+    const pairing = store.createPairCode('qqbot')
 
     for (let attempt = 1; attempt < 5; attempt += 1) {
-      expect(store.recordPairCodeFailure('telegram', 5)).toEqual({
+      expect(store.recordPairCodeFailure('qqbot', 5)).toEqual({
         attempts: attempt,
         exhausted: false
       })
     }
 
-    expect(store.getTelegramPairingState()).toEqual(
+    expect(store.getQQBotPairingState()).toEqual(
       expect.objectContaining({
         code: pairing.code,
         failedAttempts: 4
       })
     )
 
-    expect(store.recordPairCodeFailure('telegram', 5)).toEqual({
+    expect(store.recordPairCodeFailure('qqbot', 5)).toEqual({
       attempts: 5,
       exhausted: true
     })
-    expect(store.getTelegramPairingState()).toEqual({
+    expect(store.getQQBotPairingState()).toEqual({
       code: null,
       expiresAt: null,
       failedAttempts: 0
     })
 
-    store.createPairCode('telegram')
+    store.createPairCode('qqbot')
 
-    expect(store.getTelegramPairingState().failedAttempts).toBe(0)
-  })
-
-  it('persists agent menu state and clears it on demand', () => {
-    const providerSettings = createProviderSettings()
-    const store = new RemoteBindingStore(providerSettings as any)
-    const agents = [
-      {
-        agentId: 'deepchat',
-        agentName: 'DeepChat',
-        agentType: 'deepchat' as const,
-        source: 'builtin' as const
-      },
-      {
-        agentId: 'codex',
-        agentName: 'Codex',
-        agentType: 'acp' as const,
-        source: 'registry' as const
-      }
-    ]
-
-    const token = store.createAgentMenuState('telegram:100:0', 'session-1', agents)
-    const state = store.getAgentMenuState(token, 60_000)
-
-    expect(state).not.toBeNull()
-    expect(state?.endpointKey).toBe('telegram:100:0')
-    expect(state?.agents).toHaveLength(2)
-    expect(state?.agents[1].agentId).toBe('codex')
-
-    store.clearAgentMenuState(token)
-    expect(store.getAgentMenuState(token, 60_000)).toBeNull()
+    expect(store.getQQBotPairingState().failedAttempts).toBe(0)
   })
 
   it('updates the channel default agent id by endpoint prefix', () => {
     const providerSettings = createProviderSettings()
     const store = new RemoteBindingStore(providerSettings as any)
 
-    store.setChannelDefaultAgentId('telegram:100:0', 'codex')
-    expect(store.getTelegramDefaultAgentId()).toBe('codex')
-
     store.setChannelDefaultAgentId('feishu:oc_x:root', 'codex')
     expect(store.getFeishuDefaultAgentId()).toBe('codex')
 
     store.setChannelDefaultAgentId('qqbot:c2c:abc', 'codex')
     expect(store.getQQBotDefaultAgentId()).toBe('codex')
-
-    store.setChannelDefaultAgentId('discord:dm:abc', 'codex')
-    expect(store.getDiscordDefaultAgentId()).toBe('codex')
 
     store.setChannelDefaultAgentId('weixin-ilink:acct:user', 'codex')
     expect(store.getWeixinIlinkDefaultAgentId()).toBe('codex')

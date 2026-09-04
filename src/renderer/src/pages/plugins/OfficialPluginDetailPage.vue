@@ -323,24 +323,18 @@ const lastActionData = ref('')
 const remoteSettingsVersion = ref(0)
 const FEISHU_PLUGIN_ID = 'com.deepchat.plugins.feishu'
 const remoteI18nKeyByChannel: Record<RemoteChannel, string> = {
-  telegram: 'telegram',
   feishu: 'feishu',
   qqbot: 'qqbot',
-  discord: 'discord',
   'weixin-ilink': 'weixinIlink'
 }
 const remoteIconByChannel: Record<RemoteChannel, string> = {
-  telegram: 'lucide:send',
   feishu: 'lucide:message-circle',
   qqbot: 'lucide:bot',
-  discord: 'lucide:radio-tower',
   'weixin-ilink': 'lucide:messages-square'
 }
 const remoteIconClassByChannel: Record<RemoteChannel, string> = {
-  telegram: 'text-sky-500',
   feishu: 'text-blue-500',
   qqbot: 'text-emerald-500',
-  discord: 'text-indigo-500',
   'weixin-ilink': 'text-green-500'
 }
 const CUA_PLUGIN_ICON = 'lucide:laptop-minimal-check'
@@ -353,7 +347,7 @@ const remoteChannel = computed<RemoteChannel | null>(() => {
   }
 
   const channel = id.slice('remote:'.length)
-  return ['telegram', 'feishu', 'qqbot', 'discord', 'weixin-ilink'].includes(channel)
+  return ['feishu', 'qqbot', 'weixin-ilink'].includes(channel)
     ? (channel as RemoteChannel)
     : null
 })

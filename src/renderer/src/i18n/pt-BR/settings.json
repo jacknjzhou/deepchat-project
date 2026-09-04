@@ -2415,14 +2415,7 @@
   },
   "remote": {
     "title": "Remoto",
-    "description": "Configure em um só lugar o controle remoto por Telegram, Feishu, QQBot e WeChat iLink.",
-    "telegram": {
-      "title": "Telegram",
-      "description": "Connect a Telegram bot for direct messages, groups, and topic-thread remote control.",
-      "botToken": "Token do bot",
-      "botTokenPlaceholder": "Token do bot do Telegram",
-      "botTokenDescription": "Enter the Telegram bot token used for Telegram remote control."
-    },
+    "description": "Configure em um só lugar o controle remoto por Feishu, QQBot e WeChat iLink.",
     "feishu": {
       "title": "Feishu / Lark",
       "description": "Conecte um bot do Feishu para mensagens diretas, chats em grupo e tópicos.",
@@ -2498,15 +2491,6 @@
       "streamingCards": "Cartões de Streaming CardKit",
       "streamingCardsDescription": "Transmita respostas de IA pelo Feishu / Lark CardKit em tempo real. Requer permissões im:message e cardkit:card:write; DeepChat volta para mensagens normais se o CardKit falhar."
     },
-    "discord": {
-      "title": "Discord",
-      "description": "Conecte um bot do Discord para DMs, menções em canais e controle remoto por slash commands.",
-      "botToken": "Token do bot",
-      "botTokenPlaceholder": "Token do bot do Discord",
-      "remoteControlDescription": "Discord remote control uses its own bot token, gateway, and REST flow.",
-      "accessRule1": "Envie /pair [code] em uma DM ou no canal de destino para autorizar o endpoint atual do Discord.",
-      "accessRule2": "Mensagens em canais só entram na sessão quando o bot é mencionado, evitando capturar conversas comuns."
-    },
     "sections": {
       "credentials": "Credenciais",
       "remoteControl": "Controle remoto",
@@ -2534,9 +2518,7 @@
       "bindingsEmpty": "Ainda não há vínculos.",
       "pairingSuccessTitle": "Pareamento concluído",
       "pairingSuccessDescription": "A lista de IDs de usuário permitidos foi atualizada.",
-      "pairDialogInstructionTelegram": "Envie este comando para o bot do Telegram:",
       "pairDialogInstructionFeishu": "Send this command in a Feishu / Lark bot direct chat; it adds the sender to the same authorized-principal list used by scan authorization:",
-      "pairDialogInstructionDiscord": "Envie este comando ao bot do Discord em uma DM ou no canal de destino:",
       "pairDialogInstructionQQBot": "Envie este comando no chat do QQ Bot ou no grupo QQ autorizado:",
       "authorizedPrincipalsTitle": "Identidades autorizadas",
       "authorizedPrincipalsDescription": "Essas contas do {channel} estão autorizadas a fazer o pareamento e controlar sessões.",
@@ -2545,14 +2527,6 @@
       "sessionBindingsDescription": "Cada ponto de acesso remoto abaixo está atualmente vinculado a uma sessão do DeepChat.",
       "acpDefaultWorkdirRequiredTitle": "Diretório padrão obrigatório",
       "acpDefaultWorkdirRequiredDescription": "Agentes ACP precisam de um workspace local. Escolha um diretório padrão antes de salvar."
-    },
-    "hooks": {
-      "title": "Hooks do Telegram",
-      "description": "Reutilize o mesmo bot do Telegram para notificações de hook.",
-      "chatId": "ID do chat",
-      "chatIdPlaceholder": "ex.: 123456789",
-      "threadId": "ID da thread (opcional)",
-      "threadIdPlaceholder": "ID opcional da thread"
     },
     "status": {
       "title": "Status de execução",
@@ -2569,12 +2543,8 @@
       "bindingOnly": "Vínculos: {count}, identidades pareadas: {paired}"
     },
     "overview": {
-      "telegram": "{bindingCount} bindings, {pairedCount} paired users",
       "feishu": "{bindingCount} vínculos, {pairedCount} usuários pareados",
-      "hooksOn": "ativos",
-      "hooksOff": "desativados",
       "qqbot": "{bindingCount} vínculos, {pairedCount} usuários pareados",
-      "discord": "{bindingCount} vínculos, {pairedCount} canais pareados",
       "weixinIlink": "{bindingCount} vínculos, {accountCount} contas, {connectedCount} conectadas"
     },
     "bindingKinds": {

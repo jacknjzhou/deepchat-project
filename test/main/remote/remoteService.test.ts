@@ -2,35 +2,29 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { BrowserWindow } from 'electron'
 import * as http from 'node:http'
 import * as net from 'node:net'
-import type { TelegramPollerStatusSnapshot } from '@/remote/types'
+import type { QQBotRuntimeStatusSnapshot } from '@/remote/types'
 
-type MockPollerDeps = {
-  onStatusChange?: (snapshot: TelegramPollerStatusSnapshot) => void
+type MockRuntimeDeps = {
+  onStatusChange?: (snapshot: QQBotRuntimeStatusSnapshot) => void
   onFatalError?: (message: string) => void
 }
 
-const pollerInstances: Array<{
+const runtimeInstances: Array<{
   start: ReturnType<typeof vi.fn>
   stop: ReturnType<typeof vi.fn>
   getStatusSnapshot: ReturnType<typeof vi.fn>
-  deps: MockPollerDeps
+  deps: MockRuntimeDeps
 }> = []
-const telegramClientInstances: Array<{
-  setMyCommands: ReturnType<typeof vi.fn>
-}> = []
-let pollerStartImplementation: () => Promise<void> = async () => {}
+let runtimeStartImplementation: () => Promise<void> = async () => {}
 
-vi.mock('@/remote/channels/telegram/telegramPoller', () => ({
-  TelegramPoller: class MockTelegramPoller {
+vi.mock('@/remote/channels/qqbot/qqbotRuntime', () => ({
+  QQBotRuntime: class MockQQBotRuntime {
     readonly start = vi.fn(async () => {
-      await pollerStartImplementation()
+      await runtimeStartImplementation()
       this.deps.onStatusChange?.({
         state: 'running',
         lastError: null,
-        botUser: {
-          id: 123,
-          username: 'deepchat_bot'
-        }
+        botUser: null
       })
     })
     readonly stop = vi.fn().mockResolvedValue(undefined)
@@ -39,21 +33,11 @@ vi.mock('@/remote/channels/telegram/telegramPoller', () => ({
       lastError: null,
       botUser: null
     })
-    readonly deps: MockPollerDeps
+    readonly deps: MockRuntimeDeps
 
-    constructor(deps: MockPollerDeps) {
+    constructor(deps: MockRuntimeDeps) {
       this.deps = deps
-      pollerInstances.push(this)
-    }
-  }
-}))
-
-vi.mock('@/remote/channels/telegram/telegramClient', () => ({
-  TelegramClient: class MockTelegramClient {
-    readonly setMyCommands = vi.fn().mockResolvedValue(undefined)
-
-    constructor(_botToken: string) {
-      telegramClientInstances.push(this)
+      runtimeInstances.push(this)
     }
   }
 }))
@@ -129,17 +113,19 @@ const createProviderSettings = () => {
     [
       'remoteControl',
       {
-        telegram: {
-          botToken: 'test-bot-token',
+        qqbot: {
+          appId: 'app-test',
+          clientSecret: 'test-secret',
           enabled: true,
-          allowlist: [],
-          streamMode: 'draft',
           defaultAgentId: 'deepchat',
           defaultWorkdir: '',
-          pollOffset: 0,
+          pairedUserIds: [],
+          pairedGroupIds: [],
+          lastFatalError: null,
           pairing: {
             code: null,
-            expiresAt: null
+            expiresAt: null,
+            failedAttempts: 0
           },
           bindings: {}
         }
@@ -206,9 +192,8 @@ const createRemoteService = (settings: TestSettings, overrides: Partial<RemoteSe
 
 describe('RemoteService', () => {
   beforeEach(() => {
-    pollerInstances.length = 0
-    telegramClientInstances.length = 0
-    pollerStartImplementation = async () => {}
+    runtimeInstances.length = 0
+    runtimeStartImplementation = async () => {}
     Object.assign(BrowserWindow, {
       getFocusedWindow: vi.fn(() => null),
       getAllWindows: vi.fn(() => [])
@@ -279,37 +264,21 @@ describe('RemoteService', () => {
     })
   })
 
-  it('serializes runtime rebuilds so only one poller starts per token', async () => {
+  it('serializes runtime rebuilds so only one runtime starts per channel config', async () => {
     const providerSettings = createProviderSettings()
 
     const presenter = createRemoteService(providerSettings)
 
     await Promise.all([presenter.initialize(), presenter.initialize()])
 
-    expect(pollerInstances).toHaveLength(1)
-    expect(pollerInstances[0].start).toHaveBeenCalledTimes(1)
-    expect(telegramClientInstances).toHaveLength(1)
-    expect(telegramClientInstances[0].setMyCommands).toHaveBeenCalledTimes(1)
-    expect(telegramClientInstances[0].setMyCommands).toHaveBeenCalledWith(
-      expect.arrayContaining([
-        expect.objectContaining({
-          command: 'model'
-        })
-      ])
-    )
-    expect(telegramClientInstances[0].setMyCommands).toHaveBeenCalledWith(
-      expect.arrayContaining([
-        expect.objectContaining({
-          command: 'open'
-        })
-      ])
-    )
+    expect(runtimeInstances).toHaveLength(1)
+    expect(runtimeInstances[0].start).toHaveBeenCalledTimes(1)
   })
 
-  it('reports starting while the poller startup is still in flight', async () => {
+  it('reports starting while the runtime startup is still in flight', async () => {
     const providerSettings = createProviderSettings()
     let resolveStart: (() => void) | null = null
-    pollerStartImplementation = () =>
+    runtimeStartImplementation = () =>
       new Promise<void>((resolve) => {
         resolveStart = resolve
       })
@@ -319,7 +288,7 @@ describe('RemoteService', () => {
     const initializePromise = presenter.initialize()
 
     await vi.waitFor(async () => {
-      await expect(presenter.getTelegramStatus()).resolves.toEqual(
+      await expect(presenter.getQQBotStatus()).resolves.toEqual(
         expect.objectContaining({
           state: 'starting'
         })
@@ -330,21 +299,21 @@ describe('RemoteService', () => {
     await initializePromise
   })
 
-  it('auto-disables remote control after a fatal poller failure', async () => {
+  it('auto-disables remote control after a fatal runtime failure', async () => {
     const providerSettings = createProviderSettings()
 
     const presenter = createRemoteService(providerSettings)
 
     await presenter.initialize()
 
-    pollerInstances[0].deps.onFatalError?.('Conflict: terminated by other getUpdates request')
+    runtimeInstances[0].deps.onFatalError?.('Gateway closed unexpectedly')
 
     await vi.waitFor(async () => {
-      await expect(presenter.getTelegramStatus()).resolves.toEqual(
+      await expect(presenter.getQQBotStatus()).resolves.toEqual(
         expect.objectContaining({
           enabled: false,
           state: 'error',
-          lastError: 'Conflict: terminated by other getUpdates request'
+          lastError: 'Gateway closed unexpectedly'
         })
       )
     })
@@ -352,13 +321,15 @@ describe('RemoteService', () => {
     expect(providerSettings.set).toHaveBeenCalledWith(
       'remoteControl',
       expect.objectContaining({
-        telegram: expect.objectContaining({
+        qqbot: expect.objectContaining({
           enabled: false,
-          lastFatalError: 'Conflict: terminated by other getUpdates request'
+          lastFatalError: 'Gateway closed unexpectedly'
         })
       })
     )
-    expect(pollerInstances[0].stop).toHaveBeenCalledTimes(1)
+    await vi.waitFor(() => {
+      expect(runtimeInstances[0].stop).toHaveBeenCalledTimes(1)
+    })
   })
 
   it('installs Feishu PersonalAgent credentials from the official QR registration flow', async () => {
@@ -786,19 +757,20 @@ describe('RemoteService', () => {
     const providerSettings = createProviderSettings()
 
     providerSettings.set('remoteControl', {
-      telegram: {
+      qqbot: {
+        appId: 'app-1',
+        clientSecret: 'secret',
         enabled: true,
-        allowlist: [123],
-        streamMode: 'final',
         defaultAgentId: '',
         defaultWorkdir: '',
-        pollOffset: 0,
+        pairedUserIds: [],
+        pairedGroupIds: [],
         pairing: {
           code: '123456',
           expiresAt: 123456789
         },
         bindings: {
-          'telegram:100:0': {
+          'qqbot:c2c:OPENID_100': {
             sessionId: 'session-1',
             updatedAt: 10
           }
@@ -808,44 +780,34 @@ describe('RemoteService', () => {
 
     const presenter = createRemoteService(providerSettings)
 
-    await expect(presenter.getTelegramPairingSnapshot()).resolves.toEqual({
+    await expect(presenter.getChannelPairingSnapshot('qqbot')).resolves.toEqual({
       pairCode: '123456',
       pairCodeExpiresAt: 123456789,
-      allowedUserIds: [123]
+      pairedUserIds: [],
+      pairedGroupIds: []
     })
 
-    await expect(presenter.getTelegramBindings()).resolves.toEqual([
+    await expect(presenter.getChannelBindings('qqbot')).resolves.toEqual([
       {
-        endpointKey: 'telegram:100:0',
+        channel: 'qqbot',
+        endpointKey: 'qqbot:c2c:OPENID_100',
         sessionId: 'session-1',
-        chatId: 100,
-        messageThreadId: 0,
+        chatId: 'OPENID_100',
+        threadId: null,
+        kind: 'dm',
         updatedAt: 10
       }
     ])
 
-    await presenter.removeTelegramBinding('telegram:100:0')
+    await presenter.removeChannelBinding('qqbot', 'qqbot:c2c:OPENID_100')
 
-    await expect(presenter.getTelegramBindings()).resolves.toEqual([])
+    await expect(presenter.getChannelBindings('qqbot')).resolves.toEqual([])
   })
 
   it('removes authorized principals through the generic presenter contract', async () => {
     const providerSettings = createProviderSettings()
 
     providerSettings.set('remoteControl', {
-      telegram: {
-        enabled: true,
-        allowlist: [123, 456],
-        streamMode: 'final',
-        defaultAgentId: '',
-        defaultWorkdir: '',
-        pollOffset: 0,
-        pairing: {
-          code: null,
-          expiresAt: null
-        },
-        bindings: {}
-      },
       feishu: {
         appId: 'cli_test',
         appSecret: 'secret',
@@ -883,15 +845,9 @@ describe('RemoteService', () => {
 
     const presenter = createRemoteService(providerSettings)
 
-    await presenter.removeChannelPrincipal('telegram', '456')
     await presenter.removeChannelPrincipal('feishu', 'ou_2')
     await presenter.removeChannelPrincipal('qqbot', 'user_openid_2')
 
-    await expect(presenter.getTelegramPairingSnapshot()).resolves.toEqual({
-      pairCode: null,
-      pairCodeExpiresAt: null,
-      allowedUserIds: [123]
-    })
     await expect(presenter.getChannelPairingSnapshot('feishu')).resolves.toEqual({
       pairCode: null,
       pairCodeExpiresAt: null,
@@ -912,29 +868,13 @@ describe('RemoteService', () => {
       { id: 'deepchat-alt', name: 'Alt', type: 'deepchat', enabled: false }
     ])
 
-    providerSettings.set('remoteControl', {
-      telegram: {
-        enabled: true,
-        allowlist: [],
-        streamMode: 'final',
-        defaultAgentId: 'deepchat',
-        defaultWorkdir: '',
-        pollOffset: 0,
-        pairing: {
-          code: null,
-          expiresAt: null,
-          failedAttempts: 0
-        },
-        bindings: {}
-      }
-    })
-
     const presenter = createRemoteService(providerSettings, {
       catalog: createCatalog({ listAgents, getAgentType: providerSettings.getAgentType })
     })
 
-    const saved = await presenter.saveTelegramSettings({
-      botToken: 'test-bot-token',
+    const saved = await presenter.saveQQBotSettings({
+      appId: 'app-test',
+      clientSecret: 'test-secret',
       remoteEnabled: true,
       defaultAgentId: 'deepchat-alt'
     })
@@ -943,9 +883,8 @@ describe('RemoteService', () => {
     expect(providerSettings.set).toHaveBeenCalledWith(
       'remoteControl',
       expect.objectContaining({
-        telegram: expect.objectContaining({
-          defaultAgentId: 'deepchat',
-          streamMode: 'final'
+        qqbot: expect.objectContaining({
+          defaultAgentId: 'deepchat'
         })
       })
     )
@@ -956,8 +895,9 @@ describe('RemoteService', () => {
 
     const presenter = createRemoteService(providerSettings)
 
-    const saved = await presenter.saveTelegramSettings({
-      botToken: 'test-bot-token',
+    const saved = await presenter.saveQQBotSettings({
+      appId: 'app-test',
+      clientSecret: 'test-secret',
       remoteEnabled: true,
       defaultAgentId: 'acp-agent',
       defaultWorkdir: '/workspace'
@@ -980,8 +920,9 @@ describe('RemoteService', () => {
       catalog: createCatalog({ listAgents, getAgentType })
     })
 
-    const saved = await presenter.saveTelegramSettings({
-      botToken: 'test-bot-token',
+    const saved = await presenter.saveQQBotSettings({
+      appId: 'app-test',
+      clientSecret: 'test-secret',
       remoteEnabled: true,
       defaultAgentId: 'claude-code-acp',
       defaultWorkdir: '/workspace'
@@ -1004,8 +945,9 @@ describe('RemoteService', () => {
       catalog: createCatalog({ listAgents, getAgentType })
     })
 
-    const saved = await presenter.saveTelegramSettings({
-      botToken: 'test-bot-token',
+    const saved = await presenter.saveQQBotSettings({
+      appId: 'app-test',
+      clientSecret: 'test-secret',
       remoteEnabled: true,
       defaultAgentId: 'claude-code-acp',
       defaultWorkdir: '/workspace'
@@ -1024,8 +966,9 @@ describe('RemoteService', () => {
       catalog: createCatalog({ listAgents, getAgentType: providerSettings.getAgentType })
     })
 
-    const saved = await presenter.saveTelegramSettings({
-      botToken: 'test-bot-token',
+    const saved = await presenter.saveQQBotSettings({
+      appId: 'app-test',
+      clientSecret: 'test-secret',
       remoteEnabled: true,
       defaultAgentId: 'claude-code-acp'
     })
@@ -1040,64 +983,14 @@ describe('RemoteService', () => {
 
     const channels = await presenter.listRemoteChannels()
 
-    expect(channels.map((channel) => channel.id)).toEqual([
-      'telegram',
-      'feishu',
-      'qqbot',
-      'discord',
-      'weixin-ilink'
-    ])
+    expect(channels.map((channel) => channel.id)).toEqual(['feishu', 'qqbot', 'weixin-ilink'])
     expect(
       Object.fromEntries(channels.map((channel) => [channel.id, channel.supportsCronDelivery]))
     ).toEqual({
-      telegram: true,
       feishu: true,
       qqbot: false,
-      discord: true,
       'weixin-ilink': true
     })
-  })
-
-  it('saves discord remote settings without touching unrelated config', async () => {
-    const providerSettings = createProviderSettings()
-    providerSettings.set('remoteControl', {
-      discord: {
-        botToken: 'old-token',
-        enabled: true,
-        defaultAgentId: 'deepchat',
-        defaultWorkdir: '',
-        pairedChannelIds: ['1234567890']
-      }
-    })
-
-    const presenter = createRemoteService(providerSettings)
-
-    const saved = await presenter.saveDiscordSettings({
-      botToken: 'discord-bot-token',
-      remoteEnabled: false,
-      defaultAgentId: 'deepchat',
-      defaultWorkdir: 'C:/workspaces/discord',
-      pairedChannelIds: []
-    })
-
-    expect(saved).toEqual({
-      botToken: 'discord-bot-token',
-      remoteEnabled: false,
-      defaultAgentId: 'deepchat',
-      defaultWorkdir: 'C:/workspaces/discord',
-      pairedChannelIds: ['1234567890']
-    })
-    expect(providerSettings.set).toHaveBeenCalledWith(
-      'remoteControl',
-      expect.objectContaining({
-        discord: expect.objectContaining({
-          botToken: 'discord-bot-token',
-          enabled: false,
-          defaultWorkdir: 'C:/workspaces/discord',
-          pairedChannelIds: ['1234567890']
-        })
-      })
-    )
   })
 
   it('preserves paired QQ users when saving stale settings input', async () => {

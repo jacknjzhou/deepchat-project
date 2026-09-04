@@ -247,7 +247,6 @@ describe('main kernel contracts', () => {
         'remoteControl.getChannelPairingSnapshot',
         'remoteControl.getChannelSettings',
         'remoteControl.getChannelStatus',
-        'remoteControl.getTelegramStatus',
         'remoteControl.getWeixinIlinkStatus',
         'remoteControl.startFeishuAuth',
         'remoteControl.waitForFeishuAuth',
@@ -823,25 +822,25 @@ describe('main kernel contracts', () => {
     expect(DEEPCHAT_ROUTE_CATALOG['remoteControl.listChannels'].input.parse({})).toEqual({})
     expect(
       DEEPCHAT_ROUTE_CATALOG['remoteControl.getChannelSettings'].input.parse({
-        channel: 'telegram'
+        channel: 'feishu'
       })
     ).toEqual({
-      channel: 'telegram'
+      channel: 'feishu'
     })
     expect(
       DEEPCHAT_ROUTE_CATALOG['remoteControl.saveChannelSettings'].input.parse({
-        channel: 'telegram',
+        channel: 'feishu',
         settings: {
-          botToken: 'telegram-token',
+          botToken: 'feishu-token',
           remoteEnabled: true,
           defaultAgentId: 'deepchat',
           defaultWorkdir: ''
         }
       })
     ).toEqual({
-      channel: 'telegram',
+      channel: 'feishu',
       settings: {
-        botToken: 'telegram-token',
+        botToken: 'feishu-token',
         remoteEnabled: true,
         defaultAgentId: 'deepchat',
         defaultWorkdir: ''

@@ -2,7 +2,7 @@ import { test, expect } from '../fixtures/electronApp'
 import { openSettings, openSettingsTab } from '../helpers/settings'
 import { waitForAppReady } from '../helpers/wait'
 
-const expectedChannels = ['telegram', 'feishu', 'qqbot', 'discord', 'weixin-ilink'] as const
+const expectedChannels = ['feishu', 'qqbot', 'weixin-ilink'] as const
 
 test('remote settings read-only routes match visible channel tabs @smoke', async ({ app }) => {
   await waitForAppReady(app.page)

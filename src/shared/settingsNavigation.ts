@@ -198,7 +198,7 @@ export const SETTINGS_NAVIGATION_ITEMS: SettingsNavigationItem[] = [
     icon: 'lucide:smartphone',
     position: 5.25,
     groupKey: 'system',
-    keywords: ['remote', 'telegram', 'feishu', 'control', '远程', '控制'],
+    keywords: ['remote', 'feishu', 'control', '远程', '控制'],
     hiddenInSidebar: true
   },
   {

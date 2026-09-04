@@ -1,18 +1,12 @@
 import type { CronJob, CronJobDeliveryTarget, CronJobRun } from '@shared/cronJobs'
 import type { RemoteBindingSummary, RemoteChannel } from '@shared/types/remote'
-import { parseDiscordEndpointKey, parseWeixinIlinkEndpointKey } from '../types'
+import { parseWeixinIlinkEndpointKey } from '../types'
 import type { ChannelManager } from '../runtime/manager'
 
 const DEFAULT_CHANNEL_ID = 'default'
 const DEFAULT_MESSAGE_LIMIT = 4000
-const DISCORD_MESSAGE_LIMIT = 1900
 
-export const REMOTE_DELIVERY_CHANNELS: readonly RemoteChannel[] = [
-  'telegram',
-  'feishu',
-  'discord',
-  'weixin-ilink'
-]
+export const REMOTE_DELIVERY_CHANNELS: readonly RemoteChannel[] = ['feishu', 'weixin-ilink']
 
 export type RemoteDeliveryInput = {
   job: CronJob
@@ -73,16 +67,8 @@ export class RemoteDelivery {
     endpointKey: string,
     binding: RemoteBindingSummary
   ): string {
-    if (channel === 'telegram' || channel === 'feishu') {
+    if (channel === 'feishu') {
       return binding.threadId ? `${binding.chatId}:${binding.threadId}` : binding.chatId
-    }
-
-    if (channel === 'discord') {
-      const endpoint = parseDiscordEndpointKey(endpointKey)
-      if (!endpoint) {
-        throw new Error(`Invalid Discord binding: ${endpointKey}`)
-      }
-      return `${endpoint.chatType}:${endpoint.chatId}`
     }
 
     const endpoint = parseWeixinIlinkEndpointKey(endpointKey)
@@ -119,9 +105,6 @@ export class RemoteDelivery {
   private getMessageLimit(channel: RemoteChannel): number | null {
     if (channel === 'feishu') {
       return null
-    }
-    if (channel === 'discord') {
-      return DISCORD_MESSAGE_LIMIT
     }
     return DEFAULT_MESSAGE_LIMIT
   }

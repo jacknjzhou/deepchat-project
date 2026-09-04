@@ -2415,14 +2415,7 @@
   },
   "remote": {
     "title": "遠端",
-    "description": "統一配置 Telegram、飛書、QQBot 和微信 iLink 遠端控制。",
-    "telegram": {
-      "title": "Telegram",
-      "description": "接入 Telegram Bot，支援私聊、群聊與話題執行緒遠端控制。",
-      "botToken": "機器人 Token",
-      "botTokenPlaceholder": "Telegram 機器人 Token",
-      "botTokenDescription": "填寫用於 Telegram 遠端控制的機器人 Token。"
-    },
+    "description": "統一配置飛書、QQBot 和微信 iLink 遠端控制。",
     "feishu": {
       "title": "飛書 / Lark",
       "description": "接入飛書 Bot，支援私聊、群組聊天與話題串的遠端控制。",
@@ -2498,15 +2491,6 @@
       "streamingCards": "CardKit 串流卡片",
       "streamingCardsDescription": "開啟後，AI 回覆會使用飛書 / Lark CardKit 串流卡片即時更新；需要應用具備 im:message 和 cardkit:card:write 權限，失敗時會自動回退為普通消息。"
     },
-    "discord": {
-      "title": "Discord",
-      "description": "接入 Discord Bot，支援私聊、頻道提及和 Slash Commands 遠端控制。",
-      "botToken": "Bot Token",
-      "botTokenPlaceholder": "Discord Bot Token",
-      "remoteControlDescription": "Discord 遠控使用獨立的 Bot Token、Gateway 與 REST 流程。",
-      "accessRule1": "在私聊或目標頻道發送 /pair [配對碼]，把當前 DM 或頻道授權給 DeepChat。",
-      "accessRule2": "頻道訊息只有在提及機器人時才會進入會話，避免誤處理普通聊天。"
-    },
     "sections": {
       "credentials": "憑證",
       "remoteControl": "遠端控制",
@@ -2534,9 +2518,7 @@
       "bindingsEmpty": "目前還沒有已綁定的會話。",
       "pairingSuccessTitle": "配對成功",
       "pairingSuccessDescription": "允許的使用者 ID 已刷新。",
-      "pairDialogInstructionTelegram": "到 Telegram Bot 傳送這條指令：",
       "pairDialogInstructionFeishu": "在飛書 / Lark 機器人私聊中發送這條命令；它會把目前發送者加入與掃碼授權相同的授權主體列表：",
-      "pairDialogInstructionDiscord": "去 Discord 機器人的私聊或目標頻道裡發送這條命令：",
       "pairDialogInstructionQQBot": "到 QQ 機器人私聊或已授權群聊中發送這條命令：",
       "authorizedPrincipalsTitle": "已授權主體",
       "authorizedPrincipalsDescription": "這些 {channel} 帳號已獲授權，可以配對並操作會話。",
@@ -2545,14 +2527,6 @@
       "sessionBindingsDescription": "下方每個遠端入口目前都綁定到一個 DeepChat 會話。",
       "acpDefaultWorkdirRequiredTitle": "需要先設定預設目錄",
       "acpDefaultWorkdirRequiredDescription": "ACP 智能體需要本機工作目錄。請先在「預設目錄」中選擇一個目錄，再儲存。"
-    },
-    "hooks": {
-      "title": "Telegram Hook 通知",
-      "description": "重用同一個 Telegram Bot 傳送 Hook 通知。",
-      "chatId": "聊天 ID",
-      "chatIdPlaceholder": "例如 123456789",
-      "threadId": "話題 ID（可選）",
-      "threadIdPlaceholder": "可選的話題 ID"
     },
     "status": {
       "title": "執行狀態",
@@ -2569,12 +2543,8 @@
       "bindingOnly": "綁定數：{count}，已配對主體：{paired}"
     },
     "overview": {
-      "telegram": "{bindingCount} 個綁定，{pairedCount} 個已配對用戶",
       "feishu": "{bindingCount} 個綁定，{pairedCount} 位已配對使用者",
-      "hooksOn": "開啟",
-      "hooksOff": "關閉",
       "qqbot": "{bindingCount} 個綁定，{pairedCount} 個已配對使用者",
-      "discord": "{bindingCount} 個綁定，{pairedCount} 個已配對頻道",
       "weixinIlink": "{bindingCount} 個綁定，{accountCount} 個帳號，{connectedCount} 個已連線"
     },
     "bindingKinds": {

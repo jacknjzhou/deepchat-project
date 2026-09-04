@@ -2415,14 +2415,7 @@
   },
   "remote": {
     "title": "원격 제어",
-    "description": "Telegram, Feishu / Lark, QQBot, Discord, WeChat iLink 원격 제어를 한곳에서 설정합니다.",
-    "telegram": {
-      "title": "Telegram",
-      "description": "Telegram 봇을 연결해 개인 메시지, 그룹, 토픽 스레드에서 원격 제어를 사용할 수 있습니다.",
-      "botToken": "봇 토큰",
-      "botTokenPlaceholder": "Telegram 봇 토큰",
-      "botTokenDescription": "Telegram 원격 제어에 사용할 Telegram 봇 토큰을 입력하세요."
-    },
+    "description": "Feishu / Lark, QQBot, WeChat iLink 원격 제어를 한곳에서 설정합니다.",
     "feishu": {
       "title": "Feishu / Lark",
       "description": "Feishu 봇을 연결하여 개인 메시지, 그룹 채팅, 주제 스레드에서 사용할 수 있습니다.",
@@ -2498,15 +2491,6 @@
       "streamingCards": "CardKit 스트리밍 카드",
       "streamingCardsDescription": "Feishu / Lark CardKit을 통해 AI 답변을 실시간으로 스트리밍합니다. im:message 및 cardkit:card:write 권한이 필요합니다. CardKit이 실패하면 DeepChat은 일반 메시지로 폴백합니다."
     },
-    "discord": {
-      "title": "Discord",
-      "description": "Discord 봇을 연결해 DM, 채널 멘션, 슬래시 명령으로 원격 제어할 수 있습니다.",
-      "botToken": "봇 토큰",
-      "botTokenPlaceholder": "Discord 봇 토큰",
-      "remoteControlDescription": "Discord 원격 제어는 전용 봇 토큰과 게이트웨이, REST 흐름을 사용합니다.",
-      "accessRule1": "현재 Discord 엔드포인트를 승인하려면 DM 또는 대상 채널에서 /pair [코드]를 보내세요.",
-      "accessRule2": "채널 메시지는 봇이 멘션된 경우에만 세션으로 들어오므로 일반 대화를 잘못 흡수하지 않습니다."
-    },
     "sections": {
       "credentials": "자격 증명",
       "remoteControl": "원격 제어",
@@ -2534,9 +2518,7 @@
       "bindingsEmpty": "아직 바인딩이 없습니다.",
       "pairingSuccessTitle": "페어링 완료",
       "pairingSuccessDescription": "승인된 주체 목록을 새로고침했습니다.",
-      "pairDialogInstructionTelegram": "이 명령을 Telegram 봇에게 보내세요:",
       "pairDialogInstructionFeishu": "Send this command in a Feishu / Lark bot direct chat; it adds the sender to the same authorized-principal list used by scan authorization:",
-      "pairDialogInstructionDiscord": "이 명령을 Discord 봇에게 DM 또는 대상 채널로 보내세요:",
       "pairDialogInstructionQQBot": "이 명령을 QQ 봇 채팅 또는 승인된 QQ 그룹으로 보내세요:",
       "authorizedPrincipalsTitle": "승인된 주체",
       "authorizedPrincipalsDescription": "이 {channel} 계정들은 승인되어 페어링과 세션 제어를 수행할 수 있습니다.",
@@ -2545,14 +2527,6 @@
       "sessionBindingsDescription": "아래의 각 원격 엔드포인트는 현재 하나의 DeepChat 세션에 바인딩되어 있습니다.",
       "acpDefaultWorkdirRequiredTitle": "기본 디렉터리가 필요합니다",
       "acpDefaultWorkdirRequiredDescription": "ACP 에이전트는 로컬 작업 공간이 필요합니다. 저장하기 전에 기본 디렉터리를 선택하세요."
-    },
-    "hooks": {
-      "title": "Telegram 훅 알림",
-      "description": "같은 Telegram 봇을 훅 알림에도 재사용합니다.",
-      "chatId": "채팅 ID",
-      "chatIdPlaceholder": "예: 123456789",
-      "threadId": "스레드 ID(선택)",
-      "threadIdPlaceholder": "선택 사항 스레드 ID"
     },
     "status": {
       "title": "런타임 상태",
@@ -2569,12 +2543,8 @@
       "bindingOnly": "바인딩: {count}, 페어링된 주체: {paired}"
     },
     "overview": {
-      "telegram": "{bindingCount}개 바인딩, {pairedCount}명의 페어링된 사용자",
       "feishu": "{bindingCount}개 바인딩, {pairedCount}명 페어링됨",
-      "hooksOn": "켜짐",
-      "hooksOff": "꺼짐",
       "qqbot": "{bindingCount}개 바인딩, {pairedCount}명의 페어링된 사용자",
-      "discord": "{bindingCount}개 바인딩, {pairedCount}개의 페어링된 채널",
       "weixinIlink": "바인딩 {bindingCount}개, 계정 {accountCount}개, 연결됨 {connectedCount}개"
     },
     "bindingKinds": {

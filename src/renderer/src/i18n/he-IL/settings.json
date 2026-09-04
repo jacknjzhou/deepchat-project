@@ -2415,14 +2415,7 @@
   },
   "remote": {
     "title": "שליטה מרחוק",
-    "description": "הגדר במקום אחד שליטה מרחוק דרך Telegram, Feishu, QQBot ו-WeChat iLink.",
-    "telegram": {
-      "title": "Telegram",
-      "description": "חברו בוט Telegram לשליטה מרחוק דרך הודעות פרטיות, קבוצות ושרשורי נושאים.",
-      "botToken": "טוקן בוט",
-      "botTokenPlaceholder": "טוקן בוט Telegram",
-      "botTokenDescription": "הזינו את טוקן הבוט של Telegram שישמש לשליטה מרחוק דרך Telegram."
-    },
+    "description": "הגדר במקום אחד שליטה מרחוק דרך Feishu, QQBot ו-WeChat iLink.",
     "feishu": {
       "title": "Feishu / Lark",
       "description": "חבר בוט Feishu להודעות פרטיות, שיחות קבוצתיות ושרשורי נושאים.",
@@ -2498,15 +2491,6 @@
       "streamingCards": "כרטיסי סטרימינג של CardKit",
       "streamingCardsDescription": "הזרימו תשובות AI בזמן אמת דרך Feishu / Lark CardKit. נדרשות ההרשאות im:message ו-cardkit:card:write; אם CardKit נכשל, DeepChat חוזר להודעות רגילות."
     },
-    "discord": {
-      "title": "Discord",
-      "description": "חברו בוט Discord להודעות פרטיות, אזכורים בערוצים ושליטה מרחוק באמצעות Slash Commands.",
-      "botToken": "אסימון בוט",
-      "botTokenPlaceholder": "אסימון בוט של Discord",
-      "remoteControlDescription": "השליטה מרחוק ב-Discord משתמשת בטוקן בוט, Gateway וזרימת REST משלה.",
-      "accessRule1": "שלחו /pair [code] בהודעה פרטית או בערוץ היעד כדי לאשר את נקודת הקצה הנוכחית של Discord.",
-      "accessRule2": "הודעות בערוץ נכנסות לשיחה רק כאשר מזכירים את הבוט, כדי לא לקלוט בטעות צ'אט רגיל."
-    },
     "sections": {
       "credentials": "אישורים",
       "remoteControl": "שליטה מרחוק",
@@ -2534,9 +2518,7 @@
       "bindingsEmpty": "עדיין אין קישורים.",
       "pairingSuccessTitle": "הצימוד הושלם",
       "pairingSuccessDescription": "רשימת מזהי המשתמש המורשים רועננה.",
-      "pairDialogInstructionTelegram": "שלחו את הפקודה הזו לבוט Telegram:",
       "pairDialogInstructionFeishu": "Send this command in a Feishu / Lark bot direct chat; it adds the sender to the same authorized-principal list used by scan authorization:",
-      "pairDialogInstructionDiscord": "שלחו את הפקודה הזו לבוט Discord בהודעה פרטית או בערוץ היעד:",
       "pairDialogInstructionQQBot": "שלח את הפקודה הזו בצ'אט של QQ Bot או בקבוצת QQ מורשית:",
       "authorizedPrincipalsTitle": "ישויות מורשות",
       "authorizedPrincipalsDescription": "חשבונות {channel} האלה מורשים לבצע צימוד ולשלוט בסשנים.",
@@ -2545,14 +2527,6 @@
       "sessionBindingsDescription": "כל נקודת קצה מרוחקת שלהלן מקושרת כעת לסשן אחד של DeepChat.",
       "acpDefaultWorkdirRequiredTitle": "נדרשת תיקיית ברירת מחדל",
       "acpDefaultWorkdirRequiredDescription": "סוכני ACP זקוקים לסביבת עבודה מקומית. בחר תיקיית ברירת מחדל לפני השמירה."
-    },
-    "hooks": {
-      "title": "Hooks של Telegram",
-      "description": "השתמש שוב באותו בוט Telegram עבור התראות Hook.",
-      "chatId": "מזהה צ'אט",
-      "chatIdPlaceholder": "e.g. 123456789",
-      "threadId": "מזהה שרשור (אופציונלי)",
-      "threadIdPlaceholder": "מזהה שרשור אופציונלי"
     },
     "status": {
       "title": "מצב ריצה",
@@ -2569,12 +2543,8 @@
       "bindingOnly": "קישורים: {count}, ישויות מותאמות: {paired}"
     },
     "overview": {
-      "telegram": "{bindingCount} קישורים, {pairedCount} משתמשים מצומדים",
       "feishu": "{bindingCount} קישורים, {pairedCount} משתמשים מצומדים",
-      "hooksOn": "מופעלים",
-      "hooksOff": "כבויים",
       "qqbot": "{bindingCount} קישורים, {pairedCount} משתמשים מותאמים",
-      "discord": "{bindingCount} קישורים, {pairedCount} ערוצים מצומדים",
       "weixinIlink": "{bindingCount} קישורים, {accountCount} חשבונות, {connectedCount} מחוברים"
     },
     "bindingKinds": {

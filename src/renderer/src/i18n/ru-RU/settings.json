@@ -2415,14 +2415,7 @@
   },
   "remote": {
     "title": "Удалённое управление",
-    "description": "Здесь можно централизованно настроить удалённое управление через Telegram, Feishu, QQBot и WeChat iLink.",
-    "telegram": {
-      "title": "Telegram",
-      "description": "Подключите бота Telegram для удалённого управления через личные сообщения, группы и ветки тем.",
-      "botToken": "Токен бота",
-      "botTokenPlaceholder": "Токен бота Telegram",
-      "botTokenDescription": "Введите токен бота Telegram, который будет использоваться для удалённого управления через Telegram."
-    },
+    "description": "Здесь можно централизованно настроить удалённое управление через Feishu, QQBot и WeChat iLink.",
     "feishu": {
       "title": "Feishu / Lark",
       "description": "Подключите бота Feishu для личных сообщений, групповых чатов и веток тем.",
@@ -2498,15 +2491,6 @@
       "streamingCards": "Потоковые карточки CardKit",
       "streamingCardsDescription": "Передавайте ответы ИИ в реальном времени через Feishu / Lark CardKit. Требуются разрешения im:message и cardkit:card:write; DeepChat вернётся к обычным сообщениям, если CardKit даст сбой."
     },
-    "discord": {
-      "title": "Discord",
-      "description": "Подключите бота Discord для личных сообщений, упоминаний в каналах и удалённого управления через slash-команды.",
-      "botToken": "Токен бота",
-      "botTokenPlaceholder": "Токен бота Discord",
-      "remoteControlDescription": "Удалённое управление в Discord использует собственный токен бота, шлюз и REST API.",
-      "accessRule1": "Отправьте /pair [code] в личном сообщении или целевом канале, чтобы авторизовать текущую точку входа Discord.",
-      "accessRule2": "Сообщения из канала попадают в сессию только при упоминании бота, чтобы не захватывать обычный чат."
-    },
     "sections": {
       "credentials": "Учетные данные",
       "remoteControl": "Удалённое управление",
@@ -2534,9 +2518,7 @@
       "bindingsEmpty": "Пока нет привязок.",
       "pairingSuccessTitle": "Привязка завершена",
       "pairingSuccessDescription": "Список разрешённых ID пользователей обновлён.",
-      "pairDialogInstructionTelegram": "Отправьте эту команду боту Telegram:",
       "pairDialogInstructionFeishu": "Send this command in a Feishu / Lark bot direct chat; it adds the sender to the same authorized-principal list used by scan authorization:",
-      "pairDialogInstructionDiscord": "Отправьте эту команду боту Discord в личном сообщении или целевом канале:",
       "pairDialogInstructionQQBot": "Отправьте эту команду в чат с QQ-ботом или в авторизованную группу QQ:",
       "authorizedPrincipalsTitle": "Авторизованные субъекты",
       "authorizedPrincipalsDescription": "Эти аккаунты {channel} авторизованы и могут выполнять привязку и управлять сессиями.",
@@ -2545,14 +2527,6 @@
       "sessionBindingsDescription": "Каждая удалённая точка входа ниже сейчас привязана к одной сессии DeepChat.",
       "acpDefaultWorkdirRequiredTitle": "Требуется каталог по умолчанию",
       "acpDefaultWorkdirRequiredDescription": "Агентам ACP нужен локальный рабочий каталог. Выберите каталог по умолчанию перед сохранением."
-    },
-    "hooks": {
-      "title": "Уведомления хуков Telegram",
-      "description": "Используйте того же бота Telegram для уведомлений хуков.",
-      "chatId": "ID чата",
-      "chatIdPlaceholder": "например: 123456789",
-      "threadId": "ID треда (необязательно)",
-      "threadIdPlaceholder": "Необязательный ID треда"
     },
     "status": {
       "title": "Статус выполнения",
@@ -2569,12 +2543,8 @@
       "bindingOnly": "Привязки: {count}, связанных субъектов: {paired}"
     },
     "overview": {
-      "telegram": "{bindingCount} привязок, {pairedCount} связанных пользователей",
       "feishu": "{bindingCount} привязок, {pairedCount} связанных пользователей",
-      "hooksOn": "вкл.",
-      "hooksOff": "выкл.",
       "qqbot": "{bindingCount} привязок, {pairedCount} связанных пользователей",
-      "discord": "{bindingCount} привязок, {pairedCount} сопряжённых каналов",
       "weixinIlink": "{bindingCount} привязок, {accountCount} аккаунтов, подключено {connectedCount}"
     },
     "bindingKinds": {

@@ -2415,14 +2415,7 @@
   },
   "remote": {
     "title": "Fjernstyring",
-    "description": "Konfigurer fjernstyring via Telegram, Feishu, QQBot, Discord og WeChat iLink ét sted.",
-    "telegram": {
-      "title": "Telegram",
-      "description": "Tilslut en Telegram-bot til fjernstyring via direkte beskeder, grupper og emnetråde.",
-      "botToken": "Bot-token",
-      "botTokenPlaceholder": "Telegram bot-token",
-      "botTokenDescription": "Indtast det Telegram-bot-token, der bruges til fjernstyring via Telegram."
-    },
+    "description": "Konfigurer fjernstyring via Feishu, QQBot og WeChat iLink ét sted.",
     "feishu": {
       "title": "Feishu / Lark",
       "description": "Tilslut en Feishu-bot til direkte beskeder, gruppechats og emnetråde.",
@@ -2498,15 +2491,6 @@
       "streamingCards": "CardKit-streamingkort",
       "streamingCardsDescription": "Stream AI-svar via Feishu / Lark CardKit i realtid. Kræver tilladelserne im:message og cardkit:card:write; DeepChat falder tilbage til normale beskeder, hvis CardKit fejler."
     },
-    "discord": {
-      "title": "Discord",
-      "description": "Tilslut en Discord-bot til DM'er, kanalomtaler og fjernstyring via slash-kommandoer.",
-      "botToken": "Bot-token",
-      "botTokenPlaceholder": "Discord bot-token",
-      "remoteControlDescription": "Discord-fjernstyring bruger sit eget bot-token, gateway og REST-flow.",
-      "accessRule1": "Send /pair [kode] i en DM eller målkanal for at godkende det aktuelle Discord-endpoint.",
-      "accessRule2": "Kanalbeskeder går kun ind i sessionen, når botten omtales, så almindelig chat ikke opsuges."
-    },
     "sections": {
       "credentials": "Oplysninger",
       "remoteControl": "Fjernstyring",
@@ -2534,9 +2518,7 @@
       "bindingsEmpty": "Ingen bindinger endnu.",
       "pairingSuccessTitle": "Parring fuldført",
       "pairingSuccessDescription": "Listen over tilladte bruger-id'er er blevet opdateret.",
-      "pairDialogInstructionTelegram": "Send denne kommando til Telegram-botten:",
       "pairDialogInstructionFeishu": "Send this command in a Feishu / Lark bot direct chat; it adds the sender to the same authorized-principal list used by scan authorization:",
-      "pairDialogInstructionDiscord": "Send denne kommando til Discord-botten i en DM eller målkanal:",
       "pairDialogInstructionQQBot": "Send denne kommando i QQ-botchatten eller den autoriserede QQ-gruppe:",
       "authorizedPrincipalsTitle": "Autoriserede identiteter",
       "authorizedPrincipalsDescription": "Disse {channel}-konti er autoriseret til at parre og styre sessioner.",
@@ -2545,14 +2527,6 @@
       "sessionBindingsDescription": "Hvert fjernendepunkt nedenfor er i øjeblikket bundet til en DeepChat-session.",
       "acpDefaultWorkdirRequiredTitle": "Standardmappe påkrævet",
       "acpDefaultWorkdirRequiredDescription": "ACP-agenter har brug for et lokalt arbejdsområde. Vælg en standardmappe, før du gemmer."
-    },
-    "hooks": {
-      "title": "Telegram-hooks",
-      "description": "Genbrug den samme Telegram-bot til hook-notifikationer.",
-      "chatId": "Chat-id",
-      "chatIdPlaceholder": "fx 123456789",
-      "threadId": "Tråd-id (valgfrit)",
-      "threadIdPlaceholder": "Valgfrit tråd-id"
     },
     "status": {
       "title": "Kørselsstatus",
@@ -2569,12 +2543,8 @@
       "bindingOnly": "Bindinger: {count}, parrede identiteter: {paired}"
     },
     "overview": {
-      "telegram": "{bindingCount} bindinger, {pairedCount} parrede brugere",
       "feishu": "{bindingCount} bindinger, {pairedCount} parrede brugere",
-      "hooksOn": "til",
-      "hooksOff": "fra",
       "qqbot": "{bindingCount} bindinger, {pairedCount} parrede brugere",
-      "discord": "{bindingCount} bindinger, {pairedCount} parrede kanaler",
       "weixinIlink": "{bindingCount} bindinger, {accountCount} konti, {connectedCount} tilsluttet"
     },
     "bindingKinds": {

@@ -32,7 +32,7 @@ class TestChannelAdapter extends ChannelAdapter {
 
 const createConfig = (): ChannelAdapterConfig => ({
   channelId: 'default',
-  channelType: 'telegram',
+  channelType: 'feishu',
   agentId: 'deepchat',
   channelConfig: {},
   source: 'builtin'

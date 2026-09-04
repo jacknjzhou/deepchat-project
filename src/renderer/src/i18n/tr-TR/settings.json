@@ -2728,14 +2728,7 @@
   },
   "remote": {
     "title": "Uzak",
-    "description": "Telegram, Feishu / Lark, QQBot, Discord ve WeChat iLink uzaktan kumandasını tek bir yerden yapılandırın.",
-    "telegram": {
-      "title": "Telegram",
-      "description": "Doğrudan mesajlar, gruplar ve konu-konu uzaktan kontrolü için bir Telegram botu bağlayın.",
-      "botToken": "Bot token",
-      "botTokenPlaceholder": "Telegram bot token",
-      "botTokenDescription": "Telegram uzaktan kumanda için kullanılan Telegram bot token'yi girin."
-    },
+    "description": "Feishu / Lark, QQBot ve WeChat iLink uzaktan kumandasını tek bir yerden yapılandırın.",
     "feishu": {
       "title": "Feishu / Lark",
       "description": "Doğrudan mesajlar, grup sohbetleri ve konu başlıkları için bir Feishu botu bağlayın.",
@@ -2811,15 +2804,6 @@
       "streamingCards": "CardKit Akış Kartları",
       "streamingCardsDescription": "AI yanıtlarını Feishu / Lark CardKit üzerinden gerçek zamanlı olarak yayınlayın. im:message ve cardkit:card:write izinleri gerekir; CardKit başarısız olursa DeepChat normal mesajlara geri döner."
     },
-    "discord": {
-      "title": "Discord",
-      "description": "DM'ler, kanaldan bahsetmeler ve eğik çizgi komutlu uzaktan kumanda için bir Discord bot bağlayın.",
-      "botToken": "Bot token",
-      "botTokenPlaceholder": "Discord bot token",
-      "remoteControlDescription": "Discord uzaktan kumanda kendi token botunu, ağ geçidini ve REST akışını kullanır.",
-      "accessRule1": "Geçerli Discord uç noktasını yetkilendirmek için DM'ye veya hedef kanala /pair [kod] gönderin.",
-      "accessRule2": "Kanal mesajları sohbete yalnızca bottan bahsedildiğinde girer, bu da normal sohbetin sürdürülmesini engeller."
-    },
     "sections": {
       "credentials": "Kimlik bilgileri",
       "remoteControl": "Uzaktan kumanda",
@@ -2842,9 +2826,7 @@
       "pairCodeExpiresAt": "{time} tarihinde sona eriyor",
       "pairDialogTitle": "{channel} Eşleştirme",
       "pairDialogDescription": "Bir eşleştirme kodu oluşturun ve {channel} bot sohbetinizden eşleştirmeyi tamamlayın.",
-      "pairDialogInstructionTelegram": "Bu komutu Telegram botuna gönderin:",
       "pairDialogInstructionFeishu": "Send this command in a Feishu / Lark bot direct chat; it adds the sender to the same authorized-principal list used by scan authorization:",
-      "pairDialogInstructionDiscord": "Bu komutu bir DM veya hedef kanaldaki Discord botuna gönderin:",
       "bindingsDialogTitle": "{channel} Bağlamalar",
       "bindingsDialogDescription": "Uzak uç nokta bağlamalarını tek tek kaldırın.",
       "bindingsEmpty": "Henüz bağlama yok.",
@@ -2858,14 +2840,6 @@
       "sessionBindingsDescription": "Aşağıdaki her uzak uç nokta şu anda bir DeepChat oturumuna bağlıdır.",
       "acpDefaultWorkdirRequiredTitle": "Varsayılan dizin gerekli",
       "acpDefaultWorkdirRequiredDescription": "ACP ajanları yerel bir çalışma alanı ister. Kaydetmeden önce varsayılan bir dizin seçin."
-    },
-    "hooks": {
-      "title": "Telegram Kancalar",
-      "description": "Kanca bildirimleri için aynı Telegram botunu yeniden kullanın.",
-      "chatId": "Sohbet Kimliği",
-      "chatIdPlaceholder": "örneğin 123456789",
-      "threadId": "Konu kimliği (isteğe bağlı)",
-      "threadIdPlaceholder": "İsteğe bağlı iş parçacığı kimliği"
     },
     "status": {
       "title": "Çalışma Zamanı Durumu",
@@ -2882,12 +2856,8 @@
       "bindingOnly": "Bağlantılar: {count}, eşleştirilmiş sorumlular: {paired}"
     },
     "overview": {
-      "telegram": "{bindingCount} bağlamaları, {pairedCount} eşleştirilmiş kullanıcılar",
       "feishu": "{bindingCount} bağlamaları, {pairedCount} eşleştirilmiş kullanıcılar",
-      "hooksOn": "Açık",
-      "hooksOff": "kapalı",
       "qqbot": "{bindingCount} bağlamaları, {pairedCount} eşleştirilmiş kullanıcılar",
-      "discord": "{bindingCount} bağlamaları, {pairedCount} eşleştirilmiş kanallar",
       "weixinIlink": "{bindingCount} bağlamaları, {accountCount} hesapları, {connectedCount} bağlı"
     },
     "bindingKinds": {

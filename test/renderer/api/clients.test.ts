@@ -667,9 +667,9 @@ describe('renderer api clients', () => {
               return {
                 channels: [
                   {
-                    id: 'telegram',
-                    titleKey: 'settings.remote.telegram.title',
-                    descriptionKey: 'settings.remote.telegram.description',
+                    id: 'feishu',
+                    titleKey: 'settings.remote.feishu.title',
+                    descriptionKey: 'settings.remote.feishu.description',
                     supportsCronDelivery: true
                   }
                 ]
@@ -678,22 +678,26 @@ describe('renderer api clients', () => {
             case 'remoteControl.saveChannelSettings':
               return {
                 settings: payload?.settings ?? {
-                  botToken: 'telegram-token',
+                  brand: 'feishu',
+                  appId: 'cli_deepchat',
+                  appSecret: 'secret',
+                  verificationToken: '',
+                  encryptKey: '',
                   remoteEnabled: true,
+                  enableStreamingCards: false,
                   defaultAgentId: 'deepchat',
-                  defaultWorkdir: ''
+                  defaultWorkdir: '',
+                  pairedUserOpenIds: []
                 }
               }
             case 'remoteControl.getChannelStatus':
-            case 'remoteControl.getTelegramStatus':
               return {
                 status: {
-                  channel: 'telegram',
+                  channel: 'feishu',
                   enabled: true,
                   state: 'running',
-                  pollOffset: 1,
                   bindingCount: 0,
-                  allowedUserCount: 1,
+                  pairedUserCount: 1,
                   lastError: null,
                   botUser: null
                 }
@@ -2851,21 +2855,26 @@ describe('renderer api clients', () => {
     const remoteControlClient = createRemoteControlClient(bridge)
 
     await remoteControlClient.listRemoteChannels()
-    await remoteControlClient.getChannelSettings('telegram')
-    await remoteControlClient.saveChannelSettings('telegram', {
-      botToken: 'telegram-token',
+    await remoteControlClient.getChannelSettings('feishu')
+    await remoteControlClient.saveChannelSettings('feishu', {
+      brand: 'feishu',
+      appId: 'cli_deepchat',
+      appSecret: 'secret',
+      verificationToken: '',
+      encryptKey: '',
       remoteEnabled: true,
+      enableStreamingCards: false,
       defaultAgentId: 'deepchat',
-      defaultWorkdir: ''
+      defaultWorkdir: '',
+      pairedUserOpenIds: []
     })
-    await remoteControlClient.getChannelStatus('telegram')
-    await remoteControlClient.getChannelBindings('telegram')
-    await remoteControlClient.removeChannelBinding('telegram', 'telegram:100:0')
-    await remoteControlClient.removeChannelPrincipal('telegram', '123')
-    await remoteControlClient.getChannelPairingSnapshot('telegram')
-    await remoteControlClient.createChannelPairCode('telegram')
-    await remoteControlClient.clearChannelPairCode('telegram')
-    await remoteControlClient.getTelegramStatus()
+    await remoteControlClient.getChannelStatus('feishu')
+    await remoteControlClient.getChannelBindings('feishu')
+    await remoteControlClient.removeChannelBinding('feishu', 'feishu:100:0')
+    await remoteControlClient.removeChannelPrincipal('feishu', '123')
+    await remoteControlClient.getChannelPairingSnapshot('feishu')
+    await remoteControlClient.createChannelPairCode('feishu')
+    await remoteControlClient.clearChannelPairCode('feishu')
     await remoteControlClient.getWeixinIlinkStatus()
     await remoteControlClient.startWeixinIlinkLogin({ force: true })
     await remoteControlClient.waitForWeixinIlinkLogin({
@@ -2877,53 +2886,58 @@ describe('renderer api clients', () => {
 
     expect(bridge.invoke).toHaveBeenNthCalledWith(1, 'remoteControl.listChannels', {})
     expect(bridge.invoke).toHaveBeenNthCalledWith(2, 'remoteControl.getChannelSettings', {
-      channel: 'telegram'
+      channel: 'feishu'
     })
     expect(bridge.invoke).toHaveBeenNthCalledWith(3, 'remoteControl.saveChannelSettings', {
-      channel: 'telegram',
+      channel: 'feishu',
       settings: {
-        botToken: 'telegram-token',
+        brand: 'feishu',
+        appId: 'cli_deepchat',
+        appSecret: 'secret',
+        verificationToken: '',
+        encryptKey: '',
         remoteEnabled: true,
+        enableStreamingCards: false,
         defaultAgentId: 'deepchat',
-        defaultWorkdir: ''
+        defaultWorkdir: '',
+        pairedUserOpenIds: []
       }
     })
     expect(bridge.invoke).toHaveBeenNthCalledWith(4, 'remoteControl.getChannelStatus', {
-      channel: 'telegram'
+      channel: 'feishu'
     })
     expect(bridge.invoke).toHaveBeenNthCalledWith(5, 'remoteControl.getChannelBindings', {
-      channel: 'telegram'
+      channel: 'feishu'
     })
     expect(bridge.invoke).toHaveBeenNthCalledWith(6, 'remoteControl.removeChannelBinding', {
-      channel: 'telegram',
-      endpointKey: 'telegram:100:0'
+      channel: 'feishu',
+      endpointKey: 'feishu:100:0'
     })
     expect(bridge.invoke).toHaveBeenNthCalledWith(7, 'remoteControl.removeChannelPrincipal', {
-      channel: 'telegram',
+      channel: 'feishu',
       principalId: '123'
     })
     expect(bridge.invoke).toHaveBeenNthCalledWith(8, 'remoteControl.getChannelPairingSnapshot', {
-      channel: 'telegram'
+      channel: 'feishu'
     })
     expect(bridge.invoke).toHaveBeenNthCalledWith(9, 'remoteControl.createChannelPairCode', {
-      channel: 'telegram'
+      channel: 'feishu'
     })
     expect(bridge.invoke).toHaveBeenNthCalledWith(10, 'remoteControl.clearChannelPairCode', {
-      channel: 'telegram'
+      channel: 'feishu'
     })
-    expect(bridge.invoke).toHaveBeenNthCalledWith(11, 'remoteControl.getTelegramStatus', {})
-    expect(bridge.invoke).toHaveBeenNthCalledWith(12, 'remoteControl.getWeixinIlinkStatus', {})
-    expect(bridge.invoke).toHaveBeenNthCalledWith(13, 'remoteControl.startWeixinIlinkLogin', {
+    expect(bridge.invoke).toHaveBeenNthCalledWith(11, 'remoteControl.getWeixinIlinkStatus', {})
+    expect(bridge.invoke).toHaveBeenNthCalledWith(12, 'remoteControl.startWeixinIlinkLogin', {
       force: true
     })
-    expect(bridge.invoke).toHaveBeenNthCalledWith(14, 'remoteControl.waitForWeixinIlinkLogin', {
+    expect(bridge.invoke).toHaveBeenNthCalledWith(13, 'remoteControl.waitForWeixinIlinkLogin', {
       sessionKey: 'weixin-session',
       timeoutMs: 480000
     })
-    expect(bridge.invoke).toHaveBeenNthCalledWith(15, 'remoteControl.removeWeixinIlinkAccount', {
+    expect(bridge.invoke).toHaveBeenNthCalledWith(14, 'remoteControl.removeWeixinIlinkAccount', {
       accountId: 'account-1'
     })
-    expect(bridge.invoke).toHaveBeenNthCalledWith(16, 'remoteControl.restartWeixinIlinkAccount', {
+    expect(bridge.invoke).toHaveBeenNthCalledWith(15, 'remoteControl.restartWeixinIlinkAccount', {
       accountId: 'account-1'
     })
   })

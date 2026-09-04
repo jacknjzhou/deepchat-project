@@ -2728,14 +2728,7 @@
   },
   "remote": {
     "title": "Từ xa",
-    "description": "Định cấu hình điều khiển từ xa Telegram, Feishu / Lark, QQBot, Discord và WeChat iLink ở một nơi.",
-    "telegram": {
-      "title": "Telegram",
-      "description": "Kết nối bot Telegram để nhắn tin trực tiếp, nhóm và điều khiển từ xa theo chủ đề.",
-      "botToken": "Bot Token",
-      "botTokenPlaceholder": "Telegram bot token",
-      "botTokenDescription": "Nhập bot Telegram token được sử dụng cho điều khiển từ xa Telegram."
-    },
+    "description": "Định cấu hình điều khiển từ xa Feishu / Lark, QQBot và WeChat iLink ở một nơi.",
     "feishu": {
       "title": "Feishu / Lark",
       "description": "Kết nối bot Feishu để nhắn tin trực tiếp, trò chuyện nhóm và chuỗi chủ đề.",
@@ -2811,15 +2804,6 @@
       "streamingCards": "Thẻ phát trực tiếp CardKit",
       "streamingCardsDescription": "Phát trực tiếp câu trả lời AI qua Feishu / Lark CardKit theo thời gian thực. Yêu cầu quyền im:message và cardkit:card:write; DeepChat sẽ quay về tin nhắn thông thường nếu CardKit thất bại."
     },
-    "discord": {
-      "title": "Discord",
-      "description": "Kết nối bot Discord cho DM, đề cập kênh và điều khiển từ xa bằng lệnh gạch chéo.",
-      "botToken": "Bot Token",
-      "botTokenPlaceholder": "Discord bot token",
-      "remoteControlDescription": "Điều khiển từ xa Discord sử dụng bot token, cổng và luồng REST riêng.",
-      "accessRule1": "Gửi /cặp [mã] trong kênh DM hoặc kênh đích để cấp phép cho điểm cuối Discord hiện tại.",
-      "accessRule2": "Tin nhắn kênh chỉ tham gia cuộc trò chuyện khi bot được nhắc đến, điều này tránh việc tiếp tục trò chuyện thông thường."
-    },
     "sections": {
       "credentials": "Thông tin xác thực",
       "remoteControl": "Điều khiển từ xa",
@@ -2842,9 +2826,7 @@
       "pairCodeExpiresAt": "Hết hạn lúc {time}",
       "pairDialogTitle": "Ghép nối {channel}",
       "pairDialogDescription": "Tạo mã ghép nối và hoàn tất ghép nối từ cuộc trò chuyện bot {channel} của bạn.",
-      "pairDialogInstructionTelegram": "Gửi lệnh này tới bot Telegram:",
       "pairDialogInstructionFeishu": "Send this command in a Feishu / Lark bot direct chat; it adds the sender to the same authorized-principal list used by scan authorization:",
-      "pairDialogInstructionDiscord": "Gửi lệnh này tới bot Discord trong kênh DM hoặc kênh mục tiêu:",
       "bindingsDialogTitle": "Ràng buộc {channel}",
       "bindingsDialogDescription": "Loại bỏ từng ràng buộc điểm cuối từ xa.",
       "bindingsEmpty": "Chưa có ràng buộc nào.",
@@ -2858,14 +2840,6 @@
       "sessionBindingsDescription": "Mỗi điểm cuối từ xa bên dưới hiện được liên kết với một phiên DeepChat.",
       "acpDefaultWorkdirRequiredTitle": "Cần thư mục mặc định",
       "acpDefaultWorkdirRequiredDescription": "Tác tử ACP cần một không gian làm việc cục bộ. Hãy chọn thư mục mặc định trước khi lưu."
-    },
-    "hooks": {
-      "title": "Móc Telegram",
-      "description": "Sử dụng lại bot Telegram tương tự cho các thông báo hook.",
-      "chatId": "ID trò chuyện",
-      "chatIdPlaceholder": "ví dụ: 123456789",
-      "threadId": "ID chủ đề (tùy chọn)",
-      "threadIdPlaceholder": "ID chủ đề tùy chọn"
     },
     "status": {
       "title": "Trạng thái thời gian chạy",
@@ -2882,12 +2856,8 @@
       "bindingOnly": "Các ràng buộc: {count}, các nguyên tắc ghép đôi: {paired}"
     },
     "overview": {
-      "telegram": "Liên kết {bindingCount}, người dùng được ghép nối {pairedCount}",
       "feishu": "Liên kết {bindingCount}, người dùng được ghép nối {pairedCount}",
-      "hooksOn": "trên",
-      "hooksOff": "tắt",
       "qqbot": "Liên kết {bindingCount}, người dùng được ghép nối {pairedCount}",
-      "discord": "Các liên kết {bindingCount}, các kênh được ghép nối {pairedCount}",
       "weixinIlink": "Liên kết {bindingCount}, tài khoản {accountCount}, {connectedCount} được kết nối"
     },
     "bindingKinds": {

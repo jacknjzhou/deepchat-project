@@ -2415,14 +2415,7 @@
   },
   "remote": {
     "title": "کنترل از راه دور",
-    "description": "کنترل از راه دور Telegram، Feishu، QQBot و WeChat iLink را در یک‌جا پیکربندی کنید.",
-    "telegram": {
-      "title": "Telegram",
-      "description": "Connect a Telegram bot for direct messages, groups, and topic-thread remote control.",
-      "botToken": "توکن ربات",
-      "botTokenPlaceholder": "توکن ربات تلگرام",
-      "botTokenDescription": "Enter the Telegram bot token used for Telegram remote control."
-    },
+    "description": "کنترل از راه دور Feishu، QQBot و WeChat iLink را در یک‌جا پیکربندی کنید.",
     "feishu": {
       "title": "Feishu / Lark",
       "description": "یک ربات Feishu را برای پیام خصوصی، گفت‌وگوی گروهی و رشته‌های موضوعی متصل کنید.",
@@ -2498,15 +2491,6 @@
       "streamingCards": "کارت‌های استریم CardKit",
       "streamingCardsDescription": "پاسخ‌های هوش مصنوعی را از طریق Feishu / Lark CardKit به‌صورت بلادرنگ استریم کنید. به مجوزهای im:message و cardkit:card:write نیاز دارد؛ اگر CardKit شکست بخورد، DeepChat به پیام‌های عادی بازمی‌گردد."
     },
-    "discord": {
-      "title": "Discord",
-      "description": "یک ربات Discord را برای پیام‌های مستقیم، منشن در کانال و کنترل از راه دور با اسلش‌کامند متصل کنید.",
-      "botToken": "توکن ربات",
-      "botTokenPlaceholder": "توکن ربات Discord",
-      "remoteControlDescription": "Discord remote control uses its own bot token, gateway, and REST flow.",
-      "accessRule1": "برای مجاز کردن نقطه‌پایانی فعلی Discord، /pair [code] را در پیام خصوصی یا کانال مقصد بفرستید.",
-      "accessRule2": "پیام‌های کانال فقط وقتی وارد نشست می‌شوند که ربات منشن شده باشد تا گفت‌وگوی عادی بی‌دلیل جذب نشود."
-    },
     "sections": {
       "credentials": "اعتبارنامه‌ها",
       "remoteControl": "کنترل از راه دور",
@@ -2534,9 +2518,7 @@
       "bindingsEmpty": "هنوز اتصالی وجود ندارد.",
       "pairingSuccessTitle": "جفت‌سازی کامل شد",
       "pairingSuccessDescription": "فهرست شناسه‌های کاربری مجاز تازه‌سازی شد.",
-      "pairDialogInstructionTelegram": "این فرمان را برای ربات Telegram بفرستید:",
       "pairDialogInstructionFeishu": "Send this command in a Feishu / Lark bot direct chat; it adds the sender to the same authorized-principal list used by scan authorization:",
-      "pairDialogInstructionDiscord": "این فرمان را در پیام خصوصی یا کانال مقصد برای ربات Discord بفرستید:",
       "pairDialogInstructionQQBot": "این دستور را در گفت‌وگوی QQ Bot یا گروه مجاز QQ بفرستید:",
       "authorizedPrincipalsTitle": "شناسه‌های مجاز",
       "authorizedPrincipalsDescription": "این حساب‌های {channel} مجاز هستند و می‌توانند جفت‌سازی و کنترل نشست‌ها را انجام دهند.",
@@ -2545,14 +2527,6 @@
       "sessionBindingsDescription": "هر نقطهٔ ورودی راه‌دورِ زیر در حال حاضر به یک نشست DeepChat متصل است.",
       "acpDefaultWorkdirRequiredTitle": "شاخه پیش‌فرض الزامی است",
       "acpDefaultWorkdirRequiredDescription": "عامل‌های ACP به فضای کاری محلی نیاز دارند. پیش از ذخیره، یک شاخه پیش‌فرض انتخاب کنید."
-    },
-    "hooks": {
-      "title": "هوک‌های تلگرام",
-      "description": "برای اعلان‌های هوک از همان ربات تلگرام استفاده کنید.",
-      "chatId": "شناسه چت",
-      "chatIdPlaceholder": "e.g. 123456789",
-      "threadId": "شناسه رشته (اختیاری)",
-      "threadIdPlaceholder": "شناسه رشته اختیاری"
     },
     "status": {
       "title": "وضعیت اجرا",
@@ -2569,12 +2543,8 @@
       "bindingOnly": "اتصال‌ها: {count}، شناسه‌های جفت‌شده: {paired}"
     },
     "overview": {
-      "telegram": "{bindingCount} bindings, {pairedCount} paired users",
       "feishu": "{bindingCount} اتصال، {pairedCount} کاربر جفت‌شده",
-      "hooksOn": "روشن",
-      "hooksOff": "خاموش",
       "qqbot": "{bindingCount} اتصال، {pairedCount} کاربر جفت‌شده",
-      "discord": "{bindingCount} اتصال، {pairedCount} کانال جفت‌شده",
       "weixinIlink": "{bindingCount} اتصال، {accountCount} حساب، {connectedCount} متصل"
     },
     "bindingKinds": {

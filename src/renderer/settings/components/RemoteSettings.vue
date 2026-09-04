@@ -9,14 +9,10 @@
       </div>
       <div
         v-else-if="
-          !telegramSettings ||
-          !telegramStatus ||
           !feishuSettings ||
           !feishuStatus ||
           !qqbotSettings ||
           !qqbotStatus ||
-          !discordSettings ||
-          !discordStatus ||
           !weixinIlinkSettings ||
           !weixinIlinkStatus
         "
@@ -65,219 +61,6 @@
               {{ channelTitle(channel) }}
             </TabsTrigger>
           </TabsList>
-
-          <TabsContent value="telegram" class="space-y-4">
-            <div class="rounded-lg border bg-muted/20 p-4">
-              <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div class="space-y-1">
-                  <div class="flex flex-wrap items-center gap-2">
-                    <div class="text-base font-medium">{{ channelTitle('telegram') }}</div>
-                    <DcStatusPill
-                      :status="statusPillStatus(telegramStatus.state)"
-                      :label="formatStatusLine(telegramStatus)"
-                    />
-                  </div>
-                  <p class="text-sm text-muted-foreground">
-                    {{ t('settings.remote.telegram.description') }}
-                  </p>
-                  <p class="text-xs text-muted-foreground">
-                    {{ formatOverviewLine('telegram') }}
-                  </p>
-                  <p v-if="telegramStatus.lastError" class="break-all text-xs text-destructive">
-                    {{ telegramStatus.lastError }}
-                  </p>
-                </div>
-                <label
-                  v-if="!props.hideChannelToggle"
-                  class="flex items-center gap-2 text-sm text-muted-foreground"
-                >
-                  <span>{{
-                    telegramSettings.remoteEnabled ? t('common.enabled') : t('common.disabled')
-                  }}</span>
-                  <Switch
-                    data-testid="remote-channel-toggle-telegram"
-                    :model-value="telegramSettings.remoteEnabled"
-                    :disabled="saving.telegram"
-                    @update:model-value="(value) => updateTelegramRemoteEnabled(value === true)"
-                  />
-                </label>
-              </div>
-            </div>
-
-            <div class="rounded-lg border p-4">
-              <div class="space-y-4">
-                <div class="space-y-1">
-                  <div class="text-sm font-medium">
-                    {{ t('settings.remote.sections.credentials') }}
-                  </div>
-                  <p class="text-sm text-muted-foreground">
-                    {{ t('settings.remote.telegram.botTokenDescription') }}
-                  </p>
-                </div>
-
-                <div class="space-y-2">
-                  <Label class="text-xs text-muted-foreground">
-                    {{ t('settings.remote.telegram.botToken') }}
-                  </Label>
-                  <div class="relative w-full">
-                    <Input
-                      v-model="telegramSettings.botToken"
-                      :type="showBotToken ? 'text' : 'password'"
-                      :placeholder="t('settings.remote.telegram.botTokenPlaceholder')"
-                      class="pr-10"
-                      @blur="queueTelegramSettingsPersist"
-                    />
-                    <DcButton
-                      variant="ghost"
-                      size="sm"
-                      class="absolute right-2 top-1/2 h-7 w-7 -translate-y-1/2 p-0"
-                      :tooltip="showBotToken ? t('common.hideValue') : t('common.showValue')"
-                      @click="showBotToken = !showBotToken"
-                    >
-                      <Icon
-                        :icon="showBotToken ? 'lucide:eye-off' : 'lucide:eye'"
-                        class="h-4 w-4 text-muted-foreground"
-                      />
-                    </DcButton>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="rounded-lg border p-4">
-              <div class="space-y-4">
-                <div class="space-y-1">
-                  <div class="text-sm font-medium">
-                    {{ t('settings.remote.sections.remoteControl') }}
-                  </div>
-                  <p class="text-sm text-muted-foreground">
-                    {{ t('settings.remote.remoteControl.description') }}
-                  </p>
-                </div>
-
-                <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div class="space-y-2">
-                    <Label class="text-xs text-muted-foreground">
-                      {{ t('settings.remote.remoteControl.defaultAgent') }}
-                    </Label>
-                    <Select
-                      :model-value="telegramSettings.defaultAgentId"
-                      @update:model-value="(value) => updateTelegramDefaultAgentId(String(value))"
-                    >
-                      <SelectTrigger data-testid="remote-default-agent-select" class="h-8!">
-                        <SelectValue
-                          :placeholder="t('settings.remote.remoteControl.defaultAgentPlaceholder')"
-                        />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem
-                          v-for="agent in defaultAgentOptions(telegramSettings.defaultAgentId)"
-                          :key="agent.id"
-                          :value="agent.id"
-                        >
-                          {{ agent.name }}
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div class="space-y-2">
-                    <Label class="text-xs text-muted-foreground">
-                      {{ t('settings.remote.remoteControl.defaultWorkdir') }}
-                    </Label>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger as-child>
-                        <DcButton
-                          variant="outline"
-                          size="sm"
-                          class="h-8 w-full min-w-0 justify-between gap-1.5 px-2.5 text-xs"
-                          :title="defaultWorkdirTitle('telegram')"
-                        >
-                          <div class="flex min-w-0 items-center gap-1.5">
-                            <Icon
-                              icon="lucide:folder"
-                              class="h-3.5 w-3.5 shrink-0 text-muted-foreground"
-                            />
-                            <span class="truncate">{{ defaultWorkdirLabel('telegram') }}</span>
-                          </div>
-                          <Icon
-                            icon="lucide:chevron-down"
-                            class="h-3 w-3 shrink-0 text-muted-foreground"
-                          />
-                        </DcButton>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" class="w-[20rem]">
-                        <DropdownMenuItem
-                          v-for="project in directoryOptions('telegram')"
-                          :key="project.path"
-                          class="gap-2 px-2 py-1.5 text-xs"
-                          @select="selectDefaultWorkdir('telegram', project.path)"
-                        >
-                          <Icon
-                            icon="lucide:folder"
-                            class="h-3.5 w-3.5 shrink-0 text-muted-foreground"
-                          />
-                          <div class="min-w-0 flex-1">
-                            <div class="truncate">{{ project.name }}</div>
-                            <div class="truncate text-[10px] text-muted-foreground">
-                              {{ project.path }}
-                            </div>
-                          </div>
-                          <Icon
-                            v-if="normalizePath(telegramSettings.defaultWorkdir) === project.path"
-                            icon="lucide:check"
-                            class="h-3.5 w-3.5 shrink-0"
-                          />
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DcDropdownActionItem
-                          icon="lucide:folder-open"
-                          :label="t('common.project.openFolder')"
-                          class="text-xs"
-                          @select="pickDefaultWorkdir('telegram')"
-                        />
-                        <DcDropdownActionItem
-                          v-if="telegramSettings.defaultWorkdir"
-                          icon="lucide:x"
-                          :label="t('common.clear')"
-                          class="text-xs"
-                          @select="clearDefaultWorkdir('telegram')"
-                        />
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                    <p class="text-xs text-muted-foreground">
-                      {{ t('settings.remote.remoteControl.defaultWorkdirHelper') }}
-                    </p>
-                  </div>
-                </div>
-
-                <div class="flex flex-wrap items-center gap-2">
-                  <DcButton
-                    data-testid="remote-pair-button"
-                    variant="outline"
-                    size="sm"
-                    :disabled="
-                      !telegramSettings.remoteEnabled ||
-                      saving.telegram ||
-                      pairDialogCreating ||
-                      isChannelActionPending('telegram')
-                    "
-                    @click="generatePairCodeAndOpenDialog('telegram')"
-                  >
-                    {{ t('settings.remote.remoteControl.openPairDialog') }}
-                  </DcButton>
-                  <DcButton
-                    data-testid="remote-bindings-button"
-                    variant="outline"
-                    size="sm"
-                    :disabled="saving.telegram"
-                    @click="openBindingsDialog('telegram')"
-                  >
-                    {{ t('settings.remote.remoteControl.manageBindings') }}
-                  </DcButton>
-                </div>
-              </div>
-            </div>
-          </TabsContent>
 
           <TabsContent value="feishu" class="space-y-4">
             <div class="rounded-lg border bg-muted/20 p-4">
@@ -936,223 +719,6 @@
             </div>
           </TabsContent>
 
-          <TabsContent value="discord" class="space-y-4">
-            <div class="rounded-lg border bg-muted/20 p-4">
-              <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div class="space-y-1">
-                  <div class="flex flex-wrap items-center gap-2">
-                    <div class="text-base font-medium">{{ channelTitle('discord') }}</div>
-                    <DcStatusPill
-                      :status="statusPillStatus(discordStatus.state)"
-                      :label="formatStatusLine(discordStatus)"
-                    />
-                  </div>
-                  <p class="text-sm text-muted-foreground">
-                    {{ t('settings.remote.discord.description') }}
-                  </p>
-                  <p class="text-xs text-muted-foreground">
-                    {{ formatOverviewLine('discord') }}
-                  </p>
-                  <p v-if="discordStatus.lastError" class="break-all text-xs text-destructive">
-                    {{ discordStatus.lastError }}
-                  </p>
-                </div>
-                <label
-                  v-if="!props.hideChannelToggle"
-                  class="flex items-center gap-2 text-sm text-muted-foreground"
-                >
-                  <span>{{
-                    discordSettings.remoteEnabled ? t('common.enabled') : t('common.disabled')
-                  }}</span>
-                  <Switch
-                    data-testid="remote-channel-toggle-discord"
-                    :model-value="discordSettings.remoteEnabled"
-                    :disabled="saving.discord"
-                    @update:model-value="(value) => updateDiscordRemoteEnabled(value === true)"
-                  />
-                </label>
-              </div>
-            </div>
-
-            <div class="rounded-lg border p-4">
-              <div class="space-y-4">
-                <div class="space-y-1">
-                  <div class="text-sm font-medium">
-                    {{ t('settings.remote.sections.credentials') }}
-                  </div>
-                </div>
-
-                <div class="space-y-2">
-                  <Label class="text-xs text-muted-foreground">
-                    {{ t('settings.remote.discord.botToken') }}
-                  </Label>
-                  <div class="relative w-full">
-                    <Input
-                      v-model="discordSettings.botToken"
-                      :type="showDiscordBotToken ? 'text' : 'password'"
-                      :placeholder="t('settings.remote.discord.botTokenPlaceholder')"
-                      class="pr-10"
-                      @blur="queueDiscordSettingsPersist"
-                    />
-                    <DcButton
-                      variant="ghost"
-                      size="sm"
-                      class="absolute right-2 top-1/2 h-7 w-7 -translate-y-1/2 p-0"
-                      :tooltip="showDiscordBotToken ? t('common.hideValue') : t('common.showValue')"
-                      @click="showDiscordBotToken = !showDiscordBotToken"
-                    >
-                      <Icon
-                        :icon="showDiscordBotToken ? 'lucide:eye-off' : 'lucide:eye'"
-                        class="h-4 w-4 text-muted-foreground"
-                      />
-                    </DcButton>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="rounded-lg border p-4">
-              <div class="space-y-4">
-                <div class="space-y-1">
-                  <div class="text-sm font-medium">
-                    {{ t('settings.remote.sections.remoteControl') }}
-                  </div>
-                  <p class="text-sm text-muted-foreground">
-                    {{ t('settings.remote.discord.remoteControlDescription') }}
-                  </p>
-                </div>
-
-                <div
-                  class="rounded-lg border border-dashed bg-muted/20 p-3 text-sm text-muted-foreground"
-                >
-                  <div>{{ t('settings.remote.discord.accessRule1') }}</div>
-                  <div class="mt-1">{{ t('settings.remote.discord.accessRule2') }}</div>
-                </div>
-
-                <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div class="space-y-2">
-                    <Label class="text-xs text-muted-foreground">
-                      {{ t('settings.remote.remoteControl.defaultAgent') }}
-                    </Label>
-                    <Select
-                      :model-value="discordSettings.defaultAgentId"
-                      @update:model-value="(value) => updateDiscordDefaultAgentId(String(value))"
-                    >
-                      <SelectTrigger class="h-8!">
-                        <SelectValue
-                          :placeholder="t('settings.remote.remoteControl.defaultAgentPlaceholder')"
-                        />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem
-                          v-for="agent in defaultAgentOptions(discordSettings.defaultAgentId)"
-                          :key="agent.id"
-                          :value="agent.id"
-                        >
-                          {{ agent.name }}
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div class="space-y-2">
-                    <Label class="text-xs text-muted-foreground">
-                      {{ t('settings.remote.remoteControl.defaultWorkdir') }}
-                    </Label>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger as-child>
-                        <DcButton
-                          variant="outline"
-                          size="sm"
-                          class="h-8 w-full min-w-0 justify-between gap-1.5 px-2.5 text-xs"
-                          :title="defaultWorkdirTitle('discord')"
-                        >
-                          <div class="flex min-w-0 items-center gap-1.5">
-                            <Icon
-                              icon="lucide:folder"
-                              class="h-3.5 w-3.5 shrink-0 text-muted-foreground"
-                            />
-                            <span class="truncate">{{ defaultWorkdirLabel('discord') }}</span>
-                          </div>
-                          <Icon
-                            icon="lucide:chevron-down"
-                            class="h-3 w-3 shrink-0 text-muted-foreground"
-                          />
-                        </DcButton>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" class="w-[20rem]">
-                        <DropdownMenuItem
-                          v-for="project in directoryOptions('discord')"
-                          :key="project.path"
-                          class="gap-2 px-2 py-1.5 text-xs"
-                          @select="selectDefaultWorkdir('discord', project.path)"
-                        >
-                          <Icon
-                            icon="lucide:folder"
-                            class="h-3.5 w-3.5 shrink-0 text-muted-foreground"
-                          />
-                          <div class="min-w-0 flex-1">
-                            <div class="truncate">{{ project.name }}</div>
-                            <div class="truncate text-[10px] text-muted-foreground">
-                              {{ project.path }}
-                            </div>
-                          </div>
-                          <Icon
-                            v-if="normalizePath(discordSettings.defaultWorkdir) === project.path"
-                            icon="lucide:check"
-                            class="h-3.5 w-3.5 shrink-0"
-                          />
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DcDropdownActionItem
-                          icon="lucide:folder-open"
-                          :label="t('common.project.openFolder')"
-                          class="text-xs"
-                          @select="pickDefaultWorkdir('discord')"
-                        />
-                        <DcDropdownActionItem
-                          v-if="discordSettings.defaultWorkdir"
-                          icon="lucide:x"
-                          :label="t('common.clear')"
-                          class="text-xs"
-                          @select="clearDefaultWorkdir('discord')"
-                        />
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                    <p class="text-xs text-muted-foreground">
-                      {{ t('settings.remote.remoteControl.defaultWorkdirHelper') }}
-                    </p>
-                  </div>
-                </div>
-
-                <div class="flex flex-wrap items-center gap-2">
-                  <DcButton
-                    data-testid="discord-pair-button"
-                    variant="outline"
-                    size="sm"
-                    :disabled="
-                      !discordSettings.remoteEnabled ||
-                      saving.discord ||
-                      pairDialogCreating ||
-                      isChannelActionPending('discord')
-                    "
-                    @click="generatePairCodeAndOpenDialog('discord')"
-                  >
-                    {{ t('settings.remote.remoteControl.openPairDialog') }}
-                  </DcButton>
-                  <DcButton
-                    data-testid="discord-bindings-button"
-                    variant="outline"
-                    size="sm"
-                    :disabled="saving.discord"
-                    @click="openBindingsDialog('discord')"
-                  >
-                    {{ t('settings.remote.remoteControl.manageBindings') }}
-                  </DcButton>
-                </div>
-              </div>
-            </div>
-          </TabsContent>
-
           <TabsContent value="weixin-ilink" class="space-y-4">
             <div class="rounded-lg border bg-muted/20 p-4">
               <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -1508,11 +1074,7 @@
               {{
                 pairDialogChannel === 'feishu'
                   ? t('settings.remote.remoteControl.pairDialogInstructionFeishu')
-                  : pairDialogChannel === 'qqbot'
-                    ? t('settings.remote.remoteControl.pairDialogInstructionQQBot')
-                    : pairDialogChannel === 'discord'
-                      ? t('settings.remote.remoteControl.pairDialogInstructionDiscord')
-                      : t('settings.remote.remoteControl.pairDialogInstructionTelegram')
+                  : t('settings.remote.remoteControl.pairDialogInstructionQQBot')
               }}
             </div>
             <div class="mt-2 rounded-md bg-background px-3 py-2 font-mono text-sm">
@@ -1837,9 +1399,6 @@ import { RemoteChannelSaveCoordinator } from '../lib/remoteChannelSaveCoordinato
 import { settingsLeaveGuard } from '../services/settingsLeaveGuard'
 import type { Agent, Project } from '@shared/types/agent-interface'
 import type {
-  DiscordPairingSnapshot,
-  DiscordRemoteSettings,
-  DiscordRemoteStatus,
   FeishuAuthResult,
   FeishuAuthSession,
   FeishuInstallResult,
@@ -1858,9 +1417,6 @@ import type {
   QQBotPairingSnapshot,
   QQBotRemoteSettings,
   QQBotRemoteStatus,
-  TelegramPairingSnapshot,
-  TelegramRemoteSettings,
-  TelegramRemoteStatus,
   WeixinIlinkLoginResult,
   WeixinIlinkLoginSession,
   WeixinIlinkRemoteSettings,
@@ -1880,19 +1436,11 @@ const props = defineProps<{
 }>()
 
 const channelI18nKeyMap: Record<RemoteChannel, string> = {
-  telegram: 'telegram',
   feishu: 'feishu',
   qqbot: 'qqbot',
-  discord: 'discord',
   'weixin-ilink': 'weixinIlink'
 }
-const REMOTE_CHANNELS = [
-  'telegram',
-  'feishu',
-  'qqbot',
-  'discord',
-  'weixin-ilink'
-] as const satisfies readonly RemoteChannel[]
+const REMOTE_CHANNELS = ['feishu', 'qqbot', 'weixin-ilink'] as const satisfies readonly RemoteChannel[]
 
 function channelTitle(channel: RemoteChannel | null | undefined): string {
   if (!channel) {
@@ -1908,28 +1456,20 @@ function channelDescription(channel: RemoteChannel | null | undefined): string {
   return t(`settings.remote.${channelI18nKeyMap[channel]}.description`)
 }
 
-const telegramSettings = ref<TelegramRemoteSettings | null>(null)
 const feishuSettings = ref<FeishuRemoteSettings | null>(null)
 const qqbotSettings = ref<QQBotRemoteSettings | null>(null)
-const discordSettings = ref<DiscordRemoteSettings | null>(null)
 const weixinIlinkSettings = ref<WeixinIlinkRemoteSettings | null>(null)
-const telegramStatus = ref<TelegramRemoteStatus | null>(null)
 const feishuStatus = ref<FeishuRemoteStatus | null>(null)
 const qqbotStatus = ref<QQBotRemoteStatus | null>(null)
-const discordStatus = ref<DiscordRemoteStatus | null>(null)
 const weixinIlinkStatus = ref<WeixinIlinkRemoteStatus | null>(null)
 const channelDescriptors = ref<RemoteChannelDescriptor[]>([])
 const isLoading = ref(false)
-const showBotToken = ref(false)
-const showDiscordBotToken = ref(false)
 const availableAgents = ref<Agent[]>([])
 const recentProjects = ref<Project[]>([])
-const activeChannel = ref<RemoteChannel>('telegram')
+const activeChannel = ref<RemoteChannel>('feishu')
 const pendingChannelActionIds = ref<Record<RemoteChannel, string | null>>({
-  telegram: null,
   feishu: null,
   qqbot: null,
-  discord: null,
   'weixin-ilink': null
 })
 const pairDialogChannel = ref<PairableRemoteChannel | null>(null)
@@ -1973,16 +1513,12 @@ const weixinIlinkLoginStarting = ref(false)
 const weixinIlinkLoginWaiting = ref(false)
 const weixinIlinkLoginOpen = ref(false)
 const weixinIlinkAccountActionId = ref<string | null>(null)
-const persistedTelegramSettings = ref<TelegramRemoteSettings | null>(null)
 const persistedFeishuSettings = ref<FeishuRemoteSettings | null>(null)
 const persistedQQBotSettings = ref<QQBotRemoteSettings | null>(null)
-const persistedDiscordSettings = ref<DiscordRemoteSettings | null>(null)
 const persistedWeixinIlinkSettings = ref<WeixinIlinkRemoteSettings | null>(null)
 const saving = reactive<Record<RemoteChannel, boolean>>({
-  telegram: false,
   feishu: false,
   qqbot: false,
-  discord: false,
   'weixin-ilink': false
 })
 
@@ -1994,13 +1530,6 @@ let bindingsLoadRequestId = 0
 let pairDialogGeneration = 0
 const REMOTE_STATUS_ACTIVE_POLL_MS = 2_000
 const REMOTE_STATUS_IDLE_POLL_MS = 30_000
-
-const defaultTelegramSettings = (): TelegramRemoteSettings => ({
-  botToken: '',
-  remoteEnabled: false,
-  defaultAgentId: 'deepchat',
-  defaultWorkdir: ''
-})
 
 const defaultFeishuSettings = (): FeishuRemoteSettings => ({
   brand: 'feishu',
@@ -2024,27 +1553,11 @@ const defaultQQBotSettings = (): QQBotRemoteSettings => ({
   pairedUserIds: []
 })
 
-const defaultDiscordSettings = (): DiscordRemoteSettings => ({
-  botToken: '',
-  remoteEnabled: false,
-  defaultAgentId: 'deepchat',
-  defaultWorkdir: '',
-  pairedChannelIds: []
-})
-
 const defaultWeixinIlinkSettings = (): WeixinIlinkRemoteSettings => ({
   remoteEnabled: false,
   defaultAgentId: 'deepchat',
   defaultWorkdir: '',
   accounts: []
-})
-
-const normalizeTelegramPairingSnapshot = (
-  snapshot: Partial<TelegramPairingSnapshot> | null | undefined
-): TelegramPairingSnapshot => ({
-  pairCode: snapshot?.pairCode ?? null,
-  pairCodeExpiresAt: snapshot?.pairCodeExpiresAt ?? null,
-  allowedUserIds: [...(snapshot?.allowedUserIds ?? [])]
 })
 
 const normalizeFeishuPairingSnapshot = (
@@ -2064,27 +1577,13 @@ const normalizeQQBotPairingSnapshot = (
   pairedGroupIds: [...(snapshot?.pairedGroupIds ?? [])]
 })
 
-const normalizeDiscordPairingSnapshot = (
-  snapshot: Partial<DiscordPairingSnapshot> | null | undefined
-): DiscordPairingSnapshot => ({
-  pairCode: snapshot?.pairCode ?? null,
-  pairCodeExpiresAt: snapshot?.pairCodeExpiresAt ?? null,
-  pairedChannelIds: [...(snapshot?.pairedChannelIds ?? [])]
-})
-
-function getChannelSettingsCompat(channel: 'telegram'): Promise<TelegramRemoteSettings>
 function getChannelSettingsCompat(channel: 'feishu'): Promise<FeishuRemoteSettings>
 function getChannelSettingsCompat(channel: 'qqbot'): Promise<QQBotRemoteSettings>
-function getChannelSettingsCompat(channel: 'discord'): Promise<DiscordRemoteSettings>
 function getChannelSettingsCompat(channel: 'weixin-ilink'): Promise<WeixinIlinkRemoteSettings>
 async function getChannelSettingsCompat(channel: RemoteChannel): Promise<RemoteChannelSettings> {
   return await remoteControlClient.getChannelSettings(channel)
 }
 
-function saveChannelSettingsCompat(
-  channel: 'telegram',
-  input: TelegramRemoteSettings
-): Promise<TelegramRemoteSettings>
 function saveChannelSettingsCompat(
   channel: 'feishu',
   input: FeishuRemoteSettings
@@ -2093,10 +1592,6 @@ function saveChannelSettingsCompat(
   channel: 'qqbot',
   input: QQBotRemoteSettings
 ): Promise<QQBotRemoteSettings>
-function saveChannelSettingsCompat(
-  channel: 'discord',
-  input: DiscordRemoteSettings
-): Promise<DiscordRemoteSettings>
 function saveChannelSettingsCompat(
   channel: 'weixin-ilink',
   input: WeixinIlinkRemoteSettings
@@ -2108,10 +1603,8 @@ async function saveChannelSettingsCompat(
   return await remoteControlClient.saveChannelSettings(channel, input)
 }
 
-function getChannelStatusCompat(channel: 'telegram'): Promise<TelegramRemoteStatus>
 function getChannelStatusCompat(channel: 'feishu'): Promise<FeishuRemoteStatus>
 function getChannelStatusCompat(channel: 'qqbot'): Promise<QQBotRemoteStatus>
-function getChannelStatusCompat(channel: 'discord'): Promise<DiscordRemoteStatus>
 function getChannelStatusCompat(channel: 'weixin-ilink'): Promise<WeixinIlinkRemoteStatus>
 async function getChannelStatusCompat(channel: RemoteChannel): Promise<RemoteChannelStatus> {
   return await remoteControlClient.getChannelStatus(channel)
@@ -2281,8 +1774,7 @@ const feishuInstallQrDialogVisible = computed({
 })
 const isPairableChannel = (
   channel: RemoteChannel | null | undefined
-): channel is PairableRemoteChannel =>
-  channel === 'telegram' || channel === 'feishu' || channel === 'qqbot' || channel === 'discord'
+): channel is PairableRemoteChannel => channel === 'feishu' || channel === 'qqbot'
 const bindingsDialogSupportsPrincipals = computed(() =>
   isPairableChannel(bindingsDialogChannel.value)
 )
@@ -2321,32 +1813,22 @@ const pathLabel = (value: string) => value.split(/[/\\]/).filter(Boolean).pop() 
 
 const getChannelDefaultWorkdir = (channel: RemoteChannel): string => {
   switch (channel) {
-    case 'telegram':
-      return telegramSettings.value?.defaultWorkdir ?? ''
     case 'feishu':
       return feishuSettings.value?.defaultWorkdir ?? ''
     case 'qqbot':
       return qqbotSettings.value?.defaultWorkdir ?? ''
-    case 'discord':
-      return discordSettings.value?.defaultWorkdir ?? ''
     case 'weixin-ilink':
       return weixinIlinkSettings.value?.defaultWorkdir ?? ''
   }
 }
 
 const setChannelDefaultWorkdir = (channel: RemoteChannel, value: string) => {
-  if (channel === 'telegram' && telegramSettings.value) {
-    telegramSettings.value.defaultWorkdir = value
-    queueTelegramSettingsPersist()
-  } else if (channel === 'feishu' && feishuSettings.value) {
+  if (channel === 'feishu' && feishuSettings.value) {
     feishuSettings.value.defaultWorkdir = value
     queueFeishuSettingsPersist()
   } else if (channel === 'qqbot' && qqbotSettings.value) {
     qqbotSettings.value.defaultWorkdir = value
     queueQQBotSettingsPersist()
-  } else if (channel === 'discord' && discordSettings.value) {
-    discordSettings.value.defaultWorkdir = value
-    queueDiscordSettingsPersist()
   } else if (channel === 'weixin-ilink' && weixinIlinkSettings.value) {
     weixinIlinkSettings.value.defaultWorkdir = value
     queueWeixinIlinkSettingsPersist()
@@ -2460,18 +1942,6 @@ const weixinIlinkLoginBusy = computed(
   () => weixinIlinkLoginStarting.value || weixinIlinkLoginWaiting.value
 )
 
-const normalizeTelegramSettings = (
-  snapshot: Partial<TelegramRemoteSettings> | null | undefined
-): TelegramRemoteSettings => {
-  const fallback = defaultTelegramSettings()
-  return {
-    botToken: snapshot?.botToken ?? fallback.botToken,
-    remoteEnabled: snapshot?.remoteEnabled ?? fallback.remoteEnabled,
-    defaultAgentId: snapshot?.defaultAgentId ?? fallback.defaultAgentId,
-    defaultWorkdir: snapshot?.defaultWorkdir ?? fallback.defaultWorkdir
-  }
-}
-
 const normalizeFeishuSettings = (
   snapshot: Partial<FeishuRemoteSettings> | null | undefined
 ): FeishuRemoteSettings => {
@@ -2501,19 +1971,6 @@ const normalizeQQBotSettings = (
     defaultAgentId: snapshot?.defaultAgentId ?? fallback.defaultAgentId,
     defaultWorkdir: snapshot?.defaultWorkdir ?? fallback.defaultWorkdir,
     pairedUserIds: [...(snapshot?.pairedUserIds ?? fallback.pairedUserIds)]
-  }
-}
-
-const normalizeDiscordSettings = (
-  snapshot: Partial<DiscordRemoteSettings> | null | undefined
-): DiscordRemoteSettings => {
-  const fallback = defaultDiscordSettings()
-  return {
-    botToken: snapshot?.botToken ?? fallback.botToken,
-    remoteEnabled: snapshot?.remoteEnabled ?? fallback.remoteEnabled,
-    defaultAgentId: snapshot?.defaultAgentId ?? fallback.defaultAgentId,
-    defaultWorkdir: snapshot?.defaultWorkdir ?? fallback.defaultWorkdir,
-    pairedChannelIds: [...(snapshot?.pairedChannelIds ?? fallback.pairedChannelIds)]
   }
 }
 
@@ -2611,15 +2068,6 @@ const rebaseWeixinIlinkDraft = (
   }
 }
 
-const acceptPersistedTelegramSettings = (
-  snapshot: Partial<TelegramRemoteSettings> | null | undefined,
-  applyToDraft = true
-) => {
-  const normalized = normalizeTelegramSettings(snapshot)
-  persistedTelegramSettings.value = normalized
-  if (applyToDraft) telegramSettings.value = { ...normalized }
-}
-
 const acceptPersistedFeishuSettings = (
   snapshot: Partial<FeishuRemoteSettings> | null | undefined,
   applyToDraft = true
@@ -2638,15 +2086,6 @@ const acceptPersistedQQBotSettings = (
   if (applyToDraft) qqbotSettings.value = normalizeQQBotSettings(normalized)
 }
 
-const acceptPersistedDiscordSettings = (
-  snapshot: Partial<DiscordRemoteSettings> | null | undefined,
-  applyToDraft = true
-) => {
-  const normalized = normalizeDiscordSettings(snapshot)
-  persistedDiscordSettings.value = normalized
-  if (applyToDraft) discordSettings.value = normalizeDiscordSettings(normalized)
-}
-
 const acceptPersistedWeixinIlinkSettings = (
   snapshot: Partial<WeixinIlinkRemoteSettings> | null | undefined,
   applyToDraft = true
@@ -2654,22 +2093,6 @@ const acceptPersistedWeixinIlinkSettings = (
   const normalized = normalizeWeixinIlinkSettings(snapshot)
   persistedWeixinIlinkSettings.value = normalized
   if (applyToDraft) weixinIlinkSettings.value = normalizeWeixinIlinkSettings(normalized)
-}
-
-const rebasePersistedTelegramSettings = (
-  snapshot: Partial<TelegramRemoteSettings> | null | undefined,
-  previous = persistedTelegramSettings.value
-): boolean => {
-  const normalized = normalizeTelegramSettings(snapshot)
-  return reconcilePersistedSettings(
-    telegramSettings.value ? normalizeTelegramSettings(telegramSettings.value) : null,
-    previous ? normalizeTelegramSettings(previous) : null,
-    normalized,
-    (persisted, draft) => {
-      persistedTelegramSettings.value = persisted
-      telegramSettings.value = normalizeTelegramSettings(draft)
-    }
-  )
 }
 
 const rebasePersistedFeishuSettings = (
@@ -2704,22 +2127,6 @@ const rebasePersistedQQBotSettings = (
   )
 }
 
-const rebasePersistedDiscordSettings = (
-  snapshot: Partial<DiscordRemoteSettings> | null | undefined,
-  previous = persistedDiscordSettings.value
-): boolean => {
-  const normalized = normalizeDiscordSettings(snapshot)
-  return reconcilePersistedSettings(
-    discordSettings.value ? normalizeDiscordSettings(discordSettings.value) : null,
-    previous ? normalizeDiscordSettings(previous) : null,
-    normalized,
-    (persisted, draft) => {
-      persistedDiscordSettings.value = persisted
-      discordSettings.value = normalizeDiscordSettings(draft)
-    }
-  )
-}
-
 const rebasePersistedWeixinIlinkSettings = (
   snapshot: Partial<WeixinIlinkRemoteSettings> | null | undefined,
   previous = persistedWeixinIlinkSettings.value
@@ -2737,24 +2144,16 @@ const rebasePersistedWeixinIlinkSettings = (
   )
 }
 
-function channelStatus(channel: 'telegram'): TelegramRemoteStatus | null
 function channelStatus(channel: 'feishu'): FeishuRemoteStatus | null
 function channelStatus(channel: 'qqbot'): QQBotRemoteStatus | null
-function channelStatus(channel: 'discord'): DiscordRemoteStatus | null
 function channelStatus(channel: 'weixin-ilink'): WeixinIlinkRemoteStatus | null
 function channelStatus(channel: RemoteChannel): RemoteChannelStatus | null
 function channelStatus(channel: RemoteChannel): RemoteChannelStatus | null {
-  if (channel === 'telegram') {
-    return telegramStatus.value
-  }
   if (channel === 'feishu') {
     return feishuStatus.value
   }
   if (channel === 'qqbot') {
     return qqbotStatus.value
-  }
-  if (channel === 'discord') {
-    return discordStatus.value
   }
   return weixinIlinkStatus.value
 }
@@ -2763,25 +2162,16 @@ const getSnapshotPrincipalIds = (
   channel: PairableRemoteChannel,
   snapshot: RemotePairingSnapshot
 ): string[] =>
-  channel === 'telegram'
-    ? normalizeTelegramPairingSnapshot(
-        snapshot as Partial<TelegramPairingSnapshot>
-      ).allowedUserIds.map((value) => String(value))
-    : channel === 'feishu'
-      ? normalizeFeishuPairingSnapshot(snapshot as Partial<FeishuPairingSnapshot>).pairedUserOpenIds
-      : channel === 'qqbot'
-        ? normalizeQQBotPairingSnapshot(snapshot as Partial<QQBotPairingSnapshot>).pairedUserIds
-        : normalizeDiscordPairingSnapshot(snapshot as Partial<DiscordPairingSnapshot>)
-            .pairedChannelIds
+  channel === 'feishu'
+    ? normalizeFeishuPairingSnapshot(snapshot as Partial<FeishuPairingSnapshot>).pairedUserOpenIds
+    : normalizeQQBotPairingSnapshot(snapshot as Partial<QQBotPairingSnapshot>).pairedUserIds
 
 const hasEnabledRemoteSettings = () =>
   Boolean(
-    telegramSettings.value?.remoteEnabled ||
     feishuSettings.value?.remoteEnabled ||
-    qqbotSettings.value?.remoteEnabled ||
-    discordSettings.value?.remoteEnabled ||
-    weixinIlinkSettings.value?.remoteEnabled ||
-    weixinIlinkSettings.value?.accounts?.some((account) => account.enabled)
+      qqbotSettings.value?.remoteEnabled ||
+      weixinIlinkSettings.value?.remoteEnabled ||
+      weixinIlinkSettings.value?.accounts?.some((account) => account.enabled)
   )
 
 const clearStatusRefreshTimer = () => {
@@ -2822,23 +2212,13 @@ const scheduleStatusRefresh = (delayMs = 0) => {
 
 const refreshStatus = async (): Promise<boolean> => {
   try {
-    const [
-      nextTelegramStatus,
-      nextFeishuStatus,
-      nextQQBotStatus,
-      nextDiscordStatus,
-      nextWeixinIlinkStatus
-    ] = await Promise.all([
-      getChannelStatusCompat('telegram'),
+    const [nextFeishuStatus, nextQQBotStatus, nextWeixinIlinkStatus] = await Promise.all([
       getChannelStatusCompat('feishu'),
       getChannelStatusCompat('qqbot'),
-      getChannelStatusCompat('discord'),
       getChannelStatusCompat('weixin-ilink')
     ])
-    telegramStatus.value = nextTelegramStatus
     feishuStatus.value = nextFeishuStatus
     qqbotStatus.value = nextQQBotStatus
-    discordStatus.value = nextDiscordStatus
     weixinIlinkStatus.value = nextWeixinIlinkStatus
     return true
   } catch (error) {
@@ -2849,14 +2229,10 @@ const refreshStatus = async (): Promise<boolean> => {
 
 const refreshChannelStatus = async (channel: RemoteChannel): Promise<boolean> => {
   try {
-    if (channel === 'telegram') {
-      telegramStatus.value = await getChannelStatusCompat('telegram')
-    } else if (channel === 'feishu') {
+    if (channel === 'feishu') {
       feishuStatus.value = await getChannelStatusCompat('feishu')
     } else if (channel === 'qqbot') {
       qqbotStatus.value = await getChannelStatusCompat('qqbot')
-    } else if (channel === 'discord') {
-      discordStatus.value = await getChannelStatusCompat('discord')
     } else {
       weixinIlinkStatus.value = await getChannelStatusCompat('weixin-ilink')
     }
@@ -2898,27 +2274,19 @@ const loadState = async () => {
   try {
     const [
       loadedChannelDescriptors,
-      loadedTelegramSettings,
       loadedFeishuSettings,
       loadedQQBotSettings,
-      loadedDiscordSettings,
       loadedWeixinIlinkSettings,
-      loadedTelegramStatus,
       loadedFeishuStatus,
       loadedQQBotStatus,
-      loadedDiscordStatus,
       loadedWeixinIlinkStatus
     ] = await Promise.all([
       remoteControlClient.listRemoteChannels(),
-      getChannelSettingsCompat('telegram'),
       getChannelSettingsCompat('feishu'),
       getChannelSettingsCompat('qqbot'),
-      getChannelSettingsCompat('discord'),
       getChannelSettingsCompat('weixin-ilink'),
-      getChannelStatusCompat('telegram'),
       getChannelStatusCompat('feishu'),
       getChannelStatusCompat('qqbot'),
-      getChannelStatusCompat('discord'),
       getChannelStatusCompat('weixin-ilink'),
       loadAvailableAgents(),
       loadRecentProjects()
@@ -2926,20 +2294,16 @@ const loadState = async () => {
 
     if (requestId !== loadStateRequestId || remoteSettingsUnmounted) return
     channelDescriptors.value = loadedChannelDescriptors
-    acceptPersistedTelegramSettings(loadedTelegramSettings)
     acceptPersistedFeishuSettings(loadedFeishuSettings)
     acceptPersistedQQBotSettings(loadedQQBotSettings)
-    acceptPersistedDiscordSettings(loadedDiscordSettings)
     acceptPersistedWeixinIlinkSettings(loadedWeixinIlinkSettings)
-    telegramStatus.value = loadedTelegramStatus
     feishuStatus.value = loadedFeishuStatus
     qqbotStatus.value = loadedQQBotStatus
-    discordStatus.value = loadedDiscordStatus
     weixinIlinkStatus.value = loadedWeixinIlinkStatus
 
     syncActiveChannelFromProps()
     if (!remoteChannelIds.value.includes(activeChannel.value)) {
-      activeChannel.value = remoteChannelIds.value[0] ?? 'telegram'
+      activeChannel.value = remoteChannelIds.value[0] ?? 'feishu'
     }
     scheduleStatusRefresh(
       hasEnabledRemoteSettings() ? REMOTE_STATUS_ACTIVE_POLL_MS : REMOTE_STATUS_IDLE_POLL_MS
@@ -2951,20 +2315,6 @@ const loadState = async () => {
     if (requestId === loadStateRequestId) {
       isLoading.value = false
     }
-  }
-}
-
-const buildTelegramDraftSettings = (): TelegramRemoteSettings | null => {
-  if (!telegramSettings.value) {
-    return null
-  }
-
-  const settings = telegramSettings.value
-  return {
-    botToken: settings.botToken,
-    remoteEnabled: settings.remoteEnabled,
-    defaultAgentId: settings.defaultAgentId,
-    defaultWorkdir: settings.defaultWorkdir
   }
 }
 
@@ -3004,21 +2354,6 @@ const buildQQBotDraftSettings = (): QQBotRemoteSettings | null => {
   }
 }
 
-const buildDiscordDraftSettings = (): DiscordRemoteSettings | null => {
-  if (!discordSettings.value) {
-    return null
-  }
-
-  const settings = discordSettings.value
-  return {
-    botToken: settings.botToken,
-    remoteEnabled: settings.remoteEnabled,
-    defaultAgentId: settings.defaultAgentId,
-    defaultWorkdir: settings.defaultWorkdir,
-    pairedChannelIds: [...(settings.pairedChannelIds ?? [])]
-  }
-}
-
 const buildWeixinIlinkDraftSettings = (): WeixinIlinkRemoteSettings | null => {
   if (!weixinIlinkSettings.value) {
     return null
@@ -3039,17 +2374,11 @@ const buildWeixinIlinkDraftSettings = (): WeixinIlinkRemoteSettings | null => {
 }
 
 const isChannelDirty = (channel: RemoteChannel): boolean => {
-  if (channel === 'telegram') {
-    return !settingsSnapshotsMatch(buildTelegramDraftSettings(), persistedTelegramSettings.value)
-  }
   if (channel === 'feishu') {
     return !settingsSnapshotsMatch(buildFeishuDraftSettings(), persistedFeishuSettings.value)
   }
   if (channel === 'qqbot') {
     return !settingsSnapshotsMatch(buildQQBotDraftSettings(), persistedQQBotSettings.value)
-  }
-  if (channel === 'discord') {
-    return !settingsSnapshotsMatch(buildDiscordDraftSettings(), persistedDiscordSettings.value)
   }
   return !settingsSnapshotsMatch(
     buildWeixinIlinkDraftSettings(),
@@ -3127,12 +2456,6 @@ const createSaveCoordinator = <Settings>(
   })
 
 const saveCoordinators: Record<RemoteChannel, ChannelSaveCoordinatorPort> = {
-  telegram: createSaveCoordinator(
-    'telegram',
-    buildTelegramDraftSettings,
-    (settings) => saveChannelSettingsCompat('telegram', settings),
-    (settings, submitted) => rebasePersistedTelegramSettings(settings, submitted)
-  ),
   feishu: createSaveCoordinator(
     'feishu',
     buildFeishuDraftSettings,
@@ -3144,12 +2467,6 @@ const saveCoordinators: Record<RemoteChannel, ChannelSaveCoordinatorPort> = {
     buildQQBotDraftSettings,
     (settings) => saveChannelSettingsCompat('qqbot', settings),
     (settings, submitted) => rebasePersistedQQBotSettings(settings, submitted)
-  ),
-  discord: createSaveCoordinator(
-    'discord',
-    buildDiscordDraftSettings,
-    (settings) => saveChannelSettingsCompat('discord', settings),
-    (settings, submitted) => rebasePersistedDiscordSettings(settings, submitted)
   ),
   'weixin-ilink': createSaveCoordinator(
     'weixin-ilink',
@@ -3193,15 +2510,9 @@ const completeObservedChannelAction = (channel: RemoteChannel, code: string, tit
 const persistChannelSettings = async (channel: RemoteChannel): Promise<boolean> =>
   await saveCoordinators[channel].request()
 
-const persistTelegramSettings = async () => await persistChannelSettings('telegram')
 const persistFeishuSettings = async () => await persistChannelSettings('feishu')
 const persistQQBotSettings = async () => await persistChannelSettings('qqbot')
-const persistDiscordSettings = async () => await persistChannelSettings('discord')
 const persistWeixinIlinkSettings = async () => await persistChannelSettings('weixin-ilink')
-
-const queueTelegramSettingsPersist = () => {
-  void persistTelegramSettings()
-}
 
 const queueFeishuSettingsPersist = () => {
   void persistFeishuSettings()
@@ -3211,20 +2522,8 @@ const queueQQBotSettingsPersist = () => {
   void persistQQBotSettings()
 }
 
-const queueDiscordSettingsPersist = () => {
-  void persistDiscordSettings()
-}
-
 const queueWeixinIlinkSettingsPersist = () => {
   void persistWeixinIlinkSettings()
-}
-
-const updateTelegramRemoteEnabled = (value: boolean) => {
-  if (!telegramSettings.value) {
-    return
-  }
-  telegramSettings.value.remoteEnabled = Boolean(value)
-  queueTelegramSettingsPersist()
 }
 
 const updateFeishuRemoteEnabled = (value: boolean) => {
@@ -3243,28 +2542,12 @@ const updateQQBotRemoteEnabled = (value: boolean) => {
   queueQQBotSettingsPersist()
 }
 
-const updateDiscordRemoteEnabled = (value: boolean) => {
-  if (!discordSettings.value) {
-    return
-  }
-  discordSettings.value.remoteEnabled = Boolean(value)
-  queueDiscordSettingsPersist()
-}
-
 const updateWeixinIlinkRemoteEnabled = (value: boolean) => {
   if (!weixinIlinkSettings.value) {
     return
   }
   weixinIlinkSettings.value.remoteEnabled = Boolean(value)
   queueWeixinIlinkSettingsPersist()
-}
-
-const updateTelegramDefaultAgentId = (value: string) => {
-  if (!telegramSettings.value) {
-    return
-  }
-  telegramSettings.value.defaultAgentId = value
-  queueTelegramSettingsPersist()
 }
 
 const updateFeishuDefaultAgentId = (value: string) => {
@@ -3281,14 +2564,6 @@ const updateQQBotDefaultAgentId = (value: string) => {
   }
   qqbotSettings.value.defaultAgentId = value
   queueQQBotSettingsPersist()
-}
-
-const updateDiscordDefaultAgentId = (value: string) => {
-  if (!discordSettings.value) {
-    return
-  }
-  discordSettings.value.defaultAgentId = value
-  queueDiscordSettingsPersist()
 }
 
 const updateWeixinIlinkDefaultAgentId = (value: string) => {
@@ -4161,17 +3436,6 @@ const bindingKindClass = (kind: RemoteBindingSummary['kind']) => {
 }
 
 const formatOverviewLine = (channel: RemoteChannel) => {
-  if (channel === 'telegram') {
-    const status = channelStatus(channel)
-    if (!status) {
-      return ''
-    }
-    return t('settings.remote.overview.telegram', {
-      bindingCount: status.bindingCount,
-      pairedCount: status.allowedUserCount
-    })
-  }
-
   if (channel === 'qqbot') {
     const status = channelStatus(channel)
     if (!status) {
@@ -4180,17 +3444,6 @@ const formatOverviewLine = (channel: RemoteChannel) => {
     return t('settings.remote.overview.qqbot', {
       bindingCount: status.bindingCount,
       pairedCount: status.pairedUserCount
-    })
-  }
-
-  if (channel === 'discord') {
-    const status = channelStatus(channel)
-    if (!status) {
-      return ''
-    }
-    return t('settings.remote.overview.discord', {
-      bindingCount: status.bindingCount,
-      pairedCount: status.pairedChannelCount
     })
   }
 
@@ -4222,17 +3475,11 @@ const isAnyChannelActionPending = computed(() =>
 )
 
 const discardChannelDrafts = () => {
-  if (persistedTelegramSettings.value) {
-    acceptPersistedTelegramSettings(persistedTelegramSettings.value)
-  }
   if (persistedFeishuSettings.value) {
     acceptPersistedFeishuSettings(persistedFeishuSettings.value)
   }
   if (persistedQQBotSettings.value) {
     acceptPersistedQQBotSettings(persistedQQBotSettings.value)
-  }
-  if (persistedDiscordSettings.value) {
-    acceptPersistedDiscordSettings(persistedDiscordSettings.value)
   }
   if (persistedWeixinIlinkSettings.value) {
     acceptPersistedWeixinIlinkSettings(persistedWeixinIlinkSettings.value)

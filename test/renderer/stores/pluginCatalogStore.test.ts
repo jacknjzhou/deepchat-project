@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+﻿import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
-import type { RemoteChannelDescriptor, TelegramRemoteStatus } from '@shared/types/remote'
+import type { RemoteChannelDescriptor, FeishuRemoteStatus } from '@shared/types/remote'
 import type { PluginListItem } from '@shared/types/plugin'
 import type { OcrRuntimeStatus } from '@shared/contracts/routes/ocr.routes'
 import { usePluginCatalogStore } from '@/stores/pluginCatalog'
@@ -20,20 +20,19 @@ const plugin = (enabled = false): PluginListItem => ({
   capabilities: []
 })
 
-const telegramDescriptor: RemoteChannelDescriptor = {
-  id: 'telegram',
-  titleKey: 'settings.remote.telegram.title',
-  descriptionKey: 'settings.remote.telegram.description',
+const feishuDescriptor: RemoteChannelDescriptor = {
+  id: 'feishu',
+  titleKey: 'settings.remote.feishu.title',
+  descriptionKey: 'settings.remote.feishu.description',
   supportsCronDelivery: true
 }
 
-const telegramStatus = (enabled = false): TelegramRemoteStatus => ({
-  channel: 'telegram',
+const feishuStatus = (enabled = false): FeishuRemoteStatus => ({
+  channel: 'feishu',
   enabled,
   state: enabled ? 'running' : 'disabled',
-  pollOffset: 0,
   bindingCount: 0,
-  allowedUserCount: 0,
+  pairedUserCount: 0,
   lastError: null,
   botUser: null
 })
@@ -60,16 +59,16 @@ describe('pluginCatalogStore', () => {
 
     store.replacePlugins([plugin()], store.capturePluginRefresh())
     store.replaceRemoteSnapshot(
-      [telegramDescriptor],
-      [telegramStatus()],
+      [feishuDescriptor],
+      [feishuStatus()],
       store.captureRemoteRefresh()
     )
     store.replaceOcrStatus(ocrStatus, store.beginOcrRefresh())
 
     const secondConsumer = usePluginCatalogStore()
     expect(secondConsumer.getPlugin('com.deepchat.plugins.test')?.enabled).toBe(false)
-    expect(secondConsumer.remoteChannels).toEqual([telegramDescriptor])
-    expect(secondConsumer.remoteStatuses.telegram?.state).toBe('disabled')
+    expect(secondConsumer.remoteChannels).toEqual([feishuDescriptor])
+    expect(secondConsumer.remoteStatuses.feishu?.state).toBe('disabled')
     expect(secondConsumer.ocrStatus).toEqual(ocrStatus)
     expect(secondConsumer.ocrStatusHasError).toBe(false)
   })
@@ -92,26 +91,26 @@ describe('pluginCatalogStore', () => {
   it('keeps an optimistic remote update when a refresh spans the mutation', () => {
     const store = usePluginCatalogStore()
     store.replaceRemoteSnapshot(
-      [telegramDescriptor],
-      [telegramStatus()],
+      [feishuDescriptor],
+      [feishuStatus()],
       store.captureRemoteRefresh()
     )
     const staleRefresh = store.captureRemoteRefresh()
 
-    store.beginRemoteEnabledMutation('telegram', true)
+    store.beginRemoteEnabledMutation('feishu', true)
     const refreshDuringMutation = store.captureRemoteRefresh()
 
-    expect(store.remoteStatuses.telegram).toMatchObject({ enabled: true, state: 'starting' })
+    expect(store.remoteStatuses.feishu).toMatchObject({ enabled: true, state: 'starting' })
     expect(
-      store.replaceRemoteSnapshot([telegramDescriptor], [telegramStatus()], staleRefresh)
+      store.replaceRemoteSnapshot([feishuDescriptor], [feishuStatus()], staleRefresh)
     ).toBe(false)
 
-    store.commitRemoteMutation(telegramStatus(true))
+    store.commitRemoteMutation(feishuStatus(true))
 
     expect(
-      store.replaceRemoteSnapshot([telegramDescriptor], [telegramStatus()], refreshDuringMutation)
+      store.replaceRemoteSnapshot([feishuDescriptor], [feishuStatus()], refreshDuringMutation)
     ).toBe(false)
-    expect(store.remoteStatuses.telegram).toMatchObject({ enabled: true, state: 'running' })
+    expect(store.remoteStatuses.feishu).toMatchObject({ enabled: true, state: 'running' })
   })
 
   it('keeps only the latest OCR refresh result and clears stale errors after recovery', () => {

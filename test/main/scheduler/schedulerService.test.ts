@@ -1225,8 +1225,8 @@ describeIfSqlite('Cron Jobs persistence and service', () => {
             },
             {
               type: 'remote',
-              remoteId: 'telegram',
-              channelId: 'telegram:-100:0',
+              remoteId: 'qqbot',
+              channelId: 'qqbot:group_1',
               mode: 'summary'
             }
           ],

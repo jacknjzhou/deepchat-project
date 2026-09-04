@@ -2728,14 +2728,7 @@
   },
   "remote": {
     "title": "terpencil",
-    "description": "Konfigurasi terpadu Telegram, Feishu/Lark, QQBot, Discord dan remote control WeChat iLink.",
-    "telegram": {
-      "title": "Telegram",
-      "description": "Akses ke Telegram Bot dan dukung obrolan pribadi, obrolan grup, dan kendali jarak jauh topik.",
-      "botToken": "Robot Token",
-      "botTokenPlaceholder": "Telegram Robot Token",
-      "botTokenDescription": "Isi robot Token untuk remote control Telegram."
-    },
+    "description": "Konfigurasi terpadu Feishu/Lark, QQBot dan remote control WeChat iLink.",
     "feishu": {
       "title": "Feishu / Lark",
       "description": "Hubungkan ke Feishu Bot dan dukung obrolan pribadi, obrolan grup, dan kendali jarak jauh topik.",
@@ -2811,15 +2804,6 @@
       "streamingCards": "Kartu Streaming CardKit",
       "streamingCardsDescription": "Stream balasan AI melalui Feishu / Lark CardKit secara real-time. Memerlukan izin im:message dan cardkit:card:write; DeepChat akan kembali ke pesan normal jika CardKit gagal."
     },
-    "discord": {
-      "title": "Discord",
-      "description": "Akses ke Discord Bot, mendukung obrolan pribadi, penyebutan saluran, dan kendali jarak jauh Perintah Slash.",
-      "botToken": "Bot Token",
-      "botTokenPlaceholder": "Discord Bot Token",
-      "remoteControlDescription": "Remote control Discord menggunakan proses Bot independen Token, Gateway, dan REST.",
-      "accessRule1": "Kirim /pasangkan [kode penyandingan] dalam obrolan atau saluran pribadi untuk mengotorisasi DM atau saluran saat ini ke DeepChat.",
-      "accessRule2": "Pesan saluran hanya akan memasuki percakapan ketika bot disebutkan, untuk menghindari kesalahan penanganan obrolan normal."
-    },
     "sections": {
       "credentials": "voucher",
       "remoteControl": "kendali jarak jauh",
@@ -2842,9 +2826,7 @@
       "pairCodeExpiresAt": "Tanggal kedaluwarsa: {time}",
       "pairDialogTitle": "{channel} Memasangkan",
       "pairDialogDescription": "Setelah membuat kode pemasangan, silakan buka robot {channel} yang sesuai untuk menyelesaikan pemasangan.",
-      "pairDialogInstructionTelegram": "Buka robot Telegram dan kirimkan perintah ini:",
       "pairDialogInstructionFeishu": "Send this command in a Feishu / Lark bot direct chat; it adds the sender to the same authorized-principal list used by scan authorization:",
-      "pairDialogInstructionDiscord": "Buka obrolan pribadi atau saluran target bot Discord dan kirimkan perintah ini:",
       "bindingsDialogTitle": "{channel} mengikat",
       "bindingsDialogDescription": "Hapus hubungan yang mengikat antara portal jarak jauh dan sesi DeepChat satu per satu.",
       "bindingsEmpty": "Saat ini tidak ada sesi terikat.",
@@ -2858,14 +2840,6 @@
       "sessionBindingsDescription": "Setiap portal jarak jauh di bawah saat ini terikat pada sesi DeepChat.",
       "acpDefaultWorkdirRequiredTitle": "Direktori default diperlukan",
       "acpDefaultWorkdirRequiredDescription": "Agen ACP memerlukan ruang kerja lokal. Pilih direktori default sebelum menyimpan."
-    },
-    "hooks": {
-      "title": "Telegram Pemberitahuan kait",
-      "description": "Gunakan kembali Bot Telegram yang sama untuk mengirim notifikasi Hook.",
-      "chatId": "ID Obrolan",
-      "chatIdPlaceholder": "Misalnya 123456789",
-      "threadId": "ID Topik (opsional)",
-      "threadIdPlaceholder": "ID topik opsional"
     },
     "status": {
       "title": "Status berjalan",
@@ -2882,12 +2856,8 @@
       "bindingOnly": "Jumlah pengikatan: {count}, prinsipal berpasangan: {paired}"
     },
     "overview": {
-      "telegram": "{bindingCount} binding, {pairedCount} pengguna berpasangan",
       "feishu": "{bindingCount} binding, {pairedCount} pengguna berpasangan",
-      "hooksOn": "nyalakan",
-      "hooksOff": "Tutup",
       "qqbot": "{bindingCount} binding, {pairedCount} pengguna berpasangan",
-      "discord": "Obligasi {bindingCount}, saluran berpasangan {pairedCount}",
       "weixinIlink": "{bindingCount} terikat, {accountCount} akun, {connectedCount} terhubung"
     },
     "bindingKinds": {

@@ -2415,14 +2415,7 @@
   },
   "remote": {
     "title": "リモート",
-    "description": "Telegram、Feishu、QQBot、WeChat iLink のリモート操作をまとめて設定します。",
-    "telegram": {
-      "title": "Telegram",
-      "description": "Connect a Telegram bot for direct messages, groups, and topic-thread remote control.",
-      "botToken": "Bot トークン",
-      "botTokenPlaceholder": "Telegram Bot トークン",
-      "botTokenDescription": "Enter the Telegram bot token used for Telegram remote control."
-    },
+    "description": "Feishu、QQBot、WeChat iLink のリモート操作をまとめて設定します。",
     "feishu": {
       "title": "Feishu / Lark",
       "description": "Feishu Bot を接続して、ダイレクトメッセージ、グループチャット、トピックスレッドから操作できます。",
@@ -2498,15 +2491,6 @@
       "streamingCards": "CardKit ストリーミングカード",
       "streamingCardsDescription": "Feishu / Lark CardKit を通じて AI 返答をリアルタイムでストリーミングします。im:message および cardkit:card:write 権限が必要です。CardKit が失敗した場合、DeepChat は通常のメッセージにフォールバックします。"
     },
-    "discord": {
-      "title": "Discord",
-      "description": "Discord Bot を接続すると、DM、チャンネルメンション、Slash Commands で遠隔操作できます。",
-      "botToken": "Bot トークン",
-      "botTokenPlaceholder": "Discord Bot トークン",
-      "remoteControlDescription": "Discord remote control uses its own bot token, gateway, and REST flow.",
-      "accessRule1": "DM または対象チャンネルで /pair [code] を送信し、現在の Discord エンドポイントを認可してください。",
-      "accessRule2": "チャンネルメッセージは Bot へのメンションがある場合だけセッションに入るため、通常の雑談を誤って取り込みません。"
-    },
     "sections": {
       "credentials": "認証情報",
       "remoteControl": "リモート操作",
@@ -2534,9 +2518,7 @@
       "bindingsEmpty": "紐付けはまだありません。",
       "pairingSuccessTitle": "ペアリング完了",
       "pairingSuccessDescription": "許可されたユーザー ID の一覧を更新しました。",
-      "pairDialogInstructionTelegram": "このコマンドを Telegram Bot に送信してください:",
       "pairDialogInstructionFeishu": "Send this command in a Feishu / Lark bot direct chat; it adds the sender to the same authorized-principal list used by scan authorization:",
-      "pairDialogInstructionDiscord": "このコマンドを Discord Bot の DM または対象チャンネルに送信してください:",
       "pairDialogInstructionQQBot": "このコマンドを QQ Bot とのチャットまたは認可済み QQ グループに送信してください:",
       "authorizedPrincipalsTitle": "認可済み主体",
       "authorizedPrincipalsDescription": "これらの {channel} アカウントは認可済みで、ペアリングとセッション操作を行えます。",
@@ -2545,14 +2527,6 @@
       "sessionBindingsDescription": "下の各リモート入口は現在 1 つの DeepChat セッションに紐付いています。",
       "acpDefaultWorkdirRequiredTitle": "既定のディレクトリが必要です",
       "acpDefaultWorkdirRequiredDescription": "ACP エージェントにはローカルの作業ディレクトリが必要です。保存する前に「既定のディレクトリ」を選択してください。"
-    },
-    "hooks": {
-      "title": "Telegram Hook 通知",
-      "description": "同じ Telegram Bot を Hook 通知にも再利用します。",
-      "chatId": "チャット ID",
-      "chatIdPlaceholder": "e.g. 123456789",
-      "threadId": "スレッド ID（任意）",
-      "threadIdPlaceholder": "任意のスレッド ID"
     },
     "status": {
       "title": "ランタイム状態",
@@ -2569,12 +2543,8 @@
       "bindingOnly": "バインド数: {count}、ペア済み主体: {paired}"
     },
     "overview": {
-      "telegram": "{bindingCount} bindings, {pairedCount} paired users",
       "feishu": "{bindingCount} 件のバインド、{pairedCount} 人のペア済みユーザー",
-      "hooksOn": "有効",
-      "hooksOff": "無効",
       "qqbot": "{bindingCount} 件のバインド、{pairedCount} 人のペア済みユーザー",
-      "discord": "{bindingCount} 件のバインド、{pairedCount} 件のペア済みチャンネル",
       "weixinIlink": "{bindingCount} 件のバインディング、{accountCount} 件のアカウント、接続中 {connectedCount} 件"
     },
     "bindingKinds": {

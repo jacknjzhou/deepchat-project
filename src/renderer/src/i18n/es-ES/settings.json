@@ -2728,14 +2728,7 @@
   },
   "remote": {
     "title": "Remoto",
-    "description": "Configure el control remoto Telegram, Feishu / Lark, QQBot, Discord y WeChat iLink en un solo lugar.",
-    "telegram": {
-      "title": "Telegram",
-      "description": "Conecte un bot Telegram para mensajes directos, grupos y control remoto de temas.",
-      "botToken": "Bot Token",
-      "botTokenPlaceholder": "Telegram robot token",
-      "botTokenDescription": "Ingrese el bot Telegram token usado para el control remoto Telegram."
-    },
+    "description": "Configure el control remoto Feishu / Lark, QQBot y WeChat iLink en un solo lugar.",
     "feishu": {
       "title": "Feishu / Lark",
       "description": "Conecte un bot Feishu para mensajes directos, chats grupales e hilos temáticos.",
@@ -2811,15 +2804,6 @@
       "streamingCards": "Tarjetas de transmisión CardKit",
       "streamingCardsDescription": "Transmite las respuestas de IA mediante Feishu / Lark CardKit en tiempo real. Requiere los permisos im:message y cardkit:card:write; DeepChat vuelve a los mensajes normales si CardKit falla."
     },
-    "discord": {
-      "title": "Discord",
-      "description": "Conecte un bot Discord para DMs, menciones de canales y control remoto con comando de barra.",
-      "botToken": "Bot Token",
-      "botTokenPlaceholder": "Discord robot token",
-      "remoteControlDescription": "El control remoto Discord utiliza su propio bot token, puerta de enlace y flujo REST.",
-      "accessRule1": "Envíe /pair [código] en un DM o canal de destino para autorizar el punto final Discord actual.",
-      "accessRule2": "Los mensajes del canal solo entran en la conversación cuando se menciona el bot, lo que evita absorber el chat habitual."
-    },
     "sections": {
       "credentials": "Credenciales",
       "remoteControl": "Control remoto",
@@ -2842,9 +2826,7 @@
       "pairCodeExpiresAt": "Vence en {time}",
       "pairDialogTitle": "{channel} Emparejamiento",
       "pairDialogDescription": "Genere un código de emparejamiento y finalice el emparejamiento desde su chat de bot {channel}.",
-      "pairDialogInstructionTelegram": "Envíe este comando al bot Telegram:",
       "pairDialogInstructionFeishu": "Send this command in a Feishu / Lark bot direct chat; it adds the sender to the same authorized-principal list used by scan authorization:",
-      "pairDialogInstructionDiscord": "Envíe este comando al bot Discord en un DM o canal de destino:",
       "bindingsDialogTitle": "{channel} Encuadernaciones",
       "bindingsDialogDescription": "Elimine los enlaces de puntos finales remotos uno por uno.",
       "bindingsEmpty": "Aún no hay ataduras.",
@@ -2858,14 +2840,6 @@
       "sessionBindingsDescription": "Cada punto final remoto a continuación está actualmente vinculado a una sesión de DeepChat.",
       "acpDefaultWorkdirRequiredTitle": "Se requiere un directorio predeterminado",
       "acpDefaultWorkdirRequiredDescription": "Los agentes ACP necesitan un espacio de trabajo local. Selecciona un directorio predeterminado antes de guardar."
-    },
-    "hooks": {
-      "title": "Telegram Ganchos",
-      "description": "Reutilice el mismo bot Telegram para notificaciones de gancho.",
-      "chatId": "ID de chat",
-      "chatIdPlaceholder": "por ej. 123456789",
-      "threadId": "ID del hilo (opcional)",
-      "threadIdPlaceholder": "ID de hilo opcional"
     },
     "status": {
       "title": "Estado de tiempo de ejecución",
@@ -2882,12 +2856,8 @@
       "bindingOnly": "Enlaces: {count}, principales emparejados: {paired}"
     },
     "overview": {
-      "telegram": "{bindingCount} enlaces, {pairedCount} usuarios emparejados",
       "feishu": "{bindingCount} enlaces, {pairedCount} usuarios emparejados",
-      "hooksOn": "en",
-      "hooksOff": "apagado",
       "qqbot": "{bindingCount} enlaces, {pairedCount} usuarios emparejados",
-      "discord": "{bindingCount} enlaces, {pairedCount} canales emparejados",
       "weixinIlink": "{bindingCount} enlaces, {accountCount} cuentas, {connectedCount} conectados"
     },
     "bindingKinds": {
