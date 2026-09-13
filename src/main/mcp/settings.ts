@@ -149,6 +149,17 @@ const DEFAULT_INMEMORY_SERVERS: Record<string, Omit<MCPServerConfig, 'enabled'>>
     },
     disable: false
   },
+  baiduSearch: {
+    args: [],
+    descriptions: 'DeepChat内置百度搜索服务（千帆 AI Search）',
+    icons: '🔎',
+    type: 'inmemory' as MCPServerType,
+    command: 'baiduSearch',
+    env: {
+      apiKey: 'YOUR_QIANFAN_API_KEY' // 与百度千帆 provider 同一 API Key（Bearer 认证）
+    },
+    disable: false
+  },
   difyKnowledge: {
     args: [],
     descriptions: 'DeepChat内置Dify知识库检索服务',

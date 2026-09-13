@@ -1,0 +1,100 @@
+:root {
+  color-scheme: light dark;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+body {
+  margin: 0;
+  padding: 16px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+main {
+  max-width: 520px;
+}
+
+h1 {
+  font-size: 18px;
+  margin: 0 0 16px;
+}
+
+.status-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 20px;
+  padding: 12px;
+  border: 1px solid rgba(128, 128, 128, 0.25);
+  border-radius: 8px;
+}
+
+.state {
+  font-weight: 600;
+}
+
+.state-ok {
+  color: #16a34a;
+}
+
+.state-muted {
+  color: rgba(128, 128, 128, 0.9);
+}
+
+.state-error {
+  color: #dc2626;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form label {
+  font-weight: 600;
+  margin-top: 8px;
+}
+
+.form input,
+.form select {
+  padding: 6px 10px;
+  border: 1px solid rgba(128, 128, 128, 0.4);
+  border-radius: 6px;
+  font-size: 14px;
+  background: transparent;
+  color: inherit;
+}
+
+.hint {
+  font-size: 12px;
+  color: rgba(128, 128, 128, 0.95);
+  margin: 8px 0 0;
+}
+
+.message {
+  min-height: 20px;
+  font-size: 13px;
+  margin: 16px 0;
+  color: rgba(128, 128, 128, 0.95);
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.actions button {
+  padding: 6px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  background: #2563eb;
+  color: #fff;
+}
+
+.actions button.secondary {
+  background: rgba(128, 128, 128, 0.2);
+  color: inherit;
+}

@@ -1,0 +1,88 @@
+{
+  "id": "com.deepchat.plugins.office-automation",
+  "name": "Office Automation",
+  "version": "0.1.0",
+  "publisher": "DeepChat",
+  "engines": {
+    "deepchat": ">=${app.version}",
+    "platforms": ["darwin", "linux", "win32"]
+  },
+  "activationEvents": ["onEnable"],
+  "capabilities": ["runtime.manage", "mcp.register", "skills.register", "settings.contribute"],
+  "mcpServers": [
+    {
+      "id": "office-reimbursement",
+      "displayName": "Office Reimbursement",
+      "transport": "stdio",
+      "command": "node",
+      "args": ["${plugin.root}/mcp/reimbursementServer.mjs"],
+      "env": {},
+      "startMode": "onDemand"
+    },
+    {
+      "id": "office-workflow",
+      "displayName": "Office Workflow",
+      "transport": "stdio",
+      "command": "node",
+      "args": ["${plugin.root}/mcp/workflowServer.mjs"],
+      "env": {},
+      "startMode": "onDemand"
+    }
+  ],
+  "skills": [
+    {
+      "id": "invoice-recognition",
+      "path": "skills/invoice-recognition/SKILL.md",
+      "scope": "agent"
+    },
+    {
+      "id": "office-reimbursement",
+      "path": "skills/office-reimbursement/SKILL.md",
+      "scope": "agent"
+    },
+    {
+      "id": "process-submission",
+      "path": "skills/process-submission/SKILL.md",
+      "scope": "agent"
+    },
+    {
+      "id": "office-scheduler",
+      "path": "skills/office-scheduler/SKILL.md",
+      "scope": "agent"
+    }
+  ],
+  "settingsContributions": [
+    {
+      "id": "office-automation-settings",
+      "title": "Office Automation",
+      "placement": "plugins",
+      "entry": "settings/index.html",
+      "preloadTypes": "types/settings-preload.d.ts"
+    }
+  ],
+  "toolPolicies": [
+    {
+      "serverId": "office-reimbursement",
+      "tools": {
+        "create_reimbursement": "ask",
+        "submit_reimbursement": "ask",
+        "track_reimbursement": "allow",
+        "list_reimbursements": "allow",
+        "delete_reimbursement": "ask"
+      }
+    },
+    {
+      "serverId": "office-workflow",
+      "tools": {
+        "search_workflow_definitions": "allow",
+        "get_workflow_definition": "allow",
+        "submit_workflow": "ask",
+        "track_workflow": "allow",
+        "approve_workflow": "ask",
+        "list_pending_approvals": "allow",
+        "cancel_workflow": "ask",
+        "register_workflow_callback": "ask"
+      }
+    }
+  ]
+}
