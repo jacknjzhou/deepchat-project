@@ -1440,7 +1440,11 @@ const channelI18nKeyMap: Record<RemoteChannel, string> = {
   qqbot: 'qqbot',
   'weixin-ilink': 'weixinIlink'
 }
-const REMOTE_CHANNELS = ['feishu', 'qqbot', 'weixin-ilink'] as const satisfies readonly RemoteChannel[]
+const REMOTE_CHANNELS = [
+  'feishu',
+  'qqbot',
+  'weixin-ilink'
+] as const satisfies readonly RemoteChannel[]
 
 function channelTitle(channel: RemoteChannel | null | undefined): string {
   if (!channel) {
@@ -2169,9 +2173,9 @@ const getSnapshotPrincipalIds = (
 const hasEnabledRemoteSettings = () =>
   Boolean(
     feishuSettings.value?.remoteEnabled ||
-      qqbotSettings.value?.remoteEnabled ||
-      weixinIlinkSettings.value?.remoteEnabled ||
-      weixinIlinkSettings.value?.accounts?.some((account) => account.enabled)
+    qqbotSettings.value?.remoteEnabled ||
+    weixinIlinkSettings.value?.remoteEnabled ||
+    weixinIlinkSettings.value?.accounts?.some((account) => account.enabled)
   )
 
 const clearStatusRefreshTimer = () => {

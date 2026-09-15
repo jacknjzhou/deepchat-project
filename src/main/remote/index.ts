@@ -353,12 +353,12 @@ export class RemoteService {
 
   async getChannelPairingSnapshot(channel: 'feishu'): Promise<FeishuPairingSnapshot>
   async getChannelPairingSnapshot(channel: 'qqbot'): Promise<QQBotPairingSnapshot>
-  async getChannelPairingSnapshot(channel: PairableRemoteChannel): Promise<
-    FeishuPairingSnapshot | QQBotPairingSnapshot
-  >
-  async getChannelPairingSnapshot(channel: PairableRemoteChannel): Promise<
-    FeishuPairingSnapshot | QQBotPairingSnapshot
-  > {
+  async getChannelPairingSnapshot(
+    channel: PairableRemoteChannel
+  ): Promise<FeishuPairingSnapshot | QQBotPairingSnapshot>
+  async getChannelPairingSnapshot(
+    channel: PairableRemoteChannel
+  ): Promise<FeishuPairingSnapshot | QQBotPairingSnapshot> {
     if (channel === 'feishu') {
       return this.bindingStore.getFeishuPairingSnapshot()
     }

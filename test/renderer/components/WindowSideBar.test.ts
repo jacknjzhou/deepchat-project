@@ -371,38 +371,37 @@ const setup = async (options: SetupOptions = {}) => {
         supportsCronDelivery: true
       }
     ]),
-    getChannelStatus: vi.fn(
-      async (channel: 'feishu' | 'qqbot' | 'weixin-ilink') =>
-        channel === 'feishu'
+    getChannelStatus: vi.fn(async (channel: 'feishu' | 'qqbot' | 'weixin-ilink') =>
+      channel === 'feishu'
+        ? {
+            channel: 'feishu' as const,
+            enabled: remoteStatus.enabled,
+            state: remoteStatus.state,
+            bindingCount: 0,
+            pairedUserCount: 0,
+            lastError: null,
+            botUser: null
+          }
+        : channel === 'qqbot'
           ? {
-              channel: 'feishu' as const,
-              enabled: remoteStatus.enabled,
-              state: remoteStatus.state,
+              channel: 'qqbot' as const,
+              enabled: false,
+              state: 'disabled' as const,
               bindingCount: 0,
               pairedUserCount: 0,
               lastError: null,
               botUser: null
             }
-          : channel === 'qqbot'
-            ? {
-                channel: 'qqbot' as const,
-                enabled: false,
-                state: 'disabled' as const,
-                bindingCount: 0,
-                pairedUserCount: 0,
-                lastError: null,
-                botUser: null
-              }
-            : {
-                channel: 'weixin-ilink' as const,
-                enabled: false,
-                state: 'disabled' as const,
-                bindingCount: 0,
-                accountCount: 0,
-                connectedAccountCount: 0,
-                lastError: null,
-                accounts: []
-              }
+          : {
+              channel: 'weixin-ilink' as const,
+              enabled: false,
+              state: 'disabled' as const,
+              bindingCount: 0,
+              accountCount: 0,
+              connectedAccountCount: 0,
+              lastError: null,
+              accounts: []
+            }
     )
   }
 

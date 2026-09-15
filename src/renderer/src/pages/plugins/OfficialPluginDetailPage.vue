@@ -347,9 +347,7 @@ const remoteChannel = computed<RemoteChannel | null>(() => {
   }
 
   const channel = id.slice('remote:'.length)
-  return ['feishu', 'qqbot', 'weixin-ilink'].includes(channel)
-    ? (channel as RemoteChannel)
-    : null
+  return ['feishu', 'qqbot', 'weixin-ilink'].includes(channel) ? (channel as RemoteChannel) : null
 })
 const plugin = computed(() => pluginCatalogStore.getPlugin(pluginId.value))
 const remoteStatus = computed(() => {

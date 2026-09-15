@@ -1109,7 +1109,7 @@ export const DEFAULT_PROVIDERS: LLM_PROVIDER_BASE[] = [
       defaultBaseUrl:
         'https://your-resource-name.openai.azure.com/openai/deployments/your-deployment-name'
     }
-  },
+  }
   // {
   //   id: 'modelscope',
   //   name: 'ModelScope',

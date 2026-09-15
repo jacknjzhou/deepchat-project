@@ -107,9 +107,7 @@ export interface QQBotPairingSnapshot {
   pairedGroupIds: string[]
 }
 
-export type RemotePairingSnapshot =
-  | FeishuPairingSnapshot
-  | QQBotPairingSnapshot
+export type RemotePairingSnapshot = FeishuPairingSnapshot | QQBotPairingSnapshot
 
 export interface WeixinIlinkAccountSummary {
   accountId: string
@@ -202,10 +200,7 @@ export interface WeixinIlinkRemoteStatus {
   accounts: WeixinIlinkAccountStatus[]
 }
 
-export type RemoteChannelStatus =
-  | FeishuRemoteStatus
-  | QQBotRemoteStatus
-  | WeixinIlinkRemoteStatus
+export type RemoteChannelStatus = FeishuRemoteStatus | QQBotRemoteStatus | WeixinIlinkRemoteStatus
 
 export interface WeixinIlinkLoginSession {
   sessionKey: string

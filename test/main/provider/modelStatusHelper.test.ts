@@ -177,7 +177,11 @@ describe('ModelStatusHelper.ensureModelStatus', () => {
 
     const duplicatedId = 'openai-copy-123'
     expect(
-      helper.getBatchModelStatusWithFallback(duplicatedId, ['gpt-5.4', 'gpt-4.1', 'gpt-3.5'], 'openai')
+      helper.getBatchModelStatusWithFallback(
+        duplicatedId,
+        ['gpt-5.4', 'gpt-4.1', 'gpt-3.5'],
+        'openai'
+      )
     ).toEqual({
       'gpt-5.4': true,
       'gpt-4.1': false,
@@ -196,7 +200,9 @@ describe('ModelStatusHelper.ensureModelStatus', () => {
       publishEvent: () => undefined
     })
 
-    expect(helper.getBatchModelStatusWithFallback('openai-copy-123', ['gpt-5.4'], 'openai')).toEqual({
+    expect(
+      helper.getBatchModelStatusWithFallback('openai-copy-123', ['gpt-5.4'], 'openai')
+    ).toEqual({
       'gpt-5.4': false
     })
   })

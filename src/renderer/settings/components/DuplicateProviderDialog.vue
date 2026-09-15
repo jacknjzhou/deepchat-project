@@ -4,7 +4,11 @@
       <DialogHeader>
         <DialogTitle>{{ t('settings.provider.dialog.duplicate.title') }}</DialogTitle>
         <DialogDescription>
-          {{ t('settings.provider.dialog.duplicate.description', { name: t(sourceProvider?.name ?? '') }) }}
+          {{
+            t('settings.provider.dialog.duplicate.description', {
+              name: t(sourceProvider?.name ?? '')
+            })
+          }}
         </DialogDescription>
       </DialogHeader>
 
@@ -25,7 +29,9 @@
           </p>
         </div>
 
-        <div class="rounded-md bg-amber-50 dark:bg-amber-950/30 p-3 text-xs text-amber-800 dark:text-amber-200">
+        <div
+          class="rounded-md bg-amber-50 dark:bg-amber-950/30 p-3 text-xs text-amber-800 dark:text-amber-200"
+        >
           <div class="flex items-start gap-2">
             <Icon icon="lucide:alert-triangle" class="h-4 w-4 shrink-0 mt-0.5" />
             <span>{{ t('settings.provider.dialog.duplicate.securityHint') }}</span>
@@ -50,7 +56,14 @@
 import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Icon } from '@iconify/vue'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@shadcn/components/ui/dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@shadcn/components/ui/dialog'
 import { Input } from '@shadcn/components/ui/input'
 import { Label } from '@shadcn/components/ui/label'
 import { DcButton } from '@dc-ui/components/button'
