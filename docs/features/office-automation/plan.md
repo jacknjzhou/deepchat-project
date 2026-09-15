@@ -55,7 +55,7 @@
 
 - [x] 2.1 `plugin.json` 按 HTML 5.1（模板 `plugins/feishu/plugin.json`）：
   - `id: "com.deepchat.plugins.office-automation"`；`capabilities: ["runtime.manage", "mcp.register", "skills.register", "settings.contribute"]`（不声明 `process.execDeclared`）
-  - `mcpServers` 2 个 stdio 条目：`command: "node"`，`args: ["${plugin.root}/mcp/reimbursementServer.mjs"]` / `["${plugin.root}/mcp/workflowServer.mjs"]`，`startMode: "onDemand"`
+  - `mcpServers` 2 个 stdio 条目：`command: "node"`，`args: ["${plugin.root}/mcp/reimbursementServer.mjs"]` / `["${plugin.root}/mcp/workflowServer.mjs"]`，默认 `startMode: "eager"`（feishu 同款；`onDemand` 需额外声明 `surfaces: ["tools"]` 与 `toolCatalog` 目录文件，暂不采用）
   - `skills` 4 条（Slice 3/5 落地文件，条目先行声明）；`settingsContributions`（`placement: "plugins"`、`entry: "settings/index.html"`、`preloadTypes: "types/settings-preload.d.ts"`）
   - `toolPolicies` 按 HTML 3.5 权限表（reimbursement：create/submit 为 ask，track/list 为 allow；workflow 同表）
   - `engines`/`source` 按最终发布方式决定；本地开发阶段可省略 `source`

@@ -21,8 +21,7 @@
       "transport": "stdio",
       "command": "node",
       "args": ["${plugin.root}/mcp/reimbursementServer.mjs"],
-      "env": {},
-      "startMode": "onDemand"
+      "env": {}
     },
     {
       "id": "office-workflow",
@@ -30,8 +29,7 @@
       "transport": "stdio",
       "command": "node",
       "args": ["${plugin.root}/mcp/workflowServer.mjs"],
-      "env": {},
-      "startMode": "onDemand"
+      "env": {}
     }
   ],
   "skills": [
