@@ -3,6 +3,11 @@
   "name": "Office Automation",
   "version": "0.1.0",
   "publisher": "DeepChat",
+  "source": {
+    "type": "deepchat-official",
+    "url": "${github.release.download}/deepchat-plugin-office-automation-${app.version}-${target.platform}-${arch}.dcplugin",
+    "publisher": "DeepChat"
+  },
   "engines": {
     "deepchat": ">=${app.version}",
     "platforms": ["darwin", "linux", "win32"]
