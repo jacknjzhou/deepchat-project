@@ -15,7 +15,7 @@ Guide the agent to submit generic approval workflows and track their status.
 
 - Plugin id: `${OWNER_PLUGIN_ID}`.
 - Plugin root: `${PLUGIN_ROOT}`.
-- Server id: `office-workflow`.
+- Server id: `office-workflow-server`.
 
 ## When To Activate
 

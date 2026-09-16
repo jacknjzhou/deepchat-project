@@ -274,7 +274,7 @@ async function callTool({ name, args }) {
 }
 
 runStdioServer({
-  serverInfo: { name: 'office-reimbursement', version: '0.1.0' },
+  serverInfo: { name: 'office-reimbursement-server', version: '0.1.0' },
   tools: activeTools,
   callTool
 })

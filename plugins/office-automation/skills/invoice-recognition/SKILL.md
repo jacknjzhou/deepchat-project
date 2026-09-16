@@ -16,7 +16,7 @@ vision model reads the invoice layout directly.
 
 - Plugin id: `${OWNER_PLUGIN_ID}`.
 - Plugin root: `${PLUGIN_ROOT}`.
-- Server id: `office-reimbursement` (downstream tools).
+- Server id: `office-reimbursement-server` (downstream tools).
 
 ## When To Use
 

@@ -65,11 +65,11 @@ async function refreshStatus() {
 
   setMcpState(
     mcpReimbursementNode,
-    status.mcpServers?.find((s) => s.serverId === 'office-reimbursement')
+    status.mcpServers?.find((s) => s.serverId === 'office-reimbursement-server')
   )
   setMcpState(
     mcpWorkflowNode,
-    status.mcpServers?.find((s) => s.serverId === 'office-workflow')
+    status.mcpServers?.find((s) => s.serverId === 'office-workflow-server')
   )
 }
 

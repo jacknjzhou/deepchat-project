@@ -16,16 +16,16 @@
   "capabilities": ["runtime.manage", "mcp.register", "skills.register", "settings.contribute"],
   "mcpServers": [
     {
-      "id": "office-reimbursement",
-      "displayName": "Office Reimbursement",
+      "id": "office-reimbursement-server",
+      "displayName": "Office Reimbursement Server",
       "transport": "stdio",
       "command": "node",
       "args": ["${plugin.root}/mcp/reimbursementServer.mjs"],
       "env": {}
     },
     {
-      "id": "office-workflow",
-      "displayName": "Office Workflow",
+      "id": "office-workflow-server",
+      "displayName": "Office Workflow Server",
       "transport": "stdio",
       "command": "node",
       "args": ["${plugin.root}/mcp/workflowServer.mjs"],
@@ -65,7 +65,7 @@
   ],
   "toolPolicies": [
     {
-      "serverId": "office-reimbursement",
+      "serverId": "office-reimbursement-server",
       "tools": {
         "create_reimbursement": "ask",
         "submit_reimbursement": "ask",
@@ -75,7 +75,7 @@
       }
     },
     {
-      "serverId": "office-workflow",
+      "serverId": "office-workflow-server",
       "tools": {
         "search_workflow_definitions": "allow",
         "get_workflow_definition": "allow",

@@ -16,7 +16,7 @@ Agent Tool combined with office-automation MCP tools.
 
 - Plugin id: `${OWNER_PLUGIN_ID}`.
 - Plugin root: `${PLUGIN_ROOT}`.
-- Servers: `office-reimbursement`, `office-workflow`, and the agent `cronjob` tool.
+- Servers: `office-reimbursement-server`, `office-workflow-server`, and the agent `cronjob` tool.
 
 ## When To Activate
 

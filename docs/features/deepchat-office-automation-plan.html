@@ -1177,16 +1177,16 @@ Agent (process-submission Skill):
   ],
   "mcpServers": [
     {
-      "id": "office-reimbursement",
-      "displayName": "Reimbursement Management",
+      "id": "office-reimbursement-server",
+      "displayName": "Office Reimbursement Server",
       "transport": "stdio",
       "command": "node",
       "args": ["${plugin.root}/mcp/reimbursementServer.mjs"],
       "env": {}
     },
     {
-      "id": "office-workflow",
-      "displayName": "Workflow & Approval Submission",
+      "id": "office-workflow-server",
+      "displayName": "Office Workflow Server",
       "transport": "stdio",
       "command": "node",
       "args": ["${plugin.root}/mcp/workflowServer.mjs"],
@@ -1201,7 +1201,7 @@ Agent (process-submission Skill):
   ],
   "toolPolicies": [
     {
-      "serverId": "office-reimbursement",
+      "serverId": "office-reimbursement-server",
       "tools": {
         "create_reimbursement": "ask",
         "submit_reimbursement": "ask",
@@ -1212,7 +1212,7 @@ Agent (process-submission Skill):
       }
     },
     {
-      "serverId": "office-workflow",
+      "serverId": "office-workflow-server",
       "tools": {
         "search_workflow_definitions": "allow",
         "get_workflow_definition": "allow",

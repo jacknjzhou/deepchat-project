@@ -310,7 +310,7 @@ async function callTool({ name, args }) {
 }
 
 runStdioServer({
-  serverInfo: { name: 'office-workflow', version: '0.1.0' },
+  serverInfo: { name: 'office-workflow-server', version: '0.1.0' },
   tools: activeTools,
   callTool
 })

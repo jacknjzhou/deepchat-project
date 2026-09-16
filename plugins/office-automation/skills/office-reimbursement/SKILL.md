@@ -16,7 +16,7 @@ invoice recognition → reimbursement creation → approval submission → statu
 
 - Plugin id: `${OWNER_PLUGIN_ID}`.
 - Plugin root: `${PLUGIN_ROOT}`.
-- Server id: `office-reimbursement`.
+- Server id: `office-reimbursement-server`.
 
 ## When To Activate
 
