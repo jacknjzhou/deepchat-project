@@ -128,6 +128,9 @@
           <AlertDialogTitle>{{ deleteDialogTitle }}</AlertDialogTitle>
           <AlertDialogDescription>{{ deleteDialogDescription }}</AlertDialogDescription>
         </AlertDialogHeader>
+        <p v-if="deleteErrorKey" class="text-sm text-destructive" data-testid="delete-error">
+          {{ t(deleteErrorKey) }}
+        </p>
         <AlertDialogFooter>
           <AlertDialogCancel data-testid="delete-cancel">
             {{ t('common.cancel') }}
@@ -146,7 +149,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { Icon } from '@iconify/vue'
@@ -177,6 +180,7 @@ const deleteConfirmOpen = ref(false)
 const pendingDelete = ref<DocumentTemplate | null>(null)
 const isDeleting = ref(false)
 const forceRequired = ref<{ count: number } | null>(null)
+const deleteErrorKey = ref<string | null>(null)
 
 const builtinGroups = computed(() => {
   const groups: Array<{ category: DocumentTemplateCategory; templates: DocumentTemplate[] }> = []
@@ -243,6 +247,7 @@ function createNew() {
 function requestDelete(template: DocumentTemplate) {
   pendingDelete.value = template
   forceRequired.value = null
+  deleteErrorKey.value = null
   deleteConfirmOpen.value = true
 }
 
@@ -259,15 +264,27 @@ async function confirmDelete() {
       // keep dialog open for second confirmation
       return
     }
+    if (result.kind === 'rejected') {
+      // keep dialog open so the user can cancel or retry the confirmation
+      deleteErrorKey.value = result.messageKey
+      return
+    }
     deleteConfirmOpen.value = false
     pendingDelete.value = null
     forceRequired.value = null
+    deleteErrorKey.value = null
   } catch {
     // error already captured by store
   } finally {
     isDeleting.value = false
   }
 }
+
+watch(deleteConfirmOpen, (open) => {
+  if (!open) {
+    deleteErrorKey.value = null
+  }
+})
 
 onMounted(() => {
   if (store.templates.length === 0) {

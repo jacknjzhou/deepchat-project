@@ -217,4 +217,22 @@ describe('DocumentsSettings', () => {
     expect(stubStore.attemptDelete).toHaveBeenCalledWith('tpl_custom', {})
     expect(wrapper.text()).not.toContain('Custom')
   })
+
+  it('keeps delete dialog open and shows rejection message when delete is rejected', async () => {
+    const { wrapper } = await setup(true)
+    stubStore.attemptDelete.mockResolvedValueOnce({
+      kind: 'rejected',
+      messageKey: 'settings.documents.templates.deleteFailed'
+    })
+    await wrapper.get('[data-testid="template-delete"]').trigger('click')
+    await flushPromises()
+    document.querySelector<HTMLButtonElement>('[data-testid="delete-confirm"]')!.click()
+    await flushPromises()
+    expect(stubStore.attemptDelete).toHaveBeenCalledWith('tpl_custom', {})
+    expect(document.querySelector('[data-testid="delete-confirm"]')).not.toBeNull()
+    const errorElement = document.querySelector('[data-testid="delete-error"]')
+    expect(errorElement).not.toBeNull()
+    expect(errorElement!.textContent).toContain('settings.documents.templates.deleteFailed')
+    expect(wrapper.text()).toContain('Custom')
+  })
 })
