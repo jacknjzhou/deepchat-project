@@ -2085,6 +2085,8 @@ declare module 'vue-i18n' {
     'settings-about': string
     'settings-shortcut': string
     'settings-display': string
+    'settings-documents': string
+    'settings-documents-template': string
     'settings-knowledge-base': string
     'settings-prompt': string
     'settings-mcp-market': string
@@ -2274,6 +2276,110 @@ declare module 'vue-i18n' {
       cacheFallbackReasons: {
         database_error: string
         safe_storage_unavailable: string
+      }
+    }
+    documents: {
+      description: string
+      templates: {
+        title: string
+        builtinGroup: string
+        customGroup: string
+        fieldCount: string
+        create: string
+        view: string
+        edit: string
+        fork: string
+        delete: string
+        deleteConfirmTitle: string
+        deleteConfirmDescription: string
+        deleteForceDescription: string
+        deleteFailed: string
+        loadFailed: string
+        retry: string
+        empty: string
+      }
+      category: {
+        contract: string
+        travel: string
+        purchase: string
+        payment: string
+        invoice: string
+        custom: string
+      }
+      valueType: {
+        text: string
+        number: string
+        date: string
+        array: string
+        enum: string
+      }
+      editor: {
+        newTitle: string
+        notFound: string
+        nameLabel: string
+        namePlaceholder: string
+        nameRequired: string
+        typeKeyLabel: string
+        typeKeyHint: string
+        typeKeyInvalid: string
+        typeKeyTaken: string
+        typeKeyImmutableHint: string
+        iconLabel: string
+        iconPlaceholder: string
+        extractionModeLabel: string
+        extractionModeHint: string
+        mode: {
+          auto: string
+          vision: string
+          text: string
+        }
+        promptPresetLabel: string
+        promptPresetPlaceholder: string
+        fieldsTitle: string
+        addField: string
+        fieldKey: string
+        fieldLabel: string
+        fieldType: string
+        fieldRequired: string
+        fieldPromptHint: string
+        fieldValidation: string
+        fieldEnumOptions: string
+        fieldKeyHint: string
+        fieldKeyInvalid: string
+        fieldKeyDuplicated: string
+        fieldValidationHint: string
+        fieldEnumOptionsHint: string
+        fieldDeleteRequiredConfirmTitle: string
+        fieldDeleteRequiredConfirmDescription: string
+        save: string
+        saving: string
+        saveFailed: string
+        saved: string
+        builtinBadge: string
+        readonlyHint: string
+        forkCta: string
+        dirty: string
+        back: string
+        testCreateModeHint: string
+      }
+      test: {
+        title: string
+        description: string
+        selectFile: string
+        reselect: string
+        running: string
+        failed: string
+        duration: string
+        routeVision: string
+        routeText: string
+        routeOcr: string
+        fieldHeader: string
+        valueHeader: string
+        statusHeader: string
+        uncertain: string
+        issues: string
+        empty: string
+        fileRequired: string
       }
     }
     leaveGuard: {
