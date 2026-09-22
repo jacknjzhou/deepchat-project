@@ -108,10 +108,9 @@ describe('mergeSegmentOutputs', () => {
   it('冲突标 uncertain 不改写原 entry 的 uncertain', () => {
     const baseEntry = entry('base-v')
     const adoptedEntry = entry('partial-v')
-    const merged = mergeSegmentOutputs(
-      { a: baseEntry, b: adoptedEntry },
-      [{ a: entry('other-v'), b: entry('another-v') }]
-    )
+    const merged = mergeSegmentOutputs({ a: baseEntry, b: adoptedEntry }, [
+      { a: entry('other-v'), b: entry('another-v') }
+    ])
     expect(merged.a).toEqual({ value: 'base-v', uncertain: true })
     expect(merged.b).toEqual({ value: 'partial-v', uncertain: true })
     expect(baseEntry.uncertain).toBe(false)

@@ -81,10 +81,7 @@ export class DocumentExtractor {
     let rawOutput = ''
 
     if (plan.route === 'vision') {
-      const target = this.requireTarget(
-        await this.deps.resolveVisionTarget(),
-        'defaultVisionModel'
-      )
+      const target = this.requireTarget(await this.deps.resolveVisionTarget(), 'defaultVisionModel')
       const dataUrl = await this.deps.readImageAsDataUrl(input.file.path)
       const messages: ChatMessage[] = [
         { role: 'system', content: buildExtractionSystemPrompt(template) },
