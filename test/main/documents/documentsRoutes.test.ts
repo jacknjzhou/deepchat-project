@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   documentTemplatesDeleteRoute,
   documentTemplatesForkRoute,
@@ -12,6 +12,26 @@ import {
   documentsListRoute,
   documentsUpsertRoute
 } from '@shared/contracts/routes'
+import { createDocumentsRoutes } from '@/documents/routes'
+import { DocumentsRepository } from '@/documents/repository'
+import { DocumentsDatabase } from '@/documents/data/database'
+import { DocumentTemplatesTable } from '@/documents/data/tables/documentTemplates'
+import { DocumentsTable } from '@/documents/data/tables/documents'
+
+const sqliteModule = await import('better-sqlite3-multiple-ciphers').catch(() => null)
+
+let sqliteAvailable = false
+if (sqliteModule) {
+  try {
+    const smokeDb = new sqliteModule.default(':memory:')
+    smokeDb.close()
+    sqliteAvailable = true
+  } catch {
+    sqliteAvailable = false
+  }
+}
+
+const describeIfSqlite = sqliteAvailable ? describe : describe.skip
 
 describe('documents route contracts', () => {
   it('parses template list output', () => {
@@ -156,5 +176,86 @@ describe('documents extraction route contracts', () => {
       file: { path: '/tmp/a.pdf' }
     })
     expect(input.source).toBe('manual')
+  })
+})
+
+const DatabaseCtor = sqliteModule!.default
+const DocumentTemplatesTableCtor = DocumentTemplatesTable
+const DocumentsTableCtor = DocumentsTable
+const DocumentsDatabaseCtor = DocumentsDatabase
+
+describeIfSqlite('documents extraction handlers', () => {
+  const makeRepository = () => {
+    const db = new DatabaseCtor(':memory:')
+    new DocumentTemplatesTableCtor(db).createTable()
+    new DocumentsTableCtor(db).createTable()
+    const database = new DocumentsDatabaseCtor({ getDatabase: () => db })
+    return new DocumentsRepository(database)
+  }
+
+  const makeExtractorStub = () => ({
+    extract: vi.fn(async () => ({
+      template: {
+        id: 'tpl-1',
+        typeKey: 'invoice_special',
+        name: '增值税专用发票',
+        icon: null,
+        category: '发票类',
+        fields: [],
+        extractionMode: 'auto',
+        promptPreset: null,
+        isBuiltin: true,
+        builtinSourceId: null,
+        version: 1,
+        createdAt: 1,
+        updatedAt: 1
+      },
+      route: 'vision',
+      fields: { invoice_code: { value: '123456789012', uncertain: false } },
+      rawOutput: '{"fields":{}}',
+      durationMs: 42,
+      issues: []
+    }))
+  })
+
+  it('documentTemplates.testExtract 返回字段数组与元信息', async () => {
+    const repository = makeRepository()
+    const extractor = makeExtractorStub()
+    const routes = createDocumentsRoutes(repository, extractor as never)
+    const handler = routes.get('documentTemplates.testExtract')
+    expect(handler).toBeDefined()
+
+    const result = await handler!({ templateId: 'tpl-1', file: { path: '/tmp/a.jpg' } })
+    expect(result.fields[0]).toEqual({
+      key: 'invoice_code',
+      value: '123456789012',
+      uncertain: false
+    })
+    expect(result.meta.route).toBe('vision')
+    expect(result.meta.durationMs).toBe(42)
+  })
+
+  it('documents.extractAndDraft 入库 draft 档案', async () => {
+    const repository = makeRepository()
+    const extractor = makeExtractorStub()
+    const routes = createDocumentsRoutes(repository, extractor as never)
+    const handler = routes.get('documents.extractAndDraft')
+    expect(handler).toBeDefined()
+
+    const result = await handler!({
+      templateId: 'tpl-1',
+      file: { path: '/tmp/a.jpg' },
+      source: 'manual'
+    })
+    expect(result.document.status).toBe('draft')
+    expect(result.document.typeKey).toBe('invoice_special')
+    expect(result.document.fileUris).toEqual(['/tmp/a.jpg'])
+    expect(result.document.fields.invoice_code).toEqual({
+      value: '123456789012',
+      uncertain: false
+    })
+
+    const listed = repository.listDocuments({ typeKey: 'invoice_special' })
+    expect(listed.length).toBe(1)
   })
 })

@@ -186,9 +186,12 @@ import { ProjectDatabase } from '@/project/data/database'
 import { SettingsDatabase } from '@/settings/data/database'
 import { SchedulerDatabase } from '@/scheduler/data/database'
 import { DocumentsDatabase } from '@/documents/data/database'
+import { DocumentExtractor } from '@/documents/extractor/documentExtractor'
 import { DocumentsRepository } from '@/documents/repository'
 import { createDocumentsRoutes } from '@/documents/routes'
 import { seedPresetTemplates } from '@/documents/seed'
+import { ImageFileAdapter } from '@/file/adapters/ImageFileAdapter'
+import { PdfFileAdapter } from '@/file/adapters/PdfFileAdapter'
 import { AppDatabase } from '@/app/data/database'
 import { createOrchestrationRoutes } from '@/orchestration/routes'
 import { OrchestrationCapabilityResolver } from '@/orchestration/capability'
@@ -2807,7 +2810,55 @@ export async function createMainProcessControl(dependencies: {
     })
     const remoteRoutes = createRemoteRoutes(remoteService)
     const schedulerRoutes = createSchedulerRoutes(cronJobs)
-    const documentsRoutes = createDocumentsRoutes(documentsRepository)
+    const documentsMaxFileSize = () =>
+      dependencies.settingsStore.get<number>('maxFileSize') ?? 30 * 1024 * 1024
+    const documentExtractor = new DocumentExtractor({
+      repository: documentsRepository,
+      generateCompletion: ({ providerId, modelId, messages, temperature, maxTokens }) =>
+        providerRuntime.generateCompletionStandalone(
+          providerId,
+          messages,
+          modelId,
+          temperature,
+          maxTokens
+        ),
+      resolveVisionTarget: () => {
+        const selection = providerSettings.getSetting<{ providerId: string; modelId: string }>(
+          'defaultVisionModel'
+        )
+        return selection?.providerId && selection?.modelId ? selection : null
+      },
+      resolveTextTarget: () => {
+        const selection = providerSettings.getSetting<{ providerId: string; modelId: string }>(
+          'defaultModel'
+        )
+        return selection?.providerId && selection?.modelId ? selection : null
+      },
+      readImageAsDataUrl: async (filePath) => {
+        const adapter = new ImageFileAdapter(filePath, documentsMaxFileSize())
+        const dataUrl = await adapter.getLLMContent()
+        if (!dataUrl) {
+          throw new Error(`failed to read image for vision extraction: ${filePath}`)
+        }
+        return dataUrl
+      },
+      extractPdfText: async (filePath) => {
+        const adapter = new PdfFileAdapter(filePath, documentsMaxFileSize())
+        const pages = await adapter.getAllPagesMarkdown()
+        const text = (pages ?? []).join('\n\n')
+        return { text, hasTextLayer: text.replace(/\s/g, '').length >= 200 }
+      },
+      extractOcrText: async (filePath) => {
+        const result = await ocrRuntimeService.extractDocument({
+          filePath,
+          maxFileSize: documentsMaxFileSize(),
+          backend: 'auto',
+          priority: 'interactive'
+        })
+        return result.text
+      }
+    })
+    const documentsRoutes = createDocumentsRoutes(documentsRepository, documentExtractor)
     const memoryRoutes = createMemoryRoutes({
       memoryService,
       getAgentType: (agentId) => agentSettings.getAgentType(agentId),

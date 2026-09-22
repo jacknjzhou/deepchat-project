@@ -3,16 +3,22 @@ import {
   documentTemplatesForkRoute,
   documentTemplatesGetRoute,
   documentTemplatesListRoute,
+  documentTemplatesTestExtractRoute,
   documentTemplatesUpsertRoute,
   documentsDeleteRoute,
+  documentsExtractAndDraftRoute,
   documentsGetRoute,
   documentsListRoute,
   documentsUpsertRoute
 } from '@shared/contracts/routes'
 import { createRouteMap, type DeepchatRouteMap } from '@/routes/routeRegistry'
+import type { DocumentExtractor } from './extractor/documentExtractor'
 import type { DocumentsRepository } from './repository'
 
-export function createDocumentsRoutes(repository: DocumentsRepository): DeepchatRouteMap {
+export function createDocumentsRoutes(
+  repository: DocumentsRepository,
+  extractor: DocumentExtractor
+): DeepchatRouteMap {
   return createRouteMap([
     [
       documentTemplatesListRoute.name,
@@ -94,6 +100,53 @@ export function createDocumentsRoutes(repository: DocumentsRepository): Deepchat
         const input = documentsDeleteRoute.input.parse(rawInput)
         repository.deleteDocument(input.id)
         return documentsDeleteRoute.output.parse({ success: true })
+      }
+    ],
+    [
+      documentTemplatesTestExtractRoute.name,
+      async (rawInput) => {
+        const input = documentTemplatesTestExtractRoute.input.parse(rawInput)
+        const result = await extractor.extract({ templateId: input.templateId, file: input.file })
+        return documentTemplatesTestExtractRoute.output.parse({
+          fields: Object.entries(result.fields).map(([key, entry]) => ({
+            key,
+            value: entry.value,
+            uncertain: entry.uncertain
+          })),
+          meta: {
+            route: result.route,
+            rawOutput: result.rawOutput,
+            durationMs: result.durationMs,
+            issues: result.issues
+          }
+        })
+      }
+    ],
+    [
+      documentsExtractAndDraftRoute.name,
+      async (rawInput) => {
+        const input = documentsExtractAndDraftRoute.input.parse(rawInput)
+        const result = await extractor.extract({ templateId: input.templateId, file: input.file })
+        const document = repository.insertDocument({
+          templateId: result.template.id,
+          typeKey: result.template.typeKey,
+          templateSnapshot: result.template,
+          fields: result.fields,
+          fileUris: [input.file.path],
+          source: input.source ?? 'manual',
+          sessionId: input.sessionId ?? null,
+          status: 'draft',
+          now: Date.now()
+        })
+        return documentsExtractAndDraftRoute.output.parse({
+          document,
+          meta: {
+            route: result.route,
+            rawOutput: result.rawOutput,
+            durationMs: result.durationMs,
+            issues: result.issues
+          }
+        })
       }
     ]
   ])
