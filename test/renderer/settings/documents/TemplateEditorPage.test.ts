@@ -311,6 +311,43 @@ describe('TemplateEditorPage', () => {
     expect(stubStore.saveTemplate.mock.calls[0][0].name).toBe('New Template')
   })
 
+  it('trims whitespace-only field promptHint and validation to null on save', async () => {
+    stubStore.saveTemplate.mockResolvedValueOnce({
+      ...customTemplate,
+      id: 'tpl_new',
+      typeKey: 'new_doc',
+      name: 'New Template'
+    })
+    const { wrapper } = await setup('/documents/template/new', [
+      {
+        path: '/documents/template/:id',
+        name: 'settings-documents-template',
+        component: { template: '<div />' }
+      }
+    ])
+    await wrapper.get('[data-testid="template-name"]').setValue('New Template')
+    await wrapper.get('[data-testid="template-type-key"]').setValue('new_doc')
+    wrapper.findComponent({ name: 'TemplateFieldsEditorStub' }).vm.$emit('update:fields', [
+      {
+        key: 'amount',
+        label: 'Amount',
+        valueType: 'number',
+        required: true,
+        promptHint: '  ',
+        validation: '\t',
+        enumOptions: '',
+        order: 1
+      }
+    ])
+    await flushPromises()
+    await wrapper.get('[data-testid="template-save"]').trigger('click')
+    await flushPromises()
+    expect(stubStore.saveTemplate).toHaveBeenCalledTimes(1)
+    const payload = stubStore.saveTemplate.mock.calls[0][0]
+    expect(payload.fields[0].promptHint).toBeNull()
+    expect(payload.fields[0].validation).toBeNull()
+  })
+
   it('navigates back to documents tab on back button', async () => {
     const { wrapper, router } = await setup('/documents/template/tpl_custom', [
       {

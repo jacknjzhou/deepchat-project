@@ -26,13 +26,28 @@
           icon="lucide:grip-vertical"
           class="lucide-grip-vertical size-4 cursor-grab self-center text-muted-foreground"
         />
-        <Input
-          :model-value="field.key"
-          :placeholder="t('settings.documents.editor.fieldKey')"
-          :disabled="readonly"
-          data-testid="field-key"
-          @update:model-value="(value) => update(index, { key: String(value) })"
-        />
+        <div class="min-w-0">
+          <Input
+            :model-value="field.key"
+            :placeholder="t('settings.documents.editor.fieldKey')"
+            :disabled="readonly"
+            :aria-invalid="fieldIssues[index] ? 'true' : undefined"
+            :aria-describedby="fieldIssues[index] ? `field-key-issue-${index}` : undefined"
+            data-testid="field-key"
+            @update:model-value="(value) => update(index, { key: String(value) })"
+          />
+          <p
+            v-if="fieldIssues[index]"
+            :id="`field-key-issue-${index}`"
+            class="mt-1 text-xs text-destructive"
+          >
+            {{
+              fieldIssues[index] === 'duplicated'
+                ? t('settings.documents.editor.fieldKeyDuplicated')
+                : t('settings.documents.editor.fieldKeyInvalid')
+            }}
+          </p>
+        </div>
         <Input
           :model-value="field.label"
           :placeholder="t('settings.documents.editor.fieldLabel')"
@@ -155,7 +170,13 @@ import {
   AlertDialogTitle
 } from '@shadcn/components/ui/alert-dialog'
 import { DOCUMENT_FIELD_VALUE_TYPES, type DocumentFieldValueType } from '@shared/documents'
-import { moveField, removeField, updateField, type EditableField } from './templateFields'
+import {
+  moveField,
+  removeField,
+  updateField,
+  validateFields,
+  type EditableField
+} from './templateFields'
 
 const props = defineProps<{
   fields: EditableField[]
@@ -169,6 +190,9 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 const valueTypes = DOCUMENT_FIELD_VALUE_TYPES
+// Row-level key issues are purely derived from the controlled fields; hidden
+// in readonly mode where inputs are disabled and saving is unavailable.
+const fieldIssues = computed(() => (props.readonly ? {} : validateFields(props.fields)))
 
 const listRef = ref<HTMLElement | null>(null)
 const confirmOpen = ref(false)

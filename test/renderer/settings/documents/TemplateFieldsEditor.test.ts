@@ -241,6 +241,24 @@ describe('TemplateFieldsEditor', () => {
     expect(wrapper.emitted('add')).toBeTruthy()
   })
 
+  it('shows an inline error for an invalid field key', async () => {
+    const fields = makeFields().map((field) => ({ ...field, key: '1bad' }))
+    const { wrapper } = await setup(false, fields)
+    expect(wrapper.text()).toContain('settings.documents.editor.fieldKeyInvalid')
+    const keyInput = wrapper.get('input[placeholder="settings.documents.editor.fieldKey"]')
+    expect(keyInput.attributes('aria-invalid')).toBe('true')
+    expect(keyInput.attributes('aria-describedby')).toBe('field-key-issue-0')
+  })
+
+  it('shows a duplicated key error and hides issues in readonly mode', async () => {
+    const fields = makeFields().map((field) => ({ ...field, key: 'amount' }))
+    const { wrapper } = await setup(false, fields)
+    expect(wrapper.text()).toContain('settings.documents.editor.fieldKeyDuplicated')
+    const readonlyWrapper = (await setup(true, fields)).wrapper
+    expect(readonlyWrapper.text()).not.toContain('settings.documents.editor.fieldKeyInvalid')
+    expect(readonlyWrapper.text()).not.toContain('settings.documents.editor.fieldKeyDuplicated')
+  })
+
   it('initializes useSortable on the row container', async () => {
     const { useSortableStub } = await setup()
     expect(useSortableStub).toHaveBeenCalled()
@@ -284,8 +302,7 @@ describe('TemplateFieldsEditor sortable options', () => {
       }
     })
     await flushPromises()
-    const listEl = wrapper.get('[data-testid="field-row"]').element
-      .parentElement as HTMLElement
+    const listEl = wrapper.get('[data-testid="field-row"]').element.parentElement as HTMLElement
     const expandoKey = Object.keys(listEl).find((key) => /^Sortable\d+$/.test(key))
     const options = expandoKey
       ? (listEl as unknown as Record<string, { options: SortableOptions }>)[expandoKey].options

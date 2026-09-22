@@ -47,7 +47,13 @@
         </div>
         <Alert v-if="error" variant="destructive">
           <Icon icon="lucide:circle-alert" class="size-4" />
-          <AlertDescription>{{ t('settings.documents.test.failed') }}</AlertDescription>
+          <AlertDescription>
+            {{
+              error === 'fileRequired'
+                ? t('settings.documents.test.fileRequired')
+                : t('settings.documents.test.failed')
+            }}
+          </AlertDescription>
         </Alert>
         <div v-if="result" class="space-y-2">
           <div class="flex items-center gap-2 text-xs text-muted-foreground">
@@ -74,7 +80,7 @@
                   :class="{ 'bg-amber-50 dark:bg-amber-950/30': field.uncertain }"
                 >
                   <td class="py-2 pr-4 font-mono">{{ field.key }}</td>
-                  <td class="py-2 pr-4">{{ field.value }}</td>
+                  <td class="py-2 pr-4">{{ formatValue(field.value) }}</td>
                   <td class="py-2">
                     <Badge v-if="field.uncertain" variant="outline">
                       {{ t('settings.documents.test.uncertain') }}
@@ -117,7 +123,7 @@ const open = ref(false)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const fileName = ref<string | null>(null)
 const isRunning = ref(false)
-const error = ref(false)
+const error = ref<'failed' | 'fileRequired' | null>(null)
 const result = ref<Awaited<ReturnType<typeof store.testExtract>> | null>(null)
 
 const routeLabel = computed(() => {
@@ -136,12 +142,12 @@ async function onFileChange(event: Event) {
   if (!file) return
   const path = fileClient.getPathForFile(file)
   if (!path) {
-    error.value = true
+    error.value = 'fileRequired'
     return
   }
   fileName.value = file.name
   isRunning.value = true
-  error.value = false
+  error.value = null
   result.value = null
   try {
     result.value = await store.testExtract({
@@ -150,9 +156,15 @@ async function onFileChange(event: Event) {
     })
   } catch (e) {
     console.error('[TemplateTestExtract] failed', e)
-    error.value = true
+    error.value = 'failed'
   } finally {
     isRunning.value = false
   }
+}
+
+function formatValue(value: unknown): string {
+  if (value === null || value === undefined) return ''
+  if (typeof value === 'object') return JSON.stringify(value)
+  return String(value)
 }
 </script>

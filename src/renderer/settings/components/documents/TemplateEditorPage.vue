@@ -420,8 +420,8 @@ async function onSave() {
         label: f.label,
         valueType: f.valueType,
         required: f.required,
-        promptHint: f.promptHint || null,
-        validation: f.validation || null,
+        promptHint: f.promptHint.trim() || null,
+        validation: f.validation.trim() || null,
         enumOptions: f.enumOptions
           ? f.enumOptions
               .split(',')
