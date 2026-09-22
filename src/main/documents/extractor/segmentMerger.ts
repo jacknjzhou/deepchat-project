@@ -30,14 +30,23 @@ type FieldMap = Record<string, DocumentFieldEntry>
 
 const sameValue = (a: unknown, b: unknown): boolean => JSON.stringify(a) === JSON.stringify(b)
 
+// 采纳进 merged 时克隆 entry 与数组值，避免与入参 base/partials 共享引用被后续合并原地改写
+const cloneEntry = (entry: DocumentFieldEntry): DocumentFieldEntry => ({
+  ...entry,
+  value: Array.isArray(entry.value) ? [...entry.value] : entry.value
+})
+
 export function mergeSegmentOutputs(base: FieldMap, outputs: FieldMap[]): FieldMap {
-  const merged: FieldMap = { ...base }
+  const merged: FieldMap = {}
+  for (const [key, entry] of Object.entries(base)) {
+    merged[key] = cloneEntry(entry)
+  }
 
   for (const output of outputs) {
     for (const [key, entry] of Object.entries(output)) {
       const current = merged[key]
       if (!current || current.value === null || current.value === undefined) {
-        merged[key] = { ...entry }
+        merged[key] = cloneEntry(entry)
         continue
       }
       if (entry.value === null || entry.value === undefined) {

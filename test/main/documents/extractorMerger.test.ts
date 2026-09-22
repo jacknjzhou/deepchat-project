@@ -75,4 +75,46 @@ describe('mergeSegmentOutputs', () => {
     const merged = mergeSegmentOutputs({}, [{ a: entry('v', true) }, { a: entry('v', false) }])
     expect(merged.a).toEqual({ value: 'v', uncertain: true })
   })
+
+  it('合并后 base 对象未被修改', () => {
+    const base = {
+      a: entry('same'),
+      items: entry([{ n: 1 }]),
+      conflict: entry('base-v')
+    }
+    const snapshot = JSON.parse(JSON.stringify(base))
+    const merged = mergeSegmentOutputs(base, [
+      { a: entry('same', true), items: entry([{ n: 2 }]), conflict: entry('partial-v') }
+    ])
+    expect(base).toEqual(snapshot)
+    expect(merged.items.value).not.toBe(base.items.value)
+    expect(merged.a).toEqual({ value: 'same', uncertain: true })
+    expect(merged.items).toEqual({ value: [{ n: 1 }, { n: 2 }], uncertain: false })
+    expect(merged.conflict).toEqual({ value: 'base-v', uncertain: true })
+  })
+
+  it('合并后 partials 数组未被污染', () => {
+    const first = { items: entry([{ n: 1 }]), tags: entry(['a']) }
+    const second = { items: entry([{ n: 2 }]), tags: entry(['b']) }
+    const merged = mergeSegmentOutputs({}, [first, second])
+    expect(first.items.value).toEqual([{ n: 1 }])
+    expect(first.tags.value).toEqual(['a'])
+    expect(second.items.value).toEqual([{ n: 2 }])
+    expect(second.tags.value).toEqual(['b'])
+    expect(merged.items).toEqual({ value: [{ n: 1 }, { n: 2 }], uncertain: false })
+    expect(merged.tags).toEqual({ value: ['a', 'b'], uncertain: false })
+  })
+
+  it('冲突标 uncertain 不改写原 entry 的 uncertain', () => {
+    const baseEntry = entry('base-v')
+    const adoptedEntry = entry('partial-v')
+    const merged = mergeSegmentOutputs(
+      { a: baseEntry, b: adoptedEntry },
+      [{ a: entry('other-v'), b: entry('another-v') }]
+    )
+    expect(merged.a).toEqual({ value: 'base-v', uncertain: true })
+    expect(merged.b).toEqual({ value: 'partial-v', uncertain: true })
+    expect(baseEntry.uncertain).toBe(false)
+    expect(adoptedEntry.uncertain).toBe(false)
+  })
 })
