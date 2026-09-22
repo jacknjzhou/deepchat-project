@@ -20,7 +20,9 @@ export const settingsRouteComponents = {
   'settings-database': () => import('./components/DataSettings.vue'),
   'settings-shortcut': () => import('./components/ShortcutSettings.vue'),
   'settings-about': () => import('./components/AboutUsSettings.vue'),
-  'settings-debug': () => import('./components/DebugSettings.vue')
+  'settings-debug': () => import('./components/DebugSettings.vue'),
+  'settings-documents': () => import('./components/DocumentsSettings.vue'),
+  'settings-documents-template': () => import('./components/documents/TemplateEditorPage.vue')
 } as const
 
 export function preloadSettingsRoute(routeName: string): Promise<unknown> | null {
