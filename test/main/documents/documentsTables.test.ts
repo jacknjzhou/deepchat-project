@@ -368,4 +368,76 @@ describeIfSqlite('DocumentsRepository', () => {
     expect(repo.listDocuments({ keyword: '42' })).toHaveLength(1)
     db.close()
   })
+
+  it('forkTemplate rejects unknown source and duplicate typeKey', () => {
+    const { db, repo } = makeRepo()
+    expect(() => repo.forkTemplate('nope', 'fx', 'F')).toThrow(/Unknown source template/)
+    const source = repo.upsertTemplate({
+      typeKey: 'dup',
+      name: 'Dup',
+      category: '自定义',
+      fields: [],
+      now: 1
+    })
+    expect(() => repo.forkTemplate(source.id, 'dup', 'F2')).toThrow(/typeKey already exists/)
+    db.close()
+  })
+
+  it('forkTemplate copies source template with custom category', () => {
+    const { db, repo } = makeRepo()
+    const source = repo.upsertTemplate({
+      typeKey: 'src',
+      name: 'Source',
+      category: '合同类',
+      fields: [
+        {
+          key: 'party_a',
+          label: '甲方名称',
+          valueType: 'text',
+          required: true,
+          promptHint: '甲方全称',
+          validation: null,
+          enumOptions: null,
+          order: 1
+        }
+      ],
+      extractionMode: 'vision',
+      promptPreset: '识别合同字段',
+      now: 1
+    })
+    const forked = repo.forkTemplate(source.id, 'src_copy', 'Forked', 2)
+    expect(forked.isBuiltin).toBe(false)
+    expect(forked.builtinSourceId).toBe(source.id)
+    expect(forked.category).toBe('自定义')
+    expect(forked.fields).toEqual(source.fields)
+    expect(forked.extractionMode).toBe('vision')
+    expect(forked.promptPreset).toBe('识别合同字段')
+    db.close()
+  })
+
+  it('deleteTemplate throws on archive references without force', () => {
+    const { db, repo } = makeRepo()
+    const tpl = repo.upsertTemplate({
+      typeKey: 'k4',
+      name: 'N4',
+      category: '自定义',
+      fields: [],
+      now: 1
+    })
+    repo.insertDocument({
+      templateId: tpl.id,
+      typeKey: 'k4',
+      templateSnapshot: tpl,
+      fields: {},
+      fileUris: [],
+      source: 'manual',
+      sessionId: null,
+      status: 'draft',
+      now: 2
+    })
+    expect(() => repo.deleteTemplate(tpl.id)).toThrow(/archived document/)
+    repo.deleteTemplate(tpl.id, { force: true })
+    expect(repo.getTemplate(tpl.id)).toBeNull()
+    db.close()
+  })
 })
