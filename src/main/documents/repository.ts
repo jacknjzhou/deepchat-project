@@ -1,9 +1,11 @@
+import type { z } from 'zod'
 import {
   type DocumentRecord,
   type DocumentTemplate,
   type DocumentTemplateCategory,
   type DocumentTemplateField
 } from '@shared/documents'
+import type { documentsTemplateUpsertInputSchema } from '@shared/contracts/routes/documents.routes'
 import type { DocumentsDatabase } from './data/database'
 import type { DocumentRow, DocumentTableInsertInput } from './data/tables/documents'
 import type {
@@ -11,19 +13,7 @@ import type {
   DocumentTemplateTableUpsertInput
 } from './data/tables/documentTemplates'
 
-// TODO(contracts): derive from z.input<typeof documentsTemplateUpsertInputSchema> once
-// @shared/contracts/routes/documents.routes lands (Task 6).
-export interface DocumentsTemplateUpsertInput {
-  id?: string
-  typeKey: string
-  name: string
-  icon?: string | null
-  category: string
-  fields: DocumentTemplateField[]
-  extractionMode?: 'auto' | 'vision' | 'text'
-  promptPreset?: string | null
-  isBuiltin?: boolean
-  builtinSourceId?: string | null
+export type DocumentsTemplateUpsertInput = z.input<typeof documentsTemplateUpsertInputSchema> & {
   now?: number
 }
 

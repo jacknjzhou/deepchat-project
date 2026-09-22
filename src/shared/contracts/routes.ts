@@ -375,6 +375,17 @@ import {
   cronJobsUpsertRoute
 } from './routes/cronJobs.routes'
 import {
+  documentTemplatesDeleteRoute,
+  documentTemplatesForkRoute,
+  documentTemplatesGetRoute,
+  documentTemplatesListRoute,
+  documentTemplatesUpsertRoute,
+  documentsDeleteRoute,
+  documentsGetRoute,
+  documentsListRoute,
+  documentsUpsertRoute
+} from './routes/documents.routes'
+import {
   providersAddPublicRoute,
   providersAddRoute,
   providersGetAcpProcessConfigOptionsRoute,
@@ -667,6 +678,7 @@ export * from './routes/project.routes'
 export * from './routes/runs.routes'
 export * from './routes/remote-control.routes'
 export * from './routes/cronJobs.routes'
+export * from './routes/documents.routes'
 export * from './routes/settings.routes'
 export * from './routes/shortcut.routes'
 export * from './routes/startup.routes'
@@ -785,6 +797,15 @@ const DEEPCHAT_ROUTE_CATALOG_PART_1 = {
   [cronJobsRestartSchedulerRoute.name]: cronJobsRestartSchedulerRoute,
   [cronJobsValidateScheduleRoute.name]: cronJobsValidateScheduleRoute,
   [cronJobsPreviewScheduleRoute.name]: cronJobsPreviewScheduleRoute,
+  [documentTemplatesListRoute.name]: documentTemplatesListRoute,
+  [documentTemplatesGetRoute.name]: documentTemplatesGetRoute,
+  [documentTemplatesUpsertRoute.name]: documentTemplatesUpsertRoute,
+  [documentTemplatesDeleteRoute.name]: documentTemplatesDeleteRoute,
+  [documentTemplatesForkRoute.name]: documentTemplatesForkRoute,
+  [documentsListRoute.name]: documentsListRoute,
+  [documentsGetRoute.name]: documentsGetRoute,
+  [documentsUpsertRoute.name]: documentsUpsertRoute,
+  [documentsDeleteRoute.name]: documentsDeleteRoute,
   [pluginsListRoute.name]: pluginsListRoute,
   [pluginsGetRoute.name]: pluginsGetRoute,
   [pluginsEnableRoute.name]: pluginsEnableRoute,
