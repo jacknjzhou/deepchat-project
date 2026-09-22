@@ -164,3 +164,48 @@ export const documentsDeleteRoute = defineRouteContract({
   input: z.object({ id: z.string().min(1) }),
   output: z.object({ success: z.literal(true) })
 })
+
+export const documentExtractFileSchema = z.object({
+  path: z.string().min(1),
+  name: z.string().max(255).optional(),
+  mimeType: z.string().max(128).optional()
+})
+
+export const documentExtractionMetaSchema = z.object({
+  route: z.enum(['vision', 'text', 'ocr']),
+  rawOutput: z.string(),
+  durationMs: z.number().nonnegative(),
+  issues: z.array(z.string())
+})
+
+export const documentTemplatesTestExtractRoute = defineRouteContract({
+  name: 'documentTemplates.testExtract',
+  input: z.object({
+    templateId: z.string().min(1),
+    file: documentExtractFileSchema
+  }),
+  output: z.object({
+    fields: z.array(
+      z.object({
+        key: z.string(),
+        value: z.unknown(),
+        uncertain: z.boolean()
+      })
+    ),
+    meta: documentExtractionMetaSchema
+  })
+})
+
+export const documentsExtractAndDraftRoute = defineRouteContract({
+  name: 'documents.extractAndDraft',
+  input: z.object({
+    templateId: z.string().min(1),
+    file: documentExtractFileSchema,
+    source: documentSourceSchema.default('manual'),
+    sessionId: z.string().min(1).optional()
+  }),
+  output: z.object({
+    document: documentRecordSchema,
+    meta: documentExtractionMetaSchema
+  })
+})

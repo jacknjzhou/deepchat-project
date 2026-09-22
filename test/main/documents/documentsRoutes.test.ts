@@ -4,8 +4,10 @@ import {
   documentTemplatesForkRoute,
   documentTemplatesGetRoute,
   documentTemplatesListRoute,
+  documentTemplatesTestExtractRoute,
   documentTemplatesUpsertRoute,
   documentsDeleteRoute,
+  documentsExtractAndDraftRoute,
   documentsGetRoute,
   documentsListRoute,
   documentsUpsertRoute
@@ -121,5 +123,38 @@ describe('documents route contracts', () => {
     expect(documentsGetRoute.name).toBe('documents.get')
     expect(documentsUpsertRoute.name).toBe('documents.upsert')
     expect(documentsDeleteRoute.name).toBe('documents.delete')
+  })
+})
+
+describe('documents extraction route contracts', () => {
+  it('testExtract 契约解析合法输入', () => {
+    const input = documentTemplatesTestExtractRoute.input.parse({
+      templateId: 'tpl-1',
+      file: { path: '/tmp/a.jpg', mimeType: 'image/jpeg' }
+    })
+    expect(input.templateId).toBe('tpl-1')
+
+    const output = documentTemplatesTestExtractRoute.output.parse({
+      fields: [{ key: 'invoice_code', value: '123', uncertain: false }],
+      meta: { route: 'vision', rawOutput: '{}', durationMs: 12, issues: [] }
+    })
+    expect(output.fields[0]?.key).toBe('invoice_code')
+  })
+
+  it('testExtract 契约拒绝空 file.path', () => {
+    expect(() =>
+      documentTemplatesTestExtractRoute.input.parse({
+        templateId: 'tpl-1',
+        file: { path: '' }
+      })
+    ).toThrow()
+  })
+
+  it('extractAndDraft 契约解析合法输入并默认 source', () => {
+    const input = documentsExtractAndDraftRoute.input.parse({
+      templateId: 'auto',
+      file: { path: '/tmp/a.pdf' }
+    })
+    expect(input.source).toBe('manual')
   })
 })
