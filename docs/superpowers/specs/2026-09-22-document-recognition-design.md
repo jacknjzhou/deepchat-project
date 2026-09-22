@@ -96,7 +96,7 @@ Agent 入口
 JSON → 模板字段结构映射规则：
 
 - `desc` → `promptHint`（提取提示，进入动态 prompt）
-- `type` → `valueType`（见上）
+- `type` → `valueType`（见上）；**例外**：`line_items` 在 JSON 源中标注为 `string`（其 desc 自述"格式为 JSON 数组"），设计意图为结构化明细，seed 时按字段级 override 映射为 `array`（实现于 `src/main/documents/seed.ts` 的 `SEED_FIELD_VALUE_TYPE_OVERRIDES`）
 - `required`：JSON 仅 `line_items` 显式 `required:false`；未标注字段默认 `required:true`
 - `order`：按 JSON 数组序生成（1 起）
 - `validation` / `enumOptions`：预置模板不带，由用户后续在编辑器中配置
