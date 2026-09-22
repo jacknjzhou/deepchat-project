@@ -941,6 +941,15 @@
         "content": "Er du sikker på, at du vil slette udbyderen \"{name}\"? Handlingen kan ikke fortrydes.",
         "confirm": "Slet"
       },
+      "duplicate": {
+        "title": "Dupliker udbyderkonfiguration",
+        "description": "Opret en ny instans af {name} med egen API-nøgle og eget modelvalg.",
+        "instanceLabel": "Instanslabel",
+        "instanceLabelPlaceholder": "f.eks. Arbejde, Privat",
+        "instanceLabelHint": "Lad feltet stå tomt for at bruge det oprindelige navn. API-nøglen ryddes af sikkerhedshensyn.",
+        "securityHint": "Af sikkerhedshensyn beholder den nye instans ikke den oprindelige API-nøgle.",
+        "confirm": "Dupliker"
+      },
       "deleteModel": {
         "title": "Bekræft sletning af model",
         "content": "Er du sikker på, at du vil slette modellen \"{name}\"? Handlingen kan ikke fortrydes.",
@@ -1153,6 +1162,7 @@
       "enable": "Aktivér",
       "disable": "Deaktivér",
       "rename": "Omdøb",
+      "duplicate": "Dupliker konfiguration",
       "delete": "Slet"
     },
     "health": {

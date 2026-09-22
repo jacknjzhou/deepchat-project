@@ -1564,6 +1564,15 @@
         "content": "Confermi di voler eliminare il provider \"{name}\"? Questa operazione non può essere recuperata.",
         "confirm": "Elimina"
       },
+      "duplicate": {
+        "title": "Duplica configurazione provider",
+        "description": "Crea una nuova istanza di {name} con la propria chiave API e la propria selezione di modelli.",
+        "instanceLabel": "Etichetta istanza",
+        "instanceLabelPlaceholder": "es. Lavoro, Personale",
+        "instanceLabelHint": "Lasciare vuoto per usare il nome originale. Per sicurezza, la chiave API verrà cancellata.",
+        "securityHint": "Per sicurezza, la nuova istanza non manterrà la chiave API originale.",
+        "confirm": "Duplica"
+      },
       "deleteModel": {
         "title": "Conferma eliminazione modello",
         "content": "Confermi di voler eliminare il modello \"{name}\"? Questa operazione non può essere recuperata.",
@@ -1691,6 +1700,7 @@
       "enable": "Abilita",
       "disable": "Disabilita",
       "rename": "Rinomina",
+      "duplicate": "Duplica configurazione",
       "delete": "Elimina"
     },
     "health": {

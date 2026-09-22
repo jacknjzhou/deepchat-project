@@ -1020,6 +1020,15 @@
         "content": "Tem certeza de que deseja excluir o provedor \"{name}\"? Esta ação não pode ser desfeita.",
         "confirm": "Excluir"
       },
+      "duplicate": {
+        "title": "Duplicar configuração do provedor",
+        "description": "Cria uma nova instância de {name} com sua própria chave de API e seleção de modelos.",
+        "instanceLabel": "Rótulo da instância",
+        "instanceLabelPlaceholder": "ex.: Trabalho, Pessoal",
+        "instanceLabelHint": "Deixe em branco para usar o nome original. Por segurança, a chave de API será limpa.",
+        "securityHint": "Por segurança, a nova instância não manterá a chave de API original.",
+        "confirm": "Duplicar"
+      },
       "deleteModel": {
         "title": "Confirmar Exclusão do Modelo",
         "content": "Tem certeza de que deseja excluir o modelo \"{name}\"? Esta ação não pode ser desfeita.",
@@ -1220,6 +1229,7 @@
       "enable": "Ativar",
       "disable": "Desativar",
       "rename": "Renomear",
+      "duplicate": "Duplicar configuração",
       "delete": "Excluir"
     },
     "health": {

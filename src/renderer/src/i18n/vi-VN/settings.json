@@ -1459,6 +1459,15 @@
         "content": "Bạn có chắc chắn muốn xóa nhà cung cấp \"{name}\" không? Không thể hoàn tác hành động này.",
         "confirm": "Xóa"
       },
+      "duplicate": {
+        "title": "Nhân bản cấu hình nhà cung cấp",
+        "description": "Tạo một phiên bản mới của {name} với khóa API và lựa chọn mô hình riêng.",
+        "instanceLabel": "Nhãn phiên bản",
+        "instanceLabelPlaceholder": "vd. Công việc, Cá nhân",
+        "instanceLabelHint": "Để trống để dùng tên gốc. Vì lý do bảo mật, khóa API sẽ bị xóa.",
+        "securityHint": "Vì lý do bảo mật, phiên bản mới sẽ không giữ lại khóa API gốc.",
+        "confirm": "Nhân bản"
+      },
       "deleteModel": {
         "title": "Xác nhận Xóa mô hình",
         "content": "Bạn có chắc chắn muốn xóa mẫu \"{name}\" không? Không thể hoàn tác hành động này.",
@@ -1691,6 +1700,7 @@
       "enable": "Bật",
       "disable": "Tắt",
       "rename": "Đổi tên",
+      "duplicate": "Nhân bản cấu hình",
       "delete": "Xóa"
     },
     "health": {

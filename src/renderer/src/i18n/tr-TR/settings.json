@@ -1564,6 +1564,15 @@
         "content": "\"{name}\" sağlayıcısını silmek istediğinizden emin misiniz? Bu eylem geri alınamaz.",
         "confirm": "Silmek"
       },
+      "duplicate": {
+        "title": "Sağlayıcı Yapılandırmasını Çoğalt",
+        "description": "{name} için kendi API anahtarı ve model seçimine sahip yeni bir örnek oluşturur.",
+        "instanceLabel": "Örnek etiketi",
+        "instanceLabelPlaceholder": "örn. İş, Kişisel",
+        "instanceLabelHint": "Özgün adı kullanmak için boş bırakın. Güvenlik nedeniyle API anahtarı temizlenecek.",
+        "securityHint": "Güvenlik nedeniyle yeni örnek, özgün API anahtarını korumayacak.",
+        "confirm": "Çoğalt"
+      },
       "deleteModel": {
         "title": "Modeli Silmeyi Onayla",
         "content": "\"{name}\" modelini silmek istediğinizden emin misiniz? Bu eylem geri alınamaz.",
@@ -1691,6 +1700,7 @@
       "enable": "Etkinleştir",
       "disable": "Devre dışı bırak",
       "rename": "Yeniden adlandır",
+      "duplicate": "Yapılandırmayı çoğalt",
       "delete": "Sil"
     },
     "health": {

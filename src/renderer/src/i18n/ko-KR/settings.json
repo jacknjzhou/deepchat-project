@@ -1013,6 +1013,15 @@
         "content": "제공자 \"{name}\"을(를) 삭제하시겠습니까? 이 작업은 취소할 수 없습니다.",
         "confirm": "삭제"
       },
+      "duplicate": {
+        "title": "제공자 설정 복제",
+        "description": "{name}의 새 인스턴스를 만들어 자체 API 키와 모델 선택을 사용할 수 있습니다.",
+        "instanceLabel": "인스턴스 라벨",
+        "instanceLabelPlaceholder": "예: 회사, 개인",
+        "instanceLabelHint": "비워 두면 원래 이름이 사용됩니다. 보안을 위해 새 인스턴스에는 기존 API 키가 유지되지 않습니다.",
+        "securityHint": "보안을 위해 새 인스턴스에는 기존 API 키가 유지되지 않습니다.",
+        "confirm": "복제"
+      },
       "deleteModel": {
         "title": "모델 삭제 확인",
         "content": "모델 \"{name}\"을(를) 삭제하시겠습니까? 이 작업은 취소할 수 없습니다.",
@@ -1220,6 +1229,7 @@
       "enable": "활성화",
       "disable": "비활성화",
       "rename": "이름 바꾸기",
+      "duplicate": "설정 복제",
       "delete": "삭제"
     },
     "health": {

@@ -1564,6 +1564,15 @@
         "content": "Apakah Anda yakin akan menghapus penyedia layanan \"{name}\"? Operasi ini tidak dapat diubah.",
         "confirm": "Hapus"
       },
+      "duplicate": {
+        "title": "Duplikasi konfigurasi penyedia layanan",
+        "description": "Buat instance baru dari {name} dengan kunci API dan pilihan modelnya sendiri.",
+        "instanceLabel": "Label instance",
+        "instanceLabelPlaceholder": "mis. Kerja, Pribadi",
+        "instanceLabelHint": "Biarkan kosong untuk menggunakan nama asli. Demi keamanan, kunci API akan dihapus.",
+        "securityHint": "Demi keamanan, instance baru tidak akan menyimpan kunci API asli.",
+        "confirm": "Duplikasi"
+      },
       "deleteModel": {
         "title": "Konfirmasikan untuk menghapus model",
         "content": "Apakah Anda yakin akan menghapus model \"{name}\"? Operasi ini tidak dapat diubah.",
@@ -1691,6 +1700,7 @@
       "enable": "Aktifkan",
       "disable": "Nonaktifkan",
       "rename": "Ubah nama",
+      "duplicate": "Duplikasi konfigurasi",
       "delete": "Hapus"
     },
     "health": {

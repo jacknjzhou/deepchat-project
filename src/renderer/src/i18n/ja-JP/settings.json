@@ -1020,6 +1020,15 @@
         "content": "プロバイダー \"{name}\" を削除してもよろしいですか？この操作は元に戻せません。",
         "confirm": "削除"
       },
+      "duplicate": {
+        "title": "プロバイダー設定の複製",
+        "description": "{name} の新しいインスタンスを作成し、独自の APIキーとモデル選択を設定できます。",
+        "instanceLabel": "インスタンスラベル",
+        "instanceLabelPlaceholder": "例：仕事、個人用",
+        "instanceLabelHint": "空欄の場合は元の名前が使用されます。セキュリティのため、新しいインスタンスには元の APIキーは引き継がれません。",
+        "securityHint": "セキュリティのため、新しいインスタンスには元の APIキーは引き継がれません。",
+        "confirm": "複製"
+      },
       "deleteModel": {
         "title": "モデルの削除確認",
         "content": "モデル \"{name}\" を削除してもよろしいですか？この操作は元に戻せません。",
@@ -1220,6 +1229,7 @@
       "enable": "有効にする",
       "disable": "無効にする",
       "rename": "名前を変更",
+      "duplicate": "設定を複製",
       "delete": "削除"
     },
     "health": {

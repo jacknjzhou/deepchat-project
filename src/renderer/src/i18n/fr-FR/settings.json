@@ -1020,6 +1020,15 @@
         "content": "Êtes-vous sûr de vouloir supprimer le fournisseur \"{name}\" ? Cette action ne peut pas être annulée.",
         "confirm": "Supprimer"
       },
+      "duplicate": {
+        "title": "Dupliquer la configuration du fournisseur",
+        "description": "Crée une nouvelle instance de {name} avec sa propre clé API et sa propre sélection de modèles.",
+        "instanceLabel": "Libellé de l’instance",
+        "instanceLabelPlaceholder": "ex. Travail, Personnel",
+        "instanceLabelHint": "Laissez vide pour utiliser le nom d’origine. Par sécurité, la clé API sera effacée.",
+        "securityHint": "Par sécurité, la nouvelle instance ne conservera pas la clé API d’origine.",
+        "confirm": "Dupliquer"
+      },
       "deleteModel": {
         "title": "Confirmer la suppression du modèle",
         "content": "Êtes-vous sûr de vouloir supprimer le modèle \"{name}\" ? Cette action ne peut pas être annulée.",
@@ -1220,6 +1229,7 @@
       "enable": "Activer",
       "disable": "Désactiver",
       "rename": "Renommer",
+      "duplicate": "Dupliquer la configuration",
       "delete": "Supprimer"
     },
     "health": {

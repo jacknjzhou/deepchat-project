@@ -1564,6 +1564,15 @@
         "content": "¿Está seguro de que desea eliminar provider \"{name}\"? Esta acción no se puede deshacer.",
         "confirm": "Eliminar"
       },
+      "duplicate": {
+        "title": "Duplicar configuración del proveedor",
+        "description": "Cree una nueva instancia de {name} con su propia clave API y selección de modelos.",
+        "instanceLabel": "Etiqueta de la instancia",
+        "instanceLabelPlaceholder": "p. ej., Trabajo, Personal",
+        "instanceLabelHint": "Deje en blanco para usar el nombre original. Por seguridad, la clave API se borrará.",
+        "securityHint": "Por seguridad, la nueva instancia no conservará la clave API original.",
+        "confirm": "Duplicar"
+      },
       "deleteModel": {
         "title": "Confirmar eliminar modelo",
         "content": "¿Está seguro de que desea eliminar el modelo \"{name}\"? Esta acción no se puede deshacer.",
@@ -1691,6 +1700,7 @@
       "enable": "Activar",
       "disable": "Desactivar",
       "rename": "Renombrar",
+      "duplicate": "Duplicar configuración",
       "delete": "Eliminar"
     },
     "health": {

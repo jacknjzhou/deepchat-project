@@ -1564,6 +1564,15 @@
         "content": "Adakah anda pasti akan memadamkan pembekal perkhidmatan \"{name}\"? Operasi ini tidak dapat dipulihkan.",
         "confirm": "padam"
       },
+      "duplicate": {
+        "title": "Pendua konfigurasi pembekal perkhidmatan",
+        "description": "Cipta contoh baharu bagi {name} dengan kunci API dan pilihan modelnya sendiri.",
+        "instanceLabel": "Label contoh",
+        "instanceLabelPlaceholder": "cth. Kerja, Peribadi",
+        "instanceLabelHint": "Biarkan kosong untuk menggunakan nama asal. Atas sebab keselamatan, kunci API akan dipadamkan.",
+        "securityHint": "Atas sebab keselamatan, contoh baharu tidak akan mengekalkan kunci API asal.",
+        "confirm": "Pendua"
+      },
       "deleteModel": {
         "title": "Sahkan untuk memadam model",
         "content": "Adakah anda pasti akan memadamkan model \"{name}\"? Operasi ini tidak dapat dipulihkan.",
@@ -1691,6 +1700,7 @@
       "enable": "Dayakan",
       "disable": "Nyahdayakan",
       "rename": "Namakan semula",
+      "duplicate": "Pendua konfigurasi",
       "delete": "Padam"
     },
     "health": {

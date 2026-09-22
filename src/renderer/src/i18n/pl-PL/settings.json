@@ -1459,6 +1459,15 @@
         "content": "Czy na pewno chcesz usunąć dostawcę „{name}”? Tej akcji nie można cofnąć.",
         "confirm": "Usuń"
       },
+      "duplicate": {
+        "title": "Duplikuj konfigurację dostawcy",
+        "description": "Tworzy nową instancję {name} z własnym kluczem API i własnym wyborem modeli.",
+        "instanceLabel": "Etykieta instancji",
+        "instanceLabelPlaceholder": "np. Praca, Osobiste",
+        "instanceLabelHint": "Pozostaw puste, aby użyć oryginalnej nazwy. Ze względów bezpieczeństwa klucz API zostanie usunięty.",
+        "securityHint": "Ze względów bezpieczeństwa nowa instancja nie zachowa oryginalnego klucza API.",
+        "confirm": "Duplikuj"
+      },
       "deleteModel": {
         "title": "Potwierdź usunięcie modelu",
         "content": "Czy na pewno chcesz usunąć model „{name}”? Tej akcji nie można cofnąć.",
@@ -1691,6 +1700,7 @@
       "enable": "Włącz",
       "disable": "Wyłącz",
       "rename": "Zmień nazwę",
+      "duplicate": "Duplikuj konfigurację",
       "delete": "Usuń"
     },
     "health": {

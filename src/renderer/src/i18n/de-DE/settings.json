@@ -1564,6 +1564,15 @@
         "content": "Anbieter \"{name}\" wirklich löschen? Diese Aktion kann nicht wiederhergestellt werden.",
         "confirm": "Löschen"
       },
+      "duplicate": {
+        "title": "Anbieterkonfiguration duplizieren",
+        "description": "Erstellt eine neue Instanz von {name} mit eigenem API Key und eigener Modellauswahl.",
+        "instanceLabel": "Instanzbezeichnung",
+        "instanceLabelPlaceholder": "z. B. Arbeit, Privat",
+        "instanceLabelHint": "Leer lassen, um den ursprünglichen Namen zu verwenden. Aus Sicherheitsgründen wird der API Key gelöscht.",
+        "securityHint": "Aus Sicherheitsgründen behält die neue Instanz den ursprünglichen API Key nicht.",
+        "confirm": "Duplizieren"
+      },
       "deleteModel": {
         "title": "Modell löschen bestätigen",
         "content": "Modell \"{name}\" wirklich löschen? Diese Aktion kann nicht wiederhergestellt werden.",
@@ -1691,6 +1700,7 @@
       "enable": "Aktivieren",
       "disable": "Deaktivieren",
       "rename": "Umbenennen",
+      "duplicate": "Konfiguration duplizieren",
       "delete": "Löschen"
     },
     "health": {
