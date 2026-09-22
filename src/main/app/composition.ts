@@ -185,6 +185,10 @@ import { ProjectService } from '../project'
 import { ProjectDatabase } from '@/project/data/database'
 import { SettingsDatabase } from '@/settings/data/database'
 import { SchedulerDatabase } from '@/scheduler/data/database'
+import { DocumentsDatabase } from '@/documents/data/database'
+import { DocumentsRepository } from '@/documents/repository'
+import { createDocumentsRoutes } from '@/documents/routes'
+import { seedPresetTemplates } from '@/documents/seed'
 import { AppDatabase } from '@/app/data/database'
 import { createOrchestrationRoutes } from '@/orchestration/routes'
 import { OrchestrationCapabilityResolver } from '@/orchestration/capability'
@@ -887,6 +891,9 @@ export async function createMainProcessControl(dependencies: {
   const settingsDatabase = dependencies.settingsDatabase
   const providerDatabase = dependencies.providerDatabase
   const schedulerDatabase = new SchedulerDatabase(mainDatabase)
+  const documentsDatabase = new DocumentsDatabase(mainDatabase)
+  seedPresetTemplates(documentsDatabase)
+  const documentsRepository = new DocumentsRepository(documentsDatabase)
   const appDatabase = new AppDatabase(mainDatabase)
   const agentRepository = new AgentRepository(agentDatabase, sessionData.database, memoryDatabase)
   const agentLifecycle = new AgentLifecycleGate()
@@ -2800,6 +2807,7 @@ export async function createMainProcessControl(dependencies: {
     })
     const remoteRoutes = createRemoteRoutes(remoteService)
     const schedulerRoutes = createSchedulerRoutes(cronJobs)
+    const documentsRoutes = createDocumentsRoutes(documentsRepository)
     const memoryRoutes = createMemoryRoutes({
       memoryService,
       getAgentType: (agentId) => agentSettings.getAgentType(agentId),
@@ -3055,6 +3063,7 @@ export async function createMainProcessControl(dependencies: {
         mcpRoutes,
         remoteRoutes,
         schedulerRoutes,
+        documentsRoutes,
         memoryRoutes,
         desktopRoutes,
         fileRoutes,
