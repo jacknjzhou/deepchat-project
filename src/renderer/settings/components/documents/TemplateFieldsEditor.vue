@@ -74,6 +74,31 @@
             <Icon icon="lucide:trash-2" class="size-4" />
           </DcButton>
         </div>
+        <div v-if="!readonly" class="grid gap-2 sm:col-span-4 sm:col-start-2 sm:grid-cols-2">
+          <Input
+            :model-value="field.promptHint"
+            :placeholder="t('settings.documents.editor.fieldPromptHint')"
+            :aria-label="t('settings.documents.editor.fieldPromptHint')"
+            data-testid="field-prompt-hint"
+            @update:model-value="(value) => update(index, { promptHint: String(value) })"
+          />
+          <Input
+            :model-value="field.validation"
+            :placeholder="t('settings.documents.editor.fieldValidationHint')"
+            :aria-label="t('settings.documents.editor.fieldValidation')"
+            data-testid="field-validation"
+            @update:model-value="(value) => update(index, { validation: String(value) })"
+          />
+          <Input
+            v-if="field.valueType === 'enum'"
+            :model-value="field.enumOptions"
+            class="sm:col-span-2"
+            :placeholder="t('settings.documents.editor.fieldEnumOptionsHint')"
+            :aria-label="t('settings.documents.editor.fieldEnumOptions')"
+            data-testid="field-enum-options"
+            @update:model-value="(value) => update(index, { enumOptions: String(value) })"
+          />
+        </div>
       </div>
     </div>
 

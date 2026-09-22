@@ -60,7 +60,32 @@ const selectRootStub = defineComponent({
 })
 const useSortableStub = vi.fn(() => ({ start: () => undefined, option: () => undefined }))
 
-async function setup(readonly = false) {
+function makeFields() {
+  return [
+    {
+      key: 'amount',
+      label: 'Amount',
+      valueType: 'number' as const,
+      required: true,
+      promptHint: '',
+      validation: '',
+      enumOptions: '',
+      order: 1
+    },
+    {
+      key: 'date',
+      label: 'Date',
+      valueType: 'date' as const,
+      required: false,
+      promptHint: '',
+      validation: '',
+      enumOptions: '',
+      order: 2
+    }
+  ]
+}
+
+async function setup(readonly = false, fields = makeFields()) {
   vi.resetModules()
   vi.doMock('@vueuse/integrations/useSortable', () => ({ useSortable: useSortableStub }))
   vi.doMock('vue-i18n', () => ({
@@ -72,31 +97,8 @@ async function setup(readonly = false) {
     await import('../../../../src/renderer/settings/components/documents/TemplateFieldsEditor.vue')
   ).default
 
-  const initialFields = [
-    {
-      key: 'amount',
-      label: 'Amount',
-      valueType: 'number',
-      required: true,
-      promptHint: '',
-      validation: '',
-      enumOptions: '',
-      order: 1
-    },
-    {
-      key: 'date',
-      label: 'Date',
-      valueType: 'date',
-      required: false,
-      promptHint: '',
-      validation: '',
-      enumOptions: '',
-      order: 2
-    }
-  ]
-
   const wrapper = mount(TemplateFieldsEditor, {
-    props: { fields: initialFields, readonly },
+    props: { fields, readonly },
     global: {
       stubs: {
         Icon: true,
@@ -156,6 +158,59 @@ describe('TemplateFieldsEditor', () => {
     expect(updateEvents).toBeTruthy()
     const newFields = updateEvents!.at(-1)![0] as Array<{ label: string }>
     expect(newFields[0].label).toBe('New Amount')
+  })
+
+  it('renders prompt hint, validation and enum option inputs for enum fields', async () => {
+    const fields = makeFields().map((field, index) =>
+      index === 0 ? { ...field, valueType: 'enum' as const } : field
+    )
+    const { wrapper } = await setup(false, fields)
+    expect(
+      wrapper.findAll('input[placeholder="settings.documents.editor.fieldPromptHint"]')
+    ).toHaveLength(2)
+    expect(
+      wrapper.findAll('input[placeholder="settings.documents.editor.fieldValidationHint"]')
+    ).toHaveLength(2)
+    expect(
+      wrapper.findAll('input[placeholder="settings.documents.editor.fieldEnumOptionsHint"]')
+    ).toHaveLength(1)
+  })
+
+  it('hides enum options input for non-enum fields', async () => {
+    const { wrapper } = await setup()
+    expect(
+      wrapper.findAll('input[placeholder="settings.documents.editor.fieldEnumOptionsHint"]')
+    ).toHaveLength(0)
+  })
+
+  it('emits update when a prompt hint changes', async () => {
+    const { wrapper } = await setup()
+    const inputs = wrapper.findAll('input[placeholder="settings.documents.editor.fieldPromptHint"]')
+    await inputs[0].setValue('Invoice total in words')
+    const updateEvents = wrapper.emitted('update:fields')
+    expect(updateEvents).toBeTruthy()
+    const newFields = updateEvents!.at(-1)![0] as Array<Record<string, unknown>>
+    expect(newFields[0].promptHint).toBe('Invoice total in words')
+    expect(newFields[0].key).toBe('amount')
+    expect(newFields[0].label).toBe('Amount')
+    expect(newFields[0].valueType).toBe('number')
+    expect(newFields[1].promptHint).toBe('')
+  })
+
+  it('emits update when enum options change', async () => {
+    const fields = makeFields().map((field, index) =>
+      index === 0 ? { ...field, valueType: 'enum' as const } : field
+    )
+    const { wrapper } = await setup(false, fields)
+    const input = wrapper.get('input[placeholder="settings.documents.editor.fieldEnumOptionsHint"]')
+    await input.setValue('paid,unpaid')
+    const updateEvents = wrapper.emitted('update:fields')
+    expect(updateEvents).toBeTruthy()
+    const newFields = updateEvents!.at(-1)![0] as Array<Record<string, unknown>>
+    expect(newFields[0].enumOptions).toBe('paid,unpaid')
+    expect(newFields[0].promptHint).toBe('')
+    expect(newFields[0].validation).toBe('')
+    expect(newFields[1].enumOptions).toBe('')
   })
 
   it('shows confirmation when deleting a required field', async () => {
