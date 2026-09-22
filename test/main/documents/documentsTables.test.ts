@@ -217,6 +217,36 @@ describeIfSqlite('DocumentsTable', () => {
     db.close()
   })
 
+  it('escapes LIKE wildcards with strong discrimination', () => {
+    const db = makeDb()
+    const table = new DocumentsTableCtor(db)
+    table.insert({
+      templateId: 't1',
+      typeKey: 'contract',
+      templateSnapshot: {},
+      fields: { name: { value: 'a_b', uncertain: false } },
+      fileUris: [],
+      source: 'manual',
+      sessionId: null,
+      status: 'draft',
+      now: 1
+    })
+    table.insert({
+      templateId: 't2',
+      typeKey: 'contract',
+      templateSnapshot: {},
+      fields: { name: { value: 'axb', uncertain: false } },
+      fileUris: [],
+      source: 'manual',
+      sessionId: null,
+      status: 'draft',
+      now: 2
+    })
+    // '_' unescaped would match 'axb' as a wildcard (2 rows); escaped matches literal 'a_b' only
+    expect(table.list({ keyword: 'a_b' })).toHaveLength(1)
+    db.close()
+  })
+
   it('updates status only and keeps fields intact', () => {
     const db = makeDb()
     const table = new DocumentsTableCtor(db)
