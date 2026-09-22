@@ -83,6 +83,10 @@ export class DocumentsRepository {
   }
 
   upsertTemplate(input: DocumentsTemplateUpsertInput): DocumentTemplate {
+    const existing = input.id ? this.database.documentTemplatesTable.get(input.id) : undefined
+    if (existing && existing.type_key !== input.typeKey) {
+      throw new Error('typeKey is immutable; create a new template instead')
+    }
     const tableInput: DocumentTemplateTableUpsertInput = {
       id: input.id,
       typeKey: input.typeKey,

@@ -418,6 +418,21 @@ describeIfSqlite('DocumentsRepository', () => {
     db.close()
   })
 
+  it('rejects typeKey change on template update', () => {
+    const { db, repo } = makeRepo()
+    const tpl = repo.upsertTemplate({
+      typeKey: 'k1',
+      name: 'N',
+      category: '自定义',
+      fields: [],
+      now: 1
+    })
+    expect(() =>
+      repo.upsertTemplate({ id: tpl.id, typeKey: 'k2', name: 'N', category: '自定义', fields: [] })
+    ).toThrow(/immutable/)
+    db.close()
+  })
+
   it('deleteTemplate throws on archive references without force', () => {
     const { db, repo } = makeRepo()
     const tpl = repo.upsertTemplate({
