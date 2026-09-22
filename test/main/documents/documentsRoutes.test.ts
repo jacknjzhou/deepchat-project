@@ -7,9 +7,11 @@ import {
   documentTemplatesTestExtractRoute,
   documentTemplatesUpsertRoute,
   documentsDeleteRoute,
+  documentsExportCsvRoute,
   documentsExtractAndDraftRoute,
   documentsGetRoute,
   documentsListRoute,
+  documentsPreviewFileRoute,
   documentsUpsertRoute
 } from '@shared/contracts/routes'
 import { createDocumentsRoutes } from '@/documents/routes'
@@ -143,6 +145,48 @@ describe('documents route contracts', () => {
     expect(documentsGetRoute.name).toBe('documents.get')
     expect(documentsUpsertRoute.name).toBe('documents.upsert')
     expect(documentsDeleteRoute.name).toBe('documents.delete')
+  })
+
+  it('documents.list 输入接受 dateFrom/dateTo', () => {
+    const input = documentsListRoute.input.parse({
+      typeKey: 'invoice_special',
+      dateFrom: 1000,
+      dateTo: 2000
+    })
+    expect(input.dateFrom).toBe(1000)
+    expect(input.dateTo).toBe(2000)
+    expect(() => documentsListRoute.input.parse({ dateFrom: -1 })).toThrow()
+    expect(() => documentsListRoute.input.parse({ dateFrom: 1.5 })).toThrow()
+  })
+
+  it('documents.exportCsv 契约解析筛选输入与取消输出', () => {
+    const input = documentsExportCsvRoute.input.parse({
+      typeKey: 'contract',
+      status: 'draft',
+      keyword: '甲',
+      dateFrom: 1000,
+      dateTo: 2000
+    })
+    expect(input.typeKey).toBe('contract')
+    expect(documentsExportCsvRoute.output.parse({ canceled: true }).path).toBeUndefined()
+    expect(
+      documentsExportCsvRoute.output.parse({ canceled: false, path: 'C:\\out\\a.csv' }).path
+    ).toBe('C:\\out\\a.csv')
+    expect(() => documentsExportCsvRoute.output.parse({ canceled: false })).toThrow()
+  })
+
+  it('documents.previewFile 契约解析定位输入与 base64 输出', () => {
+    const input = documentsPreviewFileRoute.input.parse({ documentId: 'd1', uriIndex: 0 })
+    expect(input.uriIndex).toBe(0)
+    expect(() =>
+      documentsPreviewFileRoute.input.parse({ documentId: 'd1', uriIndex: -1 })
+    ).toThrow()
+    const output = documentsPreviewFileRoute.output.parse({
+      dataBase64: 'aGk=',
+      mimeType: 'image/png',
+      name: 'a.png'
+    })
+    expect(output.mimeType).toBe('image/png')
   })
 })
 

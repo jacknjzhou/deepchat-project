@@ -93,6 +93,8 @@ export const documentsListInputSchema = z.object({
   typeKey: z.string().min(1).optional(),
   status: documentStatusSchema.optional(),
   keyword: z.string().max(200).optional(),
+  dateFrom: timestampMsSchema.optional(),
+  dateTo: timestampMsSchema.optional(),
   limit: z.number().int().positive().max(500).optional(),
   offset: z.number().int().nonnegative().optional()
 })
@@ -207,5 +209,37 @@ export const documentsExtractAndDraftRoute = defineRouteContract({
   output: z.object({
     document: documentRecordSchema,
     meta: documentExtractionMetaSchema
+  })
+})
+
+export const documentsExportCsvRoute = defineRouteContract({
+  name: 'documents.exportCsv',
+  input: z.object({
+    typeKey: z.string().min(1).optional(),
+    status: documentStatusSchema.optional(),
+    keyword: z.string().max(200).optional(),
+    dateFrom: timestampMsSchema.optional(),
+    dateTo: timestampMsSchema.optional()
+  }),
+  output: z
+    .object({
+      canceled: z.boolean(),
+      path: z.string().min(1).optional()
+    })
+    .refine((value) => value.canceled || typeof value.path === 'string', {
+      message: 'path is required when not canceled'
+    })
+})
+
+export const documentsPreviewFileRoute = defineRouteContract({
+  name: 'documents.previewFile',
+  input: z.object({
+    documentId: z.string().min(1),
+    uriIndex: z.number().int().nonnegative()
+  }),
+  output: z.object({
+    dataBase64: z.string().min(1),
+    mimeType: z.string().min(1),
+    name: z.string().min(1)
   })
 })

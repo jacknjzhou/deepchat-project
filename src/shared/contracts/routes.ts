@@ -382,9 +382,11 @@ import {
   documentTemplatesTestExtractRoute,
   documentTemplatesUpsertRoute,
   documentsDeleteRoute,
+  documentsExportCsvRoute,
   documentsExtractAndDraftRoute,
   documentsGetRoute,
   documentsListRoute,
+  documentsPreviewFileRoute,
   documentsUpsertRoute
 } from './routes/documents.routes'
 import {
@@ -810,6 +812,8 @@ const DEEPCHAT_ROUTE_CATALOG_PART_1 = {
   [documentsDeleteRoute.name]: documentsDeleteRoute,
   [documentTemplatesTestExtractRoute.name]: documentTemplatesTestExtractRoute,
   [documentsExtractAndDraftRoute.name]: documentsExtractAndDraftRoute,
+  [documentsExportCsvRoute.name]: documentsExportCsvRoute,
+  [documentsPreviewFileRoute.name]: documentsPreviewFileRoute,
   [pluginsListRoute.name]: pluginsListRoute,
   [pluginsGetRoute.name]: pluginsGetRoute,
   [pluginsEnableRoute.name]: pluginsEnableRoute,
