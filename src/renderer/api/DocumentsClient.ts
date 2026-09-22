@@ -25,6 +25,8 @@ export type DocumentsTemplateUpsertInput = z.input<typeof documentsTemplateUpser
 export type DocumentsForkInput = z.input<typeof documentTemplatesForkRoute.input>
 export type DocumentsUpdateInput = z.input<typeof documentsUpsertInputSchema>
 export type DocumentsListInput = z.input<typeof documentsListInputSchema>
+export type DocumentsTestExtractInput = z.input<typeof documentTemplatesTestExtractRoute.input>
+export type DocumentsExtractAndDraftInput = z.input<typeof documentsExtractAndDraftRoute.input>
 
 const toPlainIpcValue = <T>(value: T): T => {
   if (value === null || typeof value !== 'object') {
@@ -66,16 +68,10 @@ export function createDocumentsClient(bridge: DeepchatBridge = getDeepchatBridge
     updateDocument: (input: DocumentsUpdateInput) =>
       invokeRoute(bridge, documentsUpsertRoute.name, input),
     deleteDocument: (id: string) => invokeRoute(bridge, documentsDeleteRoute.name, { id }),
-    testExtract: (input: {
-      templateId: string
-      file: { path: string; name?: string; mimeType?: string }
-    }) => invokeRoute(bridge, documentTemplatesTestExtractRoute.name, toPlainIpcValue(input)),
-    extractAndDraft: (input: {
-      templateId: string
-      file: { path: string; name?: string; mimeType?: string }
-      source?: 'chat' | 'manual'
-      sessionId?: string
-    }) => invokeRoute(bridge, documentsExtractAndDraftRoute.name, toPlainIpcValue(input))
+    testExtract: (input: DocumentsTestExtractInput) =>
+      invokeRoute(bridge, documentTemplatesTestExtractRoute.name, input),
+    extractAndDraft: (input: DocumentsExtractAndDraftInput) =>
+      invokeRoute(bridge, documentsExtractAndDraftRoute.name, input)
   }
 }
 

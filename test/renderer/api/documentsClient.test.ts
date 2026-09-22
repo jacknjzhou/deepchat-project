@@ -96,7 +96,7 @@ describe('DocumentsClient', () => {
     expect(result.meta.route).toBe('vision')
   })
 
-  it('extractAndDraft invokes the documents.extractAndDraft route with plain input', async () => {
+  it('extractAndDraft invokes the documents.extractAndDraft route', async () => {
     const record = {
       id: 'doc-1',
       templateId: 'tpl-1',
@@ -119,11 +119,13 @@ describe('DocumentsClient', () => {
 
     const result = await client.extractAndDraft({
       templateId: 'auto',
-      file: { path: '/tmp/a.pdf' }
+      file: { path: '/tmp/a.pdf' },
+      source: 'chat'
     })
     expect(invoke).toHaveBeenCalledWith('documents.extractAndDraft', {
       templateId: 'auto',
-      file: { path: '/tmp/a.pdf' }
+      file: { path: '/tmp/a.pdf' },
+      source: 'chat'
     })
     expect(result.document.status).toBe('draft')
     expect(result.meta.route).toBe('ocr')
