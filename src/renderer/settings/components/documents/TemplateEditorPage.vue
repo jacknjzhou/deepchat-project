@@ -371,7 +371,8 @@ function applyTemplateToDraft(template: DocumentTemplate, options?: { fork?: boo
   draft.fields = template.fields.map((f) => toEditableField(f))
   draft.extractionMode = template.extractionMode
   draft.promptPreset = template.promptPreset
-  draft.isBuiltin = template.isBuiltin
+  // A fork is always a new custom template, even when forked from a builtin.
+  draft.isBuiltin = options?.fork ? false : template.isBuiltin
   draft.builtinSourceId = options?.fork ? template.id : template.builtinSourceId
   savedSnapshot = JSON.parse(JSON.stringify(draft))
 }

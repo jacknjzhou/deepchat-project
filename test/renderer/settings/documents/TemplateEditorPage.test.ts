@@ -220,7 +220,7 @@ describe('TemplateEditorPage', () => {
     expect(wrapper.get('[data-testid="template-save"]').exists()).toBe(true)
   })
 
-  it('prefills draft from forkFrom source template', async () => {
+  it('prefills draft from forkFrom source template and stays editable', async () => {
     const { wrapper } = await setup('/documents/template/new?forkFrom=tpl_contract', [
       {
         path: '/documents/template/:id',
@@ -231,6 +231,32 @@ describe('TemplateEditorPage', () => {
     expect(wrapper.get('[data-testid="template-name"]').attributes('value')).toBe('Contract')
     // typeKey cleared for user to choose
     expect(wrapper.get('[data-testid="template-type-key"]').attributes('value')).toBe('')
+    // a fork is always a custom template: editable, no readonly affordances
+    expect(wrapper.find('[data-testid="template-save"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="builtin-fork-cta"]').exists()).toBe(false)
+    expect(wrapper.get('[data-testid="template-name"]').attributes('disabled')).toBeUndefined()
+  })
+
+  it('saves forked template with builtinSourceId of the source', async () => {
+    stubStore.saveTemplate.mockResolvedValueOnce({
+      ...customTemplate,
+      id: 'tpl_forked',
+      typeKey: 'contract_copy',
+      name: 'Contract Copy'
+    })
+    const { wrapper } = await setup('/documents/template/new?forkFrom=tpl_contract', [
+      {
+        path: '/documents/template/:id',
+        name: 'settings-documents-template',
+        component: { template: '<div />' }
+      }
+    ])
+    await wrapper.get('[data-testid="template-name"]').setValue('Contract Copy')
+    await wrapper.get('[data-testid="template-type-key"]').setValue('contract_copy')
+    await wrapper.get('[data-testid="template-save"]').trigger('click')
+    await flushPromises()
+    expect(stubStore.saveTemplate).toHaveBeenCalledTimes(1)
+    expect(stubStore.saveTemplate.mock.calls[0][0].builtinSourceId).toBe('tpl_contract')
   })
 
   it('blocks save when name is empty', async () => {
