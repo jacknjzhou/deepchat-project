@@ -4,8 +4,10 @@ import {
   documentTemplatesForkRoute,
   documentTemplatesGetRoute,
   documentTemplatesListRoute,
+  documentTemplatesTestExtractRoute,
   documentTemplatesUpsertRoute,
   documentsDeleteRoute,
+  documentsExtractAndDraftRoute,
   documentsGetRoute,
   documentsListRoute,
   documentsUpsertRoute,
@@ -63,7 +65,17 @@ export function createDocumentsClient(bridge: DeepchatBridge = getDeepchatBridge
     getDocument: (id: string) => invokeRoute(bridge, documentsGetRoute.name, { id }),
     updateDocument: (input: DocumentsUpdateInput) =>
       invokeRoute(bridge, documentsUpsertRoute.name, input),
-    deleteDocument: (id: string) => invokeRoute(bridge, documentsDeleteRoute.name, { id })
+    deleteDocument: (id: string) => invokeRoute(bridge, documentsDeleteRoute.name, { id }),
+    testExtract: (input: {
+      templateId: string
+      file: { path: string; name?: string; mimeType?: string }
+    }) => invokeRoute(bridge, documentTemplatesTestExtractRoute.name, toPlainIpcValue(input)),
+    extractAndDraft: (input: {
+      templateId: string
+      file: { path: string; name?: string; mimeType?: string }
+      source?: 'chat' | 'manual'
+      sessionId?: string
+    }) => invokeRoute(bridge, documentsExtractAndDraftRoute.name, toPlainIpcValue(input))
   }
 }
 

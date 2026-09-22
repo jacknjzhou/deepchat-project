@@ -76,4 +76,56 @@ describe('DocumentsClient', () => {
       name: 'F'
     })
   })
+
+  it('testExtract invokes the documentTemplates.testExtract route', async () => {
+    const invoke = vi.fn(async () => ({
+      fields: [{ key: 'invoice_code', value: '123', uncertain: false }],
+      meta: { route: 'vision' as const, rawOutput: '{}', durationMs: 8, issues: [] }
+    }))
+    const bridge = { invoke, on: vi.fn(() => () => undefined) } as unknown as DeepchatBridge
+    const client = createDocumentsClient(bridge)
+
+    const result = await client.testExtract({
+      templateId: 'tpl-1',
+      file: { path: '/tmp/a.jpg', mimeType: 'image/jpeg' }
+    })
+    expect(invoke).toHaveBeenCalledWith('documentTemplates.testExtract', {
+      templateId: 'tpl-1',
+      file: { path: '/tmp/a.jpg', mimeType: 'image/jpeg' }
+    })
+    expect(result.meta.route).toBe('vision')
+  })
+
+  it('extractAndDraft invokes the documents.extractAndDraft route with plain input', async () => {
+    const record = {
+      id: 'doc-1',
+      templateId: 'tpl-1',
+      typeKey: 'contract',
+      templateSnapshot: template,
+      fields: {},
+      fileUris: [],
+      source: 'manual' as const,
+      sessionId: null,
+      status: 'draft' as const,
+      createdAt: 1,
+      updatedAt: 2
+    }
+    const invoke = vi.fn(async () => ({
+      document: record,
+      meta: { route: 'ocr' as const, rawOutput: '{}', durationMs: 5, issues: [] }
+    }))
+    const bridge = { invoke, on: vi.fn(() => () => undefined) } as unknown as DeepchatBridge
+    const client = createDocumentsClient(bridge)
+
+    const result = await client.extractAndDraft({
+      templateId: 'auto',
+      file: { path: '/tmp/a.pdf' }
+    })
+    expect(invoke).toHaveBeenCalledWith('documents.extractAndDraft', {
+      templateId: 'auto',
+      file: { path: '/tmp/a.pdf' }
+    })
+    expect(result.document.status).toBe('draft')
+    expect(result.meta.route).toBe('ocr')
+  })
 })
