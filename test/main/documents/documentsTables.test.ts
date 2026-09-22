@@ -7,13 +7,23 @@ const tableModule = sqliteModule
 const documentsTableModule = sqliteModule
   ? await import('@/documents/data/tables/documents').catch(() => null)
   : null
+const databaseModule = sqliteModule
+  ? await import('@/documents/data/database').catch(() => null)
+  : null
+const repositoryModule = sqliteModule
+  ? await import('@/documents/repository').catch(() => null)
+  : null
 
 const Database = sqliteModule?.default
 const DocumentTemplatesTable = tableModule?.DocumentTemplatesTable
 const DocumentsTable = documentsTableModule?.DocumentsTable
+const DocumentsDatabase = databaseModule?.DocumentsDatabase
+const DocumentsRepository = repositoryModule?.DocumentsRepository
 const DatabaseCtor = Database!
 const DocumentTemplatesTableCtor = DocumentTemplatesTable!
 const DocumentsTableCtor = DocumentsTable!
+const DocumentsDatabaseCtor = DocumentsDatabase!
+const DocumentsRepositoryCtor = DocumentsRepository!
 
 let sqliteAvailable = false
 if (Database) {
@@ -26,8 +36,11 @@ if (Database) {
   }
 }
 
-const describeIfSqlite =
-  sqliteAvailable && DocumentTemplatesTable && DocumentsTable ? describe : describe.skip
+const modulesReady =
+  sqliteAvailable &&
+  Boolean(DocumentTemplatesTable && DocumentsTable && DocumentsDatabase && DocumentsRepository)
+
+const describeIfSqlite = modulesReady ? describe : describe.skip
 
 describeIfSqlite('DocumentTemplatesTable', () => {
   const makeDb = () => {
@@ -152,6 +165,177 @@ describeIfSqlite('DocumentsTable', () => {
     expect(table.list({ typeKey: 'contract' })).toHaveLength(1)
     expect(table.list({ status: 'confirmed' })).toHaveLength(1)
     expect(table.list({})).toHaveLength(2)
+    db.close()
+  })
+
+  it('filters by keyword hitting fields content', () => {
+    const db = makeDb()
+    const table = new DocumentsTableCtor(db)
+    table.insert({
+      templateId: 't1',
+      typeKey: 'contract',
+      templateSnapshot: {},
+      fields: { party_a: { value: '甲公司', uncertain: false } },
+      fileUris: [],
+      source: 'manual',
+      sessionId: null,
+      status: 'draft',
+      now: 1
+    })
+    expect(table.list({ keyword: '甲公司' })).toHaveLength(1)
+    expect(table.list({ keyword: '乙公司' })).toHaveLength(0)
+    db.close()
+  })
+
+  it('escapes LIKE wildcards in keyword', () => {
+    const db = makeDb()
+    const table = new DocumentsTableCtor(db)
+    table.insert({
+      templateId: 't1',
+      typeKey: 'contract',
+      templateSnapshot: {},
+      fields: { amount: { value: '100%', uncertain: false } },
+      fileUris: [],
+      source: 'manual',
+      sessionId: null,
+      status: 'draft',
+      now: 1
+    })
+    expect(table.list({ keyword: '100%' })).toHaveLength(1)
+    table.insert({
+      templateId: 't2',
+      typeKey: 'contract',
+      templateSnapshot: {},
+      fields: { name: { value: 'a_b', uncertain: false } },
+      fileUris: [],
+      source: 'manual',
+      sessionId: null,
+      status: 'draft',
+      now: 2
+    })
+    expect(table.list({ keyword: 'a_b' })).toHaveLength(1)
+    db.close()
+  })
+
+  it('updates status only and keeps fields intact', () => {
+    const db = makeDb()
+    const table = new DocumentsTableCtor(db)
+    const row = table.insert({
+      templateId: 't1',
+      typeKey: 'contract',
+      templateSnapshot: {},
+      fields: { party_a: { value: '甲公司', uncertain: false } },
+      fileUris: [],
+      source: 'manual',
+      sessionId: null,
+      status: 'draft',
+      now: 10
+    })
+    const updated = table.updateFieldsAndStatus(row.id, { status: 'confirmed', now: 30 })
+    expect(updated?.fields_json).toBe(row.fields_json)
+    expect(updated?.status).toBe('confirmed')
+    db.close()
+  })
+})
+
+describeIfSqlite('DocumentsRepository', () => {
+  const makeRepo = () => {
+    const db = new DatabaseCtor(':memory:')
+    new DocumentTemplatesTableCtor(db).createTable()
+    new DocumentsTableCtor(db).createTable()
+    const database = new DocumentsDatabaseCtor({ getDatabase: () => db })
+    return { db, repo: new DocumentsRepositoryCtor(database) }
+  }
+
+  it('upserts and lists templates with domain types', () => {
+    const { db, repo } = makeRepo()
+    const tpl = repo.upsertTemplate({
+      typeKey: 'contract',
+      name: '合同模板',
+      category: '合同类',
+      fields: [
+        {
+          key: 'party_a',
+          label: '甲方名称',
+          valueType: 'text',
+          required: true,
+          promptHint: '甲方全称',
+          validation: null,
+          enumOptions: null,
+          order: 1
+        }
+      ],
+      now: 100
+    })
+    expect(tpl.isBuiltin).toBe(false)
+    expect(tpl.fields[0].valueType).toBe('text')
+    expect(repo.listTemplates()).toHaveLength(1)
+    expect(repo.getTemplate(tpl.id)?.name).toBe('合同模板')
+    expect(repo.getTemplateByTypeKey('contract')?.id).toBe(tpl.id)
+    db.close()
+  })
+
+  it('deleteTemplate rejects builtin and reports archive references', () => {
+    const { db, repo } = makeRepo()
+    const tpl = repo.upsertTemplate({
+      typeKey: 'k',
+      name: 'N',
+      category: '自定义',
+      fields: [],
+      isBuiltin: true,
+      now: 1
+    })
+    expect(() => repo.deleteTemplate(tpl.id)).toThrow(/builtin/)
+    const editable = repo.upsertTemplate({
+      typeKey: 'k2',
+      name: 'N2',
+      category: '自定义',
+      fields: [],
+      now: 1
+    })
+    repo.insertDocument({
+      templateId: editable.id,
+      typeKey: 'k2',
+      templateSnapshot: editable,
+      fields: {},
+      fileUris: [],
+      source: 'manual',
+      sessionId: null,
+      status: 'draft',
+      now: 2
+    })
+    expect(repo.countDocumentsByTemplateId(editable.id)).toBe(1)
+    repo.deleteTemplate(editable.id, { force: true })
+    expect(repo.getTemplate(editable.id)).toBeNull()
+    db.close()
+  })
+
+  it('inserts document with snapshot and updates to confirmed', () => {
+    const { db, repo } = makeRepo()
+    const tpl = repo.upsertTemplate({
+      typeKey: 'k3',
+      name: 'N3',
+      category: '自定义',
+      fields: [],
+      now: 1
+    })
+    const doc = repo.insertDocument({
+      templateId: tpl.id,
+      typeKey: 'k3',
+      templateSnapshot: tpl,
+      fields: { f1: { value: 42, uncertain: true } },
+      fileUris: ['deepchat-file://x.pdf'],
+      source: 'chat',
+      sessionId: 's1',
+      status: 'draft',
+      now: 5
+    })
+    expect(doc.templateSnapshot.id).toBe(tpl.id)
+    expect(doc.fields.f1.uncertain).toBe(true)
+    const updated = repo.updateDocument(doc.id, { status: 'confirmed', now: 9 })
+    expect(updated?.status).toBe('confirmed')
+    expect(repo.listDocuments({ typeKey: 'k3' })).toHaveLength(1)
+    expect(repo.listDocuments({ keyword: '42' })).toHaveLength(1)
     db.close()
   })
 })
