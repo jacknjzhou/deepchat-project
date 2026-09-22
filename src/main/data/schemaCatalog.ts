@@ -36,6 +36,7 @@ import { AgentCatalogSettingsTable } from '@/agent/acp/catalog/data/settingsTabl
 import { NewSessionActiveSkillsTable } from '@/session/data/tables/newSessionActiveSkills'
 import { NewSessionDisabledAgentToolsTable } from '@/session/data/tables/newSessionDisabledAgentTools'
 import { SettingsActivityTable } from '@/settings/data/tables/settingsActivity'
+import { DocumentTemplatesTable } from '@/documents/data/tables/documentTemplates'
 import { CronJobsTable } from '@/scheduler/data/tables/cronJobs'
 import { CronJobRunsTable } from '@/scheduler/data/tables/cronJobRuns'
 import { CronJobDeliveriesTable } from '@/scheduler/data/tables/cronJobDeliveries'
@@ -391,6 +392,10 @@ const CATALOG_DEFINITIONS: CatalogDefinition[] = [
       evaluation_ref_json: `${LIVE_DELEGATION_EVENT_EVALUATION_REF_ADD_COLUMN_SQL};`
     },
     typeCheckedColumns: ['event_id', 'created_at']
+  },
+  {
+    name: 'document_templates',
+    createTable: (db) => new DocumentTemplatesTable(db)
   }
 ]
 
