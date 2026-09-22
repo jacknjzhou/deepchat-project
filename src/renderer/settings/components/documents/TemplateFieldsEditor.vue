@@ -181,6 +181,10 @@ const sortable = useSortable(listRef, props.fields, {
   animation: 150,
   handle: '.lucide-grip-vertical',
   disabled: props.readonly === true,
+  // useSortable's default onUpdate splices the list in place before onEnd
+  // fires, which would double-apply the move below; onEnd + moveField must be
+  // the only mutation source.
+  onUpdate: () => {},
   onEnd: (event) => {
     if (event.oldIndex === undefined || event.newIndex === undefined) return
     emit('update:fields', moveField(props.fields, event.oldIndex, event.newIndex))

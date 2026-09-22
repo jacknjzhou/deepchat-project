@@ -60,6 +60,44 @@ const selectRootStub = defineComponent({
 })
 const useSortableStub = vi.fn(() => ({ start: () => undefined, option: () => undefined }))
 
+const editorStubs = {
+  Icon: true,
+  Input: inputStub,
+  Textarea: inputStub,
+  Switch: switchStub,
+  Select: selectRootStub,
+  SelectTrigger: passthrough('SelectTrigger'),
+  SelectValue: passthrough('SelectValue'),
+  SelectContent: passthrough('SelectContent'),
+  SelectItem: selectItemStub,
+  DcButton: defineComponent({
+    name: 'DcButtonStub',
+    props: ['variant', 'size', 'disabled'],
+    template: '<button :disabled="disabled"><slot /></button>'
+  }),
+  AlertDialog: defineComponent({
+    name: 'AlertDialogStub',
+    props: { open: Boolean },
+    template: '<div v-if="open"><slot /></div>'
+  }),
+  AlertDialogContent: passthrough('AlertDialogContent'),
+  AlertDialogHeader: passthrough('AlertDialogHeader'),
+  AlertDialogTitle: passthrough('AlertDialogTitle'),
+  AlertDialogDescription: passthrough('AlertDialogDescription'),
+  AlertDialogFooter: passthrough('AlertDialogFooter'),
+  AlertDialogCancel: defineComponent({
+    name: 'AlertDialogCancelStub',
+    template: '<button data-testid="field-delete-cancel"><slot /></button>'
+  }),
+  AlertDialogAction: defineComponent({
+    name: 'AlertDialogActionStub',
+    props: ['disabled'],
+    emits: ['click'],
+    template:
+      '<button data-testid="field-delete-confirm" :disabled="disabled" @click="$emit(\'click\')"><slot /></button>'
+  })
+}
+
 function makeFields() {
   return [
     {
@@ -100,43 +138,7 @@ async function setup(readonly = false, fields = makeFields()) {
   const wrapper = mount(TemplateFieldsEditor, {
     props: { fields, readonly },
     global: {
-      stubs: {
-        Icon: true,
-        Input: inputStub,
-        Textarea: inputStub,
-        Switch: switchStub,
-        Select: selectRootStub,
-        SelectTrigger: passthrough('SelectTrigger'),
-        SelectValue: passthrough('SelectValue'),
-        SelectContent: passthrough('SelectContent'),
-        SelectItem: selectItemStub,
-        DcButton: defineComponent({
-          name: 'DcButtonStub',
-          props: ['variant', 'size', 'disabled'],
-          template: '<button :disabled="disabled"><slot /></button>'
-        }),
-        AlertDialog: defineComponent({
-          name: 'AlertDialogStub',
-          props: { open: Boolean },
-          template: '<div v-if="open"><slot /></div>'
-        }),
-        AlertDialogContent: passthrough('AlertDialogContent'),
-        AlertDialogHeader: passthrough('AlertDialogHeader'),
-        AlertDialogTitle: passthrough('AlertDialogTitle'),
-        AlertDialogDescription: passthrough('AlertDialogDescription'),
-        AlertDialogFooter: passthrough('AlertDialogFooter'),
-        AlertDialogCancel: defineComponent({
-          name: 'AlertDialogCancelStub',
-          template: '<button data-testid="field-delete-cancel"><slot /></button>'
-        }),
-        AlertDialogAction: defineComponent({
-          name: 'AlertDialogActionStub',
-          props: ['disabled'],
-          emits: ['click'],
-          template:
-            '<button data-testid="field-delete-confirm" :disabled="disabled" @click="$emit(\'click\')"><slot /></button>'
-        })
-      }
+      stubs: editorStubs
     }
   })
   await flushPromises()
@@ -254,3 +256,73 @@ describe('TemplateFieldsEditor', () => {
     }
   })
 })
+
+// These tests run the real @vueuse/integrations useSortable and the real
+// sortablejs: the stubbed suite cannot detect the default onUpdate that
+// mutates the list in place before onEnd fires, and sortablejs is externalized
+// so its module cannot be mocked here. The merged Sortable options are read
+// back from the instance stored on the list element (sortablejs expando).
+describe('TemplateFieldsEditor sortable options', () => {
+  async function setupRealSortable(fields = makeFields()) {
+    vi.resetModules()
+    // Keep the real useSortable (unmock the suite-wide stub); vue-i18n is
+    // mocked only to keep translation keys readable in assertions.
+    vi.doUnmock('@vueuse/integrations/useSortable')
+    vi.doMock('vue-i18n', () => ({
+      useI18n: () => ({
+        t: (key: string) => key
+      })
+    }))
+    const TemplateFieldsEditor = (
+      await import('../../../../src/renderer/settings/components/documents/TemplateFieldsEditor.vue')
+    ).default
+
+    const wrapper = mount(TemplateFieldsEditor, {
+      props: { fields },
+      global: {
+        stubs: editorStubs
+      }
+    })
+    await flushPromises()
+    const listEl = wrapper.get('[data-testid="field-row"]').element
+      .parentElement as HTMLElement
+    const expandoKey = Object.keys(listEl).find((key) => /^Sortable\d+$/.test(key))
+    const options = expandoKey
+      ? (listEl as unknown as Record<string, { options: SortableOptions }>)[expandoKey].options
+      : undefined
+    return { wrapper, fields, options }
+  }
+
+  it('overrides useSortable default onUpdate so onEnd stays the only mutation source', async () => {
+    const { fields, options } = await setupRealSortable()
+    expect(typeof options?.onUpdate).toBe('function')
+    expect(typeof options?.onEnd).toBe('function')
+
+    // The useSortable default onUpdate would splice props.fields (0 -> 1) in
+    // place; invoking the captured handler must leave the list untouched.
+    const before = fields.map((field) => field.key)
+    options!.onUpdate!({
+      oldIndex: 0,
+      newIndex: 1,
+      item: document.createElement('div'),
+      from: document.createElement('div')
+    } as unknown as Event)
+    await flushPromises()
+    expect(fields.map((field) => field.key)).toEqual(before)
+  })
+
+  it('moves the field exactly once when onEnd fires', async () => {
+    const { wrapper, options } = await setupRealSortable()
+    options!.onEnd!({ oldIndex: 0, newIndex: 1 } as unknown as Event)
+    await flushPromises()
+    const updateEvents = wrapper.emitted('update:fields')
+    expect(updateEvents).toBeTruthy()
+    const moved = updateEvents!.at(-1)![0] as Array<{ key: string }>
+    expect(moved.map((field) => field.key)).toEqual(['date', 'amount'])
+  })
+})
+
+interface SortableOptions {
+  onUpdate?: (event: Event) => void
+  onEnd?: (event: Event) => void
+}
