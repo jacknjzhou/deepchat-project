@@ -13,12 +13,14 @@ const databaseModule = sqliteModule
 const repositoryModule = sqliteModule
   ? await import('@/documents/repository').catch(() => null)
   : null
+const seedModule = sqliteModule ? await import('@/documents/seed').catch(() => null) : null
 
 const Database = sqliteModule?.default
 const DocumentTemplatesTable = tableModule?.DocumentTemplatesTable
 const DocumentsTable = documentsTableModule?.DocumentsTable
 const DocumentsDatabase = databaseModule?.DocumentsDatabase
 const DocumentsRepository = repositoryModule?.DocumentsRepository
+const seedPresetTemplates = seedModule?.seedPresetTemplates
 const DatabaseCtor = Database!
 const DocumentTemplatesTableCtor = DocumentTemplatesTable!
 const DocumentsTableCtor = DocumentsTable!
@@ -41,6 +43,7 @@ const modulesReady =
   Boolean(DocumentTemplatesTable && DocumentsTable && DocumentsDatabase && DocumentsRepository)
 
 const describeIfSqlite = modulesReady ? describe : describe.skip
+const describeIfSeed = modulesReady && seedPresetTemplates ? describe : describe.skip
 
 describeIfSqlite('DocumentTemplatesTable', () => {
   const makeDb = () => {
@@ -438,6 +441,50 @@ describeIfSqlite('DocumentsRepository', () => {
     expect(() => repo.deleteTemplate(tpl.id)).toThrow(/archived document/)
     repo.deleteTemplate(tpl.id, { force: true })
     expect(repo.getTemplate(tpl.id)).toBeNull()
+    db.close()
+  })
+})
+
+describeIfSeed('seedPresetTemplates', () => {
+  it('seeds all 10 preset templates idempotently', () => {
+    const db = new DatabaseCtor(':memory:')
+    new DocumentTemplatesTableCtor(db).createTable()
+    const database = new DocumentsDatabaseCtor({ getDatabase: () => db })
+    const count1 = seedPresetTemplates!(database, { now: 100 })
+    expect(count1).toBe(10)
+    const templates = database.documentTemplatesTable.list()
+    const typeKeys = templates.map((t) => t.type_key).sort()
+    expect(typeKeys).toEqual(
+      [
+        'catering_receipt',
+        'contract',
+        'contract_supplement',
+        'hotel_receipt',
+        'invoice_general',
+        'invoice_special',
+        'lease_contract',
+        'payment_screenshot',
+        'purchase_order',
+        'travel_itinerary'
+      ].sort()
+    )
+    const invoice = templates.find((t) => t.type_key === 'invoice_special')!
+    const fields = JSON.parse(invoice.fields_json) as Array<{
+      key: string
+      valueType: string
+      order: number
+      required: boolean
+    }>
+    expect(fields[0]).toMatchObject({ key: 'invoice_code', valueType: 'text', order: 1 })
+    expect(fields.find((f) => f.key === 'line_items')?.valueType).toBe('array')
+    const lineItems = fields.find((f) => f.key === 'line_items')
+    expect(lineItems?.required).toBe(false)
+    expect(invoice.is_builtin).toBe(1)
+    expect(invoice.category).toBe('发票类')
+
+    const count2 = seedPresetTemplates!(database, { now: 200 })
+    expect(count2).toBe(0)
+    expect(database.documentTemplatesTable.list().every((t) => t.created_at === 100)).toBe(true)
     db.close()
   })
 })

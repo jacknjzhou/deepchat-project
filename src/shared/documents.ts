@@ -67,6 +67,7 @@ export interface DocumentRecord {
 }
 
 // seed JSON (docs/superpowers/specs/preset_templates.json) → 内部结构的映射表
+// 键必须与 preset_templates.json 的 name 逐字一致；seed 新增/改名时需同步两处。
 export const PRESET_TEMPLATE_TYPE_KEY_MAP: Record<string, string> = {
   合同模板: 'contract',
   租赁合同模板: 'lease_contract',
