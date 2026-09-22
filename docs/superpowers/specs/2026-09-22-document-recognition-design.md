@@ -40,7 +40,7 @@
 
 ```
 主进程（新模块 src/main/documents/）
-  ├─ DocumentTemplateStore   模板 CRUD + 预置模板 seed（SQLite）
+  ├─ DocumentTemplateStore   模板 CRUD + 预置模板 seed（SQLite，seed 源: preset_templates.json）
   ├─ DocumentExtractor       智能路由提取 + 动态 prompt + zod 校验
   ├─ DocumentArchiveStore    档案 CRUD + 快照（SQLite）
   └─ typed IPC 路由          src/shared/contracts/routes/documents.routes.ts
@@ -63,8 +63,9 @@ Agent 入口
 | 列 | 类型 | 说明 |
 |---|---|---|
 | id | TEXT PK | nanoid |
-| typeKey | TEXT UNIQUE | `invoice` / `train_ticket` / `flight_ticket` / `hotel_receipt` / `contract` / `purchase_order` / `travel_itinerary`；自定义模板用自定义 key |
+| typeKey | TEXT UNIQUE | 见下方预置模板映射表；自定义模板用自定义 key |
 | name / icon | TEXT | 显示名（i18n key 或用户自定义名）、图标 |
+| category | TEXT | 分类：合同类 / 出行票据类 / 采购类 / 支付凭证类 / 发票类（预置）；自定义模板默认「自定义」 |
 | fields | TEXT(JSON) | 字段定义数组，每项 `{ key, label, valueType, required, promptHint, validation, enumOptions, order }` |
 | extractionMode | TEXT | `auto`（默认）/ `vision` / `text` |
 | promptPreset | TEXT NULL | 用户附加提取指令 |
@@ -73,7 +74,35 @@ Agent 入口
 | version | INTEGER | 每次修改 +1 |
 | createdAt / updatedAt | INTEGER | 时间戳 |
 
-`valueType` ∈ `text | number | amount | date | enum`；`validation` 一期支持两类：正则字符串、内置关系式枚举（`amount_conservation` 金额守恒、`date_format` 日期格式）。
+`valueType` ∈ `text | number | date | array | enum`（与 preset_templates.json 的 `type` 映射：`string→text`、`number→number`、`date→date`、`array→array`；`enum` 供用户自定义模板使用）。`validation` 一期支持两类：正则字符串、内置关系式枚举（`amount_conservation` 金额守恒、`date_format` 日期格式）。
+
+### 预置模板（seed 数据源：docs/superpowers/specs/preset_templates.json）
+
+预置模板以 [preset_templates.json](preset_templates.json) 为权威定义，共 **10 类**，seed 映射如下：
+
+| typeKey | JSON name | category | 说明 |
+|---|---|---|---|
+| `contract` | 合同模板 | 合同类 | 通用商务合同 |
+| `lease_contract` | 租赁合同模板 | 合同类 | 房屋/设备租赁 |
+| `contract_supplement` | 补充说明模板 | 合同类 | 补充协议/补充说明 |
+| `travel_itinerary` | 行程单模板 | 出行票据类 | 机票/火车票（含高铁）行程单，`ticket_type` 区分航程/车次类型 |
+| `hotel_receipt` | 住宿单模板 | 出行票据类 | 酒店住宿账单/发票 |
+| `catering_receipt` | 餐饮流水单模板 | 出行票据类 | 餐饮消费小票 |
+| `purchase_order` | 订购单模板 | 采购类 | 采购订购单 |
+| `payment_screenshot` | 付款截图模板 | 支付凭证类 | 微信/支付宝/银行付款截图 |
+| `invoice_special` | 增值税专用发票 | 发票类 | 专票（含明细行 `line_items`，required:false） |
+| `invoice_general` | 普通发票 | 发票类 | 普票/卷式发票（含明细行，required:false） |
+
+JSON → 模板字段结构映射规则：
+
+- `desc` → `promptHint`（提取提示，进入动态 prompt）
+- `type` → `valueType`（见上）
+- `required`：JSON 仅 `line_items` 显式 `required:false`；未标注字段默认 `required:true`
+- `order`：按 JSON 数组序生成（1 起）
+- `validation` / `enumOptions`：预置模板不带，由用户后续在编辑器中配置
+- JSON 中的 `version: "1.0"` 作为 seed 数据集版本号
+
+实施落位说明：JSON 原文中的「alembic 迁移 / extract_schema 表 / is_preset」概念映射到本项目的实现为——SQLite `document_templates` 表 + 启动时 seed（插入缺失 `typeKey` 的 `isBuiltin=1` 模板，幂等）。seed 文件在实施时复制为主进程资源（`src/main/documents/presetTemplates.json`），运行时不依赖 docs 目录；docs 下的 JSON 作为需求源文档保持同步。
 
 ### documents（单据档案表）
 
@@ -89,8 +118,6 @@ Agent 入口
 | sessionId | TEXT NULL | 聊天识别来源会话 |
 | status | TEXT | `draft`（识别完成待确认）→ `confirmed`（确认/修正后） |
 | createdAt / updatedAt | INTEGER | 时间戳 |
-
-预置模板 seed：启动时按代码内常量插入缺失 `typeKey` 的 `isBuiltin=1` 模板，字段定义与现 invoice skill 的 Extraction Template 对齐（`invoiceNumber`、`invoiceCode`、`buyer/seller`、`amount/tax/totalAmount` 等），其余 6 类按常见票面字段预置。
 
 ## 6. 提取服务（DocumentExtractor）
 
@@ -138,7 +165,8 @@ documents.exportCsv           → 导出 CSV（返回保存路径）
 ```
 设置 > 单据识别 (Tab)
 └─ 模板列表
-     ├─ 预置模板组: 7 类单据卡片（图标+名称+字段数+提取模式）
+     ├─ 预置模板组: 10 类单据卡片，按 category 二级分组
+     │    （合同类 / 出行票据类 / 采购类 / 支付凭证类 / 发票类）
      │    └─ 操作: 查看、复制为自定义（fork）
      └─ 自定义模板组: 新建（从零/从预置 fork）、删除（有档案引用时二次确认）
           └─ 点「编辑」→ 跳转独立页面 /settings/documents/template/:id
@@ -157,7 +185,7 @@ documents.exportCsv           → 导出 CSV（返回保存路径）
 
 - **拖拽排序**：优先用 `@vueuse/integrations` 的 `useSortable`（底层 sortablejs）实现表格行拖拽；若项目尚未安装该依赖，实施时引入（轻量依赖，符合 VueUse 优先惯例）。
 - 编辑器独立页面路由：`/settings/documents/template/:id`（编辑）；`/settings/documents/template/new?typeKey=&forkFrom=`（新建/复制品）。全宽布局适配字段表格 + 样张测试。
-- 字段 `valueType` 决定编辑控件（date→日期选择器、amount→数字输入、enum→下拉）。
+- 字段 `valueType` 决定编辑控件（text→文本输入、number→数字输入、date→日期选择器、enum→下拉、array→明细表格行编辑）。
 - 状态用 Pinia `DocumentsStore` 缓存，改动走 typed IPC。
 - i18n：所有文案进 20 个语言包，key 前缀 `settings.documents.*`。
 
@@ -180,7 +208,7 @@ documents.exportCsv           → 导出 CSV（返回保存路径）
 ## 10. Agent 入口（skill 联动）
 
 - office-automation 的 `invoice-recognition` skill 泛化为 `document-recognition`：skill 不再内嵌字段模板，改为指引 agent 调用 `documents.extractAndDraft` 识别，并按返回的 fields 渲染确认卡片（复用渲染层确认 UI），用户确认后转 `confirmed`。
-- 预置 `invoice` 模板字段与现 skill Extraction Template 对齐，`create_reimbursement` 等下游工具无感迁移（从档案读数）。
+- 预置 `invoice_special` / `invoice_general` 模板字段与现 skill 的 Extraction Template 对齐（`invoice_code`=发票代码、`invoice_number`=发票号码，语义与 JSON seed 一致），`create_reimbursement` 等下游工具无感迁移（从档案读数）。
 - 聊天附件识别的展示沿用现有消息块体系（图片预览 + 结构化 JSON 结果卡片）。
 
 ## 11. 测试策略
@@ -216,3 +244,4 @@ documents.exportCsv           → 导出 CSV（返回保存路径）
 | 模板 schema 演进污染历史档案 | templateSnapshot 快照 + version，档案按快照渲染 |
 | 自定义模板 key 冲突/重名 | typeKey UNIQUE 约束 + 保存前查重提示 |
 | 拖拽依赖引入 | 仅一个轻量依赖（sortablejs via @vueuse/integrations），符合 VueUse 优先惯例 |
+| docs 下 JSON 与主进程 seed 资源双源漂移 | 主进程 seed（src/main/documents/presetTemplates.json）以 docs/superpowers/specs/preset_templates.json 为需求源；后续变更先改 docs 源再同步，并在 seed 单测中比对两者一致 |
