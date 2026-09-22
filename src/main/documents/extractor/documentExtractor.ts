@@ -1,7 +1,11 @@
 import type { ChatMessage } from '@shared/types/core/chat-message'
 import type { DocumentFieldEntry, DocumentTemplate } from '@shared/documents'
 import type { DocumentsRepository } from '@/documents/repository'
-import { buildClassificationPrompts, buildExtractionUserPrompt } from './promptBuilder'
+import {
+  buildClassificationPrompts,
+  buildExtractionSystemPrompt,
+  buildExtractionUserPrompt
+} from './promptBuilder'
 import { parseModelOutput, validateTemplateRules } from './fieldValidator'
 import { mergeSegmentOutputs, splitTextIntoSegments } from './segmentMerger'
 
@@ -77,6 +81,7 @@ export class DocumentExtractor {
       const target = this.requireTarget(this.deps.resolveVisionTarget(), 'defaultVisionModel')
       const dataUrl = await this.deps.readImageAsDataUrl(input.file.path)
       const messages: ChatMessage[] = [
+        { role: 'system', content: buildExtractionSystemPrompt(template) },
         {
           role: 'user',
           content: [
@@ -102,10 +107,8 @@ export class DocumentExtractor {
       const segments = splitTextIntoSegments(text)
       if (segments.length === 1) {
         const messages: ChatMessage[] = [
-          {
-            role: 'user',
-            content: buildExtractionUserPrompt(template, text)
-          }
+          { role: 'system', content: buildExtractionSystemPrompt(template) },
+          { role: 'user', content: buildExtractionUserPrompt(template, text) }
         ]
         rawOutput = await this.deps.generateCompletion({
           providerId: target.providerId,
@@ -120,11 +123,16 @@ export class DocumentExtractor {
       } else {
         const partials: Record<string, DocumentFieldEntry>[] = []
         const segmentOutputs: string[] = []
+        const systemMessage: ChatMessage = {
+          role: 'system',
+          content: buildExtractionSystemPrompt(template)
+        }
         for (let index = 0; index < segments.length; index += 1) {
           if (input.signal?.aborted) {
             throw new Error('extraction aborted')
           }
           const messages: ChatMessage[] = [
+            systemMessage,
             {
               role: 'user',
               content: buildExtractionUserPrompt(template, segments[index], {

@@ -63,7 +63,10 @@ describe('DocumentExtractor.extract 路由', () => {
     const call = vi.mocked(deps.generateCompletion).mock.calls[0][0]
     expect(call.providerId).toBe('openai')
     expect(call.modelId).toBe('gpt-4o')
-    const content = call.messages[0]?.content
+    expect(call.messages[0]?.role).toBe('system')
+    expect(call.messages[0]?.content).toContain('- key: invoice_code')
+    expect(call.messages[0]?.content).toContain('12位发票代码')
+    const content = call.messages[1]?.content
     expect(Array.isArray(content)).toBe(true)
     expect(JSON.stringify(content)).toContain('image_url')
     expect(result.fields.invoice_code).toEqual({ value: '123456789012', uncertain: false })
@@ -82,7 +85,8 @@ describe('DocumentExtractor.extract 路由', () => {
     expect(result.route).toBe('text')
     expect(deps.extractOcrText).not.toHaveBeenCalled()
     const call = vi.mocked(deps.generateCompletion).mock.calls[0][0]
-    expect(call.messages[0]?.content).toContain('发票全文内容')
+    expect(call.messages[0]?.role).toBe('system')
+    expect(call.messages[1]?.content).toContain('发票全文内容')
   })
 
   it('扫描件 PDF 走 OCR 再走文本模型', async () => {
@@ -98,7 +102,8 @@ describe('DocumentExtractor.extract 路由', () => {
     expect(result.route).toBe('ocr')
     expect(deps.extractOcrText).toHaveBeenCalledWith('/tmp/a.pdf')
     const call = vi.mocked(deps.generateCompletion).mock.calls[0][0]
-    expect(call.messages[0]?.content).toContain('OCR 识别出的文本')
+    expect(call.messages[0]?.role).toBe('system')
+    expect(call.messages[1]?.content).toContain('OCR 识别出的文本')
   })
 
   it('extractionMode=text 强制图片走 OCR 通道', async () => {
