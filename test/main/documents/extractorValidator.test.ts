@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { parseModelOutput, validateTemplateRules } from '@/documents/extractor/fieldValidator'
+import {
+  extractJsonBlock,
+  parseModelOutput,
+  validateTemplateRules
+} from '@/documents/extractor/fieldValidator'
 import type { DocumentTemplate } from '@shared/documents'
 
 const field = (
@@ -32,6 +36,34 @@ const makeTemplate = (fields: ReturnType<typeof field>[]): DocumentTemplate => (
   version: 1,
   createdAt: 1,
   updatedAt: 1
+})
+
+describe('extractJsonBlock', () => {
+  it('解析嵌套对象', () => {
+    const raw = '前缀 {"fields": {"a": {"b": 1}}, "uncertain_fields": []}'
+    expect(extractJsonBlock(raw)).toEqual({ fields: { a: { b: 1 } }, uncertain_fields: [] })
+  })
+
+  it('字符串内花括号不被截断', () => {
+    const raw = '{"fields": {"a": "包含 } 与 { 的文本"}, "uncertain_fields": []}'
+    expect(extractJsonBlock(raw)).toEqual({
+      fields: { a: '包含 } 与 { 的文本' },
+      uncertain_fields: []
+    })
+  })
+
+  it('值中含转义引号与反斜杠时正常解析', () => {
+    const raw = '{"fields": {"a": "引号 \\" 反斜杠 \\\\"}, "uncertain_fields": []}'
+    expect(extractJsonBlock(raw)).toEqual({
+      fields: { a: '引号 " 反斜杠 \\' },
+      uncertain_fields: []
+    })
+  })
+
+  it('前导杂文含平衡花括号时跳过并解析真 JSON', () => {
+    const raw = '示例 {A} 如下：{"fields": {"a": "ok"}, "uncertain_fields": []}'
+    expect(extractJsonBlock(raw)).toEqual({ fields: { a: 'ok' }, uncertain_fields: [] })
+  })
 })
 
 describe('parseModelOutput', () => {

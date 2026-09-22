@@ -7,37 +7,39 @@ export interface ParsedModelOutput {
 
 // 从模型输出中截取第一个平衡的 JSON 对象（容忍围栏与前后杂文）
 export function extractJsonBlock(raw: string): unknown {
-  const start = raw.indexOf('{')
-  if (start < 0) return null
-  let depth = 0
-  let inString = false
-  let escaped = false
-  for (let index = start; index < raw.length; index += 1) {
-    const char = raw[index]
-    if (inString) {
-      if (escaped) {
-        escaped = false
-      } else if (char === '\\') {
-        escaped = true
-      } else if (char === '"') {
-        inString = false
+  let start = raw.indexOf('{')
+  while (start >= 0) {
+    let depth = 0
+    let inString = false
+    let escaped = false
+    for (let index = start; index < raw.length; index += 1) {
+      const char = raw[index]
+      if (inString) {
+        if (escaped) {
+          escaped = false
+        } else if (char === '\\') {
+          escaped = true
+        } else if (char === '"') {
+          inString = false
+        }
+        continue
       }
-      continue
-    }
-    if (char === '"') {
-      inString = true
-    } else if (char === '{') {
-      depth += 1
-    } else if (char === '}') {
-      depth -= 1
-      if (depth === 0) {
-        try {
-          return JSON.parse(raw.slice(start, index + 1))
-        } catch {
-          return null
+      if (char === '"') {
+        inString = true
+      } else if (char === '{') {
+        depth += 1
+      } else if (char === '}') {
+        depth -= 1
+        if (depth === 0) {
+          try {
+            return JSON.parse(raw.slice(start, index + 1))
+          } catch {
+            break
+          }
         }
       }
     }
+    start = raw.indexOf('{', start + 1)
   }
   return null
 }
