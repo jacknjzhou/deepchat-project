@@ -152,6 +152,24 @@ describe('DocumentExtractor.extract 路由', () => {
     ).rejects.toThrow(/defaultVisionModel/)
   })
 
+  it('文本模型未配置时抛带引导语的错误', async () => {
+    const deps = makeDeps({ resolveTextTarget: vi.fn(() => null) })
+    const extractor = new DocumentExtractor(deps)
+    await expect(
+      extractor.extract({
+        templateId: 'tpl-1',
+        file: { path: '/tmp/a.pdf', mimeType: 'application/pdf' }
+      })
+    ).rejects.toThrow(/defaultModel/)
+  })
+
+  it('无 mimeType 时按扩展名路由', async () => {
+    const deps = makeDeps()
+    const extractor = new DocumentExtractor(deps)
+    const result = await extractor.extract({ templateId: 'tpl-1', file: { path: '/tmp/a.png' } })
+    expect(result.route).toBe('vision')
+  })
+
   it('不支持的文件类型抛错', async () => {
     const extractor = new DocumentExtractor(makeDeps())
     await expect(
@@ -212,6 +230,7 @@ describe('DocumentExtractor.extract auto 分类', () => {
     })
     expect(result.template.typeKey).toBe('hotel_receipt')
     expect(deps.generateCompletion).toHaveBeenCalledTimes(2)
+    expect(vi.mocked(deps.generateCompletion).mock.calls[0][0].messages[0]?.role).toBe('system')
     expect(vi.mocked(deps.generateCompletion).mock.calls[1][0].modelId).toBe('gpt-4o')
   })
 

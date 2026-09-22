@@ -70,8 +70,9 @@ export class DocumentExtractor {
     signal?: AbortSignal
   }): Promise<DocumentExtractResult> {
     const startedAt = this.deps.now?.() ?? Date.now()
-    const template = await this.resolveTemplate(input.templateId, input.file)
-    const plan = await this.buildRoutePlan(template, input.file)
+    const pdfText = isPdfFile(input.file) ? await this.deps.extractPdfText(input.file.path) : null
+    const template = await this.resolveTemplate(input.templateId, input.file, pdfText)
+    const plan = await this.buildRoutePlan(template, input.file, pdfText)
 
     const issues: string[] = []
     let fields: Record<string, DocumentFieldEntry>
@@ -103,6 +104,9 @@ export class DocumentExtractor {
     } else {
       const text =
         plan.route === 'ocr' ? await this.deps.extractOcrText(input.file.path) : (plan.text ?? '')
+      if (plan.route === 'ocr' && text.trim() === '') {
+        issues.push('ocr produced no text')
+      }
       const target = this.requireTarget(this.deps.resolveTextTarget(), 'defaultModel')
       const segments = splitTextIntoSegments(text)
       if (segments.length === 1) {
@@ -198,7 +202,8 @@ export class DocumentExtractor {
 
   private async resolveTemplate(
     templateId: string,
-    file: DocumentExtractFileInput
+    file: DocumentExtractFileInput,
+    pdfText: { text: string; hasTextLayer: boolean } | null
   ): Promise<DocumentTemplate> {
     if (templateId !== 'auto') {
       const template = this.deps.repository.getTemplate(templateId)
@@ -218,6 +223,7 @@ export class DocumentExtractor {
       target = this.requireTarget(this.deps.resolveVisionTarget(), 'defaultVisionModel')
       const dataUrl = await this.deps.readImageAsDataUrl(file.path)
       messages = [
+        { role: 'system', content: system },
         {
           role: 'user',
           content: [
@@ -228,13 +234,10 @@ export class DocumentExtractor {
       ]
     } else if (isPdfFile(file)) {
       target = this.requireTarget(this.deps.resolveTextTarget(), 'defaultModel')
-      const { text } = await this.deps.extractPdfText(file.path)
-      const sample = text.slice(0, 4000)
+      const sample = (pdfText?.text ?? '').slice(0, 4000)
       messages = [
-        {
-          role: 'user',
-          content: [system, '', user, '', sample].join('\n')
-        }
+        { role: 'system', content: system },
+        { role: 'user', content: [user, '', sample].join('\n') }
       ]
     } else {
       throw new Error(`unsupported file type for extraction: ${file.mimeType ?? file.path}`)
@@ -256,7 +259,8 @@ export class DocumentExtractor {
 
   private async buildRoutePlan(
     template: DocumentTemplate,
-    file: DocumentExtractFileInput
+    file: DocumentExtractFileInput,
+    pdfText: { text: string; hasTextLayer: boolean } | null
   ): Promise<{ route: DocumentExtractRoute; text?: string }> {
     const mode = template.extractionMode
     if (isImageFile(file)) {
@@ -271,9 +275,8 @@ export class DocumentExtractor {
           'extractionMode=vision only supports image files; use auto or text mode for PDFs'
         )
       }
-      const { text, hasTextLayer } = await this.deps.extractPdfText(file.path)
-      if (hasTextLayer) {
-        return { route: 'text', text }
+      if (pdfText?.hasTextLayer) {
+        return { route: 'text', text: pdfText.text }
       }
       return { route: 'ocr' }
     }
