@@ -1,0 +1,70 @@
+import type { DeepchatBridge } from '@shared/contracts/bridge'
+import {
+  documentTemplatesDeleteRoute,
+  documentTemplatesForkRoute,
+  documentTemplatesGetRoute,
+  documentTemplatesListRoute,
+  documentTemplatesUpsertRoute,
+  documentsDeleteRoute,
+  documentsGetRoute,
+  documentsListRoute,
+  documentsUpsertRoute,
+  type documentsListInputSchema,
+  type documentsTemplateUpsertInputSchema,
+  type documentsUpsertInputSchema,
+  type DeepchatRouteInput,
+  type DeepchatRouteName,
+  type DeepchatRouteOutput
+} from '@shared/contracts/routes'
+import type { z } from 'zod'
+import { getDeepchatBridge } from './core'
+
+export type DocumentsTemplateUpsertInput = z.input<typeof documentsTemplateUpsertInputSchema>
+export type DocumentsForkInput = z.input<typeof documentTemplatesForkRoute.input>
+export type DocumentsUpdateInput = z.input<typeof documentsUpsertInputSchema>
+export type DocumentsListInput = z.input<typeof documentsListInputSchema>
+
+const toPlainIpcValue = <T>(value: T): T => {
+  if (value === null || typeof value !== 'object') {
+    return value
+  }
+  if (value instanceof Date) {
+    return new Date(value.getTime()) as T
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => toPlainIpcValue(item)) as T
+  }
+
+  const plain: Record<string, unknown> = {}
+  for (const [key, nestedValue] of Object.entries(value as Record<string, unknown>)) {
+    plain[key] = toPlainIpcValue(nestedValue)
+  }
+  return plain as T
+}
+
+const invokeRoute = async <N extends DeepchatRouteName>(
+  bridge: DeepchatBridge,
+  name: N,
+  input: DeepchatRouteInput<N>
+): Promise<DeepchatRouteOutput<N>> => bridge.invoke(name, toPlainIpcValue(input))
+
+export function createDocumentsClient(bridge: DeepchatBridge = getDeepchatBridge()) {
+  return {
+    listTemplates: () => invokeRoute(bridge, documentTemplatesListRoute.name, {}),
+    getTemplate: (id: string) => invokeRoute(bridge, documentTemplatesGetRoute.name, { id }),
+    upsertTemplate: (input: DocumentsTemplateUpsertInput) =>
+      invokeRoute(bridge, documentTemplatesUpsertRoute.name, input),
+    deleteTemplate: (id: string, force?: boolean) =>
+      invokeRoute(bridge, documentTemplatesDeleteRoute.name, { id, force }),
+    forkTemplate: (input: DocumentsForkInput) =>
+      invokeRoute(bridge, documentTemplatesForkRoute.name, input),
+    listDocuments: (input: DocumentsListInput = {}) =>
+      invokeRoute(bridge, documentsListRoute.name, input),
+    getDocument: (id: string) => invokeRoute(bridge, documentsGetRoute.name, { id }),
+    updateDocument: (input: DocumentsUpdateInput) =>
+      invokeRoute(bridge, documentsUpsertRoute.name, input),
+    deleteDocument: (id: string) => invokeRoute(bridge, documentsDeleteRoute.name, { id })
+  }
+}
+
+export type DocumentsClient = ReturnType<typeof createDocumentsClient>
