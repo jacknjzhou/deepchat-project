@@ -48,7 +48,7 @@
 - Create: `src/main/documents/extractor/promptBuilder.ts`
 - Test: `test/main/documents/extractorPrompt.test.ts`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```typescript
 // test/main/documents/extractorPrompt.test.ts
@@ -166,12 +166,12 @@ describe('buildClassificationPrompts', () => {
 })
 ```
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 Run: `pnpm exec vitest run test/main/documents/extractorPrompt.test.ts`
 Expected: FAIL（模块不存在）
 
-- [ ] **Step 3: 实现**
+- [x] **Step 3: 实现**
 
 ```typescript
 // src/main/documents/extractor/promptBuilder.ts
@@ -270,12 +270,12 @@ export function buildClassificationPrompts(templates: DocumentTemplate[]): {
 }
 ```
 
-- [ ] **Step 4: 运行确认通过**
+- [x] **Step 4: 运行确认通过**
 
 Run: `pnpm exec vitest run test/main/documents/extractorPrompt.test.ts`
 Expected: PASS（7 tests）
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/main/documents/extractor/promptBuilder.ts test/main/documents/extractorPrompt.test.ts
@@ -290,7 +290,7 @@ git commit -m "feat(documents): add extraction prompt builder"
 - Create: `src/main/documents/extractor/fieldValidator.ts`
 - Test: `test/main/documents/extractorValidator.test.ts`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```typescript
 // test/main/documents/extractorValidator.test.ts
@@ -493,12 +493,12 @@ describe('validateTemplateRules', () => {
 })
 ```
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 Run: `pnpm exec vitest run test/main/documents/extractorValidator.test.ts`
 Expected: FAIL（模块不存在）
 
-- [ ] **Step 3: 实现**
+- [x] **Step 3: 实现**
 
 ```typescript
 // src/main/documents/extractor/fieldValidator.ts
@@ -750,12 +750,12 @@ export function validateTemplateRules(
 }
 ```
 
-- [ ] **Step 4: 运行确认通过**
+- [x] **Step 4: 运行确认通过**
 
 Run: `pnpm exec vitest run test/main/documents/extractorValidator.test.ts`
 Expected: PASS（16 tests）
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/main/documents/extractor/fieldValidator.ts test/main/documents/extractorValidator.test.ts
@@ -770,7 +770,7 @@ git commit -m "feat(documents): add field validation and normalization"
 - Create: `src/main/documents/extractor/segmentMerger.ts`
 - Test: `test/main/documents/extractorMerger.test.ts`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```typescript
 // test/main/documents/extractorMerger.test.ts
@@ -860,12 +860,12 @@ describe('mergeSegmentOutputs', () => {
 })
 ```
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 Run: `pnpm exec vitest run test/main/documents/extractorMerger.test.ts`
 Expected: FAIL（模块不存在）
 
-- [ ] **Step 3: 实现**
+- [x] **Step 3: 实现**
 
 ```typescript
 // src/main/documents/extractor/segmentMerger.ts
@@ -941,12 +941,12 @@ export function mergeSegmentOutputs(base: FieldMap, outputs: FieldMap[]): FieldM
 }
 ```
 
-- [ ] **Step 4: 运行确认通过**
+- [x] **Step 4: 运行确认通过**
 
 Run: `pnpm exec vitest run test/main/documents/extractorMerger.test.ts`
 Expected: PASS（9 tests）
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/main/documents/extractor/segmentMerger.ts test/main/documents/extractorMerger.test.ts
@@ -963,7 +963,7 @@ git commit -m "feat(documents): add segment merge for long texts"
 
 依赖全部函数化注入，测试零 I/O。
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```typescript
 // test/main/documents/extractorService.test.ts
@@ -1208,12 +1208,12 @@ describe('DocumentExtractor.extract 分段', () => {
 })
 ```
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 Run: `pnpm exec vitest run test/main/documents/extractorService.test.ts`
 Expected: FAIL（模块不存在）
 
-- [ ] **Step 3: 实现**
+- [x] **Step 3: 实现**
 
 ```typescript
 // src/main/documents/extractor/documentExtractor.ts
@@ -1511,12 +1511,12 @@ void firstUserText
 
 等等——上面 `firstUserText` 是残留辅助函数，删除它和最后的 `void firstUserText`、重复的 re-export。最终实现文件不包含 `firstUserText` 与末尾三行 re-export（`buildClassificationPrompts` 已在文件顶部 import，无需 re-export）。
 
-- [ ] **Step 4: 运行确认通过**
+- [x] **Step 4: 运行确认通过**
 
 Run: `pnpm exec vitest run test/main/documents/extractorService.test.ts`
 Expected: PASS（11 tests）
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/main/documents/extractor/documentExtractor.ts test/main/documents/extractorService.test.ts
@@ -1534,7 +1534,7 @@ git commit -m "feat(documents): add document extractor with smart routing"
 
 **警告（P1 踩坑）**：漏加 `DEEPCHAT_ROUTE_CATALOG` 条目会导致 `dispatchDeepchatRoute` 抛 "Unknown deepchat route"。三件套缺一不可。
 
-- [ ] **Step 1: 在 `src/shared/contracts/routes/documents.routes.ts` 末尾追加契约**
+- [x] **Step 1: 在 `src/shared/contracts/routes/documents.routes.ts` 末尾追加契约**
 
 ```typescript
 export const documentExtractFileSchema = z.object({
@@ -1583,7 +1583,7 @@ export const documentsExtractAndDraftRoute = defineRouteContract({
 })
 ```
 
-- [ ] **Step 2: 更新 barrel `src/shared/contracts/routes.ts`**
+- [x] **Step 2: 更新 barrel `src/shared/contracts/routes.ts`**
 
 1. documents.routes.ts 的具名 import 块追加：`documentTemplatesTestExtractRoute,`、`documentsExtractAndDraftRoute,`（按现有字母序插入）
 2. `export * from './routes/documents.routes'` 已存在，不动
@@ -1594,7 +1594,7 @@ export const documentsExtractAndDraftRoute = defineRouteContract({
   'documents.extractAndDraft',
 ```
 
-- [ ] **Step 3: 在 `test/main/documents/documentsRoutes.test.ts` 追加契约测试**
+- [x] **Step 3: 在 `test/main/documents/documentsRoutes.test.ts` 追加契约测试**
 
 ```typescript
 import {
@@ -1638,12 +1638,12 @@ describe('documents extraction route contracts', () => {
 
 注意：该测试文件的既有 import 与 describe 结构由实现者按现状对齐（追加而非重写）；`@shared/contracts/routes` 路径别名以文件内既有 import 为准。
 
-- [ ] **Step 4: 运行契约与既有 documents 测试确认通过**
+- [x] **Step 4: 运行契约与既有 documents 测试确认通过**
 
 Run: `$env:ELECTRON_RUN_AS_NODE='1'; pnpm exec electron ./node_modules/vitest/vitest.mjs run test/main/documents/documentsRoutes.test.ts`
 Expected: PASS（4 + 3 = 7 tests）
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/shared/contracts/routes/documents.routes.ts src/shared/contracts/routes.ts test/main/documents/documentsRoutes.test.ts
@@ -1659,7 +1659,7 @@ git commit -m "feat(documents): add extraction route contracts"
 - Modify: `src/main/app/composition.ts`（构造 `DocumentExtractor`，传入 `createDocumentsRoutes`）
 - Test: `test/main/documents/documentsRoutes.test.ts`（追加 handler 测试）
 
-- [ ] **Step 1: 写失败测试（追加到 `test/main/documents/documentsRoutes.test.ts`）**
+- [x] **Step 1: 写失败测试（追加到 `test/main/documents/documentsRoutes.test.ts`）**
 
 该文件既有测试直接调用 `createDocumentsRoutes(repository)`。追加的测试传入 mock extractor：
 
@@ -1735,12 +1735,12 @@ describe('documents extraction handlers', () => {
 
 注意：`makeRepository` / sqlite 环境以该文件既有的 describeIfSqlite 与辅助函数为准；新增 describe 放在同一个 `describeIfSqlite` 内或建立新的 `describeIfSqlite`，保证 sqlite 不可用时同样 skip。`createDocumentsRoutes(repository, extractor as never)` 处若签名已改为必填两参，既有单参调用需同步补 mock extractor。
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 Run: `$env:ELECTRON_RUN_AS_NODE='1'; pnpm exec electron ./node_modules/vitest/vitest.mjs run test/main/documents/documentsRoutes.test.ts`
 Expected: FAIL（签名不匹配或 handler 不存在）
 
-- [ ] **Step 3: 修改 `src/main/documents/routes.ts`**
+- [x] **Step 3: 修改 `src/main/documents/routes.ts`**
 
 文件顶部 import 追加：
 
@@ -1812,7 +1812,7 @@ export function createDocumentsRoutes(
 }
 ```
 
-- [ ] **Step 4: composition 接线（`src/main/app/composition.ts`）**
+- [x] **Step 4: composition 接线（`src/main/app/composition.ts`）**
 
 1. import 追加：
 
@@ -1885,17 +1885,17 @@ const documentExtractor = new DocumentExtractor({
 - 若 `getSetting` 泛型签名不匹配（`getSetting<T>(key: string): T | undefined`，settings.ts:894，应为公开方法），按实际签名微调。
 - extractOcrText 中 `DocumentTextExtractionError` 不吞错：向上传播为 route 错误（zod 之外的主进程错误由既有 route 错误通道处理）。
 
-- [ ] **Step 5: 运行确认通过**
+- [x] **Step 5: 运行确认通过**
 
 Run: `$env:ELECTRON_RUN_AS_NODE='1'; pnpm exec electron ./node_modules/vitest/vitest.mjs run test/main/documents/documentsRoutes.test.ts`
 Expected: PASS（7 + 2 = 9 tests）
 
-- [ ] **Step 6: typecheck 确认 composition 接线无类型错误**
+- [x] **Step 6: typecheck 确认 composition 接线无类型错误**
 
 Run: `pnpm run typecheck:node`
 Expected: 无新增错误
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/main/documents/routes.ts src/main/app/composition.ts test/main/documents/documentsRoutes.test.ts
@@ -1910,7 +1910,7 @@ git commit -m "feat(documents): wire extraction routes into main process"
 - Modify: `src/renderer/api/DocumentsClient.ts`（追加 2 方法）
 - Test: `test/renderer/api/documentsClient.test.ts`（追加 2 测试）
 
-- [ ] **Step 1: 写失败测试（追加到 `test/renderer/api/documentsClient.test.ts`）**
+- [x] **Step 1: 写失败测试（追加到 `test/renderer/api/documentsClient.test.ts`）**
 
 按该文件既有的 mock bridge 模式追加（以文件内现有辅助为准，以下为断言逻辑）：
 
@@ -1953,12 +1953,12 @@ it('extractAndDraft 调用 documents.extractAndDraft 路由并透传 plain 对�
 })
 ```
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 Run: `pnpm exec vitest run test/renderer/api/documentsClient.test.ts --config vitest.config.renderer.ts`
 Expected: FAIL（方法不存在）
 
-- [ ] **Step 3: 实现（`src/renderer/api/DocumentsClient.ts`）**
+- [x] **Step 3: 实现（`src/renderer/api/DocumentsClient.ts`）**
 
 import 块追加 `documentTemplatesTestExtractRoute` 与 `documentsExtractAndDraftRoute`；在 client 函数体内追加两个方法（风格对齐既有方法，`invokeRoute` 泛型与 `toPlainIpcValue` 沿用现有实现）：
 
@@ -1980,12 +1980,12 @@ async function extractAndDraft(input: {
 }
 ```
 
-- [ ] **Step 4: 运行确认通过**
+- [x] **Step 4: 运行确认通过**
 
 Run: `pnpm exec vitest run test/renderer/api/documentsClient.test.ts --config vitest.config.renderer.ts`
 Expected: PASS（2 + 2 = 4 tests）
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/renderer/api/DocumentsClient.ts test/renderer/api/documentsClient.test.ts
@@ -1998,7 +1998,7 @@ git commit -m "feat(documents): add extraction client methods"
 
 **Files:** 无新文件（只验证 + 修复 + 必要小修）
 
-- [ ] **Step 1: 全量 P2 测试**
+- [x] **Step 1: 全量 P2 测试**
 
 ```bash
 $env:ELECTRON_RUN_AS_NODE='1'; pnpm exec electron ./node_modules/vitest/vitest.mjs run test/main/documents
@@ -2007,7 +2007,7 @@ pnpm exec vitest run test/renderer/api/documentsClient.test.ts --config vitest.c
 
 Expected: 全部 PASS（P1 既有 22 + P2 新增约 45）
 
-- [ ] **Step 2: 全仓 typecheck / lint / format**
+- [x] **Step 2: 全仓 typecheck / lint / format**
 
 ```bash
 pnpm run typecheck
@@ -2017,7 +2017,7 @@ pnpm run format:check
 
 Expected: 全部通过。format 问题先运行 `pnpm run format` 再复查。
 
-- [ ] **Step 3: P1 回归确认**
+- [x] **Step 3: P1 回归确认**
 
 ```bash
 $env:ELECTRON_RUN_AS_NODE='1'; pnpm exec electron ./node_modules/vitest/vitest.mjs run test/main/contracts
@@ -2025,7 +2025,7 @@ $env:ELECTRON_RUN_AS_NODE='1'; pnpm exec electron ./node_modules/vitest/vitest.m
 
 Expected: PASS（确认 route catalog 无回归；若该目录不存在则跳过并说明）
 
-- [ ] **Step 4: 修复发现的问题并提交**
+- [x] **Step 4: 修复发现的问题并提交**
 
 任何失败先修复再重跑；仅提交与 P2 相关的修复。
 
@@ -2036,7 +2036,7 @@ git commit -m "fix(documents): polish extraction service"
 
 （若无修改则跳过提交。）
 
-- [ ] **Step 5: 汇报**
+- [x] **Step 5: 汇报**
 
 向控制者汇报：测试计数、typecheck/lint/format 结果、与 spec 第 6 节的偏差清单（如有）。
 
