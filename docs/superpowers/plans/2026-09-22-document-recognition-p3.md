@@ -66,7 +66,7 @@
 **Files:**
 - Modify: `package.json`（dependencies + devDependencies）
 
-- [ ] **Step 1: 安装运行时依赖**
+- [x] **Step 1: 安装运行时依赖**
 
 Run:
 ```bash
@@ -75,12 +75,12 @@ pnpm add -D @types/sortablejs
 ```
 Expected: package.json 出现 `"@vueuse/integrations"`、`"sortablejs"`（dependencies）与 `"@types/sortablejs"`（devDependencies）；`@vueuse/integrations` 主版本应与 `@vueuse/core@^14.3.0` 对齐（^14.x）。若 pnpm 解析出更高主版本导致 peer 警告，改用 `pnpm add @vueuse/integrations@^14`。
 
-- [ ] **Step 2: 验证导入可用**
+- [x] **Step 2: 验证导入可用**
 
 Run: `pnpm exec node -e "import('@vueuse/integrations/useSortable').then(m => console.log(typeof m.useSortable))"`
 Expected: 输出 `function`。
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add package.json pnpm-lock.yaml docs/superpowers/plans/2026-09-22-document-recognition-p3.md
@@ -95,14 +95,14 @@ git commit -m "chore: add sortablejs drag deps"
 - Modify: `src/renderer/src/i18n/<locale>/routes.json`（20 个：da-DK de-DE en-US es-ES fa-IR fr-FR he-IL id-ID it-IT ja-JP ko-KR ms-MY pl-PL pt-BR ru-RU tr-TR vi-VN zh-CN zh-HK zh-TW）
 - Modify: `src/renderer/src/i18n/<locale>/settings.json`（同上 20 个）
 
-- [ ] **Step 1: zh-CN routes.json 顶层对象中追加 2 个 key**（按字母序插入合适位置，保持 JSON 合法）
+- [x] **Step 1: zh-CN routes.json 顶层对象中追加 2 个 key**（按字母序插入合适位置，保持 JSON 合法）
 
 ```json
 "settings-documents": "单据识别",
 "settings-documents-template": "模板编辑器"
 ```
 
-- [ ] **Step 2: zh-CN settings.json 顶层追加 documents 命名空间**
+- [x] **Step 2: zh-CN settings.json 顶层追加 documents 命名空间**
 
 ```json
 "documents": {
@@ -211,7 +211,7 @@ git commit -m "chore: add sortablejs drag deps"
 
 注意：`"mode.auto"` 等带点的 key 在 vue-i18n 中会被解析为嵌套路径，必须写成嵌套对象 `"mode": { "auto": "自动", "vision": "视觉模型", "text": "文本提取" }`；同样 `"routeVision"` 已用驼峰规避。上面 JSON 中 `mode.*` 三行按此规则落位为嵌套对象。
 
-- [ ] **Step 3: en-US 两文件**
+- [x] **Step 3: en-US 两文件**
 
 routes.json：
 ```json
@@ -323,7 +323,7 @@ settings.json documents 命名空间：
 }
 ```
 
-- [ ] **Step 4: 其余 18 个语言包 routes.json 追加（key 与 zh/en 相同，值为译文）**
+- [x] **Step 4: 其余 18 个语言包 routes.json 追加（key 与 zh/en 相同，值为译文）**
 
 | locale | settings-documents | settings-documents-template |
 |---|---|---|
@@ -346,7 +346,7 @@ settings.json documents 命名空间：
 | zh-HK | 單據識別 | 模板編輯器 |
 | zh-TW | 單據識別 | 範本編輯器 |
 
-- [ ] **Step 5: 其余 18 个语言包 settings.json 追加 documents 命名空间**
+- [x] **Step 5: 其余 18 个语言包 settings.json 追加 documents 命名空间**
 
 以下为每个 locale 的完整 documents JSON（key 结构与 zh-CN 完全一致；`mode` 为嵌套对象，其余 key 同 zh-CN 列表）。逐一写入对应文件（保持各自 settings.json 现有 key 顺序风格，追加为顶层 `"documents"` 成员）。
 
@@ -1342,7 +1342,7 @@ settings.json documents 命名空间：
 
 注意 da-DK 文案中的 "Auto路由" 为笔误源，写入时修正为 "Auto routet efter filtype"。
 
-- [ ] **Step 6: 重新生成 i18n 类型并验证**
+- [x] **Step 6: 重新生成 i18n 类型并验证**
 
 Run:
 ```bash
@@ -1352,7 +1352,7 @@ pnpm run i18n:en
 ```
 Expected: `i18n:types` 更新生成文件；`i18n` / `i18n:en` 全部通过（0 missing / 0 extra）。若报某 locale 缺 key，对照 zh-CN 的 documents 结构补齐。
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/renderer/src/i18n
@@ -1365,7 +1365,7 @@ git commit -m "feat(i18n): add documents UI keys"
 - Modify: `src/shared/settingsNavigation.ts:2-25`（routeName 联合类型）+ `:91-310`（SETTINGS_NAVIGATION_ITEMS）
 - Modify: `src/renderer/settings/settingsRouteComponents.ts`
 
-- [ ] **Step 1: 扩展 routeName 联合类型**
+- [x] **Step 1: 扩展 routeName 联合类型**
 
 在 `'settings-debug'` 之后追加一行：
 
@@ -1374,7 +1374,7 @@ git commit -m "feat(i18n): add documents UI keys"
     | 'settings-documents-template'
 ```
 
-- [ ] **Step 2: 在 SETTINGS_NAVIGATION_ITEMS 末尾（settings-debug 项之后、`]` 之前）插入两项**
+- [x] **Step 2: 在 SETTINGS_NAVIGATION_ITEMS 末尾（settings-debug 项之后、`]` 之前）插入两项**
 
 ```ts
   {
@@ -1398,7 +1398,7 @@ git commit -m "feat(i18n): add documents UI keys"
   }
 ```
 
-- [ ] **Step 3: settingsRouteComponents.ts 增加懒加载映射**
+- [x] **Step 3: settingsRouteComponents.ts 增加懒加载映射**
 
 在 `'settings-debug'` 之后追加：
 
@@ -1408,12 +1408,12 @@ git commit -m "feat(i18n): add documents UI keys"
     import('./components/documents/TemplateEditorPage.vue')
 ```
 
-- [ ] **Step 4: typecheck 通过**
+- [x] **Step 4: typecheck 通过**
 
 Run: `pnpm run typecheck:web`
 Expected: 0 errors。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/shared/settingsNavigation.ts src/renderer/settings/settingsRouteComponents.ts
@@ -1430,7 +1430,7 @@ git commit -m "feat: register documents settings routes"
 
 模块职责：字段增删/重排/序号归一/枚举解析/key 校验/查重。纯函数，无 Vue 依赖，便于单测。
 
-- [ ] **Step 1: 写测试文件**
+- [x] **Step 1: 写测试文件**
 
 ```ts
 import { describe, expect, it } from 'vitest'
@@ -1554,12 +1554,12 @@ describe('templateFields', () => {
 })
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `pnpm exec vitest run test/renderer/settings/documents/templateFields.test.ts --config vitest.config.renderer.ts`
 Expected: FAIL（模块不存在）。
 
-- [ ] **Step 3: 写实现**
+- [x] **Step 3: 写实现**
 
 `src/renderer/settings/components/documents/templateFields.ts`:
 
@@ -1668,12 +1668,12 @@ export function validateFields(fields: EditableField[]): Record<number, FieldVal
 }
 ```
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `pnpm exec vitest run test/renderer/settings/documents/templateFields.test.ts --config vitest.config.renderer.ts`
 Expected: 全部 PASS。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/renderer/settings/components/documents/templateFields.ts test/renderer/settings/documents/templateFields.test.ts
@@ -1690,7 +1690,7 @@ git commit -m "feat: add template field helpers"
 
 Store 职责：模板列表缓存 + CRUD 透传 + testExtract 透传 + 客户端查重 + 错误归一化。setup store 范式（参 pluginCatalog.ts）。
 
-- [ ] **Step 1: 写测试**
+- [x] **Step 1: 写测试**
 
 ```ts
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -1849,12 +1849,12 @@ describe('DocumentsStore', () => {
 })
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `pnpm exec vitest run test/renderer/stores/documentsStore.test.ts --config vitest.config.renderer.ts`
 Expected: FAIL（store 不存在）。
 
-- [ ] **Step 3: 写实现**
+- [x] **Step 3: 写实现**
 
 `src/renderer/src/stores/documents.ts`:
 
@@ -1993,12 +1993,12 @@ export const useDocumentsStore = defineStore('documents', () => {
 
 注意 `DocumentsClient` type 已从 `src/renderer/api/DocumentsClient.ts` 导出（`export type DocumentsClient = ReturnType<typeof createDocumentsClient>`）。
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `pnpm exec vitest run test/renderer/stores/documentsStore.test.ts --config vitest.config.renderer.ts`
 Expected: 全部 PASS。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/renderer/src/stores/documents.ts test/renderer/stores/documentsStore.test.ts
@@ -2015,7 +2015,7 @@ git commit -m "feat: add documents store"
 
 职责：受控组件，`v-model:fields`（`EditableField[]`），每行编辑 key/label/valueType/required/promptHint/validation/enumOptions；整行拖拽（useSortable）重排后 emit update；删除必需字段弹 AlertDialog 确认；readonly 模式禁用所有交互。
 
-- [ ] **Step 1: 写测试**
+- [x] **Step 1: 写测试**
 
 ```ts
 import { describe, expect, it, vi } from 'vitest'
@@ -2197,12 +2197,12 @@ describe('TemplateFieldsEditor', () => {
 })
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `pnpm exec vitest run test/renderer/settings/documents/TemplateFieldsEditor.test.ts --config vitest.config.renderer.ts`
 Expected: FAIL（组件不存在）。
 
-- [ ] **Step 3: 写组件**
+- [x] **Step 3: 写组件**
 
 `src/renderer/settings/components/documents/TemplateFieldsEditor.vue`:
 
@@ -2411,12 +2411,12 @@ function confirmDelete() {
 
 注意 `useSortable` 接受 reactive target + options，`disabled` 不可写为静态，应改为 computed，实现时替换为 `disabled: computed(() => props.readonly)`。
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `pnpm exec vitest run test/renderer/settings/documents/TemplateFieldsEditor.test.ts --config vitest.config.renderer.ts`
 Expected: 全部 PASS。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/renderer/settings/components/documents/TemplateFieldsEditor.vue test/renderer/settings/documents/TemplateFieldsEditor.test.ts
@@ -2432,7 +2432,7 @@ git commit -m "feat: add template fields editor"
 
 职责：上传样张文件（`<input type="file">` 隐藏触发 + `fileClient.getPathForFile`）→ 调 store.testExtract → 展示字段表格（uncertain 高亮）+ 耗时 + route 标签。读 prop `templateId?: string`（未保存时禁用）。
 
-- [ ] **Step 1: 写组件**
+- [x] **Step 1: 写组件**
 
 ```vue
 <template>
@@ -2589,9 +2589,9 @@ async function onFileChange(event: Event) {
 </script>
 ```
 
-- [ ] **Step 2: 不单测（该组件行为主要是委托 store，已在 store 单测覆盖；UI 仅做渲染分层，可放入集成测试与 TemplateEditorPage 合测，避免测试重复）**
+- [x] **Step 2: 不单测（该组件行为主要是委托 store，已在 store 单测覆盖；UI 仅做渲染分层，可放入集成测试与 TemplateEditorPage 合测，避免测试重复）**
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/renderer/settings/components/documents/TemplateTestExtract.vue
@@ -2615,7 +2615,7 @@ git commit -m "feat: add template test extract panel"
 6. 保存：客户端校验（name 非空 / typeKey 格式 / typeKey 查重 / fields 无 invalid+duplicate）→ store.saveTemplate → 更新已保存快照、清 dirty
 7. 样张测试：`<TemplateTestExtract :template-id="savedId" />`，未保存时禁用
 
-- [ ] **Step 1: 写测试**
+- [x] **Step 1: 写测试**
 
 ```ts
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -2862,12 +2862,12 @@ describe('TemplateEditorPage', () => {
 })
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `pnpm exec vitest run test/renderer/settings/documents/TemplateEditorPage.test.ts --config vitest.config.renderer.ts`
 Expected: FAIL（组件不存在）。
 
-- [ ] **Step 3: 写组件**
+- [x] **Step 3: 写组件**
 
 `src/renderer/settings/components/documents/TemplateEditorPage.vue`:
 
@@ -3342,12 +3342,12 @@ loadTemplate(route.params.id as string)
 </script>
 ```
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `pnpm exec vitest run test/renderer/settings/documents/TemplateEditorPage.test.ts --config vitest.config.renderer.ts`
 Expected: 全部 PASS。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/renderer/settings/components/documents/TemplateEditorPage.vue test/renderer/settings/documents/TemplateEditorPage.test.ts
@@ -3364,7 +3364,7 @@ git commit -m "feat: add template editor page"
 
 职责：按 category 分组显示预置模板（卡片 grid）+ 自定义模板列表 + 新建按钮 + 删除（force 二次确认）+ 跳转编辑器。
 
-- [ ] **Step 1: 写测试**
+- [x] **Step 1: 写测试**
 
 ```ts
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -3555,12 +3555,12 @@ describe('DocumentsSettings', () => {
 })
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `pnpm exec vitest run test/renderer/settings/documents/DocumentsSettings.test.ts --config vitest.config.renderer.ts`
 Expected: FAIL（组件不存在）。
 
-- [ ] **Step 3: 写组件**
+- [x] **Step 3: 写组件**
 
 `src/renderer/settings/components/DocumentsSettings.vue`:
 
@@ -3837,12 +3837,12 @@ onMounted(() => {
 </script>
 ```
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `pnpm exec vitest run test/renderer/settings/documents/DocumentsSettings.test.ts --config vitest.config.renderer.ts`
 Expected: 全部 PASS。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/renderer/settings/components/DocumentsSettings.vue test/renderer/settings/documents/DocumentsSettings.test.ts
@@ -3855,7 +3855,7 @@ git commit -m "feat: add documents settings tab"
 
 **Files:** 无新文件，仅运行验证。
 
-- [ ] **Step 1: 渲染层全量测试**
+- [x] **Step 1: 渲染层全量测试**
 
 PowerShell:
 ```powershell
@@ -3863,22 +3863,22 @@ $env:NODE_OPTIONS='--max-old-space-size=8192'; pnpm run test:renderer
 ```
 Expected: 全部 PASS（不引入既有测试失败，确认新测试文件全 PASS）。
 
-- [ ] **Step 2: typecheck**
+- [x] **Step 2: typecheck**
 
 Run: `pnpm run typecheck`
 Expected: 0 errors。
 
-- [ ] **Step 3: lint**
+- [x] **Step 3: lint**
 
 Run: `pnpm run lint`
 Expected: 0 errors。
 
-- [ ] **Step 4: format**
+- [x] **Step 4: format**
 
 Run: `pnpm run format`
 Expected: 全部已格式化（Oxfmt 单引号无分号 100 列）。
 
-- [ ] **Step 5: i18n 校验**
+- [x] **Step 5: i18n 校验**
 
 Run:
 ```bash
@@ -3887,7 +3887,7 @@ pnpm run i18n:en
 ```
 Expected: 0 missing / 0 extra。
 
-- [ ] **Step 6: 推送 develop**
+- [x] **Step 6: 推送 develop**
 
 ```bash
 git push origin develop
