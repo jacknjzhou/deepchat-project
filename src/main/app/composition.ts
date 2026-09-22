@@ -116,6 +116,7 @@ import { createKnowledgeRoutes } from '../knowledge/routes'
 import { KnowledgeSettings } from '@/knowledge/settings'
 import { PromptSettings } from '@/agent/promptSettings'
 import { AgentSettings } from '@/agent/settings'
+import { BUILTIN_DEEPCHAT_AGENT_ID } from '@/agent/repository'
 import { AgentLifecycleGate } from '@/agent/lifecycleGate'
 import { SessionDeletionGate } from '@/session/deletionGate'
 import { emitAcpAgentModelsChanged, emitAgentCatalogChanged } from '@/app/agentEvents'
@@ -2820,13 +2821,21 @@ export async function createMainProcessControl(dependencies: {
           messages,
           modelId,
           temperature,
-          maxTokens
+          maxTokens,
+          { swallowErrors: false }
         ),
-      resolveVisionTarget: () => {
+      resolveVisionTarget: async () => {
         const selection = providerSettings.getSetting<{ providerId: string; modelId: string }>(
           'defaultVisionModel'
         )
-        return selection?.providerId && selection?.modelId ? selection : null
+        if (selection?.providerId && selection?.modelId) {
+          return selection
+        }
+        const agentConfig = await agentSettings.getDeepChatAgentConfig(BUILTIN_DEEPCHAT_AGENT_ID)
+        const visionModel = agentConfig?.visionModel
+        return visionModel?.providerId && visionModel?.modelId
+          ? { providerId: visionModel.providerId, modelId: visionModel.modelId }
+          : null
       },
       resolveTextTarget: () => {
         const selection = providerSettings.getSetting<{ providerId: string; modelId: string }>(

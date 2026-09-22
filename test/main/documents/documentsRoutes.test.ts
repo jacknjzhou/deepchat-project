@@ -179,7 +179,7 @@ describe('documents extraction route contracts', () => {
   })
 })
 
-const DatabaseCtor = sqliteModule!.default
+const DatabaseCtor = sqliteModule?.default
 const DocumentTemplatesTableCtor = DocumentTemplatesTable
 const DocumentsTableCtor = DocumentsTable
 const DocumentsDatabaseCtor = DocumentsDatabase

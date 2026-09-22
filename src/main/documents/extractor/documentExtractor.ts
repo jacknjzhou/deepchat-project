@@ -34,11 +34,13 @@ export interface CompletionRequest {
   maxTokens?: number
 }
 
+export type ModelTarget = { providerId: string; modelId: string }
+
 export interface DocumentExtractorDeps {
   repository: Pick<DocumentsRepository, 'getTemplate' | 'getTemplateByTypeKey' | 'listTemplates'>
   generateCompletion: (input: CompletionRequest) => Promise<string>
-  resolveVisionTarget: () => { providerId: string; modelId: string } | null
-  resolveTextTarget: () => { providerId: string; modelId: string } | null
+  resolveVisionTarget: () => ModelTarget | null | Promise<ModelTarget | null>
+  resolveTextTarget: () => ModelTarget | null | Promise<ModelTarget | null>
   readImageAsDataUrl: (filePath: string) => Promise<string>
   extractPdfText: (filePath: string) => Promise<{ text: string; hasTextLayer: boolean }>
   extractOcrText: (filePath: string) => Promise<string>
@@ -79,7 +81,10 @@ export class DocumentExtractor {
     let rawOutput = ''
 
     if (plan.route === 'vision') {
-      const target = this.requireTarget(this.deps.resolveVisionTarget(), 'defaultVisionModel')
+      const target = this.requireTarget(
+        await this.deps.resolveVisionTarget(),
+        'defaultVisionModel'
+      )
       const dataUrl = await this.deps.readImageAsDataUrl(input.file.path)
       const messages: ChatMessage[] = [
         { role: 'system', content: buildExtractionSystemPrompt(template) },
@@ -107,7 +112,7 @@ export class DocumentExtractor {
       if (plan.route === 'ocr' && text.trim() === '') {
         issues.push('ocr produced no text')
       }
-      const target = this.requireTarget(this.deps.resolveTextTarget(), 'defaultModel')
+      const target = this.requireTarget(await this.deps.resolveTextTarget(), 'defaultModel')
       const segments = splitTextIntoSegments(text)
       if (segments.length === 1) {
         const messages: ChatMessage[] = [
@@ -218,9 +223,9 @@ export class DocumentExtractor {
     }
     const { system, user } = buildClassificationPrompts(candidates)
     let messages: ChatMessage[]
-    let target: { providerId: string; modelId: string }
+    let target: ModelTarget
     if (isImageFile(file)) {
-      target = this.requireTarget(this.deps.resolveVisionTarget(), 'defaultVisionModel')
+      target = this.requireTarget(await this.deps.resolveVisionTarget(), 'defaultVisionModel')
       const dataUrl = await this.deps.readImageAsDataUrl(file.path)
       messages = [
         { role: 'system', content: system },
@@ -233,7 +238,7 @@ export class DocumentExtractor {
         }
       ]
     } else if (isPdfFile(file)) {
-      target = this.requireTarget(this.deps.resolveTextTarget(), 'defaultModel')
+      target = this.requireTarget(await this.deps.resolveTextTarget(), 'defaultModel')
       const sample = (pdfText?.text ?? '').slice(0, 4000)
       messages = [
         { role: 'system', content: system },
