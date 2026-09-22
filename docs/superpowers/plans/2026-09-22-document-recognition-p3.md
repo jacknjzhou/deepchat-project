@@ -3936,3 +3936,16 @@ Expected: push 成功；远端 CI 通过（用户期望阶段完成后推 origin
 - **useSortable 的 reactive target 写法**：实现时需确保 useSortable 监听 list ref 的 DOM 重排，而非直接 mutate props.fields（Vue 单向数据流）。Task 6 实现注释中已标注 `disabled` 选项应改为 computed。
 - **da-DK 文案笔误**：Task 2 Step 5 da-DK 块中 "Auto路由" 为笔误，写入时已修正为 "Auto routet efter filtype"。实现者复制 JSON 时以修正后的为准。
 - **TemplateTestExtract 单测**：Task 7 不单测，因行为委托 store（Task 5 已覆盖），UI 渲染分层在 Task 8 集成测试中合测。
+
+### 5. 执行期偏差记录（实现完成后补记）
+
+- **Task 2 附带**：补齐 3f6f9f0 遗留的 18 语言包 `provider.dialog.duplicate.*` + `provider.menu.duplicate` 缺译（043ae93），否则收尾 `pnpm run i18n` 无法通过。
+- **Task 3**：额外扩展 `system.routes.ts` 与 `settings.events.ts` 两处 `SettingsRouteNameSchema` zod enum（否则 IPC openSettings/navigateRequested 运行时拒绝新路由，4cba49f）。
+- **Task 4**：计划内部不一致（validateFields 实现只标后续重复 vs 测试断言首尾都标）以测试为准修实现：所有 count>1 的 key 均标 'duplicated'（80f83cd）。
+- **Task 5**：测试加 `vi.mock('pinia', importActual)`（setup.renderer.ts 轻量 mock 缺 setActivePinia，与既有 store 测试同模式）；client 返回边界两处 `as DocumentTemplate` cast（wire schema category 为 string、shared 类型为字面量联合，与 repository.ts 既有 cast 风格一致）。
+- **Task 6**：5 处——测试 import 4 级路径；`disabled` 经 `sortable.option('disabled', v)` + watch 实现（useSortable 不解包 options 内 ref，computed 会恒 truthy）；stub 去 TS as 断言；Input/Select 事件签名 `(value) => ... String(value)`（shadcn emit `string | number`）；grip Icon 显式补 `lucide-grip-vertical` class（iconify 不注入图标名 class，否则 handle 选择器永不命中）。
+- **Task 6 补缺**：字段行补 promptHint/validation/enumOptions 三个输入（spec §8 L178 要求，计划代码遗漏；bdd9c6f）。
+- **Task 7**：计划代码漏声明 `open` ref，补 `const open = ref(false)`（e3ded55）。
+- **Task 8**：9 处计划 bug 修正（测试路径/leave guard mock 路径与非法 type 断言/vue-router importActual/stub as 断言/组件内 `../../services` 导入/未用导入/category 类型/事件签名），另加 `watch(() => route.params.id)` 重载（fork CTA 同路由记录跳转组件复用）；fork 预填 `isBuiltin` 固定 false（继承 true 会使 fork 页只读，dcaecbb）。
+- **Task 9**：6 处——vue-router importActual；测试 import 4 级路径；reactive stub store + 渲染 title 的 SectionCard stub（计划桩与其自身断言矛盾）；attemptDelete 传参 `{force:true}|{}`；`AlertDialogAsyncAction`（alert-dialog-contract-guard 禁 async handler 绑 AlertDialogAction，且 AsyncAction 不自动关弹窗满足 force 二次确认）；category 类型收紧 + requestDelete 去 async。补 rejected 反馈：删除被拒时保持弹窗并显示 messageKey 文案（1e2ca75）。
+- **组件测试通用**：setup.renderer.ts 全局 mock vue-router，组件测试统一用 `vi.doMock('vue-router', () => vi.importActual('vue-router'))` 恢复真路由。
