@@ -307,7 +307,6 @@
       "filePlaceholder": "未选择文件",
       "templatePlaceholder": "选择模板",
       "recognize": "开始识别",
-      "recognizing": "识别中…",
       "recognizePdfHint": "扫描版 PDF 需先进行本地 OCR 识别，首次可能耗时约 1 分钟，请耐心等待",
       "recognizeFailed": "识别失败",
       "fieldRequired": "「{label}」为必填项",

@@ -2176,7 +2176,8 @@ declare module 'vue-i18n' {
         loadFailed: string
         empty: string
         retry: string
-        typeAll: string
+        tabAll: string
+        totalCount: string
         statusAll: string
         statusDraft: string
         statusConfirmed: string
@@ -2188,7 +2189,6 @@ declare module 'vue-i18n' {
         exportSuccess: string
         exportFailed: string
         exportCanceled: string
-        loadMore: string
         colType: string
         colSummary: string
         colSource: string
@@ -2218,10 +2218,22 @@ declare module 'vue-i18n' {
         filePlaceholder: string
         templatePlaceholder: string
         recognize: string
-        recognizing: string
         recognizePdfHint: string
         recognizeFailed: string
         fieldRequired: string
+        taskStripTitle: string
+        taskClassifying: string
+        taskRetry: string
+        taskRunning: string
+        taskDone: string
+        taskFailed: string
+        taskQueued: string
+        taskRetryQueued: string
+        taskRetryFailed: string
+        filesSelected: string
+        autoClassify: string
+        taskQueuedToast: string
+        filesLimit: string
       }
       test: {
         title: string
