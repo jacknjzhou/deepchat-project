@@ -310,7 +310,16 @@
       "recognizing": "Mengecam…",
       "recognizePdfHint": "PDF imbasan diproses dengan OCR setempat terlebih dahulu; jalanan pertama mungkin mengambil masa kira-kira satu minit.",
       "recognizeFailed": "Pengecaman gagal",
-      "fieldRequired": "\"{label}\" adalah wajib"
+      "fieldRequired": "\"{label}\" adalah wajib",
+      "taskStripTitle": "Recognition Tasks",
+      "taskClassifying": "Classifying…",
+      "taskRetry": "Retry",
+      "taskRunning": "Running…",
+      "taskDone": "Done",
+      "taskFailed": "Failed",
+      "taskQueued": "Queued",
+      "taskRetryQueued": "Task re-queued for recognition",
+      "taskRetryFailed": "Failed to retry task"
     },
     "test": {
       "title": "Ujian Sampel",

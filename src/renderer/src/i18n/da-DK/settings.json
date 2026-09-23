@@ -2811,7 +2811,16 @@
       "recognizing": "Genkender…",
       "recognizePdfHint": "Scannede PDF-filer genkendes først via lokal OCR; første kørsel kan tage omkring et minut.",
       "recognizeFailed": "Genkendelse mislykkedes",
-      "fieldRequired": "\"{label}\" er påkrævet"
+      "fieldRequired": "\"{label}\" er påkrævet",
+      "taskStripTitle": "Recognition Tasks",
+      "taskClassifying": "Classifying…",
+      "taskRetry": "Retry",
+      "taskRunning": "Running…",
+      "taskDone": "Done",
+      "taskFailed": "Failed",
+      "taskQueued": "Queued",
+      "taskRetryQueued": "Task re-queued for recognition",
+      "taskRetryFailed": "Failed to retry task"
     },
     "test": {
       "title": "Prøvetest",

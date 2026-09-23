@@ -81,6 +81,13 @@
       />
     </div>
 
+    <DocumentTaskStrip
+      v-if="visibleTasks.length"
+      :tasks="visibleTasks"
+      :type-name-for="typeNameFor"
+      @retry="onRetryTask"
+    />
+
     <div v-if="store.archiveLoadError" class="flex flex-col items-center gap-3 px-6 py-10">
       <p class="text-sm text-destructive">{{ t(store.archiveLoadError) }}</p>
       <DcButton variant="outline" data-testid="archive-retry" @click="retry">
@@ -180,7 +187,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Icon } from '@iconify/vue'
 import { Input } from '@shadcn/components/ui/input'
@@ -199,8 +206,10 @@ import {
   type MoneyColumn
 } from './documentArchive'
 import { summarizeDocument } from './documentSummary'
+import { documentsApi, type DocumentsTaskItem } from './documentTasks'
 import DocumentDetailDialog from './DocumentDetailDialog.vue'
 import DocumentRecognizeDialog from './DocumentRecognizeDialog.vue'
+import DocumentTaskStrip from './DocumentTaskStrip.vue'
 
 const ALL_TAB = '__all__'
 
@@ -370,10 +379,51 @@ function onRecognized(document: DocumentRecord) {
   detailOpen.value = true
 }
 
+const visibleTasks = computed(() =>
+  store.tasks.filter(
+    (task) => task.status === 'pending' || task.status === 'running' || task.status === 'failed'
+  )
+)
+
+function typeNameFor(typeKey: string | null): string | null {
+  if (!typeKey) return null
+  return store.templates.find((tpl) => tpl.typeKey === typeKey)?.name ?? typeKey
+}
+
+async function onRetryTask(task: DocumentsTaskItem) {
+  try {
+    await store.retryRecognitionTask(task)
+    notifyTransient(
+      'success',
+      'documents.archive.taskRetryQueued',
+      t('settings.documents.archive.taskRetryQueued')
+    )
+  } catch (error) {
+    console.error('[DocumentsArchivePage] retry task failed', error)
+    notifyTransient(
+      'error',
+      'documents.archive.taskRetryFailed',
+      t('settings.documents.archive.taskRetryFailed')
+    )
+  }
+}
+
+let unsubscribeTask: (() => void) | null = null
+
+onMounted(() => {
+  unsubscribeTask = documentsApi.onTaskUpdated((payload) => store.handleTaskUpdated(payload))
+})
+
+onBeforeUnmount(() => {
+  unsubscribeTask?.()
+  unsubscribeTask = null
+})
+
 syncFilters()
 void store.loadTemplates()
 void store.loadArchiveDocuments(1)
 void store.loadArchiveStats()
+void store.loadArchiveTasks()
 
 // Start the OCR helper ahead of the first recognition so scanned PDFs skip
 // the cold start. Failures surface naturally when a real extraction runs.

@@ -2811,7 +2811,16 @@
       "recognizing": "識別中…",
       "recognizePdfHint": "掃描版 PDF 需先進行本地 OCR 識別，首次可能耗時約 1 分鐘，請耐心等待",
       "recognizeFailed": "識別失敗",
-      "fieldRequired": "「{label}」為必填項"
+      "fieldRequired": "「{label}」為必填項",
+      "taskStripTitle": "Recognition Tasks",
+      "taskClassifying": "Classifying…",
+      "taskRetry": "Retry",
+      "taskRunning": "Running…",
+      "taskDone": "Done",
+      "taskFailed": "Failed",
+      "taskQueued": "Queued",
+      "taskRetryQueued": "Task re-queued for recognition",
+      "taskRetryFailed": "Failed to retry task"
     },
     "test": {
       "title": "樣張測試",

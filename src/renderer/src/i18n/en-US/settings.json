@@ -310,7 +310,16 @@
       "recognizing": "Recognizing…",
       "recognizePdfHint": "Scanned PDFs go through local OCR first; the first run may take about a minute.",
       "recognizeFailed": "Recognition failed",
-      "fieldRequired": "\"{label}\" is required"
+      "fieldRequired": "\"{label}\" is required",
+      "taskStripTitle": "Recognition Tasks",
+      "taskClassifying": "Classifying…",
+      "taskRetry": "Retry",
+      "taskRunning": "Running…",
+      "taskDone": "Done",
+      "taskFailed": "Failed",
+      "taskQueued": "Queued",
+      "taskRetryQueued": "Task re-queued for recognition",
+      "taskRetryFailed": "Failed to retry task"
     },
     "test": {
       "title": "Sample Testing",

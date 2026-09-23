@@ -1,6 +1,6 @@
 import { computed, reactive, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { createDocumentsClient, type DocumentsClient } from '@api/DocumentsClient'
+import type { DocumentsClient } from '@api/DocumentsClient'
 import type {
   DocumentTemplate,
   DocumentFieldValueType,
@@ -12,16 +12,17 @@ import type {
 } from '@shared/documents'
 import type { z } from 'zod'
 import type {
-  documentTaskSchema,
   documentsStatsEntrySchema,
   documentsTemplateUpsertInputSchema
 } from '@shared/contracts/routes'
 import type { documentsTaskUpdatedEvent } from '@shared/contracts/events'
+import { documentsApi, type DocumentsTaskItem } from '@/pages/documents/documentTasks'
+
+export type { DocumentsTaskItem }
 
 export type TemplateUpsertInput = z.input<typeof documentsTemplateUpsertInputSchema>
 
 type DocumentsStatsEntry = z.infer<typeof documentsStatsEntrySchema>
-type DocumentsTaskItem = z.infer<typeof documentTaskSchema>
 type DocumentsTaskUpdatedPayload = z.infer<typeof documentsTaskUpdatedEvent.payload>
 
 export interface EditableTemplateDraft {
@@ -48,7 +49,7 @@ export interface EditableTemplateDraft {
 
 const ARCHIVE_REFERENCE_RE = /Template has (\d+) archived document/
 
-const defaultClient = createDocumentsClient()
+const defaultClient = documentsApi
 
 export const useDocumentsStore = defineStore('documents', () => {
   const templates = ref<DocumentTemplate[]>([])

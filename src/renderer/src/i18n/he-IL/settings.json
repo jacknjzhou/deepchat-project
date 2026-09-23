@@ -2811,7 +2811,16 @@
       "recognizing": "מזהה…",
       "recognizePdfHint": "קובצי PDF סרוקים עוברים קודם OCR מקומי; הריצה הראשונה עשויה להימשך כדקה.",
       "recognizeFailed": "זיהוי נכשל",
-      "fieldRequired": "\"{label}\" נדרש"
+      "fieldRequired": "\"{label}\" נדרש",
+      "taskStripTitle": "Recognition Tasks",
+      "taskClassifying": "Classifying…",
+      "taskRetry": "Retry",
+      "taskRunning": "Running…",
+      "taskDone": "Done",
+      "taskFailed": "Failed",
+      "taskQueued": "Queued",
+      "taskRetryQueued": "Task re-queued for recognition",
+      "taskRetryFailed": "Failed to retry task"
     },
     "test": {
       "title": "בדיקת דגימה",

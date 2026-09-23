@@ -310,7 +310,16 @@
       "recognizing": "Reconociendo…",
       "recognizePdfHint": "Los PDF escaneados pasan primero por OCR local; la primera vez puede tardar alrededor de un minuto.",
       "recognizeFailed": "Error de reconocimiento",
-      "fieldRequired": "\"{label}\" es obligatorio"
+      "fieldRequired": "\"{label}\" es obligatorio",
+      "taskStripTitle": "Recognition Tasks",
+      "taskClassifying": "Classifying…",
+      "taskRetry": "Retry",
+      "taskRunning": "Running…",
+      "taskDone": "Done",
+      "taskFailed": "Failed",
+      "taskQueued": "Queued",
+      "taskRetryQueued": "Task re-queued for recognition",
+      "taskRetryFailed": "Failed to retry task"
     },
     "test": {
       "title": "Prueba con muestras",

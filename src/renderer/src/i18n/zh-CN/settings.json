@@ -310,7 +310,16 @@
       "recognizing": "识别中…",
       "recognizePdfHint": "扫描版 PDF 需先进行本地 OCR 识别，首次可能耗时约 1 分钟，请耐心等待",
       "recognizeFailed": "识别失败",
-      "fieldRequired": "「{label}」为必填项"
+      "fieldRequired": "「{label}」为必填项",
+      "taskStripTitle": "识别任务",
+      "taskClassifying": "分类中…",
+      "taskRetry": "重试",
+      "taskRunning": "识别中…",
+      "taskDone": "已完成",
+      "taskFailed": "失败",
+      "taskQueued": "排队中",
+      "taskRetryQueued": "已重新加入识别队列",
+      "taskRetryFailed": "重试失败"
     },
     "test": {
       "title": "样张测试",

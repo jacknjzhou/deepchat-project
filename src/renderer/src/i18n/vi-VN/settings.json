@@ -310,7 +310,16 @@
       "recognizing": "Đang nhận diện…",
       "recognizePdfHint": "PDF quét sẽ được nhận diện bằng OCR cục bộ trước; lần đầu có thể mất khoảng một phút.",
       "recognizeFailed": "Nhận diện thất bại",
-      "fieldRequired": "\"{label}\" là bắt buộc"
+      "fieldRequired": "\"{label}\" là bắt buộc",
+      "taskStripTitle": "Recognition Tasks",
+      "taskClassifying": "Classifying…",
+      "taskRetry": "Retry",
+      "taskRunning": "Running…",
+      "taskDone": "Done",
+      "taskFailed": "Failed",
+      "taskQueued": "Queued",
+      "taskRetryQueued": "Task re-queued for recognition",
+      "taskRetryFailed": "Failed to retry task"
     },
     "test": {
       "title": "Kiểm tra mẫu vật",

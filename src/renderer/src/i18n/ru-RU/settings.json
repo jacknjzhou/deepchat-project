@@ -2811,7 +2811,16 @@
       "recognizing": "Распознавание…",
       "recognizePdfHint": "Сканированные PDF сначала распознаются локальным OCR; первый запуск может занять около минуты.",
       "recognizeFailed": "Не удалось распознать",
-      "fieldRequired": "\"{label}\" — обязательное поле"
+      "fieldRequired": "\"{label}\" — обязательное поле",
+      "taskStripTitle": "Recognition Tasks",
+      "taskClassifying": "Classifying…",
+      "taskRetry": "Retry",
+      "taskRunning": "Running…",
+      "taskDone": "Done",
+      "taskFailed": "Failed",
+      "taskQueued": "Queued",
+      "taskRetryQueued": "Task re-queued for recognition",
+      "taskRetryFailed": "Failed to retry task"
     },
     "test": {
       "title": "Тест на образце",

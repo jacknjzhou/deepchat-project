@@ -310,7 +310,16 @@
       "recognizing": "Mengenali…",
       "recognizePdfHint": "PDF hasil pindai diproses dengan OCR lokal terlebih dahulu; proses pertama dapat memakan waktu sekitar satu menit.",
       "recognizeFailed": "Pengenalan gagal",
-      "fieldRequired": "\"{label}\" wajib diisi"
+      "fieldRequired": "\"{label}\" wajib diisi",
+      "taskStripTitle": "Recognition Tasks",
+      "taskClassifying": "Classifying…",
+      "taskRetry": "Retry",
+      "taskRunning": "Running…",
+      "taskDone": "Done",
+      "taskFailed": "Failed",
+      "taskQueued": "Queued",
+      "taskRetryQueued": "Task re-queued for recognition",
+      "taskRetryFailed": "Failed to retry task"
     },
     "test": {
       "title": "Uji Contoh",

@@ -2811,7 +2811,16 @@
       "recognizing": "인식 중…",
       "recognizePdfHint": "스캔 PDF는 로컬 OCR을 먼저 거치며, 첫 실행은 1분 정도 걸릴 수 있습니다.",
       "recognizeFailed": "인식 실패",
-      "fieldRequired": "\"{label}\" 은(는) 필수입니다"
+      "fieldRequired": "\"{label}\" 은(는) 필수입니다",
+      "taskStripTitle": "Recognition Tasks",
+      "taskClassifying": "Classifying…",
+      "taskRetry": "Retry",
+      "taskRunning": "Running…",
+      "taskDone": "Done",
+      "taskFailed": "Failed",
+      "taskQueued": "Queued",
+      "taskRetryQueued": "Task re-queued for recognition",
+      "taskRetryFailed": "Failed to retry task"
     },
     "test": {
       "title": "샘플 테스트",

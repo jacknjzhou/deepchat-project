@@ -310,7 +310,16 @@
       "recognizing": "Rozpoznawanie…",
       "recognizePdfHint": "Skanowane pliki PDF są najpierw rozpoznawane przez lokalny OCR; pierwsze uruchomienie może potrwać około minuty.",
       "recognizeFailed": "Rozpoznawanie nie powiodło się",
-      "fieldRequired": "\"{label}\" jest wymagane"
+      "fieldRequired": "\"{label}\" jest wymagane",
+      "taskStripTitle": "Recognition Tasks",
+      "taskClassifying": "Classifying…",
+      "taskRetry": "Retry",
+      "taskRunning": "Running…",
+      "taskDone": "Done",
+      "taskFailed": "Failed",
+      "taskQueued": "Queued",
+      "taskRetryQueued": "Task re-queued for recognition",
+      "taskRetryFailed": "Failed to retry task"
     },
     "test": {
       "title": "Test na próbce",

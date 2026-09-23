@@ -2811,7 +2811,16 @@
       "recognizing": "در حال شناسایی…",
       "recognizePdfHint": "فایل‌های PDF اسکن‌شده ابتدا با OCR محلی پردازش می‌شوند؛ اولین اجرا ممکن است حدود یک دقیقه طول بکشد.",
       "recognizeFailed": "شناسایی ناموفق بود",
-      "fieldRequired": "\"{label}\" الزامی است"
+      "fieldRequired": "\"{label}\" الزامی است",
+      "taskStripTitle": "Recognition Tasks",
+      "taskClassifying": "Classifying…",
+      "taskRetry": "Retry",
+      "taskRunning": "Running…",
+      "taskDone": "Done",
+      "taskFailed": "Failed",
+      "taskQueued": "Queued",
+      "taskRetryQueued": "Task re-queued for recognition",
+      "taskRetryFailed": "Failed to retry task"
     },
     "test": {
       "title": "آزمون نمونه",

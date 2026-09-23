@@ -2811,7 +2811,16 @@
       "recognizing": "認識中…",
       "recognizePdfHint": "スキャンPDFはまずローカルOCRで処理され、初回は1分ほどかかる場合があります。",
       "recognizeFailed": "認識に失敗しました",
-      "fieldRequired": "「{label}」は必須です"
+      "fieldRequired": "「{label}」は必須です",
+      "taskStripTitle": "Recognition Tasks",
+      "taskClassifying": "Classifying…",
+      "taskRetry": "Retry",
+      "taskRunning": "Running…",
+      "taskDone": "Done",
+      "taskFailed": "Failed",
+      "taskQueued": "Queued",
+      "taskRetryQueued": "Task re-queued for recognition",
+      "taskRetryFailed": "Failed to retry task"
     },
     "test": {
       "title": "サンプルテスト",
