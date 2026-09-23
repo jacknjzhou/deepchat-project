@@ -148,7 +148,9 @@ async function setup(options: { templates?: Array<Record<string, unknown>> } = {
 const submitDisabled = (wrapper: { get: (selector: string) => { element: Element } }) =>
   (wrapper.get('[data-testid="recognize-submit"]').element as HTMLButtonElement).disabled
 
-async function selectFile(wrapper: { get: (selector: string) => { trigger: (e: string) => Promise<void> } }) {
+async function selectFile(wrapper: {
+  get: (selector: string) => { trigger: (e: string) => Promise<void> }
+}) {
   selectFilesMock.mockResolvedValueOnce({ canceled: false, filePaths: ['C:\\a.png'] })
   await wrapper.get('[data-testid="recognize-select-file"]').trigger('click')
   await flushPromises()
@@ -239,6 +241,7 @@ describe('DocumentRecognizeDialog', () => {
     expect(wrapper.get('[data-testid="recognize-error"]').text()).toContain(
       'settings.documents.archive.recognizeFailed'
     )
+    expect(wrapper.get('[data-testid="recognize-error"]').text()).toContain('recognize failed')
     const recognized = makeRecord({ id: 'd3' })
     stubStore.recognizeDocument.mockResolvedValueOnce({ document: recognized, meta: {} })
     await wrapper.get('[data-testid="recognize-submit"]').trigger('click')

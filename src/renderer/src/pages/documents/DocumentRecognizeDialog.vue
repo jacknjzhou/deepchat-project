@@ -41,7 +41,7 @@
           </Select>
         </div>
         <p v-if="error" class="text-sm text-destructive" data-testid="recognize-error">
-          {{ t('settings.documents.archive.recognizeFailed') }}
+          {{ t('settings.documents.archive.recognizeFailed') }}: {{ error }}
         </p>
       </div>
       <DialogFooter>
@@ -98,7 +98,7 @@ const filePath = ref('')
 const fileName = ref<string | null>(null)
 const templateId = ref(store.templates[0]?.id ?? '')
 const submitting = ref(false)
-const error = ref(false)
+const error = ref('')
 
 const canSubmit = computed(() => Boolean(filePath.value && templateId.value))
 const submitText = computed(() =>
@@ -120,7 +120,7 @@ watch(
       return
     }
     submitting.value = false
-    error.value = false
+    error.value = ''
     fillDefaultTemplateId()
   }
 )
@@ -150,7 +150,7 @@ async function onSelectFile() {
     const uri = result.filePaths[0]
     filePath.value = uri
     fileName.value = uri.split(/[\\/]/).pop() ?? uri
-    error.value = false
+    error.value = ''
   } catch (err) {
     console.error('[DocumentRecognizeDialog] select file failed', err)
   }
@@ -161,7 +161,7 @@ async function onSubmit() {
     return
   }
   submitting.value = true
-  error.value = false
+  error.value = ''
   try {
     const result = await store.recognizeDocument({
       templateId: templateId.value,
@@ -172,7 +172,7 @@ async function onSubmit() {
     emit('update:open', false)
   } catch (err) {
     console.error('[DocumentRecognizeDialog] recognize failed', err)
-    error.value = true
+    error.value = err instanceof Error ? err.message : String(err)
   } finally {
     submitting.value = false
   }

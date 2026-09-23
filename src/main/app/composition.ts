@@ -2893,11 +2893,18 @@ export async function createMainProcessControl(dependencies: {
           ? { providerId: visionModel.providerId, modelId: visionModel.modelId }
           : null
       },
-      resolveTextTarget: () => {
+      resolveTextTarget: async () => {
         const selection = providerSettings.getSetting<{ providerId: string; modelId: string }>(
           'defaultModel'
         )
-        return selection?.providerId && selection?.modelId ? selection : null
+        if (selection?.providerId && selection?.modelId) {
+          return selection
+        }
+        const agentConfig = await agentSettings.getDeepChatAgentConfig(BUILTIN_DEEPCHAT_AGENT_ID)
+        const mainModel = agentConfig?.defaultModelPreset
+        return mainModel?.providerId && mainModel?.modelId
+          ? { providerId: mainModel.providerId, modelId: mainModel.modelId }
+          : null
       },
       readImageAsDataUrl: async (filePath) => {
         const adapter = new ImageFileAdapter(filePath, documentsMaxFileSize())
