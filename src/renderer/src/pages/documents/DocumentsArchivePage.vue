@@ -44,7 +44,9 @@
       >
         <SelectTrigger><SelectValue /></SelectTrigger>
         <SelectContent>
-          <SelectItem :value="ALL_VALUE">{{ t('settings.documents.archive.statusAll') }}</SelectItem>
+          <SelectItem :value="ALL_VALUE">{{
+            t('settings.documents.archive.statusAll')
+          }}</SelectItem>
           <SelectItem value="draft">{{ t('settings.documents.archive.statusDraft') }}</SelectItem>
           <SelectItem value="confirmed">
             {{ t('settings.documents.archive.statusConfirmed') }}
@@ -90,11 +92,7 @@
             <th v-if="!selectedTypeKey" class="px-2 py-2 font-medium">
               {{ t('settings.documents.archive.colType') }}
             </th>
-            <th
-              v-for="column in tableFieldColumns"
-              :key="columnKey(column)"
-              class="px-2 py-2 font-medium"
-            >
+            <th v-for="column in tableFieldColumns" :key="column.key" class="px-2 py-2 font-medium">
               {{ column.label }}
             </th>
             <th v-if="!selectedTypeKey" class="px-2 py-2 font-medium">
@@ -102,7 +100,9 @@
             </th>
             <th class="px-2 py-2 font-medium">{{ t('settings.documents.archive.colSource') }}</th>
             <th class="px-2 py-2 font-medium">{{ t('settings.documents.archive.colStatus') }}</th>
-            <th class="px-2 py-2 font-medium">{{ t('settings.documents.archive.colCreatedAt') }}</th>
+            <th class="px-2 py-2 font-medium">
+              {{ t('settings.documents.archive.colCreatedAt') }}
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -116,7 +116,7 @@
             <td v-if="!selectedTypeKey" class="px-2 py-2">
               {{ templateNameById.get(document.templateId) ?? document.typeKey }}
             </td>
-            <td v-for="column in tableFieldColumns" :key="columnKey(column)" class="px-2 py-2">
+            <td v-for="column in tableFieldColumns" :key="column.key" class="px-2 py-2">
               {{ formatFieldValue(document.fields[column.key]?.value ?? null) }}
             </td>
             <td v-if="!selectedTypeKey" class="max-w-64 truncate px-2 py-2">
@@ -203,7 +203,7 @@ const templateNameById = computed(() => new Map(store.templates.map((tpl) => [tp
 
 const moneyColumns = computed<MoneyColumn[]>(() => buildMoneyColumns(store.archiveDocuments))
 
-const tableFieldColumns = computed<{ key: string; label: string; typeKey?: string }[]>(() => {
+const tableFieldColumns = computed<{ key: string; label: string }[]>(() => {
   if (selectedTypeKey.value) {
     const template = store.templates.find((tpl) => tpl.typeKey === selectedTypeKey.value)
     if (!template) {
@@ -212,15 +212,8 @@ const tableFieldColumns = computed<{ key: string; label: string; typeKey?: strin
     const snapshot = { fields: template.fields } as DocumentRecord['templateSnapshot']
     return orderedSnapshotFields(snapshot).map((f) => ({ key: f.key, label: f.label }))
   }
-  return moneyColumns.value.map((column) => ({
-    key: column.key,
-    label: column.label,
-    typeKey: column.typeKey
-  }))
+  return moneyColumns.value
 })
-
-const columnKey = (column: { key: string; typeKey?: string }) =>
-  column.typeKey ? `${column.typeKey}:${column.key}` : column.key
 
 const capitalize = (value: string) => value.charAt(0).toUpperCase() + value.slice(1)
 
@@ -241,7 +234,8 @@ function onTypeFilter(value: unknown) {
 }
 
 function onStatusFilter(value: unknown) {
-  store.archiveFilter.status = value === ALL_VALUE ? undefined : (String(value) as 'draft' | 'confirmed')
+  store.archiveFilter.status =
+    value === ALL_VALUE ? undefined : (String(value) as 'draft' | 'confirmed')
   void store.loadArchiveDocuments()
 }
 

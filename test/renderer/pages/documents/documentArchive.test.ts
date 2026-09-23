@@ -67,7 +67,7 @@ describe('formatFieldValue', () => {
 })
 
 describe('buildMoneyColumns', () => {
-  it('收集列表中出现过的金额类字段（typeKey+key 去重）', () => {
+  it('收集列表中出现过的金额类字段（跨类型按 key 去重）', () => {
     const money = (key: string, label: string) => ({ ...field(key, label, 1) })
     const documents = [
       record({
@@ -79,9 +79,12 @@ describe('buildMoneyColumns', () => {
         templateId: 'tpl-2',
         templateSnapshot: {
           ...snapshot,
-          fields: [money('total_amount', '合计金额')]
+          fields: [money('total_amount', '合计金额'), money('tax_amount', '税额')]
         },
-        fields: { total_amount: { value: 2, uncertain: false } }
+        fields: {
+          total_amount: { value: 2, uncertain: false },
+          tax_amount: { value: 0.5, uncertain: true }
+        }
       }),
       record({
         id: 'd3',
@@ -90,17 +93,10 @@ describe('buildMoneyColumns', () => {
       })
     ]
     const columns = buildMoneyColumns(documents)
-    expect(columns).toHaveLength(2)
-    expect(columns[0]).toEqual({
-      typeKey: 'invoice_special',
-      key: 'total_amount',
-      label: '价税合计'
-    })
-    expect(columns[1]).toEqual({
-      typeKey: 'invoice_general',
-      key: 'total_amount',
-      label: '合计金额'
-    })
+    expect(columns).toEqual([
+      { key: 'total_amount', label: '价税合计' },
+      { key: 'tax_amount', label: '税额' }
+    ])
   })
 })
 

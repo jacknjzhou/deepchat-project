@@ -3,7 +3,6 @@ import type { DocumentFieldEntry, DocumentRecord } from '@shared/documents'
 const MONEY_FIELD_RE = /amount|total|tax|price|金额|合计|税|价格|价税/i
 
 export interface MoneyColumn {
-  typeKey: string
   key: string
   label: string
 }
@@ -32,9 +31,8 @@ export function buildMoneyColumns(documents: DocumentRecord[]): MoneyColumn[] {
       if (document.fields[field.key]?.value == null) {
         continue
       }
-      const columnKey = `${document.typeKey}:${field.key}`
-      if (!seen.has(columnKey)) {
-        seen.set(columnKey, { typeKey: document.typeKey, key: field.key, label: field.label })
+      if (!seen.has(field.key)) {
+        seen.set(field.key, { key: field.key, label: field.label })
       }
     }
   }
