@@ -388,6 +388,9 @@ import {
   documentsGetRoute,
   documentsListRoute,
   documentsPreviewFileRoute,
+  documentsStatsRoute,
+  documentsTasksCreateRoute,
+  documentsTasksListRoute,
   documentsUpsertRoute
 } from './routes/documents.routes'
 import {
@@ -815,6 +818,9 @@ const DEEPCHAT_ROUTE_CATALOG_PART_1 = {
   [documentsExtractAndDraftRoute.name]: documentsExtractAndDraftRoute,
   [documentsExportCsvRoute.name]: documentsExportCsvRoute,
   [documentsPreviewFileRoute.name]: documentsPreviewFileRoute,
+  [documentsStatsRoute.name]: documentsStatsRoute,
+  [documentsTasksCreateRoute.name]: documentsTasksCreateRoute,
+  [documentsTasksListRoute.name]: documentsTasksListRoute,
   [pluginsListRoute.name]: pluginsListRoute,
   [pluginsGetRoute.name]: pluginsGetRoute,
   [pluginsEnableRoute.name]: pluginsEnableRoute,

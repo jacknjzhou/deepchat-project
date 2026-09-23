@@ -15,6 +15,9 @@ import {
   documentsGetRoute,
   documentsListRoute,
   documentsPreviewFileRoute,
+  documentsStatsRoute,
+  documentsTasksCreateRoute,
+  documentsTasksListRoute,
   documentsUpsertRoute
 } from '@shared/contracts/routes'
 import type { DocumentTemplate } from '@shared/documents'
@@ -148,7 +151,7 @@ describe('documents route contracts', () => {
       createdAt: 1,
       updatedAt: 2
     }
-    const output = documentsListRoute.output.parse({ documents: [record] })
+    const output = documentsListRoute.output.parse({ documents: [record], total: 1 })
     expect(output.documents[0].fields.party_a.value).toBe('甲公司')
   })
 
@@ -200,6 +203,81 @@ describe('documents route contracts', () => {
       name: 'a.png'
     })
     expect(output.mimeType).toBe('image/png')
+  })
+
+  it('documents.list output requires total', () => {
+    expect(() => documentsListRoute.output.parse({ documents: [] })).toThrow()
+    const output = documentsListRoute.output.parse({ documents: [], total: 0 })
+    expect(output.total).toBe(0)
+  })
+
+  it('documents.stats parses per-type counters', () => {
+    const output = documentsStatsRoute.output.parse({
+      stats: [{ typeKey: 'invoice_special', total: 3, draft: 2, confirmed: 1 }]
+    })
+    expect(output.stats[0]?.draft).toBe(2)
+  })
+
+  it('documents.tasks.create accepts files and auto template', () => {
+    const input = documentsTasksCreateRoute.input.parse({
+      files: [{ path: 'C:\\a.png' }, { path: 'C:\\b.pdf' }],
+      templateId: 'auto'
+    })
+    expect(input.files).toHaveLength(2)
+    expect(input.source).toBe('manual')
+    expect(
+      () =>
+        documentsTasksCreateRoute.input.parse({
+          files: [{ path: 'C:\\a.png' }],
+          templateId: 'auto'
+        } as never).files
+    ).toBeDefined()
+    // 上限 20
+    expect(() =>
+      documentsTasksCreateRoute.input.parse({
+        files: Array.from({ length: 21 }, (_, i) => ({ path: `C:\\f${i}.png` })),
+        templateId: 'auto'
+      })
+    ).toThrow()
+  })
+
+  it('documents.tasks.create/list output parses task rows', () => {
+    const task = {
+      id: 't1',
+      batchId: 'b1',
+      filePath: 'C:\\a.png',
+      fileName: 'a.png',
+      templateId: 'auto',
+      status: 'pending',
+      typeKey: null,
+      documentId: null,
+      error: null,
+      createdAt: 1,
+      updatedAt: 1
+    }
+    expect(documentsTasksCreateRoute.output.parse({ tasks: [task] }).tasks).toHaveLength(1)
+    expect(documentsTasksListRoute.output.parse({ tasks: [] }).tasks).toEqual([])
+  })
+
+  it('documents.task.updated event payload parses', async () => {
+    const { documentsTaskUpdatedEvent } = await import('@shared/contracts/events')
+    const payload = {
+      id: 't1',
+      batchId: 'b1',
+      filePath: 'C:\\a.png',
+      fileName: 'a.png',
+      templateId: 'auto',
+      status: 'running',
+      typeKey: null,
+      documentId: null,
+      error: null,
+      createdAt: 1,
+      updatedAt: 1,
+      doneCount: 0,
+      totalCount: 1,
+      version: 1
+    }
+    expect(documentsTaskUpdatedEvent.payload.parse(payload)).toMatchObject({ status: 'running' })
   })
 })
 

@@ -146,7 +146,10 @@ export const documentTemplatesForkRoute = defineRouteContract({
 export const documentsListRoute = defineRouteContract({
   name: 'documents.list',
   input: documentsListInputSchema,
-  output: z.object({ documents: z.array(documentRecordSchema) })
+  output: z.object({
+    documents: z.array(documentRecordSchema),
+    total: z.number().int().nonnegative()
+  })
 })
 
 export const documentsGetRoute = defineRouteContract({
@@ -242,4 +245,52 @@ export const documentsPreviewFileRoute = defineRouteContract({
     mimeType: z.string().min(1),
     name: z.string().min(1)
   })
+})
+
+export const documentsStatsEntrySchema = z.object({
+  typeKey: z.string().min(1),
+  total: z.number().int().nonnegative(),
+  draft: z.number().int().nonnegative(),
+  confirmed: z.number().int().nonnegative()
+})
+
+export const documentsStatsRoute = defineRouteContract({
+  name: 'documents.stats',
+  input: z.object({
+    dateFrom: timestampMsSchema.optional(),
+    dateTo: timestampMsSchema.optional()
+  }),
+  output: z.object({ stats: z.array(documentsStatsEntrySchema) })
+})
+
+export const documentTaskStatusSchema = z.enum(['pending', 'running', 'done', 'failed'])
+
+export const documentTaskSchema = z.object({
+  id: z.string().min(1),
+  batchId: z.string().min(1),
+  filePath: z.string().min(1),
+  fileName: z.string().min(1),
+  templateId: z.string().min(1),
+  status: documentTaskStatusSchema,
+  typeKey: z.string().min(1).nullable(),
+  documentId: z.string().min(1).nullable(),
+  error: z.string().nullable(),
+  createdAt: timestampMsSchema,
+  updatedAt: timestampMsSchema
+})
+
+export const documentsTasksCreateRoute = defineRouteContract({
+  name: 'documents.tasks.create',
+  input: z.object({
+    files: z.array(documentExtractFileSchema).min(1).max(20),
+    templateId: z.string().min(1),
+    source: documentSourceSchema.default('manual')
+  }),
+  output: z.object({ tasks: z.array(documentTaskSchema) })
+})
+
+export const documentsTasksListRoute = defineRouteContract({
+  name: 'documents.tasks.list',
+  input: z.object({}),
+  output: z.object({ tasks: z.array(documentTaskSchema) })
 })
