@@ -131,6 +131,24 @@ describe('buildFieldEditStates / parseFieldEditState', () => {
     expect(parsed).toEqual({ ok: true, value: ['甲', '乙'] })
   })
 
+  it('array 对象元素按 JSON 展示并在保存时还原', () => {
+    const items = [
+      { 名称: '标准间', 金额: 300 },
+      { 名称: '早餐', 金额: 40 }
+    ]
+    const states = buildFieldEditStates(editRecord({ items: { value: items, uncertain: false } }))
+    expect(states[0].raw).toBe('{"名称":"标准间","金额":300}\n{"名称":"早餐","金额":40}')
+
+    const edited = parseFieldEditState({
+      ...states[0],
+      raw: '{"名称":"标准间","金额":300}\n含税费\n300'
+    })
+    expect(edited).toEqual({
+      ok: true,
+      value: [{ 名称: '标准间', 金额: 300 }, '含税费', '300']
+    })
+  })
+
   it('required 字段为空报 required', () => {
     const states = buildFieldEditStates(editRecord({}))
     const required = { ...states[0], required: true, raw: '' }

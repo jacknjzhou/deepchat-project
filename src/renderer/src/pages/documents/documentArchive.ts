@@ -21,6 +21,13 @@ export function formatFieldValue(value: unknown): string {
   return String(value)
 }
 
+export function formatArrayLine(item: unknown): string {
+  if (typeof item === 'object' && item !== null) {
+    return JSON.stringify(item)
+  }
+  return String(item)
+}
+
 export function buildMoneyColumns(documents: DocumentRecord[]): MoneyColumn[] {
   const seen = new Map<string, MoneyColumn>()
   for (const document of documents) {
@@ -70,7 +77,7 @@ export function buildFieldEditStates(document: DocumentRecord): FieldEditState[]
     const entry = document.fields[field.key] ?? null
     const raw =
       field.valueType === 'array' && Array.isArray(entry?.value)
-        ? (entry.value as unknown[]).map((item) => String(item)).join('\n')
+        ? (entry.value as unknown[]).map((item) => formatArrayLine(item)).join('\n')
         : entry
           ? formatFieldValue(entry.value)
           : ''
@@ -100,6 +107,19 @@ export function parseFieldEditState(
         .split('\n')
         .map((line) => line.trim())
         .filter(Boolean)
+        .map((line) => {
+          try {
+            const parsed: unknown = JSON.parse(line)
+            // Only adopt structured lines back as objects; primitive strings
+            // stay strings to avoid silent type drift (e.g. "300" -> 300).
+            if (typeof parsed === 'object' && parsed !== null) {
+              return parsed
+            }
+          } catch {
+            // not JSON, keep the raw string
+          }
+          return line
+        })
     }
   }
   if (!text.trim()) {
