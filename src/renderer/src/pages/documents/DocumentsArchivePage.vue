@@ -183,7 +183,7 @@
       :document="detailDocument"
       @re-recognized="onReRecognized"
     />
-    <DocumentRecognizeDialog v-model:open="recognizeOpen" @recognized="onRecognized" />
+    <DocumentRecognizeDialog v-model:open="recognizeOpen" @submitted="onTasksSubmitted" />
   </div>
 </template>
 
@@ -375,9 +375,13 @@ function onReRecognized(document: DocumentRecord) {
   detailDocument.value = document
 }
 
-function onRecognized(document: DocumentRecord) {
-  detailDocument.value = document
-  detailOpen.value = true
+function onTasksSubmitted(count: number) {
+  notifyTransient(
+    'success',
+    'documents.archive.taskQueuedToast',
+    t('settings.documents.archive.taskQueuedToast', { count })
+  )
+  void store.loadArchiveTasks()
 }
 
 const visibleTasks = computed(() =>

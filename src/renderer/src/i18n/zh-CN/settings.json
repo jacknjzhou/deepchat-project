@@ -319,7 +319,10 @@
       "taskFailed": "失败",
       "taskQueued": "排队中",
       "taskRetryQueued": "已重新加入识别队列",
-      "taskRetryFailed": "重试失败"
+      "taskRetryFailed": "重试失败",
+      "filesSelected": "已选 {count} 个文件",
+      "autoClassify": "自动分类",
+      "taskQueuedToast": "已提交 {count} 个识别任务"
     },
     "test": {
       "title": "样张测试",

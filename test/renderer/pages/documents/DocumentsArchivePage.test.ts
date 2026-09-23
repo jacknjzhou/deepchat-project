@@ -70,7 +70,7 @@ const DetailDialogStub = defineComponent({
 const RecognizeDialogStub = defineComponent({
   name: 'DocumentRecognizeDialogStub',
   props: ['open'],
-  emits: ['update:open', 'recognized'],
+  emits: ['update:open', 'submitted'],
   template: '<div data-testid="recognize-dialog-stub" :data-open="String(open)" />'
 })
 

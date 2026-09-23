@@ -7,10 +7,11 @@
       </DialogHeader>
       <div class="space-y-3">
         <div class="space-y-1">
-          <span class="text-sm font-medium">{{ t('settings.documents.archive.selectFile') }}</span>
           <div class="flex items-center gap-2">
             <Input
-              :model-value="fileName ?? t('settings.documents.archive.filePlaceholder')"
+              :model-value="
+                t('settings.documents.archive.filesSelected', { count: selectedFiles.length })
+              "
               readonly
               data-testid="recognize-file-input"
             />
@@ -23,6 +24,23 @@
               {{ t('settings.documents.archive.selectFile') }}
             </DcButton>
           </div>
+          <ul v-if="selectedFiles.length" class="flex flex-wrap gap-1">
+            <li
+              v-for="(file, index) in selectedFiles"
+              :key="file.path"
+              class="flex items-center gap-1 rounded border px-2 py-0.5 text-xs"
+            >
+              <span class="max-w-48 truncate">{{ file.name }}</span>
+              <button
+                type="button"
+                :data-testid="`recognize-file-remove-${index}`"
+                class="text-muted-foreground hover:text-destructive"
+                @click="removeFile(index)"
+              >
+                ×
+              </button>
+            </li>
+          </ul>
         </div>
         <div class="space-y-1">
           <span class="text-sm font-medium">
@@ -34,6 +52,9 @@
           >
             <SelectTrigger data-testid="recognize-template-trigger"><SelectValue /></SelectTrigger>
             <SelectContent>
+              <SelectItem value="__auto__">
+                {{ t('settings.documents.archive.autoClassify') }}
+              </SelectItem>
               <SelectItem v-for="tpl in store.templates" :key="tpl.id" :value="tpl.id">
                 {{ tpl.name }}
               </SelectItem>
@@ -57,7 +78,7 @@
           data-testid="recognize-submit"
           @click="onSubmit"
         >
-          {{ submitText }}
+          {{ t('settings.documents.archive.recognize') }}
         </DcButton>
       </DialogFooter>
     </DialogContent>
@@ -65,7 +86,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Input } from '@shadcn/components/ui/input'
 import {
@@ -86,7 +107,6 @@ import {
 import { DcButton } from '@dc-ui/components/button'
 import { createDeviceClient } from '@api/DeviceClient'
 import { useDocumentsStore } from '@/stores/documents'
-import type { DocumentRecord } from '@shared/documents'
 
 const props = defineProps<{
   open: boolean
@@ -94,51 +114,23 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [open: boolean]
-  recognized: [document: DocumentRecord]
+  submitted: [count: number]
 }>()
 
 const { t } = useI18n()
 const store = useDocumentsStore()
 const deviceClient = createDeviceClient()
 
-const filePath = ref('')
-const fileName = ref<string | null>(null)
-const templateId = ref(store.templates[0]?.id ?? '')
+const AUTO_VALUE = '__auto__'
+const selectedFiles = ref<Array<{ path: string; name: string }>>([])
+const templateId = ref(AUTO_VALUE)
 const submitting = ref(false)
 const error = ref('')
 
-const canSubmit = computed(() => Boolean(filePath.value && templateId.value))
-const isPdfFile = computed(() => filePath.value.toLowerCase().endsWith('.pdf'))
-const elapsedSeconds = ref(0)
-let elapsedTimer: ReturnType<typeof setInterval> | null = null
-const submitText = computed(() =>
-  submitting.value
-    ? `${t('settings.documents.archive.recognizing')} · ${elapsedSeconds.value}s`
-    : t('settings.documents.archive.recognize')
+const canSubmit = computed(() => selectedFiles.value.length > 0 && !submitting.value)
+const isPdfFile = computed(() =>
+  selectedFiles.value.some((file) => file.path.toLowerCase().endsWith('.pdf'))
 )
-
-function startElapsedTimer() {
-  stopElapsedTimer()
-  elapsedSeconds.value = 0
-  elapsedTimer = setInterval(() => {
-    elapsedSeconds.value += 1
-  }, 1000)
-}
-
-function stopElapsedTimer() {
-  if (elapsedTimer) {
-    clearInterval(elapsedTimer)
-    elapsedTimer = null
-  }
-}
-
-onBeforeUnmount(stopElapsedTimer)
-
-function fillDefaultTemplateId() {
-  if (!templateId.value) {
-    templateId.value = store.templates[0]?.id ?? ''
-  }
-}
 
 watch(
   () => props.open,
@@ -146,16 +138,10 @@ watch(
     if (!open) {
       return
     }
+    selectedFiles.value = []
+    templateId.value = AUTO_VALUE
     submitting.value = false
     error.value = ''
-    fillDefaultTemplateId()
-  }
-)
-
-watch(
-  () => store.templates,
-  () => {
-    fillDefaultTemplateId()
   }
 )
 
@@ -168,19 +154,25 @@ onMounted(() => {
 async function onSelectFile() {
   try {
     const result = await deviceClient.selectFiles({
-      multiple: false,
+      multiple: true,
       filters: [{ name: 'Documents', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif', 'pdf'] }]
     })
-    if (result.canceled || !result.filePaths[0]) {
+    if (result.canceled || result.filePaths.length === 0) {
       return
     }
-    const uri = result.filePaths[0]
-    filePath.value = uri
-    fileName.value = uri.split(/[\\/]/).pop() ?? uri
+    const existing = new Set(selectedFiles.value.map((file) => file.path))
+    for (const uri of result.filePaths) {
+      if (existing.has(uri)) continue
+      selectedFiles.value.push({ path: uri, name: uri.split(/[\\/]/).pop() ?? uri })
+    }
     error.value = ''
   } catch (err) {
-    console.error('[DocumentRecognizeDialog] select file failed', err)
+    console.error('[DocumentRecognizeDialog] select files failed', err)
   }
+}
+
+function removeFile(index: number) {
+  selectedFiles.value.splice(index, 1)
 }
 
 async function onSubmit() {
@@ -189,20 +181,17 @@ async function onSubmit() {
   }
   submitting.value = true
   error.value = ''
-  startElapsedTimer()
   try {
-    const result = await store.recognizeDocument({
-      templateId: templateId.value,
-      file: { path: filePath.value },
-      source: 'manual'
+    const created = await store.createRecognitionTasks({
+      files: selectedFiles.value.map((file) => ({ path: file.path, name: file.name })),
+      templateId: templateId.value === AUTO_VALUE ? 'auto' : templateId.value
     })
-    emit('recognized', result.document)
+    emit('submitted', created.length)
     emit('update:open', false)
   } catch (err) {
-    console.error('[DocumentRecognizeDialog] recognize failed', err)
+    console.error('[DocumentRecognizeDialog] create tasks failed', err)
     error.value = err instanceof Error ? err.message : String(err)
   } finally {
-    stopElapsedTimer()
     submitting.value = false
   }
 }

@@ -25,37 +25,9 @@ const makeTemplate = (id: string, typeKey: string, name: string) => ({
 const contractTemplate = makeTemplate('tpl-1', 'contract', '合同模板')
 const invoiceTemplate = makeTemplate('tpl-2', 'invoice', '发票模板')
 
-const makeRecord = (overrides = {}) => ({
-  id: 'd1',
-  templateId: 'tpl-1',
-  typeKey: 'contract',
-  templateSnapshot: {
-    fields: [
-      {
-        key: 'buyer',
-        label: '购买方',
-        valueType: 'text',
-        required: true,
-        promptHint: null,
-        validation: null,
-        enumOptions: null,
-        order: 1
-      }
-    ]
-  },
-  fields: { buyer: { value: '甲公司', uncertain: false } },
-  fileUris: ['C:\\a.png'],
-  source: 'manual',
-  sessionId: null,
-  status: 'draft',
-  createdAt: 1700000000000,
-  updatedAt: 1700000100000,
-  ...overrides
-})
-
 const stubStore = reactive({
   templates: [contractTemplate, invoiceTemplate] as Array<Record<string, unknown>>,
-  recognizeDocument: vi.fn(async () => ({ document: makeRecord({ id: 'd2' }), meta: {} })),
+  createRecognitionTasks: vi.fn(async () => [] as Array<Record<string, unknown>>),
   loadTemplates: vi.fn(async () => {})
 })
 
@@ -148,106 +120,124 @@ async function setup(options: { templates?: Array<Record<string, unknown>> } = {
 const submitDisabled = (wrapper: { get: (selector: string) => { element: Element } }) =>
   (wrapper.get('[data-testid="recognize-submit"]').element as HTMLButtonElement).disabled
 
-async function selectFile(wrapper: {
-  get: (selector: string) => { trigger: (e: string) => Promise<void> }
-}) {
-  selectFilesMock.mockResolvedValueOnce({ canceled: false, filePaths: ['C:\\a.png'] })
+// The selected-file count lives in the readonly input's value, which is not
+// part of textContent in jsdom, so read it off the element directly.
+const filesInputValue = (wrapper: { get: (selector: string) => { element: Element } }) =>
+  (wrapper.get('[data-testid="recognize-file-input"]').element as HTMLInputElement).value
+
+async function selectFiles(
+  wrapper: { get: (selector: string) => { trigger: (e: string) => Promise<void> } },
+  filePaths: string[]
+) {
+  selectFilesMock.mockResolvedValueOnce({ canceled: false, filePaths })
   await wrapper.get('[data-testid="recognize-select-file"]').trigger('click')
   await flushPromises()
 }
 
 describe('DocumentRecognizeDialog', () => {
   beforeEach(() => {
-    stubStore.recognizeDocument.mockClear()
+    stubStore.createRecognitionTasks.mockClear()
     stubStore.loadTemplates.mockClear()
     selectFilesMock.mockClear()
   })
 
-  it('渲染文件选择与模板下拉', async () => {
+  it('渲染文件选择与模板下拉且自动分类为默认项', async () => {
     const { wrapper } = await setup()
     expect(wrapper.find('[data-testid="recognize-select-file"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="recognize-template-trigger"]').exists()).toBe(true)
     expect(wrapper.text()).toContain('合同模板')
     expect(wrapper.text()).toContain('发票模板')
+    const options = wrapper.findAll('option').map((o) => o.element.value)
+    expect(options[0]).toBe('__auto__')
   })
 
-  it('选择文件后显示文件名并按契约调用 selectFiles', async () => {
+  it('按契约以多选模式调用 selectFiles 并显示计数', async () => {
     const { wrapper } = await setup()
-    await selectFile(wrapper)
+    await selectFiles(wrapper, ['C:\\a.png'])
     expect(selectFilesMock).toHaveBeenCalledWith({
-      multiple: false,
+      multiple: true,
       filters: [{ name: 'Documents', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif', 'pdf'] }]
     })
-    const input = wrapper.get('[data-testid="recognize-file-input"]')
-    expect((input.element as HTMLInputElement).value).toContain('a.png')
+    expect(filesInputValue(wrapper)).toContain('1')
   })
 
-  it('未选文件或未选模板时开始识别禁用', async () => {
-    const { wrapper } = await setup()
+  it('未选文件时提交禁用且模板为空时触发 loadTemplates', async () => {
+    const { wrapper } = await setup({ templates: [] })
+    expect(stubStore.loadTemplates).toHaveBeenCalledTimes(1)
     expect(submitDisabled(wrapper)).toBe(true)
-    await selectFile(wrapper)
+    await selectFiles(wrapper, ['C:\\a.png'])
     expect(submitDisabled(wrapper)).toBe(false)
   })
 
-  it('模板未加载时保持禁用并触发 loadTemplates', async () => {
-    const { wrapper } = await setup({ templates: [] })
-    expect(stubStore.loadTemplates).toHaveBeenCalledTimes(1)
-    await selectFile(wrapper)
-    expect(submitDisabled(wrapper)).toBe(true)
+  it('多选文件并提交创建批量任务', async () => {
+    stubStore.createRecognitionTasks.mockResolvedValueOnce([{ id: 'task-1' }, { id: 'task-2' }])
+    const { wrapper } = await setup()
+    await selectFiles(wrapper, ['C:\\a.png', 'C:\\b.pdf'])
+    expect(filesInputValue(wrapper)).toContain('2')
+    await wrapper.get('[data-testid="recognize-submit"]').trigger('click')
+    await flushPromises()
+    expect(stubStore.createRecognitionTasks).toHaveBeenCalledWith({
+      files: [
+        { path: 'C:\\a.png', name: 'a.png' },
+        { path: 'C:\\b.pdf', name: 'b.pdf' }
+      ],
+      templateId: 'auto'
+    })
+    expect(wrapper.emitted('submitted')?.[0]).toEqual([2])
+    expect(wrapper.emitted('update:open')?.at(-1)).toEqual([false])
   })
 
-  it('提交调用 recognizeDocument 并 emit recognized 与关闭', async () => {
-    const recognized = makeRecord({ id: 'd2' })
-    stubStore.recognizeDocument.mockResolvedValueOnce({ document: recognized, meta: {} })
+  it('默认模板为自动分类且可切换到具体模板', async () => {
     const { wrapper } = await setup()
-    await selectFile(wrapper)
+    const options = wrapper.findAll('option').map((o) => o.element.value)
+    expect(options[0]).toBe('__auto__')
+    await selectFiles(wrapper, ['C:\\a.png'])
     await wrapper.find('select').setValue('tpl-1')
     await wrapper.get('[data-testid="recognize-submit"]').trigger('click')
     await flushPromises()
-    expect(stubStore.recognizeDocument).toHaveBeenCalledWith({
-      templateId: 'tpl-1',
-      file: { path: 'C:\\a.png' },
-      source: 'manual'
-    })
-    expect(wrapper.emitted('recognized')).toEqual([[recognized]])
-    expect(wrapper.emitted('update:open')).toEqual([[false]])
+    expect(stubStore.createRecognitionTasks).toHaveBeenCalledWith(
+      expect.objectContaining({ templateId: 'tpl-1' })
+    )
   })
 
-  it('识别中按钮显示 recognizing 且禁用', async () => {
-    let resolveRecognize!: (value: { document: unknown; meta: unknown }) => void
-    stubStore.recognizeDocument.mockImplementationOnce(
+  it('移除已选文件', async () => {
+    const { wrapper } = await setup()
+    await selectFiles(wrapper, ['C:\\a.png', 'C:\\b.pdf'])
+    await wrapper.get('[data-testid="recognize-file-remove-1"]').trigger('click')
+    expect(filesInputValue(wrapper)).toContain('1')
+  })
+
+  it('提交中按钮禁用', async () => {
+    let resolveTasks!: (value: Array<Record<string, unknown>>) => void
+    stubStore.createRecognitionTasks.mockImplementationOnce(
       () =>
         new Promise((resolve) => {
-          resolveRecognize = resolve
+          resolveTasks = resolve
         })
     )
     const { wrapper } = await setup()
-    await selectFile(wrapper)
+    await selectFiles(wrapper, ['C:\\a.png'])
     await wrapper.get('[data-testid="recognize-submit"]').trigger('click')
-    await flushPromises()
-    const submit = wrapper.get('[data-testid="recognize-submit"]')
-    expect(submit.text()).toContain('settings.documents.archive.recognizing')
-    expect((submit.element as HTMLButtonElement).disabled).toBe(true)
-    resolveRecognize({ document: makeRecord({ id: 'd2' }), meta: {} })
+    expect(submitDisabled(wrapper)).toBe(true)
+    resolveTasks([{ id: 'task-1' }])
     await flushPromises()
   })
 
   it('失败显示 recognizeFailed 且可重试', async () => {
-    stubStore.recognizeDocument.mockRejectedValueOnce(new Error('recognize failed'))
+    stubStore.createRecognitionTasks.mockRejectedValueOnce(new Error('create tasks failed'))
     const { wrapper } = await setup()
-    await selectFile(wrapper)
+    await selectFiles(wrapper, ['C:\\a.png'])
     await wrapper.get('[data-testid="recognize-submit"]').trigger('click')
     await flushPromises()
     expect(wrapper.get('[data-testid="recognize-error"]').text()).toContain(
       'settings.documents.archive.recognizeFailed'
     )
-    expect(wrapper.get('[data-testid="recognize-error"]').text()).toContain('recognize failed')
-    const recognized = makeRecord({ id: 'd3' })
-    stubStore.recognizeDocument.mockResolvedValueOnce({ document: recognized, meta: {} })
+    expect(wrapper.get('[data-testid="recognize-error"]').text()).toContain('create tasks failed')
+    stubStore.createRecognitionTasks.mockResolvedValueOnce([{ id: 'task-1' }])
     await wrapper.get('[data-testid="recognize-submit"]').trigger('click')
     await flushPromises()
-    expect(stubStore.recognizeDocument).toHaveBeenCalledTimes(2)
-    expect(wrapper.emitted('recognized')).toEqual([[recognized]])
-    expect(wrapper.emitted('update:open')).toEqual([[false]])
+    expect(stubStore.createRecognitionTasks).toHaveBeenCalledTimes(2)
+    expect(wrapper.emitted('submitted')?.[0]).toEqual([1])
+    expect(wrapper.emitted('update:open')?.at(-1)).toEqual([false])
   })
 })

@@ -319,7 +319,10 @@
       "taskFailed": "Failed",
       "taskQueued": "Queued",
       "taskRetryQueued": "Task re-queued for recognition",
-      "taskRetryFailed": "Failed to retry task"
+      "taskRetryFailed": "Failed to retry task",
+      "filesSelected": "{count} file(s) selected",
+      "autoClassify": "Auto classify",
+      "taskQueuedToast": "Submitted {count} recognition task(s)"
     },
     "test": {
       "title": "Kiểm tra mẫu vật",
