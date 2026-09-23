@@ -152,7 +152,7 @@
           variant="outline"
           size="sm"
           data-testid="archive-page-prev"
-          :disabled="store.archivePage <= 1"
+          :disabled="store.archivePage <= 1 || store.archiveIsLoading"
           @click="goPage(store.archivePage - 1)"
         >
           ‹
@@ -162,7 +162,7 @@
           variant="outline"
           size="sm"
           data-testid="archive-page-next"
-          :disabled="store.archivePage >= store.archiveTotalPages"
+          :disabled="store.archivePage >= store.archiveTotalPages || store.archiveIsLoading"
           @click="goPage(store.archivePage + 1)"
         >
           ›
@@ -292,9 +292,13 @@ function syncFilters() {
 function applyFilters() {
   syncFilters()
   void store.loadArchiveDocuments()
+  void store.loadArchiveStats()
 }
 
 function onTabChange(typeKey: string) {
+  if (activeTab.value === typeKey) {
+    return
+  }
   activeTab.value = typeKey
   store.archiveFilter.typeKey = typeKey === ALL_TAB ? undefined : typeKey
   store.archiveFilter.status = undefined
@@ -302,6 +306,9 @@ function onTabChange(typeKey: string) {
 }
 
 function onStatusChip(status: DocumentStatus | undefined) {
+  if (store.archiveFilter.status === status) {
+    return
+  }
   store.archiveFilter.status = status
   void store.loadArchiveDocuments(1)
 }
@@ -317,7 +324,7 @@ watch(dateFromText, applyFilters)
 watch(dateToText, applyFilters)
 
 function retry() {
-  void store.loadArchiveDocuments()
+  void store.loadArchiveDocuments(store.archivePage)
 }
 
 function notifyTransient(kind: 'success' | 'error', code: string, title: string) {

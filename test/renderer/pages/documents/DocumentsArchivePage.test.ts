@@ -2,8 +2,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { defineComponent, reactive } from 'vue'
 
-const fragmentStub = (name: string) => defineComponent({ name, template: '<slot />' })
-
 const contractTemplate = {
   id: 'tpl_contract',
   typeKey: 'contract',
@@ -122,26 +120,6 @@ const inputStub = defineComponent({
   template: '<input :value="modelValue" @input="handleInput" />'
 })
 
-const selectStub = defineComponent({
-  name: 'SelectStub',
-  props: ['modelValue'],
-  emits: ['update:modelValue'],
-  setup(_, { emit }) {
-    return {
-      handleChange: (event: Event) => {
-        emit('update:modelValue', (event.target as HTMLSelectElement).value)
-      }
-    }
-  },
-  template: '<select :value="modelValue" @change="handleChange"><slot /></select>'
-})
-
-const selectItemStub = defineComponent({
-  name: 'SelectItemStub',
-  props: ['value'],
-  template: '<option :value="value"><slot /></option>'
-})
-
 const dcButtonStub = defineComponent({
   name: 'DcButtonStub',
   props: ['variant', 'size', 'disabled'],
@@ -195,13 +173,6 @@ async function setup(options: { loadError?: string } = {}) {
       stubs: {
         Icon: true,
         Input: inputStub,
-        Select: selectStub,
-        // Fragment stubs: <option> must be a direct child of <select> for the
-        // jsdom options collection (and therefore setValue) to see it.
-        SelectTrigger: fragmentStub('SelectTrigger'),
-        SelectValue: fragmentStub('SelectValue'),
-        SelectContent: fragmentStub('SelectContent'),
-        SelectItem: selectItemStub,
         DcButton: dcButtonStub,
         DcBadge: dcBadgeStub
       }
@@ -249,10 +220,12 @@ describe('DocumentsArchivePage', () => {
 
   it('点击类型 Tab 切换筛选并回到第一页', async () => {
     const { wrapper } = await setup()
+    stubStore.archiveFilter.status = 'draft'
     stubStore.loadArchiveDocuments.mockClear()
     await wrapper.get('[data-testid="archive-tab-contract"]').trigger('click')
     await flushPromises()
     expect(stubStore.archiveFilter.typeKey).toBe('contract')
+    expect(stubStore.archiveFilter.status).toBeUndefined()
     expect(stubStore.loadArchiveDocuments).toHaveBeenCalledWith(1)
     // 类型 Tab 下展示该模板全部字段列（不再渲染摘要列）
     expect(wrapper.text()).toContain('购买方')
