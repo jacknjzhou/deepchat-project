@@ -145,7 +145,26 @@ export const useDocumentsStore = defineStore('documents', () => {
     Math.max(1, Math.ceil(archiveTotal.value / ARCHIVE_PAGE_SIZE))
   )
 
+  // Guards against out-of-order archive responses: only the latest
+  // loadArchiveDocuments call may commit results or manage isLoading.
+  let archiveLoadSeq = 0
+  // Trailing-edge debounce so batch completion events refresh once, not per task.
+  const ARCHIVE_REFRESH_DEBOUNCE_MS = 300
+  let archiveRefreshTimer: ReturnType<typeof setTimeout> | null = null
+
+  function scheduleArchiveRefresh() {
+    if (archiveRefreshTimer !== null) {
+      clearTimeout(archiveRefreshTimer)
+    }
+    archiveRefreshTimer = setTimeout(() => {
+      archiveRefreshTimer = null
+      void loadArchiveStats()
+      void loadArchiveDocuments(archivePage.value)
+    }, ARCHIVE_REFRESH_DEBOUNCE_MS)
+  }
+
   async function loadArchiveDocuments(page = 1, client: DocumentsClient = defaultClient) {
+    const seq = ++archiveLoadSeq
     archiveIsLoading.value = true
     archiveLoadError.value = null
     try {
@@ -154,14 +173,22 @@ export const useDocumentsStore = defineStore('documents', () => {
         limit: ARCHIVE_PAGE_SIZE,
         offset: (page - 1) * ARCHIVE_PAGE_SIZE
       })
+      if (seq !== archiveLoadSeq) {
+        return
+      }
       archiveDocuments.value = result.documents as DocumentRecord[]
       archiveTotal.value = result.total
       archivePage.value = page
     } catch (error) {
+      if (seq !== archiveLoadSeq) {
+        return
+      }
       console.error('[DocumentsStore] loadArchiveDocuments failed', error)
       archiveLoadError.value = 'settings.documents.archive.loadFailed'
     } finally {
-      archiveIsLoading.value = false
+      if (seq === archiveLoadSeq) {
+        archiveIsLoading.value = false
+      }
     }
   }
 
@@ -194,8 +221,7 @@ export const useDocumentsStore = defineStore('documents', () => {
       tasks.value.unshift(payload)
     }
     if (payload.status === 'done' || payload.status === 'failed') {
-      void loadArchiveStats()
-      void loadArchiveDocuments(archivePage.value)
+      scheduleArchiveRefresh()
     }
   }
 

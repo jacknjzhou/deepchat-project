@@ -183,25 +183,85 @@ describe('documents archive store', () => {
     expect(store.tasks[0]?.id).toBe('t1')
   })
 
-  it('handleTaskUpdated upsert 任务并在完成时刷新统计与当前页', async () => {
-    listTasks.mockResolvedValue({ tasks: [] })
-    stats.mockResolvedValue({ stats: [] })
-    listDocuments.mockResolvedValue({ documents: [], total: 0 })
+  it('handleTaskUpdated upsert 任务并在完成时去抖刷新统计与当前页', async () => {
+    vi.useFakeTimers()
+    try {
+      listTasks.mockResolvedValue({ tasks: [] })
+      stats.mockResolvedValue({ stats: [] })
+      listDocuments.mockResolvedValue({ documents: [], total: 0 })
+      const store = useDocumentsStore()
+      await store.loadArchiveTasks()
+      store.handleTaskUpdated(makeTaskEvent())
+      expect(store.tasks).toHaveLength(1)
+      listDocuments.mockClear()
+      stats.mockClear()
+      store.handleTaskUpdated({
+        ...makeTaskEvent(),
+        status: 'done',
+        typeKey: 'invoice_special',
+        documentId: 'd1'
+      })
+      expect(store.tasks[0]?.status).toBe('done')
+      expect(stats).not.toHaveBeenCalled()
+      expect(listDocuments).not.toHaveBeenCalled()
+      await vi.advanceTimersByTimeAsync(300)
+      expect(stats).toHaveBeenCalledTimes(1)
+      expect(listDocuments).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('批量完成事件合并为一次刷新', async () => {
+    vi.useFakeTimers()
+    try {
+      listTasks.mockResolvedValue({ tasks: [] })
+      stats.mockResolvedValue({ stats: [] })
+      listDocuments.mockResolvedValue({ documents: [], total: 0 })
+      const store = useDocumentsStore()
+      await store.loadArchiveTasks()
+      listDocuments.mockClear()
+      stats.mockClear()
+      store.handleTaskUpdated({ ...makeTaskEvent(), status: 'done', documentId: 'd1' })
+      store.handleTaskUpdated({
+        ...makeTaskEvent(),
+        id: 't2',
+        batchId: 'b2',
+        filePath: 'C:\\b.png',
+        fileName: 'b.png',
+        status: 'done',
+        typeKey: 'invoice_general',
+        documentId: 'd2'
+      })
+      expect(stats).not.toHaveBeenCalled()
+      expect(listDocuments).not.toHaveBeenCalled()
+      await vi.advanceTimersByTimeAsync(300)
+      expect(stats).toHaveBeenCalledTimes(1)
+      expect(listDocuments).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('loadArchiveDocuments 丢弃过期响应，保留最新页数据', async () => {
+    let resolveSlow!: (value: unknown) => void
+    listDocuments.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveSlow = resolve
+        })
+    )
+    listDocuments.mockResolvedValueOnce({ documents: [{ ...draft, id: 'new' }], total: 1 })
     const store = useDocumentsStore()
-    await store.loadArchiveTasks()
-    store.handleTaskUpdated(makeTaskEvent())
-    expect(store.tasks).toHaveLength(1)
-    listDocuments.mockClear()
-    stats.mockClear()
-    store.handleTaskUpdated({
-      ...makeTaskEvent(),
-      status: 'done',
-      typeKey: 'invoice_special',
-      documentId: 'd1'
-    })
-    expect(store.tasks[0]?.status).toBe('done')
-    expect(stats).toHaveBeenCalled()
-    expect(listDocuments).toHaveBeenCalled()
+    const stale = store.loadArchiveDocuments(1)
+    const fresh = store.loadArchiveDocuments(2)
+    await fresh
+    resolveSlow({ documents: [{ ...draft, id: 'old' }], total: 99 })
+    await stale
+    expect(store.archivePage).toBe(2)
+    expect(store.archiveTotal).toBe(1)
+    expect(store.archiveDocuments.map((d) => d.id)).toEqual(['new'])
+    expect(store.archiveIsLoading).toBe(false)
   })
 
   it('createRecognitionTasks 创建任务并插入列表头部', async () => {
