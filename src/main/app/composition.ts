@@ -190,6 +190,7 @@ import { DocumentsDatabase } from '@/documents/data/database'
 import { DocumentExtractor } from '@/documents/extractor/documentExtractor'
 import { DocumentsRepository } from '@/documents/repository'
 import { createDocumentsRoutes } from '@/documents/routes'
+import { RecognitionTaskManager } from '@/documents/taskManager'
 import { seedPresetTemplates } from '@/documents/seed'
 import { ImageFileAdapter } from '@/file/adapters/ImageFileAdapter'
 import { PdfFileAdapter } from '@/file/adapters/PdfFileAdapter'
@@ -2930,7 +2931,24 @@ export async function createMainProcessControl(dependencies: {
         return result.text
       }
     })
-    const documentsRoutes = createDocumentsRoutes(documentsRepository, documentExtractor)
+    const recognitionTaskManager = new RecognitionTaskManager({
+      repository: documentsRepository,
+      extractor: documentExtractor,
+      publishTaskUpdated: ({ task, doneCount, totalCount }) =>
+        publishDeepchatEvent('documents.task.updated', {
+          ...task,
+          doneCount,
+          totalCount,
+          version: Date.now()
+        })
+    })
+    const documentsRoutes = createDocumentsRoutes(
+      documentsRepository,
+      documentExtractor,
+      recognitionTaskManager
+    )
+    // Resume interrupted recognition tasks from the previous run.
+    void recognitionTaskManager.resumePending()
     const memoryRoutes = createMemoryRoutes({
       memoryService,
       getAgentType: (agentId) => agentSettings.getAgentType(agentId),

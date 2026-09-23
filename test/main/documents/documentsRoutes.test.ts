@@ -18,12 +18,15 @@ import {
   documentsStatsRoute,
   documentsTasksCreateRoute,
   documentsTasksListRoute,
-  documentsUpsertRoute
+  documentsUpsertRoute,
+  type DeepchatRouteName
 } from '@shared/contracts/routes'
+import type { DeepchatRouteMap } from '@/routes/routeRegistry'
 import type { DocumentTemplate } from '@shared/documents'
 import { createDocumentsRoutes } from '@/documents/routes'
 import { DocumentsRepository } from '@/documents/repository'
 import { DocumentsDatabase } from '@/documents/data/database'
+import { DocumentTasksTable } from '@/documents/data/tables/documentTasks'
 import { DocumentTemplatesTable } from '@/documents/data/tables/documentTemplates'
 import { DocumentsTable } from '@/documents/data/tables/documents'
 
@@ -312,6 +315,20 @@ const DocumentTemplatesTableCtor = DocumentTemplatesTable
 const DocumentsTableCtor = DocumentsTable
 const DocumentsDatabaseCtor = DocumentsDatabase
 
+const fakeExtractor = { extract: vi.fn() } as never
+const fakeTaskManager = { submit: vi.fn(), resumePending: vi.fn() } as never
+
+function getRouteHandler(
+  routes: DeepchatRouteMap,
+  name: DeepchatRouteName
+): (input: unknown) => Promise<unknown> {
+  const handler = routes.get(name)
+  if (!handler) {
+    throw new Error(`missing route: ${name}`)
+  }
+  return handler as (input: unknown) => Promise<unknown>
+}
+
 describeIfSqlite('documents extraction handlers', () => {
   const makeRepository = () => {
     const db = new DatabaseCtor(':memory:')
@@ -349,7 +366,7 @@ describeIfSqlite('documents extraction handlers', () => {
   it('documentTemplates.testExtract 返回字段数组与元信息', async () => {
     const repository = makeRepository()
     const extractor = makeExtractorStub()
-    const routes = createDocumentsRoutes(repository, extractor as never)
+    const routes = createDocumentsRoutes(repository, extractor as never, fakeTaskManager)
     const handler = routes.get('documentTemplates.testExtract')
     expect(handler).toBeDefined()
 
@@ -366,7 +383,7 @@ describeIfSqlite('documents extraction handlers', () => {
   it('documents.extractAndDraft 入库 draft 档案', async () => {
     const repository = makeRepository()
     const extractor = makeExtractorStub()
-    const routes = createDocumentsRoutes(repository, extractor as never)
+    const routes = createDocumentsRoutes(repository, extractor as never, fakeTaskManager)
     const handler = routes.get('documents.extractAndDraft')
     expect(handler).toBeDefined()
 
@@ -448,7 +465,11 @@ describeIfSqlite('documents export and preview handlers', () => {
         status: 'draft',
         now: 1000
       })
-      const routes = createDocumentsRoutes(repository, makeExtractorStub() as never)
+      const routes = createDocumentsRoutes(
+        repository,
+        makeExtractorStub() as never,
+        fakeTaskManager
+      )
       const handler = routes.get('documents.previewFile')
       expect(handler).toBeDefined()
 
@@ -482,9 +503,14 @@ describeIfSqlite('documents export and preview handlers', () => {
         status: 'draft',
         now: 1000
       })
-      const routes = createDocumentsRoutes(repository, makeExtractorStub() as never, {
-        showSaveDialog: async () => ({ canceled: false, filePath: targetPath })
-      })
+      const routes = createDocumentsRoutes(
+        repository,
+        makeExtractorStub() as never,
+        fakeTaskManager,
+        {
+          showSaveDialog: async () => ({ canceled: false, filePath: targetPath })
+        }
+      )
       const handler = routes.get('documents.exportCsv')
       expect(handler).toBeDefined()
 
@@ -500,9 +526,14 @@ describeIfSqlite('documents export and preview handlers', () => {
 
   it('exportCsv 用户取消时返回 canceled', async () => {
     const repository = makeRepository()
-    const routes = createDocumentsRoutes(repository, makeExtractorStub() as never, {
-      showSaveDialog: async () => ({ canceled: true })
-    })
+    const routes = createDocumentsRoutes(
+      repository,
+      makeExtractorStub() as never,
+      fakeTaskManager,
+      {
+        showSaveDialog: async () => ({ canceled: true })
+      }
+    )
     const handler = routes.get('documents.exportCsv')
     expect(handler).toBeDefined()
 
@@ -563,5 +594,109 @@ describeIfSqlite('documents list date filter', () => {
     expect(repository.listDocuments({ dateFrom: 1000, dateTo: 2000 })).toHaveLength(1)
     expect(repository.listDocuments({ dateFrom: 5000 })).toHaveLength(0)
     expect(repository.listDocuments({ dateTo: 5000 })).toHaveLength(2)
+  })
+})
+
+describeIfSqlite('documents stats and tasks route handlers', () => {
+  const makeRepository = () => {
+    const db = new DatabaseCtor(':memory:')
+    new DocumentTemplatesTableCtor(db).createTable()
+    new DocumentsTableCtor(db).createTable()
+    new DocumentTasksTable(db).createTable()
+    const database = new DocumentsDatabaseCtor({ getDatabase: () => db })
+    return new DocumentsRepository(database)
+  }
+
+  const template: DocumentTemplate = {
+    id: 'tpl-1',
+    typeKey: 'contract',
+    name: '合同模板',
+    icon: null,
+    category: '合同类',
+    fields: [],
+    extractionMode: 'auto',
+    promptPreset: null,
+    isBuiltin: true,
+    builtinSourceId: null,
+    version: 1,
+    createdAt: 1,
+    updatedAt: 1
+  }
+
+  const validInsertInput = {
+    templateId: template.id,
+    typeKey: template.typeKey,
+    templateSnapshot: template,
+    fields: {},
+    fileUris: [] as string[],
+    source: 'manual' as const,
+    sessionId: null,
+    status: 'draft' as const,
+    now: 1000
+  }
+
+  it('documents.list returns total from repository', async () => {
+    const repository = makeRepository()
+    repository.upsertTemplate(template)
+    repository.insertDocument(validInsertInput)
+    const routes = createDocumentsRoutes(repository, fakeExtractor, fakeTaskManager)
+    const handler = getRouteHandler(routes, documentsListRoute.name)
+    const output = documentsListRoute.output.parse(await handler({ limit: 10 }))
+    expect(output.total).toBe(1)
+    expect(output.documents).toHaveLength(1)
+  })
+
+  it('documents.stats returns per-type counters', async () => {
+    const repository = makeRepository()
+    repository.upsertTemplate(template)
+    repository.insertDocument(validInsertInput)
+    const routes = createDocumentsRoutes(repository, fakeExtractor, fakeTaskManager)
+    const handler = getRouteHandler(routes, documentsStatsRoute.name)
+    const output = documentsStatsRoute.output.parse(await handler({}))
+    expect(output.stats).toEqual([
+      { typeKey: validInsertInput.typeKey, total: 1, draft: 1, confirmed: 0 }
+    ])
+  })
+
+  it('documents.tasks.create submits to task manager and returns tasks', async () => {
+    const repository = makeRepository()
+    const task = {
+      id: 't1',
+      batchId: 'b1',
+      filePath: 'C:\\a.png',
+      fileName: 'a.png',
+      templateId: 'auto',
+      status: 'pending',
+      typeKey: null,
+      documentId: null,
+      error: null,
+      createdAt: 1,
+      updatedAt: 1
+    }
+    const submit = vi.fn().mockReturnValue([task])
+    const taskManager = { submit, resumePending: vi.fn() }
+    const routes = createDocumentsRoutes(repository, fakeExtractor, taskManager as never)
+    const handler = getRouteHandler(routes, documentsTasksCreateRoute.name)
+    const output = documentsTasksCreateRoute.output.parse(
+      await handler({ files: [{ path: 'C:\\a.png' }], templateId: 'auto' })
+    )
+    expect(output.tasks).toEqual([task])
+    expect(submit).toHaveBeenCalledWith({
+      files: [{ path: 'C:\\a.png' }],
+      templateId: 'auto',
+      source: 'manual'
+    })
+  })
+
+  it('documents.tasks.list returns recent tasks from repository', async () => {
+    const repository = makeRepository()
+    repository.insertTasks([
+      { batchId: 'b1', filePath: 'C:\\a.png', fileName: 'a.png', templateId: 'auto' }
+    ])
+    const routes = createDocumentsRoutes(repository, fakeExtractor, fakeTaskManager)
+    const handler = getRouteHandler(routes, documentsTasksListRoute.name)
+    const output = documentsTasksListRoute.output.parse(await handler({}))
+    expect(output.tasks).toHaveLength(1)
+    expect(output.tasks[0]).toMatchObject({ filePath: 'C:\\a.png', status: 'pending' })
   })
 })

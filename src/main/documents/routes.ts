@@ -13,6 +13,9 @@ import {
   documentsGetRoute,
   documentsListRoute,
   documentsPreviewFileRoute,
+  documentsStatsRoute,
+  documentsTasksCreateRoute,
+  documentsTasksListRoute,
   documentsUpsertRoute
 } from '@shared/contracts/routes'
 import { dialog } from 'electron'
@@ -20,6 +23,7 @@ import { createRouteMap, type DeepchatRouteMap } from '@/routes/routeRegistry'
 import { buildDocumentsCsv, CSV_EXPORT_MAX_ROWS } from './csv'
 import type { DocumentExtractor } from './extractor/documentExtractor'
 import type { DocumentsRepository } from './repository'
+import type { RecognitionTaskManager } from './taskManager'
 
 interface DocumentsCsvRouteDeps {
   showSaveDialog: (
@@ -54,6 +58,7 @@ function resolvePreviewMimeType(filePath: string): string {
 export function createDocumentsRoutes(
   repository: DocumentsRepository,
   extractor: DocumentExtractor,
+  taskManager: RecognitionTaskManager,
   csvDeps: DocumentsCsvRouteDeps = defaultCsvDeps
 ): DeepchatRouteMap {
   return createRouteMap([
@@ -106,7 +111,8 @@ export function createDocumentsRoutes(
       async (rawInput) => {
         const input = documentsListRoute.input.parse(rawInput)
         return documentsListRoute.output.parse({
-          documents: repository.listDocuments(input)
+          documents: repository.listDocuments(input),
+          total: repository.countDocuments(input)
         })
       }
     ],
@@ -137,6 +143,32 @@ export function createDocumentsRoutes(
         const input = documentsDeleteRoute.input.parse(rawInput)
         repository.deleteDocument(input.id)
         return documentsDeleteRoute.output.parse({ success: true })
+      }
+    ],
+    [
+      documentsStatsRoute.name,
+      async (rawInput) => {
+        const input = documentsStatsRoute.input.parse(rawInput)
+        return documentsStatsRoute.output.parse({ stats: repository.statsByType(input) })
+      }
+    ],
+    [
+      documentsTasksCreateRoute.name,
+      async (rawInput) => {
+        const input = documentsTasksCreateRoute.input.parse(rawInput)
+        const tasks = taskManager.submit({
+          files: input.files,
+          templateId: input.templateId,
+          source: input.source
+        })
+        return documentsTasksCreateRoute.output.parse({ tasks })
+      }
+    ],
+    [
+      documentsTasksListRoute.name,
+      async (rawInput) => {
+        documentsTasksListRoute.input.parse(rawInput)
+        return documentsTasksListRoute.output.parse({ tasks: repository.listRecentTasks() })
       }
     ],
     [
