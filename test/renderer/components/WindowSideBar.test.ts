@@ -1744,6 +1744,32 @@ describe('WindowSideBar agent switch', () => {
   )
 
   it(
+    'shows the documents archive entry in the command region',
+    async () => {
+      const { wrapper } = await setup()
+
+      const button = wrapper.get('[data-testid="app-documents-button"]')
+
+      expect(button.exists()).toBe(true)
+      expect(button.text()).toBe('routes.documents')
+    },
+    TEST_TIMEOUT_MS
+  )
+
+  it(
+    'navigates to the documents archive route from the documents button',
+    async () => {
+      const { wrapper, router } = await setup()
+
+      await wrapper.get('[data-testid="app-documents-button"]').trigger('click')
+      await flushPromises()
+
+      expect(router.push).toHaveBeenCalledWith({ name: 'documents' })
+    },
+    TEST_TIMEOUT_MS
+  )
+
+  it(
     'toggles spotlight from the rail search button',
     async () => {
       const { wrapper, spotlightStore } = await setup()
