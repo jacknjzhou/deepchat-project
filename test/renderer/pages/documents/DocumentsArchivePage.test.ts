@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { defineComponent, reactive } from 'vue'
 
-const fragmentStub = (name: string) => defineComponent({ name, template: '<slot />' })
+const fragmentStub = (name: string) =>
+  defineComponent({ name, template: '<slot />' })
 
 const contractTemplate = {
   id: 'tpl_contract',
@@ -93,10 +94,7 @@ const stubStore = reactive({
   },
   loadTemplates: vi.fn(async () => {}),
   loadArchiveDocuments: vi.fn(async (_reset = true) => {}),
-  exportArchiveCsv: vi.fn(async () => ({
-    canceled: true as boolean,
-    path: undefined as string | undefined
-  }))
+  exportArchiveCsv: vi.fn(async () => ({ canceled: true as boolean, path: undefined as string | undefined }))
 })
 
 const inputStub = defineComponent({

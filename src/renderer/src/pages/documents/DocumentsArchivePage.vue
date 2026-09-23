@@ -44,9 +44,7 @@
       >
         <SelectTrigger><SelectValue /></SelectTrigger>
         <SelectContent>
-          <SelectItem :value="ALL_VALUE">{{
-            t('settings.documents.archive.statusAll')
-          }}</SelectItem>
+          <SelectItem :value="ALL_VALUE">{{ t('settings.documents.archive.statusAll') }}</SelectItem>
           <SelectItem value="draft">{{ t('settings.documents.archive.statusDraft') }}</SelectItem>
           <SelectItem value="confirmed">
             {{ t('settings.documents.archive.statusConfirmed') }}
@@ -104,9 +102,7 @@
             </th>
             <th class="px-2 py-2 font-medium">{{ t('settings.documents.archive.colSource') }}</th>
             <th class="px-2 py-2 font-medium">{{ t('settings.documents.archive.colStatus') }}</th>
-            <th class="px-2 py-2 font-medium">
-              {{ t('settings.documents.archive.colCreatedAt') }}
-            </th>
+            <th class="px-2 py-2 font-medium">{{ t('settings.documents.archive.colCreatedAt') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -245,8 +241,7 @@ function onTypeFilter(value: unknown) {
 }
 
 function onStatusFilter(value: unknown) {
-  store.archiveFilter.status =
-    value === ALL_VALUE ? undefined : (String(value) as 'draft' | 'confirmed')
+  store.archiveFilter.status = value === ALL_VALUE ? undefined : (String(value) as 'draft' | 'confirmed')
   void store.loadArchiveDocuments()
 }
 

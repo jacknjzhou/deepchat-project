@@ -44,10 +44,7 @@ export function buildDocumentsCsv(input: DocumentsCsvInput): string {
   const { documents, templateFields, templateNameById } = input
   const fixedHeader = ['id', 'type', 'source', 'status', 'createdAt', 'updatedAt']
   const fieldColumns = templateFields ? [...templateFields].sort((a, b) => a.order - b.order) : null
-  const header = [
-    ...fixedHeader,
-    ...(fieldColumns ? fieldColumns.map((f) => f.label) : ['summary'])
-  ]
+  const header = [...fixedHeader, ...(fieldColumns ? fieldColumns.map((f) => f.label) : ['summary'])]
   const lines = [header.map(escapeCsvCell).join(',')]
   for (const document of documents) {
     const fixedCells = [

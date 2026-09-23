@@ -263,13 +263,7 @@ export interface AgentDocumentsToolPort {
       id: string
       typeKey: string
       name: string
-      fields: Array<{
-        key: string
-        label: string
-        valueType: string
-        required: boolean
-        order: number
-      }>
+      fields: Array<{ key: string; label: string; valueType: string; required: boolean; order: number }>
     }>
   >
   extractAndDraft: (input: {

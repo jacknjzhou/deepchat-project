@@ -1,10 +1,7 @@
 import { z } from 'zod'
 import { toDeepChatJsonSchema } from '@shared/lib/zodJsonSchema'
 import { TOOL_EXECUTION, type MCPToolDefinition } from '@shared/types/mcp'
-import {
-  DOCUMENT_RECOGNITION_AGENT_TOOL_NAME,
-  DOCUMENT_RECOGNITION_TOOL_SERVER_NAME
-} from '@shared/agentTools'
+import { DOCUMENT_RECOGNITION_AGENT_TOOL_NAME, DOCUMENT_RECOGNITION_TOOL_SERVER_NAME } from '@shared/agentTools'
 import {
   createAgentToolErrorResult,
   createAgentToolSuccessResult,
@@ -23,7 +20,9 @@ const documentRecognitionToolSchema = z.strictObject({
   templateId: z.string().trim().min(1).optional(),
   file: fileSchema.optional(),
   documentId: z.string().trim().min(1).optional(),
-  fields: z.record(z.string(), z.object({ value: z.unknown(), uncertain: z.boolean() })).optional()
+  fields: z
+    .record(z.string(), z.object({ value: z.unknown(), uncertain: z.boolean() }))
+    .optional()
 })
 
 type DocumentRecognitionToolInput = z.infer<typeof documentRecognitionToolSchema>
