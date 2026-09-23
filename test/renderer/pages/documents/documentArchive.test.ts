@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
+  buildFieldEditStates,
   buildMoneyColumns,
   formatDateRangeToMs,
   formatFieldValue,
-  orderedSnapshotFields
+  orderedSnapshotFields,
+  parseFieldEditState
 } from '@/pages/documents/documentArchive'
 import type { DocumentRecord } from '@shared/documents'
 
@@ -109,5 +111,48 @@ describe('formatDateRangeToMs', () => {
     expect(from).toBe(new Date(2026, 0, 2, 0, 0, 0, 0).getTime())
     const to = formatDateRangeToMs('2026-01-02', 'end')
     expect(to).toBe(new Date(2026, 0, 2, 23, 59, 59, 999).getTime())
+  })
+})
+
+describe('buildFieldEditStates / parseFieldEditState', () => {
+  const editRecord = (fields: DocumentRecord['fields']): DocumentRecord =>
+    record({
+      fields,
+      templateSnapshot: {
+        ...snapshot,
+        fields: [
+          { ...field('items', '明细', 1), valueType: 'array' as const },
+          field('buyer', '购买方', 2)
+        ]
+      } as DocumentRecord['templateSnapshot']
+    })
+
+  it('array 值按行序列化，保存时按行解析', () => {
+    const document = editRecord({ items: { value: ['甲', '乙'], uncertain: true } })
+    const states = buildFieldEditStates(document)
+    expect(states[0].raw).toBe('甲\n乙')
+    const parsed = parseFieldEditState({ ...states[0], raw: '甲\n乙\n\n' })
+    expect(parsed).toEqual({ ok: true, value: ['甲', '乙'] })
+  })
+
+  it('required 字段为空报 required', () => {
+    const states = buildFieldEditStates(editRecord({}))
+    const required = { ...states[0], required: true, raw: '' }
+    expect(parseFieldEditState(required)).toEqual({ ok: false, error: 'required' })
+  })
+
+  it('number 非法报 number', () => {
+    const states = buildFieldEditStates(editRecord({}))
+    expect(parseFieldEditState({ ...states[0], valueType: 'number', raw: 'abc' })).toEqual({
+      ok: false,
+      error: 'number'
+    })
+  })
+
+  it('enum 值不在选项内报错，非 required 空值放行 null', () => {
+    const states = buildFieldEditStates(editRecord({}))
+    const enumState = { ...states[0], valueType: 'enum' as const, enumOptions: ['甲', '乙'] }
+    expect(parseFieldEditState({ ...enumState, raw: '丙' })).toEqual({ ok: false, error: 'json' })
+    expect(parseFieldEditState({ ...enumState, raw: '' })).toEqual({ ok: true, value: null })
   })
 })
