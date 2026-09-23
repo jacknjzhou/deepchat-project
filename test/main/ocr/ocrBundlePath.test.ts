@@ -24,10 +24,20 @@ describe('resolveHelperAccessibleBundlePath', () => {
     await rm(root, { force: true, recursive: true })
   })
 
-  it('returns the original path when it is short', async () => {
+  it.runIf(process.platform !== 'win32')('returns the original path off Windows', async () => {
     const bundle = path.join(root, 'bundle')
     await mkdir(bundle)
     await expect(resolveHelperAccessibleBundlePath(bundle, root)).resolves.toBe(bundle)
+  })
+
+  it.runIf(process.platform === 'win32')('exposes short bundles via junction too', async () => {
+    const bundle = path.join(root, 'bundle')
+    await mkdir(bundle)
+    await writeFile(path.join(bundle, 'model.bin'), 'payload')
+
+    const resolved = await resolveHelperAccessibleBundlePath(bundle, root)
+    expect(resolved).toBe(path.join(root, 'bundle-link'))
+    await expect(readFile(path.join(resolved, 'model.bin'), 'utf8')).resolves.toBe('payload')
   })
 
   it.runIf(process.platform === 'win32')('creates a short junction for a long path', async () => {

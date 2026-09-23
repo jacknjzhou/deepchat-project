@@ -54,21 +54,20 @@ export class OcrRuntimeBusyError extends Error {
   }
 }
 
-const HELPER_BUNDLE_PATH_LIMIT = 240
 const HELPER_BUNDLE_LINK_NAME = 'bundle-link'
 
 /**
- * The native OCR helper (std::filesystem) cannot open bundle files under
- * paths longer than MAX_PATH, which happens with deep pnpm store paths on
- * Windows (e.g. CoreML weights inside the model bundle). Expose the bundle
- * through a short junction so the helper sees a MAX_PATH-safe path.
- * No-op on non-Windows platforms and for short paths.
+ * The native OCR helper (std::filesystem) cannot open files under paths
+ * longer than MAX_PATH. Deep bundle-internal paths (e.g. CoreML weights
+ * inside the model bundle under a pnpm store) exceed MAX_PATH on Windows
+ * even when the bundle directory itself does not, so the bundle is always
+ * exposed through a short junction. No-op on non-Windows platforms.
  */
 export async function resolveHelperAccessibleBundlePath(
   bundlePath: string,
   anchorDir: string
 ): Promise<string> {
-  if (process.platform !== 'win32' || bundlePath.length < HELPER_BUNDLE_PATH_LIMIT) {
+  if (process.platform !== 'win32') {
     return bundlePath
   }
   const linkPath = path.join(anchorDir, HELPER_BUNDLE_LINK_NAME)
