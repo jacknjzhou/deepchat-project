@@ -11,7 +11,9 @@ const makePort = () => ({
       id: 'tpl-1',
       typeKey: 'invoice_special',
       name: '增值税专用发票',
-      fields: [{ key: 'invoice_code', label: '发票代码', valueType: 'text', required: true, order: 1 }]
+      fields: [
+        { key: 'invoice_code', label: '发票代码', valueType: 'text', required: true, order: 1 }
+      ]
     }
   ]),
   extractAndDraft: vi.fn(async () => ({
@@ -24,10 +26,12 @@ const makePort = () => ({
     },
     meta: { route: 'vision', durationMs: 10, issues: [] }
   })),
-  confirmDocument: vi.fn(async (): Promise<{ id: string; status: string } | null> => ({
-    id: 'd1',
-    status: 'confirmed'
-  }))
+  confirmDocument: vi.fn(
+    async (): Promise<{ id: string; status: string } | null> => ({
+      id: 'd1',
+      status: 'confirmed'
+    })
+  )
 })
 
 describe('documentRecognitionTool', () => {
@@ -39,7 +43,10 @@ describe('documentRecognitionTool', () => {
 
   it('list_templates 返回模板列表且免权限', async () => {
     const port = makePort()
-    const result = await new DocumentRecognitionToolHandler().call({ action: 'list_templates' }, port)
+    const result = await new DocumentRecognitionToolHandler().call(
+      { action: 'list_templates' },
+      port
+    )
     expect(result.ok).toBe(true)
     expect(port.listTemplates).toHaveBeenCalled()
     expect(documentRecognitionActionNeedsPermission({ action: 'list_templates' })).toBe(false)
