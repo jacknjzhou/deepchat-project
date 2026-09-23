@@ -141,8 +141,15 @@ describe('DocumentExtractor.extract 路由', () => {
     ).rejects.toThrow(/vision/)
   })
 
-  it('视觉模型未配置时抛带引导语的错误', async () => {
-    const deps = makeDeps({ resolveVisionTarget: vi.fn(() => null) })
+  it('extractionMode=vision 视觉模型未配置时抛带引导语的错误', async () => {
+    const deps = makeDeps({
+      resolveVisionTarget: vi.fn(() => null),
+      repository: {
+        getTemplate: vi.fn(() => makeTemplate({ extractionMode: 'vision' })),
+        getTemplateByTypeKey: vi.fn(() => null),
+        listTemplates: vi.fn(() => [])
+      }
+    })
     const extractor = new DocumentExtractor(deps)
     await expect(
       extractor.extract({
@@ -150,6 +157,22 @@ describe('DocumentExtractor.extract 路由', () => {
         file: { path: '/tmp/a.jpg', mimeType: 'image/jpeg' }
       })
     ).rejects.toThrow(/defaultVisionModel/)
+  })
+
+  it('图片 auto 模式无视觉模型时回落 OCR 路由', async () => {
+    const deps = makeDeps({
+      resolveVisionTarget: vi.fn(() => null),
+      extractOcrText: vi.fn(async () => 'OCR TEXT')
+    })
+    const extractor = new DocumentExtractor(deps)
+    const result = await extractor.extract({
+      templateId: 'tpl-1',
+      file: { path: '/tmp/a.png', mimeType: 'image/png' }
+    })
+    expect(result.route).toBe('ocr')
+    expect(deps.readImageAsDataUrl).not.toHaveBeenCalled()
+    expect(deps.extractOcrText).toHaveBeenCalledWith('/tmp/a.png')
+    expect(result.fields.invoice_code).toEqual({ value: '123456789012', uncertain: false })
   })
 
   it('文本模型未配置时抛带引导语的错误', async () => {

@@ -269,6 +269,12 @@ export class DocumentExtractor {
       if (mode === 'text') {
         return { route: 'ocr' }
       }
+      if (mode === 'auto') {
+        // Prefer the multimodal model (fast, accurate); fall back to local OCR
+        // + text model only when no vision model is configured.
+        const visionAvailable = (await this.deps.resolveVisionTarget()) !== null
+        return visionAvailable ? { route: 'vision' } : { route: 'ocr' }
+      }
       return { route: 'vision' }
     }
     if (isPdfFile(file)) {
