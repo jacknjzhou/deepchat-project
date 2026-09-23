@@ -142,6 +142,8 @@ export class DocumentsRepository {
     typeKey?: string
     status?: 'draft' | 'confirmed'
     keyword?: string
+    dateFrom?: number
+    dateTo?: number
     limit?: number
     offset?: number
   }): DocumentRecord[] {

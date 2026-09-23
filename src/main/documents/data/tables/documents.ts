@@ -38,6 +38,8 @@ export interface DocumentListFilter {
   typeKey?: string
   status?: 'draft' | 'confirmed'
   keyword?: string
+  dateFrom?: number
+  dateTo?: number
   limit?: number
   offset?: number
 }
@@ -93,6 +95,14 @@ export class DocumentsTable extends BaseTable {
     if (filter.keyword) {
       conditions.push("fields_json LIKE ? ESCAPE '\\'")
       params.push(`%${filter.keyword.replace(/[\\%_]/g, (c) => `\\${c}`)}%`)
+    }
+    if (filter.dateFrom !== undefined) {
+      conditions.push('created_at >= ?')
+      params.push(filter.dateFrom)
+    }
+    if (filter.dateTo !== undefined) {
+      conditions.push('created_at <= ?')
+      params.push(filter.dateTo)
     }
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
     const limit = filter.limit ?? LIST_DEFAULT_LIMIT

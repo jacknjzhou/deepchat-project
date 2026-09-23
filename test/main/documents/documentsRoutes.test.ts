@@ -14,6 +14,7 @@ import {
   documentsPreviewFileRoute,
   documentsUpsertRoute
 } from '@shared/contracts/routes'
+import type { DocumentTemplate } from '@shared/documents'
 import { createDocumentsRoutes } from '@/documents/routes'
 import { DocumentsRepository } from '@/documents/repository'
 import { DocumentsDatabase } from '@/documents/data/database'
@@ -301,5 +302,61 @@ describeIfSqlite('documents extraction handlers', () => {
 
     const listed = repository.listDocuments({ typeKey: 'invoice_special' })
     expect(listed.length).toBe(1)
+  })
+})
+
+describeIfSqlite('documents list date filter', () => {
+  const makeRepository = () => {
+    const db = new DatabaseCtor(':memory:')
+    new DocumentTemplatesTableCtor(db).createTable()
+    new DocumentsTableCtor(db).createTable()
+    const database = new DocumentsDatabaseCtor({ getDatabase: () => db })
+    return new DocumentsRepository(database)
+  }
+
+  const template: DocumentTemplate = {
+    id: 'tpl-1',
+    typeKey: 'contract',
+    name: '合同模板',
+    icon: null,
+    category: '合同类',
+    fields: [],
+    extractionMode: 'auto',
+    promptPreset: null,
+    isBuiltin: true,
+    builtinSourceId: null,
+    version: 1,
+    createdAt: 1,
+    updatedAt: 1
+  }
+
+  it('按 createdAt 日期范围筛选', () => {
+    const repository = makeRepository()
+    repository.upsertTemplate({ ...template })
+    repository.insertDocument({
+      templateId: 'tpl-1',
+      typeKey: 'contract',
+      templateSnapshot: template,
+      fields: {},
+      fileUris: [],
+      source: 'manual',
+      sessionId: null,
+      status: 'draft',
+      now: 1000
+    })
+    repository.insertDocument({
+      templateId: 'tpl-1',
+      typeKey: 'contract',
+      templateSnapshot: template,
+      fields: {},
+      fileUris: [],
+      source: 'manual',
+      sessionId: null,
+      status: 'draft',
+      now: 3000
+    })
+    expect(repository.listDocuments({ dateFrom: 1000, dateTo: 2000 })).toHaveLength(1)
+    expect(repository.listDocuments({ dateFrom: 5000 })).toHaveLength(0)
+    expect(repository.listDocuments({ dateTo: 5000 })).toHaveLength(2)
   })
 })
