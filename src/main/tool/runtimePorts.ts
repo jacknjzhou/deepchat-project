@@ -257,11 +257,48 @@ export interface AgentToolPermissionPort {
   ): boolean
 }
 
+export interface AgentDocumentsToolPort {
+  listTemplates: () => Promise<
+    Array<{
+      id: string
+      typeKey: string
+      name: string
+      fields: Array<{
+        key: string
+        label: string
+        valueType: string
+        required: boolean
+        order: number
+      }>
+    }>
+  >
+  extractAndDraft: (input: {
+    templateId: string
+    file: { path: string; name?: string; mimeType?: string }
+    source?: 'chat' | 'manual'
+    sessionId?: string
+  }) => Promise<{
+    document: {
+      id: string
+      typeKey: string
+      status: string
+      fields: Record<string, { value: unknown; uncertain: boolean }>
+      fileUris: string[]
+    }
+    meta: { route: string; durationMs: number; issues: string[] }
+  }>
+  confirmDocument: (input: {
+    id: string
+    fields?: Record<string, { value: unknown; uncertain: boolean }>
+  }) => Promise<{ id: string; status: string } | null>
+}
+
 export interface AgentToolDependencies {
   sessions: AgentToolSessionPort
   tape: AgentTapeToolPort
   memory: AgentMemoryToolPort
   cronJobs: AgentCronJobToolPort
+  documents: AgentDocumentsToolPort
   subagents: AgentSubagentToolPort
   liveDelegation?: AgentLiveDelegationToolPort
   agentInvocationAdmission: AgentInvocationAdmissionPort
