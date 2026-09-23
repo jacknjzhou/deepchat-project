@@ -82,6 +82,8 @@ import {
 } from '@shared/lib/agentToolResultEnvelope'
 import {
   CRON_JOB_AGENT_TOOL_NAME,
+  DOCUMENT_RECOGNITION_AGENT_TOOL_NAME,
+  DOCUMENT_RECOGNITION_TOOL_SERVER_NAME,
   LIVE_DELEGATION_AGENT_TOOL_NAME,
   LIVE_DELEGATION_AGENT_TOOL_SERVER_NAME,
   SKILL_AGENT_TOOL_NAMES,
@@ -99,6 +101,10 @@ import {
   CronJobToolHandler,
   cronJobActionNeedsPermission
 } from './cronJobTool'
+import {
+  DocumentRecognitionToolHandler,
+  documentRecognitionActionNeedsPermission
+} from './documentRecognitionTool'
 import { isYoBrowserUnavailableError } from '../browser/errors'
 import type { SkillSettingsPort } from '@/skill/settings'
 import type { DeepChatSubagentCapability } from '@shared/types/agent-interface'
@@ -267,6 +273,7 @@ export class AgentToolManager {
   private readonly tapeToolHandler: AgentTapeToolHandler
   private readonly memoryToolHandler: AgentMemoryToolHandler
   private readonly cronJobToolHandler: CronJobToolHandler
+  private readonly documentRecognitionToolHandler: DocumentRecognitionToolHandler
   private readonly fffSearchService = new FffSearchService()
 
   private createAgentDispatchCommit(
@@ -553,6 +560,7 @@ export class AgentToolManager {
       this.dependencies.memory
     )
     this.cronJobToolHandler = new CronJobToolHandler(this.dependencies.cronJobs)
+    this.documentRecognitionToolHandler = new DocumentRecognitionToolHandler()
     if (this.agentWorkspacePath) {
       this.fileSystemHandler = new AgentFileSystemHandler([this.agentWorkspacePath])
       this.bashHandler = new AgentBashHandler(
@@ -714,6 +722,14 @@ export class AgentToolManager {
     // 2.3. Scheduled task tool (disabled by default in DeepChat agent settings)
     if (isAgentMode) {
       appendDefinitions([this.cronJobToolHandler.getToolDefinition()], 'user-configurable')
+    }
+
+    // 2.4. Document recognition tool
+    if (isAgentMode) {
+      appendDefinitions(
+        [this.documentRecognitionToolHandler.getToolDefinition()],
+        'user-configurable'
+      )
     }
 
     // 2.5. Persistent live delegation (regular DeepChat sessions only)
@@ -964,6 +980,22 @@ export class AgentToolManager {
           options
         )
       })
+    }
+
+    if (this.documentRecognitionToolHandler.isDocumentRecognitionTool(toolName)) {
+      const toolResult = await this.documentRecognitionToolHandler.call(
+        args,
+        this.dependencies.documents
+      )
+      const content = JSON.stringify(toolResult.data ?? toolResult.summary, null, 2)
+      return {
+        content,
+        rawData: {
+          content,
+          isError: !toolResult.ok,
+          toolResult
+        }
+      }
     }
 
     // Route to process tool
@@ -3029,6 +3061,20 @@ export class AgentToolManager {
         serverName: CRON_JOB_TOOL_SERVER_NAME,
         permissionType: 'write',
         description: 'Scheduled task changes require approval.',
+        conversationId
+      }
+    }
+
+    if (
+      toolName === DOCUMENT_RECOGNITION_AGENT_TOOL_NAME &&
+      documentRecognitionActionNeedsPermission(args)
+    ) {
+      return {
+        needsPermission: true,
+        toolName,
+        serverName: DOCUMENT_RECOGNITION_TOOL_SERVER_NAME,
+        permissionType: 'write',
+        description: 'Document recognition writes an archive draft and consumes model quota.',
         conversationId
       }
     }

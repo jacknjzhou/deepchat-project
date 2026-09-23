@@ -578,6 +578,7 @@ export async function createMainProcessControl(dependencies: {
   let agentSessionExportService: AgentSessionExportService
   let sessionTranslation: SessionTranslation
   let liveDelegationService: LiveDelegationService
+  let documentExtractor: DocumentExtractor
   let acpAsLlmProviderSessionControl: AcpAsLlmProviderSessionControlPort
   let acpAsLlmProviderPermission: AcpAsLlmProviderPermissionPort
   let routeDispatcher: RouteDispatcher | undefined
@@ -1662,6 +1663,61 @@ export async function createMainProcessControl(dependencies: {
       runCronJobNow: async (id, beforeMutation) => (await cronJobs.runNow(id, beforeMutation)).run,
       listCronJobRuns: async (jobId, limit) => cronJobs.listRuns(jobId, limit),
       previewCronSchedule: async (input) => cronJobs.previewSchedule(input)
+    },
+    documents: {
+      listTemplates: async () =>
+        documentsRepository.listTemplates().map((template) => ({
+          id: template.id,
+          typeKey: template.typeKey,
+          name: template.name,
+          fields: [...template.fields]
+            .sort((a, b) => a.order - b.order)
+            .map((field) => ({
+              key: field.key,
+              label: field.label,
+              valueType: field.valueType,
+              required: field.required,
+              order: field.order
+            }))
+        })),
+      extractAndDraft: async (input) => {
+        const result = await documentExtractor.extract({
+          templateId: input.templateId,
+          file: input.file
+        })
+        const document = documentsRepository.insertDocument({
+          templateId: result.template.id,
+          typeKey: result.template.typeKey,
+          templateSnapshot: result.template,
+          fields: result.fields,
+          fileUris: [input.file.path],
+          source: input.source ?? 'chat',
+          sessionId: input.sessionId ?? null,
+          status: 'draft',
+          now: Date.now()
+        })
+        return {
+          document: {
+            id: document.id,
+            typeKey: document.typeKey,
+            status: document.status,
+            fields: document.fields,
+            fileUris: document.fileUris
+          },
+          meta: {
+            route: result.route,
+            durationMs: result.durationMs,
+            issues: result.issues
+          }
+        }
+      },
+      confirmDocument: async (input) => {
+        const updated = await documentsRepository.updateDocument(input.id, {
+          fields: input.fields,
+          status: 'confirmed'
+        })
+        return updated ? { id: updated.id, status: updated.status } : null
+      }
     },
     subagents: {
       createSubagentSession: async (input) => {
@@ -2813,7 +2869,7 @@ export async function createMainProcessControl(dependencies: {
     const schedulerRoutes = createSchedulerRoutes(cronJobs)
     const documentsMaxFileSize = () =>
       dependencies.settingsStore.get<number>('maxFileSize') ?? 30 * 1024 * 1024
-    const documentExtractor = new DocumentExtractor({
+    documentExtractor = new DocumentExtractor({
       repository: documentsRepository,
       generateCompletion: ({ providerId, modelId, messages, temperature, maxTokens }) =>
         providerRuntime.generateCompletionStandalone(
