@@ -85,6 +85,7 @@
       v-if="visibleTasks.length"
       :tasks="visibleTasks"
       :type-name-for="typeNameFor"
+      :retrying-task-ids="retryingTaskIds"
       @retry="onRetryTask"
     />
 
@@ -206,7 +207,7 @@ import {
   type MoneyColumn
 } from './documentArchive'
 import { summarizeDocument } from './documentSummary'
-import { documentsApi, type DocumentsTaskItem } from './documentTasks'
+import { documentsApi, type DocumentsTaskItem } from '@api/documentTasks'
 import DocumentDetailDialog from './DocumentDetailDialog.vue'
 import DocumentRecognizeDialog from './DocumentRecognizeDialog.vue'
 import DocumentTaskStrip from './DocumentTaskStrip.vue'
@@ -390,7 +391,14 @@ function typeNameFor(typeKey: string | null): string | null {
   return store.templates.find((tpl) => tpl.typeKey === typeKey)?.name ?? typeKey
 }
 
+// Replaced wholesale on mutation so the Set change triggers reactivity.
+const retryingTaskIds = ref(new Set<string>())
+
 async function onRetryTask(task: DocumentsTaskItem) {
+  if (retryingTaskIds.value.has(task.id)) {
+    return
+  }
+  retryingTaskIds.value = new Set(retryingTaskIds.value).add(task.id)
   try {
     await store.retryRecognitionTask(task)
     notifyTransient(
@@ -405,6 +413,10 @@ async function onRetryTask(task: DocumentsTaskItem) {
       'documents.archive.taskRetryFailed',
       t('settings.documents.archive.taskRetryFailed')
     )
+  } finally {
+    const next = new Set(retryingTaskIds.value)
+    next.delete(task.id)
+    retryingTaskIds.value = next
   }
 }
 

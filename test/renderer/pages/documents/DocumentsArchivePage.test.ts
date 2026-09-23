@@ -297,4 +297,18 @@ describe('DocumentsArchivePage', () => {
     await flushPromises()
     expect(stubStore.loadArchiveDocuments).toHaveBeenCalled()
   })
+
+  it('mount 后订阅 documents.task.updated，回调转发 handleTaskUpdated，卸载退订', async () => {
+    const { wrapper } = await setup()
+    const onMock = (window as unknown as { deepchat: { on: ReturnType<typeof vi.fn> } }).deepchat.on
+    const callIndex = onMock.mock.calls.findIndex((call) => call[0] === 'documents.task.updated')
+    expect(callIndex).toBeGreaterThanOrEqual(0)
+    const unsubscribe = onMock.mock.results[callIndex]?.value as ReturnType<typeof vi.fn>
+    expect(unsubscribe).not.toHaveBeenCalled()
+    const payload = { id: 't9', batchId: 'b9', status: 'running' }
+    ;(onMock.mock.calls[callIndex][1] as (value: unknown) => void)(payload)
+    expect(stubStore.handleTaskUpdated).toHaveBeenCalledWith(payload)
+    wrapper.unmount()
+    expect(unsubscribe).toHaveBeenCalled()
+  })
 })

@@ -32,6 +32,7 @@
           variant="outline"
           size="sm"
           data-testid="task-retry"
+          :disabled="retryingTaskIds.has(task.id)"
           @click="emit('retry', task)"
         >
           {{ t('settings.documents.archive.taskRetry') }}
@@ -46,12 +47,16 @@ import { useI18n } from 'vue-i18n'
 import { Icon } from '@iconify/vue'
 import { DcButton } from '@dc-ui/components/button'
 import { DcBadge } from '@dc-ui/components/badge'
-import type { DocumentsTaskItem } from './documentTasks'
+import type { DocumentsTaskItem } from '@api/documentTasks'
 
-defineProps<{
-  tasks: DocumentsTaskItem[]
-  typeNameFor: (typeKey: string | null) => string | null
-}>()
+withDefaults(
+  defineProps<{
+    tasks: DocumentsTaskItem[]
+    typeNameFor: (typeKey: string | null) => string | null
+    retryingTaskIds?: ReadonlySet<string>
+  }>(),
+  { retryingTaskIds: () => new Set<string>() }
+)
 
 const emit = defineEmits<{ retry: [task: DocumentsTaskItem] }>()
 const { t } = useI18n()

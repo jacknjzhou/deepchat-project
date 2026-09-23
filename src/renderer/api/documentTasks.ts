@@ -1,4 +1,4 @@
-import { createDocumentsClient } from '@api/DocumentsClient'
+import { createDocumentsClient } from './DocumentsClient'
 import type { documentTaskSchema } from '@shared/contracts/routes'
 import type { z } from 'zod'
 

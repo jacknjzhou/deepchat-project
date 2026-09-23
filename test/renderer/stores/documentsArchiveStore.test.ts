@@ -279,4 +279,19 @@ describe('documents archive store', () => {
     expect(created).toHaveLength(1)
     expect(store.tasks[0]?.id).toBe('t1')
   })
+
+  it('retryRecognitionTask 前插新任务并移除旧 failed 任务', async () => {
+    createTasks.mockResolvedValue({ tasks: [{ ...makeTask(), id: 't2' }] })
+    const store = useDocumentsStore()
+    const oldTask = { ...makeTask(), status: 'failed' as const }
+    store.tasks = [oldTask]
+    const created = await store.retryRecognitionTask(oldTask)
+    expect(createTasks).toHaveBeenCalledWith({
+      files: [{ path: 'C:\\a.png', name: 'a.png' }],
+      templateId: 'auto',
+      source: 'manual'
+    })
+    expect(store.tasks.map((task) => task.id)).toEqual(['t2'])
+    expect(created).toHaveLength(1)
+  })
 })

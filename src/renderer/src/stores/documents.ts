@@ -16,7 +16,7 @@ import type {
   documentsTemplateUpsertInputSchema
 } from '@shared/contracts/routes'
 import type { documentsTaskUpdatedEvent } from '@shared/contracts/events'
-import { documentsApi, type DocumentsTaskItem } from '@/pages/documents/documentTasks'
+import { documentsApi, type DocumentsTaskItem } from '@api/documentTasks'
 
 export type { DocumentsTaskItem }
 
@@ -240,10 +240,14 @@ export const useDocumentsStore = defineStore('documents', () => {
     task: DocumentsTaskItem,
     client: DocumentsClient = defaultClient
   ) {
-    return createRecognitionTasks(
+    const created = await createRecognitionTasks(
       { files: [{ path: task.filePath, name: task.fileName }], templateId: task.templateId },
       client
     )
+    // The manager inserts a fresh task row instead of resetting the old one;
+    // drop the stale entry so the strip does not keep offering retry forever.
+    tasks.value = tasks.value.filter((t) => t.id !== task.id)
+    return created
   }
 
   function replaceArchiveDocument(document: DocumentRecord) {
