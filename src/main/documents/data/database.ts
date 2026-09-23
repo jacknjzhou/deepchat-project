@@ -1,4 +1,5 @@
 import type { DatabaseConnectionProvider } from '@/data/databaseConnection'
+import { DocumentTasksTable } from './tables/documentTasks'
 import { DocumentTemplatesTable } from './tables/documentTemplates'
 import { DocumentsTable } from './tables/documents'
 
@@ -15,5 +16,9 @@ export class DocumentsDatabase {
 
   get documentsTable(): DocumentsTable {
     return new DocumentsTable(this.getDatabase())
+  }
+
+  get documentTasksTable(): DocumentTasksTable {
+    return new DocumentTasksTable(this.getDatabase())
   }
 }

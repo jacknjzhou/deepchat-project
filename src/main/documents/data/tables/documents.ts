@@ -81,7 +81,7 @@ export class DocumentsTable extends BaseTable {
     return null
   }
 
-  list(filter: DocumentListFilter): DocumentRow[] {
+  private buildWhere(filter: DocumentListFilter): { where: string; params: unknown[] } {
     const conditions: string[] = []
     const params: unknown[] = []
     if (filter.typeKey) {
@@ -104,7 +104,11 @@ export class DocumentsTable extends BaseTable {
       conditions.push('created_at <= ?')
       params.push(filter.dateTo)
     }
-    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
+    return { where: conditions.length ? `WHERE ${conditions.join(' AND ')}` : '', params }
+  }
+
+  list(filter: DocumentListFilter): DocumentRow[] {
+    const { where, params } = this.buildWhere(filter)
     const limit = filter.limit ?? LIST_DEFAULT_LIMIT
     const offset = filter.offset ?? 0
     return this.db
@@ -112,6 +116,27 @@ export class DocumentsTable extends BaseTable {
         `SELECT * FROM documents ${where} ORDER BY updated_at DESC, id DESC LIMIT ? OFFSET ?`
       )
       .all(...params, limit, offset) as DocumentRow[]
+  }
+
+  count(filter: DocumentListFilter): number {
+    const { where, params } = this.buildWhere(filter)
+    const row = this.db
+      .prepare(`SELECT COUNT(*) AS count FROM documents ${where}`)
+      .get(...params) as { count: number }
+    return row.count
+  }
+
+  statsByType(filter: Pick<DocumentListFilter, 'dateFrom' | 'dateTo'>): Array<{
+    type_key: string
+    status: string
+    count: number
+  }> {
+    const { where, params } = this.buildWhere(filter)
+    return this.db
+      .prepare(
+        `SELECT type_key, status, COUNT(*) AS count FROM documents ${where} GROUP BY type_key, status ORDER BY type_key, status`
+      )
+      .all(...params) as Array<{ type_key: string; status: string; count: number }>
   }
 
   get(id: string): DocumentRow | undefined {

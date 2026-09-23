@@ -1,3 +1,4 @@
+import type { DocumentTableInsertInput } from '@/documents/data/tables/documents'
 import { describe, expect, it } from 'vitest'
 
 const sqliteModule = await import('better-sqlite3-multiple-ciphers').catch(() => null)
@@ -6,6 +7,9 @@ const tableModule = sqliteModule
   : null
 const documentsTableModule = sqliteModule
   ? await import('@/documents/data/tables/documents').catch(() => null)
+  : null
+const documentTasksTableModule = sqliteModule
+  ? await import('@/documents/data/tables/documentTasks').catch(() => null)
   : null
 const databaseModule = sqliteModule
   ? await import('@/documents/data/database').catch(() => null)
@@ -18,12 +22,14 @@ const seedModule = sqliteModule ? await import('@/documents/seed').catch(() => n
 const Database = sqliteModule?.default
 const DocumentTemplatesTable = tableModule?.DocumentTemplatesTable
 const DocumentsTable = documentsTableModule?.DocumentsTable
+const DocumentTasksTable = documentTasksTableModule?.DocumentTasksTable
 const DocumentsDatabase = databaseModule?.DocumentsDatabase
 const DocumentsRepository = repositoryModule?.DocumentsRepository
 const seedPresetTemplates = seedModule?.seedPresetTemplates
 const DatabaseCtor = Database!
 const DocumentTemplatesTableCtor = DocumentTemplatesTable!
 const DocumentsTableCtor = DocumentsTable!
+const DocumentTasksTableCtor = DocumentTasksTable!
 const DocumentsDatabaseCtor = DocumentsDatabase!
 const DocumentsRepositoryCtor = DocumentsRepository!
 
@@ -40,7 +46,13 @@ if (Database) {
 
 const modulesReady =
   sqliteAvailable &&
-  Boolean(DocumentTemplatesTable && DocumentsTable && DocumentsDatabase && DocumentsRepository)
+  Boolean(
+    DocumentTemplatesTable &&
+    DocumentsTable &&
+    DocumentTasksTable &&
+    DocumentsDatabase &&
+    DocumentsRepository
+  )
 
 const describeIfSqlite = modulesReady ? describe : describe.skip
 const describeIfSeed = modulesReady && seedPresetTemplates ? describe : describe.skip
@@ -267,6 +279,141 @@ describeIfSqlite('DocumentsTable', () => {
     const updated = table.updateFieldsAndStatus(row.id, { status: 'confirmed', now: 30 })
     expect(updated?.fields_json).toBe(row.fields_json)
     expect(updated?.status).toBe('confirmed')
+    db.close()
+  })
+})
+
+describeIfSqlite('documentsTable count and stats', () => {
+  const makeDb = () => {
+    const db = new DatabaseCtor(':memory:')
+    new DocumentTemplatesTableCtor(db).createTable()
+    new DocumentsTableCtor(db).createTable()
+    return db
+  }
+
+  const makeDocInput = (
+    overrides: Partial<DocumentTableInsertInput>
+  ): DocumentTableInsertInput => ({
+    templateId: 't1',
+    typeKey: 'contract',
+    templateSnapshot: {},
+    fields: {},
+    fileUris: [],
+    source: 'manual',
+    sessionId: null,
+    status: 'draft',
+    now: 1,
+    ...overrides
+  })
+
+  it('counts rows matching the list filter', () => {
+    const db = makeDb()
+    const table = new DocumentsTableCtor(db)
+    table.insert(makeDocInput({ typeKey: 'invoice_special', status: 'draft' }))
+    table.insert(makeDocInput({ typeKey: 'invoice_special', status: 'confirmed' }))
+    table.insert(makeDocInput({ typeKey: 'contract', status: 'draft' }))
+    expect(table.count({})).toBe(3)
+    expect(table.count({ typeKey: 'invoice_special' })).toBe(2)
+    expect(table.count({ status: 'draft', typeKey: 'contract' })).toBe(1)
+    db.close()
+  })
+
+  it('groups stats by type_key and status', () => {
+    const db = makeDb()
+    const table = new DocumentsTableCtor(db)
+    table.insert(makeDocInput({ typeKey: 'invoice_special', status: 'draft' }))
+    table.insert(makeDocInput({ typeKey: 'invoice_special', status: 'confirmed' }))
+    const rows = table.statsByType({})
+    expect(rows).toEqual([
+      { type_key: 'invoice_special', status: 'confirmed', count: 1 },
+      { type_key: 'invoice_special', status: 'draft', count: 1 }
+    ])
+    db.close()
+  })
+})
+
+describeIfSqlite('documentTasksTable', () => {
+  const makeDb = () => {
+    const db = new DatabaseCtor(':memory:')
+    new DocumentTasksTableCtor(db).createTable()
+    return db
+  }
+
+  it('inserts pending tasks and updates lifecycle', () => {
+    const db = makeDb()
+    const table = new DocumentTasksTableCtor(db)
+    const task = table.insert({
+      batchId: 'b1',
+      filePath: 'C:\\a.png',
+      fileName: 'a.png',
+      templateId: 'auto'
+    })
+    expect(task.status).toBe('pending')
+    expect(task.source).toBe('manual')
+    const running = table.update(task.id, { status: 'running' })
+    expect(running?.status).toBe('running')
+    const done = table.update(task.id, {
+      status: 'done',
+      typeKey: 'invoice_special',
+      documentId: 'd1'
+    })
+    expect(done?.document_id).toBe('d1')
+    const failed = table.update(task.id, { status: 'failed', error: 'boom' })
+    expect(failed?.error).toBe('boom')
+    db.close()
+  })
+
+  it('lists pending in order and marks running as failed', () => {
+    const db = makeDb()
+    const table = new DocumentTasksTableCtor(db)
+    const a = table.insert({
+      batchId: 'b1',
+      filePath: 'C:\\a.png',
+      fileName: 'a.png',
+      templateId: 'auto'
+    })
+    const b = table.insert({
+      batchId: 'b1',
+      filePath: 'C:\\b.png',
+      fileName: 'b.png',
+      templateId: 'auto',
+      now: 2
+    })
+    const c = table.insert({
+      batchId: 'b2',
+      filePath: 'C:\\c.png',
+      fileName: 'c.png',
+      templateId: 'auto',
+      now: 3
+    })
+    table.update(b.id, { status: 'running' })
+    table.update(c.id, { status: 'done', documentId: 'd9' })
+    expect(table.listPending().map((t) => t.id)).toEqual([a.id])
+    table.markRunningAsFailed('interrupted by app restart')
+    expect(table.get(b.id)?.status).toBe('failed')
+    expect(table.get(b.id)?.error).toBe('interrupted by app restart')
+    expect(table.get(c.id)?.status).toBe('done')
+    db.close()
+  })
+
+  it('counts batch progress', () => {
+    const db = makeDb()
+    const table = new DocumentTasksTableCtor(db)
+    const a = table.insert({
+      batchId: 'b1',
+      filePath: 'C:\\a.png',
+      fileName: 'a.png',
+      templateId: 'auto'
+    })
+    const b = table.insert({
+      batchId: 'b1',
+      filePath: 'C:\\b.png',
+      fileName: 'b.png',
+      templateId: 'auto'
+    })
+    table.update(a.id, { status: 'done', documentId: 'd1' })
+    table.update(b.id, { status: 'failed', error: 'x' })
+    expect(table.countBatch('b1')).toEqual({ done: 2, total: 2 })
     db.close()
   })
 })

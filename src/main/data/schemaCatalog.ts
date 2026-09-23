@@ -38,6 +38,7 @@ import { NewSessionDisabledAgentToolsTable } from '@/session/data/tables/newSess
 import { SettingsActivityTable } from '@/settings/data/tables/settingsActivity'
 import { DocumentTemplatesTable } from '@/documents/data/tables/documentTemplates'
 import { DocumentsTable } from '@/documents/data/tables/documents'
+import { DocumentTasksTable } from '@/documents/data/tables/documentTasks'
 import { CronJobsTable } from '@/scheduler/data/tables/cronJobs'
 import { CronJobRunsTable } from '@/scheduler/data/tables/cronJobRuns'
 import { CronJobDeliveriesTable } from '@/scheduler/data/tables/cronJobDeliveries'
@@ -401,6 +402,10 @@ const CATALOG_DEFINITIONS: CatalogDefinition[] = [
   {
     name: 'documents',
     createTable: (db) => new DocumentsTable(db)
+  },
+  {
+    name: 'document_tasks',
+    createTable: (db) => new DocumentTasksTable(db)
   }
 ]
 

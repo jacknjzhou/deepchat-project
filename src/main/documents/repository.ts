@@ -8,6 +8,7 @@ import {
 import type { documentsTemplateUpsertInputSchema } from '@shared/contracts/routes/documents.routes'
 import type { DocumentsDatabase } from './data/database'
 import type { DocumentRow, DocumentTableInsertInput } from './data/tables/documents'
+import type { DocumentTaskRow } from './data/tables/documentTasks'
 import type {
   DocumentTemplateRow,
   DocumentTemplateTableUpsertInput
@@ -33,6 +34,23 @@ export interface DocumentUpdateInput {
   fields?: Record<string, { value: unknown; uncertain: boolean }>
   status?: 'draft' | 'confirmed'
   now?: number
+}
+
+export type DocumentTaskStatus = 'pending' | 'running' | 'done' | 'failed'
+
+export interface DocumentTask {
+  id: string
+  batchId: string
+  filePath: string
+  fileName: string
+  templateId: string
+  source: 'chat' | 'manual'
+  status: DocumentTaskStatus
+  typeKey: string | null
+  documentId: string | null
+  error: string | null
+  createdAt: number
+  updatedAt: number
 }
 
 const toTemplate = (row: DocumentTemplateRow): DocumentTemplate => ({
@@ -61,6 +79,21 @@ const toRecord = (row: DocumentRow): DocumentRecord => ({
   source: row.source as DocumentRecord['source'],
   sessionId: row.session_id,
   status: row.status as DocumentRecord['status'],
+  createdAt: row.created_at,
+  updatedAt: row.updated_at
+})
+
+const toTask = (row: DocumentTaskRow): DocumentTask => ({
+  id: row.id,
+  batchId: row.batch_id,
+  filePath: row.file_path,
+  fileName: row.file_name,
+  templateId: row.template_id,
+  source: row.source as DocumentTask['source'],
+  status: row.status as DocumentTaskStatus,
+  typeKey: row.type_key,
+  documentId: row.document_id,
+  error: row.error,
   createdAt: row.created_at,
   updatedAt: row.updated_at
 })
@@ -185,5 +218,82 @@ export class DocumentsRepository {
 
   countDocumentsByTemplateId(templateId: string): number {
     return this.database.documentsTable.countByTemplateId(templateId)
+  }
+
+  countDocuments(filter: {
+    typeKey?: string
+    status?: 'draft' | 'confirmed'
+    keyword?: string
+    dateFrom?: number
+    dateTo?: number
+  }): number {
+    return this.database.documentsTable.count(filter)
+  }
+
+  statsByType(filter: { dateFrom?: number; dateTo?: number }): Array<{
+    typeKey: string
+    total: number
+    draft: number
+    confirmed: number
+  }> {
+    const rows = this.database.documentsTable.statsByType(filter)
+    const map = new Map<
+      string,
+      { typeKey: string; total: number; draft: number; confirmed: number }
+    >()
+    for (const row of rows) {
+      const entry = map.get(row.type_key) ?? {
+        typeKey: row.type_key,
+        total: 0,
+        draft: 0,
+        confirmed: 0
+      }
+      entry.total += row.count
+      if (row.status === 'draft') entry.draft += row.count
+      if (row.status === 'confirmed') entry.confirmed += row.count
+      map.set(row.type_key, entry)
+    }
+    return [...map.values()]
+  }
+
+  insertTasks(
+    inputs: Array<{
+      batchId: string
+      filePath: string
+      fileName: string
+      templateId: string
+      source?: 'chat' | 'manual'
+    }>
+  ): DocumentTask[] {
+    return inputs.map((input) => toTask(this.database.documentTasksTable.insert(input)))
+  }
+
+  updateTask(
+    id: string,
+    input: {
+      status: DocumentTaskStatus
+      typeKey?: string | null
+      documentId?: string | null
+      error?: string | null
+    }
+  ): DocumentTask | null {
+    const row = this.database.documentTasksTable.update(id, input)
+    return row ? toTask(row) : null
+  }
+
+  listRecentTasks(limit?: number): DocumentTask[] {
+    return this.database.documentTasksTable.listRecent(limit).map(toTask)
+  }
+
+  listPendingTasks(): DocumentTask[] {
+    return this.database.documentTasksTable.listPending().map(toTask)
+  }
+
+  markRunningTasksFailed(error: string): void {
+    this.database.documentTasksTable.markRunningAsFailed(error)
+  }
+
+  countTaskBatch(batchId: string): { done: number; total: number } {
+    return this.database.documentTasksTable.countBatch(batchId)
   }
 }
