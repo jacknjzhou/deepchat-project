@@ -1,11 +1,14 @@
-import { computed, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { createDocumentsClient, type DocumentsClient } from '@api/DocumentsClient'
 import type {
   DocumentTemplate,
   DocumentFieldValueType,
   DocumentExtractionMode,
-  DocumentTemplateCategory
+  DocumentTemplateCategory,
+  DocumentRecord,
+  DocumentFieldEntry,
+  DocumentStatus
 } from '@shared/documents'
 import type { z } from 'zod'
 import type { documentsTemplateUpsertInputSchema } from '@shared/contracts/routes'
@@ -114,6 +117,89 @@ export const useDocumentsStore = defineStore('documents', () => {
     return client.testExtract(input)
   }
 
+  const ARCHIVE_PAGE_SIZE = 50
+  const archiveDocuments = ref<DocumentRecord[]>([])
+  const archiveIsLoading = ref(false)
+  const archiveLoadError = ref<string | null>(null)
+  const archiveHasMore = ref(false)
+  const archiveFilter = reactive({
+    typeKey: undefined as string | undefined,
+    status: undefined as DocumentStatus | undefined,
+    keyword: undefined as string | undefined,
+    dateFrom: undefined as number | undefined,
+    dateTo: undefined as number | undefined
+  })
+
+  async function loadArchiveDocuments(reset = true, client: DocumentsClient = defaultClient) {
+    archiveIsLoading.value = true
+    archiveLoadError.value = null
+    try {
+      const offset = reset ? 0 : archiveDocuments.value.length
+      const result = await client.listDocuments({
+        ...archiveFilter,
+        limit: ARCHIVE_PAGE_SIZE,
+        offset
+      })
+      const documents = result.documents as DocumentRecord[]
+      archiveDocuments.value = reset ? documents : [...archiveDocuments.value, ...documents]
+      archiveHasMore.value = documents.length === ARCHIVE_PAGE_SIZE
+    } catch (error) {
+      console.error('[DocumentsStore] loadArchiveDocuments failed', error)
+      archiveLoadError.value = 'settings.documents.archive.loadFailed'
+    } finally {
+      archiveIsLoading.value = false
+    }
+  }
+
+  function replaceArchiveDocument(document: DocumentRecord) {
+    const index = archiveDocuments.value.findIndex((d) => d.id === document.id)
+    if (index >= 0) {
+      archiveDocuments.value[index] = document
+    } else {
+      archiveDocuments.value.unshift(document)
+    }
+  }
+
+  async function saveArchiveDocument(
+    id: string,
+    fields: Record<string, DocumentFieldEntry>,
+    client: DocumentsClient = defaultClient
+  ): Promise<DocumentRecord | null> {
+    const result = await client.updateDocument({ id, fields, status: 'confirmed' })
+    const document = result.document as DocumentRecord | null
+    if (document) {
+      replaceArchiveDocument(document)
+    }
+    return document
+  }
+
+  async function removeArchiveDocument(id: string, client: DocumentsClient = defaultClient) {
+    await client.deleteDocument(id)
+    archiveDocuments.value = archiveDocuments.value.filter((d) => d.id !== id)
+  }
+
+  async function recognizeDocument(
+    input: Parameters<DocumentsClient['extractAndDraft']>[0],
+    client: DocumentsClient = defaultClient
+  ) {
+    const result = await client.extractAndDraft(input)
+    const document = result.document as DocumentRecord
+    archiveDocuments.value.unshift(document)
+    return { document, meta: result.meta }
+  }
+
+  async function exportArchiveCsv(client: DocumentsClient = defaultClient) {
+    return client.exportCsv({ ...archiveFilter })
+  }
+
+  async function previewArchiveFile(
+    documentId: string,
+    uriIndex: number,
+    client: DocumentsClient = defaultClient
+  ) {
+    return client.previewFile({ documentId, uriIndex })
+  }
+
   return {
     templates,
     isLoading,
@@ -124,6 +210,17 @@ export const useDocumentsStore = defineStore('documents', () => {
     isTypeKeyTaken,
     attemptDelete,
     saveTemplate,
-    testExtract
+    testExtract,
+    archiveDocuments,
+    archiveIsLoading,
+    archiveLoadError,
+    archiveHasMore,
+    archiveFilter,
+    loadArchiveDocuments,
+    saveArchiveDocument,
+    removeArchiveDocument,
+    recognizeDocument,
+    exportArchiveCsv,
+    previewArchiveFile
   }
 })
