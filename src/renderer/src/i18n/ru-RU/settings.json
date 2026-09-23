@@ -2766,6 +2766,8 @@
       "loadFailed": "Не удалось загрузить документы",
       "empty": "Нет документов",
       "retry": "Повторить",
+      "tabAll": "All",
+      "totalCount": "Total {total} documents",
       "typeAll": "Все типы",
       "statusAll": "Все статусы",
       "statusDraft": "Ожидает подтверждения",

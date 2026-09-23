@@ -21,38 +21,41 @@
       </div>
     </header>
 
+    <div class="flex flex-wrap items-center gap-1 border-b px-6 py-2" data-testid="archive-tabs">
+      <DcButton
+        :variant="activeTab === ALL_TAB ? 'default' : 'ghost'"
+        size="sm"
+        data-testid="archive-tab-all"
+        @click="onTabChange(ALL_TAB)"
+      >
+        {{ t('settings.documents.archive.tabAll') }}
+        <DcBadge variant="outline" class="ml-1">{{ allStats.total }}</DcBadge>
+      </DcButton>
+      <DcButton
+        v-for="tpl in store.templates"
+        :key="tpl.typeKey"
+        :variant="activeTab === tpl.typeKey ? 'default' : 'ghost'"
+        size="sm"
+        :data-testid="`archive-tab-${tpl.typeKey}`"
+        @click="onTabChange(tpl.typeKey)"
+      >
+        {{ tpl.name }}
+        <DcBadge variant="outline" class="ml-1">{{ statsFor(tpl.typeKey).total }}</DcBadge>
+      </DcButton>
+    </div>
+
     <div class="flex flex-wrap items-center gap-2 border-b px-6 py-3">
-      <Select
-        :model-value="store.archiveFilter.typeKey ?? ALL_VALUE"
-        data-testid="archive-filter-type"
-        class="w-44"
-        @update:model-value="onTypeFilter"
+      <DcButton
+        v-for="option in statusOptions"
+        :key="option.value"
+        size="sm"
+        :variant="store.archiveFilter.status === option.statusValue ? 'default' : 'outline'"
+        :data-testid="`archive-status-chip-${option.value}`"
+        @click="onStatusChip(option.statusValue)"
       >
-        <SelectTrigger><SelectValue /></SelectTrigger>
-        <SelectContent>
-          <SelectItem :value="ALL_VALUE">{{ t('settings.documents.archive.typeAll') }}</SelectItem>
-          <SelectItem v-for="tpl in store.templates" :key="tpl.id" :value="tpl.typeKey">
-            {{ tpl.name }}
-          </SelectItem>
-        </SelectContent>
-      </Select>
-      <Select
-        :model-value="store.archiveFilter.status ?? ALL_VALUE"
-        data-testid="archive-filter-status"
-        class="w-36"
-        @update:model-value="onStatusFilter"
-      >
-        <SelectTrigger><SelectValue /></SelectTrigger>
-        <SelectContent>
-          <SelectItem :value="ALL_VALUE">{{
-            t('settings.documents.archive.statusAll')
-          }}</SelectItem>
-          <SelectItem value="draft">{{ t('settings.documents.archive.statusDraft') }}</SelectItem>
-          <SelectItem value="confirmed">
-            {{ t('settings.documents.archive.statusConfirmed') }}
-          </SelectItem>
-        </SelectContent>
-      </Select>
+        {{ option.label }}
+        <span class="ml-1 text-muted-foreground">{{ option.count }}</span>
+      </DcButton>
       <Input
         v-model="dateFromText"
         type="date"
@@ -138,13 +141,31 @@
       >
         {{ t('settings.documents.archive.empty') }}
       </p>
-      <div v-if="store.archivePage < store.archiveTotalPages" class="flex justify-center py-3">
+    </div>
+
+    <div class="flex items-center justify-between border-t px-6 py-2 text-sm">
+      <span class="text-muted-foreground">
+        {{ t('settings.documents.archive.totalCount', { total: store.archiveTotal }) }}
+      </span>
+      <div class="flex items-center gap-1">
         <DcButton
           variant="outline"
-          data-testid="archive-load-more"
-          @click="store.loadArchiveDocuments(store.archivePage + 1)"
+          size="sm"
+          data-testid="archive-page-prev"
+          :disabled="store.archivePage <= 1"
+          @click="goPage(store.archivePage - 1)"
         >
-          {{ t('settings.documents.archive.loadMore') }}
+          ‹
+        </DcButton>
+        <span>{{ store.archivePage }} / {{ store.archiveTotalPages }}</span>
+        <DcButton
+          variant="outline"
+          size="sm"
+          data-testid="archive-page-next"
+          :disabled="store.archivePage >= store.archiveTotalPages"
+          @click="goPage(store.archivePage + 1)"
+        >
+          ›
         </DcButton>
       </div>
     </div>
@@ -163,19 +184,14 @@ import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Icon } from '@iconify/vue'
 import { Input } from '@shadcn/components/ui/input'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from '@shadcn/components/ui/select'
 import { DcButton } from '@dc-ui/components/button'
+import { DcBadge } from '@dc-ui/components/badge'
 import { rendererNotificationManager } from '@renderer-notifications/rendererNotificationRuntime'
 import { createOcrClient } from '@api/OcrClient'
 import { useDocumentsStore } from '@/stores/documents'
-import type { DocumentRecord } from '@shared/documents'
+import type { DocumentRecord, DocumentStatus } from '@shared/documents'
 import {
+  buildDefaultDateRangeTexts,
   buildMoneyColumns,
   formatDateRangeToMs,
   formatFieldValue,
@@ -186,7 +202,7 @@ import { summarizeDocument } from './documentSummary'
 import DocumentDetailDialog from './DocumentDetailDialog.vue'
 import DocumentRecognizeDialog from './DocumentRecognizeDialog.vue'
 
-const ALL_VALUE = '__all__'
+const ALL_TAB = '__all__'
 
 const { t } = useI18n()
 const store = useDocumentsStore()
@@ -194,9 +210,13 @@ const store = useDocumentsStore()
 const detailOpen = ref(false)
 const recognizeOpen = ref(false)
 const detailDocument = ref<DocumentRecord | null>(null)
-const dateFromText = ref('')
-const dateToText = ref('')
+// Default to the trailing week up front so the first load is already scoped;
+// date text is converted to ms once in syncFilters before the first query.
+const defaultRange = buildDefaultDateRangeTexts()
+const dateFromText = ref(defaultRange.from)
+const dateToText = ref(defaultRange.to)
 const keywordText = ref('')
+const activeTab = ref(ALL_TAB)
 
 const selectedTypeKey = computed(() => store.archiveFilter.typeKey ?? null)
 
@@ -218,6 +238,51 @@ const tableFieldColumns = computed<{ key: string; label: string }[]>(() => {
 
 const capitalize = (value: string) => value.charAt(0).toUpperCase() + value.slice(1)
 
+const allStats = computed(() =>
+  store.archiveStats.reduce(
+    (acc, entry) => ({
+      total: acc.total + entry.total,
+      draft: acc.draft + entry.draft,
+      confirmed: acc.confirmed + entry.confirmed
+    }),
+    { total: 0, draft: 0, confirmed: 0 }
+  )
+)
+
+function statsFor(typeKey: string) {
+  return (
+    store.archiveStats.find((entry) => entry.typeKey === typeKey) ?? {
+      typeKey,
+      total: 0,
+      draft: 0,
+      confirmed: 0
+    }
+  )
+}
+
+const statusOptions = computed(() => [
+  {
+    value: 'all',
+    statusValue: undefined as DocumentStatus | undefined,
+    label: t('settings.documents.archive.statusAll'),
+    count: selectedTypeKey.value ? statsFor(selectedTypeKey.value).total : allStats.value.total
+  },
+  {
+    value: 'draft',
+    statusValue: 'draft' as DocumentStatus,
+    label: t('settings.documents.archive.statusDraft'),
+    count: selectedTypeKey.value ? statsFor(selectedTypeKey.value).draft : allStats.value.draft
+  },
+  {
+    value: 'confirmed',
+    statusValue: 'confirmed' as DocumentStatus,
+    label: t('settings.documents.archive.statusConfirmed'),
+    count: selectedTypeKey.value
+      ? statsFor(selectedTypeKey.value).confirmed
+      : allStats.value.confirmed
+  }
+])
+
 function syncFilters() {
   store.archiveFilter.dateFrom = formatDateRangeToMs(dateFromText.value)
   store.archiveFilter.dateTo = formatDateRangeToMs(dateToText.value, 'end')
@@ -229,15 +294,23 @@ function applyFilters() {
   void store.loadArchiveDocuments()
 }
 
-function onTypeFilter(value: unknown) {
-  store.archiveFilter.typeKey = value === ALL_VALUE ? undefined : String(value)
-  void store.loadArchiveDocuments()
+function onTabChange(typeKey: string) {
+  activeTab.value = typeKey
+  store.archiveFilter.typeKey = typeKey === ALL_TAB ? undefined : typeKey
+  store.archiveFilter.status = undefined
+  void store.loadArchiveDocuments(1)
 }
 
-function onStatusFilter(value: unknown) {
-  store.archiveFilter.status =
-    value === ALL_VALUE ? undefined : (String(value) as 'draft' | 'confirmed')
-  void store.loadArchiveDocuments()
+function onStatusChip(status: DocumentStatus | undefined) {
+  store.archiveFilter.status = status
+  void store.loadArchiveDocuments(1)
+}
+
+function goPage(page: number) {
+  if (page < 1 || page > store.archiveTotalPages) {
+    return
+  }
+  void store.loadArchiveDocuments(page)
 }
 
 watch(dateFromText, applyFilters)
@@ -290,8 +363,10 @@ function onRecognized(document: DocumentRecord) {
   detailOpen.value = true
 }
 
+syncFilters()
 void store.loadTemplates()
-void store.loadArchiveDocuments()
+void store.loadArchiveDocuments(1)
+void store.loadArchiveStats()
 
 // Start the OCR helper ahead of the first recognition so scanned PDFs skip
 // the cold start. Failures surface naturally when a real extraction runs.

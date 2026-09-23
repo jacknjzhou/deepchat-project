@@ -265,6 +265,8 @@
       "loadFailed": "Gagal memuat dokumen",
       "empty": "Belum ada dokumen",
       "retry": "Coba lagi",
+      "tabAll": "All",
+      "totalCount": "Total {total} documents",
       "typeAll": "Semua jenis",
       "statusAll": "Semua status",
       "statusDraft": "Menunggu konfirmasi",

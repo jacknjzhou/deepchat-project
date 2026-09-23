@@ -265,6 +265,8 @@
       "loadFailed": "Impossibile caricare i documenti",
       "empty": "Nessun documento",
       "retry": "Riprova",
+      "tabAll": "All",
+      "totalCount": "Total {total} documents",
       "typeAll": "Tutti i tipi",
       "statusAll": "Tutti gli stati",
       "statusDraft": "Da confermare",

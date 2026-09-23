@@ -2766,6 +2766,8 @@
       "loadFailed": "문서를 불러오지 못했습니다",
       "empty": "문서가 없습니다",
       "retry": "재시도",
+      "tabAll": "All",
+      "totalCount": "Total {total} documents",
       "typeAll": "모든 유형",
       "statusAll": "모든 상태",
       "statusDraft": "확인 대기",

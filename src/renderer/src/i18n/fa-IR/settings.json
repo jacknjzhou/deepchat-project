@@ -2766,6 +2766,8 @@
       "loadFailed": "بارگذاری اسناد ناموفق بود",
       "empty": "سندی وجود ندارد",
       "retry": "تلاش دوباره",
+      "tabAll": "All",
+      "totalCount": "Total {total} documents",
       "typeAll": "همه انواع",
       "statusAll": "همه وضعیت‌ها",
       "statusDraft": "در انتظار تأیید",

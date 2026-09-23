@@ -2766,6 +2766,8 @@
       "loadFailed": "載入單據失敗",
       "empty": "暫無單據",
       "retry": "重試",
+      "tabAll": "All",
+      "totalCount": "Total {total} documents",
       "typeAll": "全部類型",
       "statusAll": "全部狀態",
       "statusDraft": "待確認",

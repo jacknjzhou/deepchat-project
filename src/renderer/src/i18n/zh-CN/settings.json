@@ -265,6 +265,8 @@
       "loadFailed": "加载单据失败",
       "empty": "暂无单据",
       "retry": "重试",
+      "tabAll": "全部",
+      "totalCount": "共 {total} 条",
       "typeAll": "全部类型",
       "statusAll": "全部状态",
       "statusDraft": "待确认",

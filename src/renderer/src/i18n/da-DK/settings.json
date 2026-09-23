@@ -2766,6 +2766,8 @@
       "loadFailed": "Kunne ikke indlæse dokumenter",
       "empty": "Ingen dokumenter",
       "retry": "Prøv igen",
+      "tabAll": "All",
+      "totalCount": "Total {total} documents",
       "typeAll": "Alle typer",
       "statusAll": "Alle statusser",
       "statusDraft": "Afventer",

@@ -265,6 +265,8 @@
       "loadFailed": "Failed to load documents",
       "empty": "No documents",
       "retry": "Retry",
+      "tabAll": "All",
+      "totalCount": "Total {total} documents",
       "typeAll": "All Types",
       "statusAll": "All Statuses",
       "statusDraft": "Draft",

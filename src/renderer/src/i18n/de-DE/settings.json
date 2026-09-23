@@ -265,6 +265,8 @@
       "loadFailed": "Dokumente konnten nicht geladen werden",
       "empty": "Keine Dokumente",
       "retry": "Erneut versuchen",
+      "tabAll": "All",
+      "totalCount": "Total {total} documents",
       "typeAll": "Alle Typen",
       "statusAll": "Alle Status",
       "statusDraft": "Ausstehend",

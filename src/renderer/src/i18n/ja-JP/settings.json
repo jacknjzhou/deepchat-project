@@ -2766,6 +2766,8 @@
       "loadFailed": "ドキュメントの読み込みに失敗しました",
       "empty": "ドキュメントはありません",
       "retry": "再試行",
+      "tabAll": "All",
+      "totalCount": "Total {total} documents",
       "typeAll": "すべての種類",
       "statusAll": "すべての状態",
       "statusDraft": "確認待ち",

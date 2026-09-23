@@ -265,6 +265,8 @@
       "loadFailed": "Không thể tải chứng từ",
       "empty": "Chưa có chứng từ",
       "retry": "Thử lại",
+      "tabAll": "All",
+      "totalCount": "Total {total} documents",
       "typeAll": "Mọi loại",
       "statusAll": "Mọi trạng thái",
       "statusDraft": "Chờ xác nhận",

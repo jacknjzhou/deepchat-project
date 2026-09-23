@@ -265,6 +265,8 @@
       "loadFailed": "Belgeler yüklenemedi",
       "empty": "Belge yok",
       "retry": "Yeniden dene",
+      "tabAll": "All",
+      "totalCount": "Total {total} documents",
       "typeAll": "Tüm türler",
       "statusAll": "Tüm durumlar",
       "statusDraft": "Onay bekliyor",

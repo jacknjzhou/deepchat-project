@@ -83,8 +83,11 @@ const stubStore = reactive({
   archiveDocuments: [] as Array<Record<string, unknown>>,
   archiveIsLoading: false,
   archiveLoadError: null as string | null,
+  archiveTotal: 0,
   archivePage: 1,
   archiveTotalPages: 1,
+  archiveStats: [] as Array<{ typeKey: string; total: number; draft: number; confirmed: number }>,
+  tasks: [] as Array<Record<string, unknown>>,
   archiveFilter: {
     typeKey: undefined as string | undefined,
     status: undefined as string | undefined,
@@ -93,7 +96,12 @@ const stubStore = reactive({
     dateTo: undefined as number | undefined
   },
   loadTemplates: vi.fn(async () => {}),
-  loadArchiveDocuments: vi.fn(async (_reset = true) => {}),
+  loadArchiveDocuments: vi.fn(async (_page = 1) => {}),
+  loadArchiveStats: vi.fn(async () => {}),
+  loadArchiveTasks: vi.fn(async () => {}),
+  handleTaskUpdated: vi.fn(),
+  createRecognitionTasks: vi.fn(),
+  retryRecognitionTask: vi.fn(async () => []),
   exportArchiveCsv: vi.fn(async () => ({
     canceled: true as boolean,
     path: undefined as string | undefined
@@ -140,14 +148,23 @@ const dcButtonStub = defineComponent({
   template: '<button :disabled="disabled"><slot /></button>'
 })
 
-async function setup(options: { loadError?: string; hasMore?: boolean } = {}) {
+const dcBadgeStub = defineComponent({
+  name: 'DcBadgeStub',
+  props: ['variant'],
+  template: '<span><slot /></span>'
+})
+
+async function setup(options: { loadError?: string } = {}) {
   vi.resetModules()
   stubStore.templates = [contractTemplate]
   stubStore.archiveDocuments = [makeRecord()]
   stubStore.archiveIsLoading = false
   stubStore.archiveLoadError = options.loadError ?? null
+  stubStore.archiveTotal = 0
   stubStore.archivePage = 1
-  stubStore.archiveTotalPages = options.hasMore ? 2 : 1
+  stubStore.archiveTotalPages = 1
+  stubStore.archiveStats = []
+  stubStore.tasks = []
   stubStore.archiveFilter.typeKey = undefined
   stubStore.archiveFilter.status = undefined
   stubStore.archiveFilter.keyword = undefined
@@ -185,7 +202,8 @@ async function setup(options: { loadError?: string; hasMore?: boolean } = {}) {
         SelectValue: fragmentStub('SelectValue'),
         SelectContent: fragmentStub('SelectContent'),
         SelectItem: selectItemStub,
-        DcButton: dcButtonStub
+        DcButton: dcButtonStub,
+        DcBadge: dcBadgeStub
       }
     }
   })
@@ -198,6 +216,11 @@ describe('DocumentsArchivePage', () => {
     notifyMock.mockClear()
     stubStore.loadTemplates.mockClear()
     stubStore.loadArchiveDocuments.mockClear()
+    stubStore.loadArchiveStats.mockClear()
+    stubStore.loadArchiveTasks.mockClear()
+    stubStore.handleTaskUpdated.mockClear()
+    stubStore.createRecognitionTasks.mockClear()
+    stubStore.retryRecognitionTask.mockClear()
     stubStore.exportArchiveCsv.mockClear()
   })
 
@@ -214,13 +237,49 @@ describe('DocumentsArchivePage', () => {
     expect(wrapper.text()).toContain('购买方: 甲公司')
   })
 
-  it('修改类型筛选后调用 loadArchiveDocuments', async () => {
+  it('默认日期为最近一周并加载第一页', async () => {
+    await setup()
+    const from = stubStore.archiveFilter.dateFrom as number
+    const to = stubStore.archiveFilter.dateTo as number
+    expect(from).toBeGreaterThan(0)
+    expect(to - from).toBeGreaterThanOrEqual(7 * 24 * 60 * 60 * 1000)
+    expect(to - from).toBeLessThan(8 * 24 * 60 * 60 * 1000)
+    expect(stubStore.loadArchiveDocuments).toHaveBeenCalledWith(1)
+  })
+
+  it('点击类型 Tab 切换筛选并回到第一页', async () => {
     const { wrapper } = await setup()
     stubStore.loadArchiveDocuments.mockClear()
-    await wrapper.get('[data-testid="archive-filter-type"]').setValue('contract')
+    await wrapper.get('[data-testid="archive-tab-contract"]').trigger('click')
     await flushPromises()
-    expect(stubStore.loadArchiveDocuments).toHaveBeenCalled()
     expect(stubStore.archiveFilter.typeKey).toBe('contract')
+    expect(stubStore.loadArchiveDocuments).toHaveBeenCalledWith(1)
+    // 类型 Tab 下展示该模板全部字段列（不再渲染摘要列）
+    expect(wrapper.text()).toContain('购买方')
+    expect(wrapper.text()).not.toContain('settings.documents.archive.colSummary')
+  })
+
+  it('状态 chips 展示统计并可筛选', async () => {
+    const { wrapper } = await setup()
+    stubStore.archiveStats = [{ typeKey: 'contract', total: 3, draft: 2, confirmed: 1 }]
+    await flushPromises()
+    expect(wrapper.get('[data-testid="archive-status-chip-draft"]').text()).toContain('2')
+    stubStore.loadArchiveDocuments.mockClear()
+    await wrapper.get('[data-testid="archive-status-chip-draft"]').trigger('click')
+    await flushPromises()
+    expect(stubStore.archiveFilter.status).toBe('draft')
+    expect(stubStore.loadArchiveDocuments).toHaveBeenCalledWith(1)
+  })
+
+  it('分页控件按页加载', async () => {
+    const { wrapper } = await setup()
+    stubStore.archiveTotal = 51
+    stubStore.archiveTotalPages = 2
+    await flushPromises()
+    stubStore.loadArchiveDocuments.mockClear()
+    await wrapper.get('[data-testid="archive-page-next"]').trigger('click')
+    await flushPromises()
+    expect(stubStore.loadArchiveDocuments).toHaveBeenCalledWith(2)
   })
 
   it('导出按钮调用 exportArchiveCsv 并按结果提示', async () => {
@@ -264,13 +323,5 @@ describe('DocumentsArchivePage', () => {
     await wrapper.get('[data-testid="archive-retry"]').trigger('click')
     await flushPromises()
     expect(stubStore.loadArchiveDocuments).toHaveBeenCalled()
-  })
-
-  it('hasMore 时显示加载更多并加载下一页', async () => {
-    const { wrapper } = await setup({ hasMore: true })
-    stubStore.loadArchiveDocuments.mockClear()
-    await wrapper.get('[data-testid="archive-load-more"]').trigger('click')
-    await flushPromises()
-    expect(stubStore.loadArchiveDocuments).toHaveBeenCalledWith(2)
   })
 })

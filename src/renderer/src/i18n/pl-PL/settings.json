@@ -265,6 +265,8 @@
       "loadFailed": "Nie udało się wczytać dokumentów",
       "empty": "Brak dokumentów",
       "retry": "Ponów",
+      "tabAll": "All",
+      "totalCount": "Total {total} documents",
       "typeAll": "Wszystkie typy",
       "statusAll": "Wszystkie statusy",
       "statusDraft": "Oczekuje",
