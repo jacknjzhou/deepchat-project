@@ -360,6 +360,7 @@ describeIfSqlite('documentTasksTable', () => {
     expect(done?.document_id).toBe('d1')
     const failed = table.update(task.id, { status: 'failed', error: 'boom' })
     expect(failed?.error).toBe('boom')
+    expect(failed?.type_key).toBe('invoice_special')
     db.close()
   })
 
@@ -414,6 +415,14 @@ describeIfSqlite('documentTasksTable', () => {
     table.update(a.id, { status: 'done', documentId: 'd1' })
     table.update(b.id, { status: 'failed', error: 'x' })
     expect(table.countBatch('b1')).toEqual({ done: 2, total: 2 })
+    db.close()
+  })
+
+  it('handles missing ids and batches', () => {
+    const db = makeDb()
+    const table = new DocumentTasksTableCtor(db)
+    expect(table.countBatch('missing')).toEqual({ done: 0, total: 0 })
+    expect(table.update('nonexistent', { status: 'running' })).toBeUndefined()
     db.close()
   })
 })

@@ -265,7 +265,7 @@ export class DocumentsRepository {
       source?: 'chat' | 'manual'
     }>
   ): DocumentTask[] {
-    return inputs.map((input) => toTask(this.database.documentTasksTable.insert(input)))
+    return this.database.documentTasksTable.insertBatch(inputs).map(toTask)
   }
 
   updateTask(

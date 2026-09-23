@@ -57,6 +57,8 @@ export class DocumentTasksTable extends BaseTable {
       );
       CREATE INDEX IF NOT EXISTS idx_document_tasks_status
         ON document_tasks(status, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_document_tasks_created_at
+        ON document_tasks(created_at DESC, id DESC);
     `
   }
 
@@ -94,6 +96,10 @@ export class DocumentTasksTable extends BaseTable {
         now
       )
     return this.get(id)!
+  }
+
+  insertBatch(inputs: DocumentTaskInsertInput[]): DocumentTaskRow[] {
+    return this.db.transaction(() => inputs.map((input) => this.insert(input)))()
   }
 
   update(id: string, input: DocumentTaskUpdateInput): DocumentTaskRow | undefined {
