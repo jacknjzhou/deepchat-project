@@ -59,7 +59,7 @@ const tools = [
         type: { type: 'string', description: '报销类型（差旅费/办公费/招待费/培训费/其他）' },
         invoices: {
           type: 'array',
-          description: '发票结构化数据数组（invoice-recognition Skill 的输出）',
+          description: '发票结构化数据数组（document-recognition Skill 的输出）',
           items: { type: 'object' }
         },
         attachments: {

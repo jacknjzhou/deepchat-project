@@ -28,7 +28,7 @@ invoice recognition → reimbursement creation → approval submission → statu
 
 ### Step 1: Collect and Recognize Invoices
 
-1. Follow the invoice-recognition skill to extract structured data for each
+1. Follow the document-recognition skill to extract structured data for each
    invoice (vision model extraction, validation, user confirmation)
 2. Summarize: list all recognized invoices with amounts, dates, and types
 3. Calculate total amount and tax amount

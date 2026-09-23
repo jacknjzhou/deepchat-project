@@ -34,8 +34,8 @@
   ],
   "skills": [
     {
-      "id": "invoice-recognition",
-      "path": "skills/invoice-recognition/SKILL.md",
+      "id": "document-recognition",
+      "path": "skills/document-recognition/SKILL.md",
       "scope": "agent"
     },
     {
