@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises'
+import { cp, mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
@@ -13,6 +13,8 @@ vi.unmock('node:path')
 
 import { resolveHelperAccessibleBundlePath } from '@/ocr/ocrRuntimeService'
 
+const BUNDLE_ID = 'ppocrv6-small-native-20260719.1'
+
 describe('resolveHelperAccessibleBundlePath', () => {
   let root: string
 
@@ -24,54 +26,55 @@ describe('resolveHelperAccessibleBundlePath', () => {
     await rm(root, { force: true, recursive: true })
   })
 
+  const makeBundle = async (marker: string) => {
+    const bundle = path.join(root, marker, 'bundle')
+    await mkdir(bundle, { recursive: true })
+    await writeFile(path.join(bundle, 'model.bin'), marker)
+    return bundle
+  }
+
   it.runIf(process.platform !== 'win32')('returns the original path off Windows', async () => {
-    const bundle = path.join(root, 'bundle')
-    await mkdir(bundle)
-    await expect(resolveHelperAccessibleBundlePath(bundle, root)).resolves.toBe(bundle)
+    const bundle = await makeBundle('offwin')
+    await expect(resolveHelperAccessibleBundlePath(bundle, root, BUNDLE_ID)).resolves.toBe(bundle)
   })
 
-  it.runIf(process.platform === 'win32')('exposes short bundles via junction too', async () => {
-    const bundle = path.join(root, 'bundle')
-    await mkdir(bundle)
-    await writeFile(path.join(bundle, 'model.bin'), 'payload')
-
-    const resolved = await resolveHelperAccessibleBundlePath(bundle, root)
-    expect(resolved).toBe(path.join(root, 'bundle-link'))
-    await expect(readFile(path.join(resolved, 'model.bin'), 'utf8')).resolves.toBe('payload')
-  })
-
-  it.runIf(process.platform === 'win32')('creates a short junction for a long path', async () => {
+  it.runIf(process.platform === 'win32')('copies the bundle to a short path', async () => {
     const segments = Array.from({ length: 18 }, (_, i) => `segment-${i}-padding-padding`)
     const bundle = path.join(root, ...segments, 'bundle')
     await mkdir(bundle, { recursive: true })
     await writeFile(path.join(bundle, 'model.bin'), 'payload')
     expect(bundle.length).toBeGreaterThanOrEqual(260)
 
-    const resolved = await resolveHelperAccessibleBundlePath(bundle, root)
-    expect(resolved).toBe(path.join(root, 'bundle-link'))
+    const resolved = await resolveHelperAccessibleBundlePath(bundle, root, BUNDLE_ID)
+    expect(resolved).toBe(path.join(root, 'bundle-copy'))
     expect(resolved.length).toBeLessThan(240)
     await expect(readFile(path.join(resolved, 'model.bin'), 'utf8')).resolves.toBe('payload')
 
-    const again = await resolveHelperAccessibleBundlePath(bundle, root)
+    const again = await resolveHelperAccessibleBundlePath(bundle, root, BUNDLE_ID)
     expect(again).toBe(resolved)
-
-    const other = path.join(root, ...segments, 'other-bundle')
-    await mkdir(other, { recursive: true })
-    await writeFile(path.join(other, 'model.bin'), 'replaced')
-    const changed = await resolveHelperAccessibleBundlePath(other, root)
-    expect(changed).toBe(path.join(root, 'bundle-link'))
-    await expect(readFile(path.join(changed, 'model.bin'), 'utf8')).resolves.toBe('replaced')
+    await expect(readFile(path.join(resolved, 'model.bin'), 'utf8')).resolves.toBe('payload')
   })
 
-  it.runIf(process.platform === 'win32')('replaces a broken link target', async () => {
-    const segments = Array.from({ length: 18 }, (_, i) => `segment-${i}-padding-padding`)
-    const bundle = path.join(root, ...segments, 'bundle')
-    await mkdir(bundle, { recursive: true })
-    const linkPath = path.join(root, 'bundle-link')
-    await symlink(path.join(root, 'missing-target'), linkPath, 'junction')
+  it.runIf(process.platform === 'win32')('refreshes the copy on bundleId mismatch', async () => {
+    const bundle = await makeBundle('first')
+    const resolved = await resolveHelperAccessibleBundlePath(bundle, root, 'bundle-v1')
+    expect(resolved).toBe(path.join(root, 'bundle-copy'))
+    await expect(readFile(path.join(resolved, 'model.bin'), 'utf8')).resolves.toBe('first')
 
-    const resolved = await resolveHelperAccessibleBundlePath(bundle, root)
-    expect(resolved).toBe(linkPath)
-    await expect(readFile(path.join(resolved, 'model.bin'), 'utf8')).rejects.toThrow()
+    const other = await makeBundle('second')
+    const refreshed = await resolveHelperAccessibleBundlePath(other, root, 'bundle-v2')
+    expect(refreshed).toBe(resolved)
+    await expect(readFile(path.join(refreshed, 'model.bin'), 'utf8')).resolves.toBe('second')
+  })
+
+  it.runIf(process.platform === 'win32')('rebuilds a copy with a corrupted marker', async () => {
+    const bundle = await makeBundle('payload')
+    const copyPath = path.join(root, 'bundle-copy')
+    await cp(bundle, copyPath, { recursive: true })
+    await writeFile(path.join(copyPath, '.bundle-id'), 'stale-id')
+
+    const resolved = await resolveHelperAccessibleBundlePath(bundle, root, BUNDLE_ID)
+    expect(resolved).toBe(copyPath)
+    await expect(readFile(path.join(resolved, '.bundle-id'), 'utf8')).resolves.toBe(BUNDLE_ID)
   })
 })

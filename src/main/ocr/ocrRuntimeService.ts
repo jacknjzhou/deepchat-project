@@ -1,4 +1,4 @@
-import { mkdir, readlink, rm, symlink } from 'node:fs/promises'
+import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 
 import type { ToolchainKind } from '@shared/types/toolchains'
@@ -54,34 +54,41 @@ export class OcrRuntimeBusyError extends Error {
   }
 }
 
-const HELPER_BUNDLE_LINK_NAME = 'bundle-link'
+const HELPER_BUNDLE_COPY_NAME = 'bundle-copy'
+const HELPER_BUNDLE_ID_MARKER = '.bundle-id'
 
 /**
  * The native OCR helper (std::filesystem) cannot open files under paths
  * longer than MAX_PATH. Deep bundle-internal paths (e.g. CoreML weights
  * inside the model bundle under a pnpm store) exceed MAX_PATH on Windows
- * even when the bundle directory itself does not, so the bundle is always
- * exposed through a short junction. No-op on non-Windows platforms.
+ * even when the bundle directory itself does not. Path aliases do not help
+ * because the helper canonicalizes paths back to the long original, so the
+ * bundle is copied to a short, stable location instead. The copy is cached
+ * per bundleId and refreshed when the marker mismatches.
+ * No-op on non-Windows platforms.
  */
 export async function resolveHelperAccessibleBundlePath(
   bundlePath: string,
-  anchorDir: string
+  anchorDir: string,
+  bundleId: string
 ): Promise<string> {
   if (process.platform !== 'win32') {
     return bundlePath
   }
-  const linkPath = path.join(anchorDir, HELPER_BUNDLE_LINK_NAME)
-  let linked = false
+  const copyPath = path.join(anchorDir, HELPER_BUNDLE_COPY_NAME)
+  const markerPath = path.join(copyPath, HELPER_BUNDLE_ID_MARKER)
+  let valid = false
   try {
-    linked = (await readlink(linkPath)) === bundlePath
+    valid = (await readFile(markerPath, 'utf8')).trim() === bundleId
   } catch {
-    linked = false
+    valid = false
   }
-  if (!linked) {
-    await rm(linkPath, { force: true, recursive: true })
-    await symlink(bundlePath, linkPath, 'junction')
+  if (!valid) {
+    await rm(copyPath, { force: true, recursive: true })
+    await cp(bundlePath, copyPath, { recursive: true })
+    await writeFile(markerPath, bundleId, 'utf8')
   }
-  return linkPath
+  return copyPath
 }
 
 /** Lazily owns the offline OCR helper, engine, and derived cache for the application lifetime. */
@@ -231,7 +238,8 @@ export class OcrRuntimeService {
         helperEntryPath: availability.assets.helperEntryPath,
         bundlePath: await resolveHelperAccessibleBundlePath(
           availability.assets.bundlePath,
-          cacheDir
+          cacheDir,
+          availability.assets.bundleId
         ),
         expectedBundleId: availability.assets.bundleId,
         expectedNodeVersion: availability.assets.nodeVersion,
