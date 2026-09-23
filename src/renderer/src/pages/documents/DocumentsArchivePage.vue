@@ -138,11 +138,11 @@
       >
         {{ t('settings.documents.archive.empty') }}
       </p>
-      <div v-if="store.archiveHasMore" class="flex justify-center py-3">
+      <div v-if="store.archivePage < store.archiveTotalPages" class="flex justify-center py-3">
         <DcButton
           variant="outline"
           data-testid="archive-load-more"
-          @click="store.loadArchiveDocuments(false)"
+          @click="store.loadArchiveDocuments(store.archivePage + 1)"
         >
           {{ t('settings.documents.archive.loadMore') }}
         </DcButton>

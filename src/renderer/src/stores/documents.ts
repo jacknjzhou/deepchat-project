@@ -11,9 +11,18 @@ import type {
   DocumentStatus
 } from '@shared/documents'
 import type { z } from 'zod'
-import type { documentsTemplateUpsertInputSchema } from '@shared/contracts/routes'
+import type {
+  documentTaskSchema,
+  documentsStatsEntrySchema,
+  documentsTemplateUpsertInputSchema
+} from '@shared/contracts/routes'
+import type { documentsTaskUpdatedEvent } from '@shared/contracts/events'
 
 export type TemplateUpsertInput = z.input<typeof documentsTemplateUpsertInputSchema>
+
+type DocumentsStatsEntry = z.infer<typeof documentsStatsEntrySchema>
+type DocumentsTaskItem = z.infer<typeof documentTaskSchema>
+type DocumentsTaskUpdatedPayload = z.infer<typeof documentsTaskUpdatedEvent.payload>
 
 export interface EditableTemplateDraft {
   id?: string
@@ -121,7 +130,10 @@ export const useDocumentsStore = defineStore('documents', () => {
   const archiveDocuments = ref<DocumentRecord[]>([])
   const archiveIsLoading = ref(false)
   const archiveLoadError = ref<string | null>(null)
-  const archiveHasMore = ref(false)
+  const archiveTotal = ref(0)
+  const archivePage = ref(1)
+  const archiveStats = ref<DocumentsStatsEntry[]>([])
+  const tasks = ref<DocumentsTaskItem[]>([])
   const archiveFilter = reactive({
     typeKey: undefined as string | undefined,
     status: undefined as DocumentStatus | undefined,
@@ -129,26 +141,82 @@ export const useDocumentsStore = defineStore('documents', () => {
     dateFrom: undefined as number | undefined,
     dateTo: undefined as number | undefined
   })
+  const archiveTotalPages = computed(() =>
+    Math.max(1, Math.ceil(archiveTotal.value / ARCHIVE_PAGE_SIZE))
+  )
 
-  async function loadArchiveDocuments(reset = true, client: DocumentsClient = defaultClient) {
+  async function loadArchiveDocuments(page = 1, client: DocumentsClient = defaultClient) {
     archiveIsLoading.value = true
     archiveLoadError.value = null
     try {
-      const offset = reset ? 0 : archiveDocuments.value.length
       const result = await client.listDocuments({
         ...archiveFilter,
         limit: ARCHIVE_PAGE_SIZE,
-        offset
+        offset: (page - 1) * ARCHIVE_PAGE_SIZE
       })
-      const documents = result.documents as DocumentRecord[]
-      archiveDocuments.value = reset ? documents : [...archiveDocuments.value, ...documents]
-      archiveHasMore.value = documents.length === ARCHIVE_PAGE_SIZE
+      archiveDocuments.value = result.documents as DocumentRecord[]
+      archiveTotal.value = result.total
+      archivePage.value = page
     } catch (error) {
       console.error('[DocumentsStore] loadArchiveDocuments failed', error)
       archiveLoadError.value = 'settings.documents.archive.loadFailed'
     } finally {
       archiveIsLoading.value = false
     }
+  }
+
+  async function loadArchiveStats(client: DocumentsClient = defaultClient) {
+    try {
+      const result = await client.stats({
+        dateFrom: archiveFilter.dateFrom,
+        dateTo: archiveFilter.dateTo
+      })
+      archiveStats.value = result.stats as DocumentsStatsEntry[]
+    } catch (error) {
+      console.error('[DocumentsStore] loadArchiveStats failed', error)
+    }
+  }
+
+  async function loadArchiveTasks(client: DocumentsClient = defaultClient) {
+    try {
+      const result = await client.listTasks()
+      tasks.value = result.tasks as DocumentsTaskItem[]
+    } catch (error) {
+      console.error('[DocumentsStore] loadArchiveTasks failed', error)
+    }
+  }
+
+  function handleTaskUpdated(payload: DocumentsTaskUpdatedPayload) {
+    const index = tasks.value.findIndex((task) => task.id === payload.id)
+    if (index >= 0) {
+      tasks.value[index] = payload
+    } else {
+      tasks.value.unshift(payload)
+    }
+    if (payload.status === 'done' || payload.status === 'failed') {
+      void loadArchiveStats()
+      void loadArchiveDocuments(archivePage.value)
+    }
+  }
+
+  async function createRecognitionTasks(
+    input: { files: Array<{ path: string; name?: string }>; templateId: string },
+    client: DocumentsClient = defaultClient
+  ) {
+    const result = await client.createTasks({ ...input, source: 'manual' })
+    const created = result.tasks as DocumentsTaskItem[]
+    tasks.value = [...created, ...tasks.value]
+    return created
+  }
+
+  async function retryRecognitionTask(
+    task: DocumentsTaskItem,
+    client: DocumentsClient = defaultClient
+  ) {
+    return createRecognitionTasks(
+      { files: [{ path: task.filePath, name: task.fileName }], templateId: task.templateId },
+      client
+    )
   }
 
   function replaceArchiveDocument(document: DocumentRecord) {
@@ -214,9 +282,18 @@ export const useDocumentsStore = defineStore('documents', () => {
     archiveDocuments,
     archiveIsLoading,
     archiveLoadError,
-    archiveHasMore,
+    archiveTotal,
+    archivePage,
+    archiveTotalPages,
+    archiveStats,
+    tasks,
     archiveFilter,
     loadArchiveDocuments,
+    loadArchiveStats,
+    loadArchiveTasks,
+    handleTaskUpdated,
+    createRecognitionTasks,
+    retryRecognitionTask,
     saveArchiveDocument,
     removeArchiveDocument,
     recognizeDocument,

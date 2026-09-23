@@ -62,6 +62,19 @@ export function formatDateRangeToMs(
     : new Date(year, month - 1, day, 23, 59, 59, 999).getTime()
 }
 
+export function buildDefaultDateRangeTexts(now = new Date()): { from: string; to: string } {
+  const toText = (date: Date): string =>
+    [
+      date.getFullYear(),
+      String(date.getMonth() + 1).padStart(2, '0'),
+      String(date.getDate()).padStart(2, '0')
+    ].join('-')
+  return {
+    from: toText(new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)),
+    to: toText(now)
+  }
+}
+
 export interface FieldEditState {
   key: string
   label: string

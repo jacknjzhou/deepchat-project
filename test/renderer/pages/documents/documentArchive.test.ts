@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  buildDefaultDateRangeTexts,
   buildFieldEditStates,
   buildMoneyColumns,
   formatDateRangeToMs,
@@ -107,6 +108,14 @@ describe('formatDateRangeToMs', () => {
     expect(from).toBe(new Date(2026, 0, 2, 0, 0, 0, 0).getTime())
     const to = formatDateRangeToMs('2026-01-02', 'end')
     expect(to).toBe(new Date(2026, 0, 2, 23, 59, 59, 999).getTime())
+  })
+})
+
+describe('buildDefaultDateRangeTexts', () => {
+  it('builds default last-week date range texts', () => {
+    const { from, to } = buildDefaultDateRangeTexts(new Date('2026-09-23T10:00:00'))
+    expect(from).toBe('2026-09-16')
+    expect(to).toBe('2026-09-23')
   })
 })
 

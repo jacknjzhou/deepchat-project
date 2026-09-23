@@ -12,6 +12,9 @@ import {
   documentsGetRoute,
   documentsListRoute,
   documentsPreviewFileRoute,
+  documentsStatsRoute,
+  documentsTasksCreateRoute,
+  documentsTasksListRoute,
   documentsUpsertRoute,
   type documentsListInputSchema,
   type documentsTemplateUpsertInputSchema,
@@ -20,6 +23,7 @@ import {
   type DeepchatRouteName,
   type DeepchatRouteOutput
 } from '@shared/contracts/routes'
+import { documentsTaskUpdatedEvent } from '@shared/contracts/events'
 import type { z } from 'zod'
 import { getDeepchatBridge } from './core'
 
@@ -77,7 +81,15 @@ export function createDocumentsClient(bridge: DeepchatBridge = getDeepchatBridge
     exportCsv: (input: z.input<typeof documentsExportCsvRoute.input> = {}) =>
       invokeRoute(bridge, documentsExportCsvRoute.name, input),
     previewFile: (input: z.input<typeof documentsPreviewFileRoute.input>) =>
-      invokeRoute(bridge, documentsPreviewFileRoute.name, input)
+      invokeRoute(bridge, documentsPreviewFileRoute.name, input),
+    stats: (input: z.input<typeof documentsStatsRoute.input> = {}) =>
+      invokeRoute(bridge, documentsStatsRoute.name, input),
+    createTasks: (input: z.input<typeof documentsTasksCreateRoute.input>) =>
+      invokeRoute(bridge, documentsTasksCreateRoute.name, input),
+    listTasks: () => invokeRoute(bridge, documentsTasksListRoute.name, {}),
+    onTaskUpdated: (
+      listener: (payload: z.infer<typeof documentsTaskUpdatedEvent.payload>) => void
+    ) => bridge.on(documentsTaskUpdatedEvent.name, listener)
   }
 }
 

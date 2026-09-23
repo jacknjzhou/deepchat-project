@@ -149,4 +149,31 @@ describe('DocumentsClient', () => {
     expect(invoke).toHaveBeenCalledWith('documents.previewFile', { documentId: 'd1', uriIndex: 0 })
     expect(result.mimeType).toBe('image/png')
   })
+
+  it('invokes tasks.create / tasks.list / stats routes', async () => {
+    const invoke = vi.fn().mockResolvedValue({ tasks: [], stats: [] })
+    const bridge = { invoke, on: vi.fn(() => () => undefined) } as unknown as DeepchatBridge
+    const client = createDocumentsClient(bridge)
+
+    await client.createTasks({ files: [{ path: 'C:\\a.png' }], templateId: 'auto' })
+    expect(invoke).toHaveBeenCalledWith('documents.tasks.create', {
+      files: [{ path: 'C:\\a.png' }],
+      templateId: 'auto'
+    })
+    await client.listTasks()
+    expect(invoke).toHaveBeenLastCalledWith('documents.tasks.list', {})
+    await client.stats({ dateFrom: 1 })
+    expect(invoke).toHaveBeenLastCalledWith('documents.stats', { dateFrom: 1 })
+  })
+
+  it('subscribes to documents.task.updated and returns unsubscribe', () => {
+    const off = vi.fn()
+    const on = vi.fn().mockReturnValue(off)
+    const client = createDocumentsClient({ on } as never)
+    const listener = vi.fn()
+    const stop = client.onTaskUpdated(listener)
+    expect(on).toHaveBeenCalledWith('documents.task.updated', listener)
+    stop()
+    expect(off).toHaveBeenCalled()
+  })
 })

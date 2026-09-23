@@ -83,7 +83,8 @@ const stubStore = reactive({
   archiveDocuments: [] as Array<Record<string, unknown>>,
   archiveIsLoading: false,
   archiveLoadError: null as string | null,
-  archiveHasMore: false,
+  archivePage: 1,
+  archiveTotalPages: 1,
   archiveFilter: {
     typeKey: undefined as string | undefined,
     status: undefined as string | undefined,
@@ -145,7 +146,8 @@ async function setup(options: { loadError?: string; hasMore?: boolean } = {}) {
   stubStore.archiveDocuments = [makeRecord()]
   stubStore.archiveIsLoading = false
   stubStore.archiveLoadError = options.loadError ?? null
-  stubStore.archiveHasMore = options.hasMore ?? false
+  stubStore.archivePage = 1
+  stubStore.archiveTotalPages = options.hasMore ? 2 : 1
   stubStore.archiveFilter.typeKey = undefined
   stubStore.archiveFilter.status = undefined
   stubStore.archiveFilter.keyword = undefined
@@ -264,11 +266,11 @@ describe('DocumentsArchivePage', () => {
     expect(stubStore.loadArchiveDocuments).toHaveBeenCalled()
   })
 
-  it('hasMore 时显示加载更多并按增量加载', async () => {
+  it('hasMore 时显示加载更多并加载下一页', async () => {
     const { wrapper } = await setup({ hasMore: true })
     stubStore.loadArchiveDocuments.mockClear()
     await wrapper.get('[data-testid="archive-load-more"]').trigger('click')
     await flushPromises()
-    expect(stubStore.loadArchiveDocuments).toHaveBeenCalledWith(false)
+    expect(stubStore.loadArchiveDocuments).toHaveBeenCalledWith(2)
   })
 })
