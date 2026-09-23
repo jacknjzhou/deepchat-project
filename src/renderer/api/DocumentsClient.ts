@@ -7,9 +7,11 @@ import {
   documentTemplatesTestExtractRoute,
   documentTemplatesUpsertRoute,
   documentsDeleteRoute,
+  documentsExportCsvRoute,
   documentsExtractAndDraftRoute,
   documentsGetRoute,
   documentsListRoute,
+  documentsPreviewFileRoute,
   documentsUpsertRoute,
   type documentsListInputSchema,
   type documentsTemplateUpsertInputSchema,
@@ -71,7 +73,11 @@ export function createDocumentsClient(bridge: DeepchatBridge = getDeepchatBridge
     testExtract: (input: DocumentsTestExtractInput) =>
       invokeRoute(bridge, documentTemplatesTestExtractRoute.name, input),
     extractAndDraft: (input: DocumentsExtractAndDraftInput) =>
-      invokeRoute(bridge, documentsExtractAndDraftRoute.name, input)
+      invokeRoute(bridge, documentsExtractAndDraftRoute.name, input),
+    exportCsv: (input: z.input<typeof documentsExportCsvRoute.input> = {}) =>
+      invokeRoute(bridge, documentsExportCsvRoute.name, input),
+    previewFile: (input: z.input<typeof documentsPreviewFileRoute.input>) =>
+      invokeRoute(bridge, documentsPreviewFileRoute.name, input)
   }
 }
 

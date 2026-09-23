@@ -1,3 +1,6 @@
+import { promises as fs } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import {
   documentTemplatesDeleteRoute,
@@ -20,6 +23,15 @@ import { DocumentsRepository } from '@/documents/repository'
 import { DocumentsDatabase } from '@/documents/data/database'
 import { DocumentTemplatesTable } from '@/documents/data/tables/documentTemplates'
 import { DocumentsTable } from '@/documents/data/tables/documents'
+
+// export/preview handlers touch the real file system; undo the global fs/path mocks
+vi.unmock('fs')
+vi.unmock('node:fs')
+vi.unmock('path')
+vi.unmock('node:path')
+
+const PNG_BASE64 =
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
 
 const sqliteModule = await import('better-sqlite3-multiple-ciphers').catch(() => null)
 
@@ -302,6 +314,128 @@ describeIfSqlite('documents extraction handlers', () => {
 
     const listed = repository.listDocuments({ typeKey: 'invoice_special' })
     expect(listed.length).toBe(1)
+  })
+})
+
+describeIfSqlite('documents export and preview handlers', () => {
+  const makeRepository = () => {
+    const db = new DatabaseCtor(':memory:')
+    new DocumentTemplatesTableCtor(db).createTable()
+    new DocumentsTableCtor(db).createTable()
+    const database = new DocumentsDatabaseCtor({ getDatabase: () => db })
+    return new DocumentsRepository(database)
+  }
+
+  const makeExtractorStub = () => ({
+    extract: vi.fn()
+  })
+
+  const template: DocumentTemplate = {
+    id: 'tpl-1',
+    typeKey: 'contract',
+    name: '合同模板',
+    icon: null,
+    category: '合同类',
+    fields: [
+      {
+        key: 'buyer',
+        label: '买方',
+        valueType: 'text',
+        required: false,
+        promptHint: null,
+        validation: null,
+        enumOptions: null,
+        order: 1
+      }
+    ],
+    extractionMode: 'auto',
+    promptPreset: null,
+    isBuiltin: true,
+    builtinSourceId: null,
+    version: 1,
+    createdAt: 1,
+    updatedAt: 1
+  }
+
+  it('previewFile 返回 base64 与 mime；越界/类型不符报错', async () => {
+    const repository = makeRepository()
+    const dir = await fs.mkdtemp(join(tmpdir(), 'documents-preview-'))
+    try {
+      const pngPath = join(dir, 'a.png')
+      const textPath = join(dir, 'b.txt')
+      await fs.writeFile(pngPath, Buffer.from(PNG_BASE64, 'base64'))
+      await fs.writeFile(textPath, 'plain text')
+      repository.upsertTemplate(template)
+      const document = repository.insertDocument({
+        templateId: template.id,
+        typeKey: template.typeKey,
+        templateSnapshot: template,
+        fields: {},
+        fileUris: [pngPath, textPath],
+        source: 'manual',
+        sessionId: null,
+        status: 'draft',
+        now: 1000
+      })
+      const routes = createDocumentsRoutes(repository, makeExtractorStub() as never)
+      const handler = routes.get('documents.previewFile')
+      expect(handler).toBeDefined()
+
+      const preview = await handler!({ documentId: document.id, uriIndex: 0 })
+      expect(preview.mimeType).toBe('image/png')
+      expect(preview.name).toBe('a.png')
+      expect(preview.dataBase64.length).toBeGreaterThan(0)
+      await expect(handler!({ documentId: document.id, uriIndex: 5 })).rejects.toThrow()
+      await expect(handler!({ documentId: document.id, uriIndex: 1 })).rejects.toThrow(
+        'Unsupported preview type'
+      )
+    } finally {
+      await fs.rm(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('exportCsv 写入用户选择的路径', async () => {
+    const repository = makeRepository()
+    const dir = await fs.mkdtemp(join(tmpdir(), 'documents-export-'))
+    try {
+      const targetPath = join(dir, 'out.csv')
+      repository.upsertTemplate(template)
+      repository.insertDocument({
+        templateId: template.id,
+        typeKey: template.typeKey,
+        templateSnapshot: template,
+        fields: { buyer: { value: '甲,公司', uncertain: false } },
+        fileUris: [],
+        source: 'manual',
+        sessionId: null,
+        status: 'draft',
+        now: 1000
+      })
+      const routes = createDocumentsRoutes(repository, makeExtractorStub() as never, {
+        showSaveDialog: async () => ({ canceled: false, filePath: targetPath })
+      })
+      const handler = routes.get('documents.exportCsv')
+      expect(handler).toBeDefined()
+
+      const result = await handler!({ typeKey: 'contract' })
+      expect(result).toEqual({ canceled: false, path: targetPath })
+      const content = await fs.readFile(targetPath, 'utf-8')
+      expect(content.startsWith(String.fromCharCode(0xfeff))).toBe(true)
+      expect(content).toContain('"甲,公司"')
+    } finally {
+      await fs.rm(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('exportCsv 用户取消时返回 canceled', async () => {
+    const repository = makeRepository()
+    const routes = createDocumentsRoutes(repository, makeExtractorStub() as never, {
+      showSaveDialog: async () => ({ canceled: true })
+    })
+    const handler = routes.get('documents.exportCsv')
+    expect(handler).toBeDefined()
+
+    expect(await handler!({})).toEqual({ canceled: true })
   })
 })
 

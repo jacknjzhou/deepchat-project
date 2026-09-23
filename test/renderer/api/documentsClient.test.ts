@@ -130,4 +130,23 @@ describe('DocumentsClient', () => {
     expect(result.document.status).toBe('draft')
     expect(result.meta.route).toBe('ocr')
   })
+
+  it('exportCsv 透传筛选参数', async () => {
+    const invoke = vi.fn(async () => ({ canceled: true }))
+    const bridge = { invoke, on: vi.fn(() => () => undefined) } as unknown as DeepchatBridge
+    const client = createDocumentsClient(bridge)
+
+    await client.exportCsv({ typeKey: 'contract', dateFrom: 1 })
+    expect(invoke).toHaveBeenCalledWith('documents.exportCsv', { typeKey: 'contract', dateFrom: 1 })
+  })
+
+  it('previewFile 透传定位参数', async () => {
+    const invoke = vi.fn(async () => ({ dataBase64: 'aGk=', mimeType: 'image/png', name: 'a.png' }))
+    const bridge = { invoke, on: vi.fn(() => () => undefined) } as unknown as DeepchatBridge
+    const client = createDocumentsClient(bridge)
+
+    const result = await client.previewFile({ documentId: 'd1', uriIndex: 0 })
+    expect(invoke).toHaveBeenCalledWith('documents.previewFile', { documentId: 'd1', uriIndex: 0 })
+    expect(result.mimeType).toBe('image/png')
+  })
 })
