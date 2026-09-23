@@ -194,4 +194,50 @@ describe('RecognitionTaskManager', () => {
     expect(markedFailed).toBe(true)
     expect(processed).toEqual(['auto'])
   })
+
+  it('keeps processing the queue after a task fails', async () => {
+    const statuses: string[] = []
+    let calls = 0
+    const manager = new RecognitionTaskManager({
+      repository: {
+        insertTasks: (inputs) => inputs.map((input, i) => makeTask({ id: `t${i}` })),
+        updateTask: (id, input) => {
+          statuses.push(`${id}:${input.status}`)
+          return makeTask({ id, status: input.status })
+        },
+        listRecentTasks: () => [],
+        listPendingTasks: () => [],
+        markRunningTasksFailed: () => {},
+        countTaskBatch: () => ({ done: 0, total: 2 }),
+        insertDocument: () => ({ id: 'doc' })
+      },
+      extractor: {
+        extract: async () => {
+          calls += 1
+          if (calls === 1) {
+            throw new Error('first fails')
+          }
+          return {
+            template: { id: 'tpl1', typeKey: 'k' },
+            route: 'vision',
+            fields: {},
+            rawOutput: '',
+            durationMs: 1,
+            issues: []
+          }
+        }
+      },
+      publishTaskUpdated: () => {}
+    })
+    manager.submit({
+      files: [{ path: 'C:\\1' }, { path: 'C:\\2' }],
+      templateId: 'auto',
+      source: 'manual'
+    })
+    await manager.idle()
+    // 并发 2：pump 同步启动 t0/t1（两个 running 先入列），t0 的 rejection 续体作为先入队
+    // 的微任务先于 t1 的 resolve 续体执行，因此顺序是确定的。
+    expect(statuses).toEqual(['t0:running', 't1:running', 't0:failed', 't1:done'])
+    expect(calls).toBe(2)
+  })
 })
