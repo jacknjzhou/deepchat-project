@@ -2809,6 +2809,7 @@
       "templatePlaceholder": "Выберите шаблон",
       "recognize": "Распознать",
       "recognizing": "Распознавание…",
+      "recognizePdfHint": "Сканированные PDF сначала распознаются локальным OCR; первый запуск может занять около минуты.",
       "recognizeFailed": "Не удалось распознать",
       "fieldRequired": "\"{label}\" — обязательное поле"
     },

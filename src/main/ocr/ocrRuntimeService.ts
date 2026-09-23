@@ -176,6 +176,11 @@ export class OcrRuntimeService {
     }
   }
 
+  /** Starts the helper process and loads the model ahead of the first extraction. */
+  async warmup(): Promise<void> {
+    await this.getResources()
+  }
+
   async clearCache(): Promise<void> {
     const resources = await this.getResources()
     if (this.isResourcesBusy(resources)) {

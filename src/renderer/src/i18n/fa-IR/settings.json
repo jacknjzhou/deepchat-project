@@ -2809,6 +2809,7 @@
       "templatePlaceholder": "قالب را انتخاب کنید",
       "recognize": "شناسایی",
       "recognizing": "در حال شناسایی…",
+      "recognizePdfHint": "فایل‌های PDF اسکن‌شده ابتدا با OCR محلی پردازش می‌شوند؛ اولین اجرا ممکن است حدود یک دقیقه طول بکشد.",
       "recognizeFailed": "شناسایی ناموفق بود",
       "fieldRequired": "\"{label}\" الزامی است"
     },

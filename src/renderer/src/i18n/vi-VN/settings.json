@@ -308,6 +308,7 @@
       "templatePlaceholder": "Chọn mẫu",
       "recognize": "Nhận diện",
       "recognizing": "Đang nhận diện…",
+      "recognizePdfHint": "PDF quét sẽ được nhận diện bằng OCR cục bộ trước; lần đầu có thể mất khoảng một phút.",
       "recognizeFailed": "Nhận diện thất bại",
       "fieldRequired": "\"{label}\" là bắt buộc"
     },

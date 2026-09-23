@@ -172,6 +172,7 @@ import {
 } from '@shadcn/components/ui/select'
 import { DcButton } from '@dc-ui/components/button'
 import { rendererNotificationManager } from '@renderer-notifications/rendererNotificationRuntime'
+import { createOcrClient } from '@api/OcrClient'
 import { useDocumentsStore } from '@/stores/documents'
 import type { DocumentRecord } from '@shared/documents'
 import {
@@ -291,4 +292,10 @@ function onRecognized(document: DocumentRecord) {
 
 void store.loadTemplates()
 void store.loadArchiveDocuments()
+
+// Start the OCR helper ahead of the first recognition so scanned PDFs skip
+// the cold start. Failures surface naturally when a real extraction runs.
+void createOcrClient()
+  .warmup()
+  .catch(() => {})
 </script>

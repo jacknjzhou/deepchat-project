@@ -2809,6 +2809,7 @@
       "templatePlaceholder": "テンプレートを選択",
       "recognize": "認識を開始",
       "recognizing": "認識中…",
+      "recognizePdfHint": "スキャンPDFはまずローカルOCRで処理され、初回は1分ほどかかる場合があります。",
       "recognizeFailed": "認識に失敗しました",
       "fieldRequired": "「{label}」は必須です"
     },

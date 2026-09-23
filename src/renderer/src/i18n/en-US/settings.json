@@ -308,6 +308,7 @@
       "templatePlaceholder": "Select a template",
       "recognize": "Recognize",
       "recognizing": "Recognizing…",
+      "recognizePdfHint": "Scanned PDFs go through local OCR first; the first run may take about a minute.",
       "recognizeFailed": "Recognition failed",
       "fieldRequired": "\"{label}\" is required"
     },

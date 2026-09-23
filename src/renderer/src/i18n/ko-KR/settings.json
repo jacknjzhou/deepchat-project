@@ -2809,6 +2809,7 @@
       "templatePlaceholder": "템플릿 선택",
       "recognize": "인식 시작",
       "recognizing": "인식 중…",
+      "recognizePdfHint": "스캔 PDF는 로컬 OCR을 먼저 거치며, 첫 실행은 1분 정도 걸릴 수 있습니다.",
       "recognizeFailed": "인식 실패",
       "fieldRequired": "\"{label}\" 은(는) 필수입니다"
     },

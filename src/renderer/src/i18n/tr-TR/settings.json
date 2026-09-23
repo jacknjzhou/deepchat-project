@@ -308,6 +308,7 @@
       "templatePlaceholder": "Şablon seç",
       "recognize": "Tanı",
       "recognizing": "Tanınıyor…",
+      "recognizePdfHint": "Taranan PDF'ler önce yerel OCR'dan geçer; ilk işlem yaklaşık bir dakika sürebilir.",
       "recognizeFailed": "Tanıma başarısız",
       "fieldRequired": "\"{label}\" zorunludur"
     },

@@ -2809,6 +2809,7 @@
       "templatePlaceholder": "בחר תבנית",
       "recognize": "זהה",
       "recognizing": "מזהה…",
+      "recognizePdfHint": "קובצי PDF סרוקים עוברים קודם OCR מקומי; הריצה הראשונה עשויה להימשך כדקה.",
       "recognizeFailed": "זיהוי נכשל",
       "fieldRequired": "\"{label}\" נדרש"
     },

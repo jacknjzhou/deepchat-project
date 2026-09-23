@@ -308,6 +308,7 @@
       "templatePlaceholder": "Pilih templat",
       "recognize": "Kenali",
       "recognizing": "Mengenali…",
+      "recognizePdfHint": "PDF hasil pindai diproses dengan OCR lokal terlebih dahulu; proses pertama dapat memakan waktu sekitar satu menit.",
       "recognizeFailed": "Pengenalan gagal",
       "fieldRequired": "\"{label}\" wajib diisi"
     },

@@ -94,6 +94,12 @@ export const ocrClearCacheRoute = defineRouteContract({
   })
 })
 
+export const ocrWarmupRoute = defineRouteContract({
+  name: 'ocr.warmup',
+  input: z.object({}).default({}),
+  output: z.object({})
+})
+
 export const OcrInputMimeTypeSchema = z.enum([
   'application/pdf',
   'image/bmp',

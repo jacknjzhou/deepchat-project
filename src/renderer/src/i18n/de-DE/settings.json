@@ -308,6 +308,7 @@
       "templatePlaceholder": "Vorlage auswählen",
       "recognize": "Erkennen",
       "recognizing": "Wird erkannt…",
+      "recognizePdfHint": "Gescannte PDFs werden zuerst lokal per OCR erkannt; der erste Lauf kann etwa eine Minute dauern.",
       "recognizeFailed": "Erkennung fehlgeschlagen",
       "fieldRequired": "\"{label}\" ist erforderlich"
     },

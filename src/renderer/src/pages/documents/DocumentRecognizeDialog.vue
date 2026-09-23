@@ -40,6 +40,13 @@
             </SelectContent>
           </Select>
         </div>
+        <p
+          v-if="isPdfFile && !error"
+          class="text-xs text-muted-foreground"
+          data-testid="recognize-pdf-hint"
+        >
+          {{ t('settings.documents.archive.recognizePdfHint') }}
+        </p>
         <p v-if="error" class="text-sm text-destructive" data-testid="recognize-error">
           {{ t('settings.documents.archive.recognizeFailed') }}: {{ error }}
         </p>
@@ -58,7 +65,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Input } from '@shadcn/components/ui/input'
 import {
@@ -101,11 +108,31 @@ const submitting = ref(false)
 const error = ref('')
 
 const canSubmit = computed(() => Boolean(filePath.value && templateId.value))
+const isPdfFile = computed(() => filePath.value.toLowerCase().endsWith('.pdf'))
+const elapsedSeconds = ref(0)
+let elapsedTimer: ReturnType<typeof setInterval> | null = null
 const submitText = computed(() =>
   submitting.value
-    ? t('settings.documents.archive.recognizing')
+    ? `${t('settings.documents.archive.recognizing')} · ${elapsedSeconds.value}s`
     : t('settings.documents.archive.recognize')
 )
+
+function startElapsedTimer() {
+  stopElapsedTimer()
+  elapsedSeconds.value = 0
+  elapsedTimer = setInterval(() => {
+    elapsedSeconds.value += 1
+  }, 1000)
+}
+
+function stopElapsedTimer() {
+  if (elapsedTimer) {
+    clearInterval(elapsedTimer)
+    elapsedTimer = null
+  }
+}
+
+onBeforeUnmount(stopElapsedTimer)
 
 function fillDefaultTemplateId() {
   if (!templateId.value) {
@@ -162,6 +189,7 @@ async function onSubmit() {
   }
   submitting.value = true
   error.value = ''
+  startElapsedTimer()
   try {
     const result = await store.recognizeDocument({
       templateId: templateId.value,
@@ -174,6 +202,7 @@ async function onSubmit() {
     console.error('[DocumentRecognizeDialog] recognize failed', err)
     error.value = err instanceof Error ? err.message : String(err)
   } finally {
+    stopElapsedTimer()
     submitting.value = false
   }
 }

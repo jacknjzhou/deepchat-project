@@ -2809,6 +2809,7 @@
       "templatePlaceholder": "Vælg skabelon",
       "recognize": "Genkend",
       "recognizing": "Genkender…",
+      "recognizePdfHint": "Scannede PDF-filer genkendes først via lokal OCR; første kørsel kan tage omkring et minut.",
       "recognizeFailed": "Genkendelse mislykkedes",
       "fieldRequired": "\"{label}\" er påkrævet"
     },

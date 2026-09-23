@@ -2219,6 +2219,7 @@ declare module 'vue-i18n' {
         templatePlaceholder: string
         recognize: string
         recognizing: string
+        recognizePdfHint: string
         recognizeFailed: string
         fieldRequired: string
       }

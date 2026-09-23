@@ -308,6 +308,7 @@
       "templatePlaceholder": "Pilih templat",
       "recognize": "Kenali",
       "recognizing": "Mengecam…",
+      "recognizePdfHint": "PDF imbasan diproses dengan OCR setempat terlebih dahulu; jalanan pertama mungkin mengambil masa kira-kira satu minit.",
       "recognizeFailed": "Pengecaman gagal",
       "fieldRequired": "\"{label}\" adalah wajib"
     },

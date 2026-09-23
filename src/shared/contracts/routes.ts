@@ -309,7 +309,8 @@ import {
   ocrClearCacheRoute,
   ocrExtractArtifactRoute,
   ocrExtractUploadRoute,
-  ocrGetRuntimeStatusRoute
+  ocrGetRuntimeStatusRoute,
+  ocrWarmupRoute
 } from './routes/ocr.routes'
 import {
   onboardingCompleteRoute,
@@ -1145,6 +1146,7 @@ const DEEPCHAT_ROUTE_CATALOG_PART_5 = {
   [memoryDeleteDirectiveRoute.name]: memoryDeleteDirectiveRoute,
   [ocrGetRuntimeStatusRoute.name]: ocrGetRuntimeStatusRoute,
   [ocrClearCacheRoute.name]: ocrClearCacheRoute,
+  [ocrWarmupRoute.name]: ocrWarmupRoute,
   [ocrExtractUploadRoute.name]: ocrExtractUploadRoute,
   [ocrExtractArtifactRoute.name]: ocrExtractArtifactRoute,
   [skillsListMetadataRoute.name]: skillsListMetadataRoute,

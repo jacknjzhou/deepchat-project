@@ -2809,6 +2809,7 @@
       "templatePlaceholder": "Sélectionner un modèle",
       "recognize": "Reconnaître",
       "recognizing": "Reconnaissance…",
+      "recognizePdfHint": "Les PDF scannés passent d'abord par l'OCR local ; le premier traitement peut prendre environ une minute.",
       "recognizeFailed": "Échec de la reconnaissance",
       "fieldRequired": "\"{label}\" est requis"
     },

@@ -308,6 +308,7 @@
       "templatePlaceholder": "Wybierz szablon",
       "recognize": "Rozpoznaj",
       "recognizing": "Rozpoznawanie…",
+      "recognizePdfHint": "Skanowane pliki PDF są najpierw rozpoznawane przez lokalny OCR; pierwsze uruchomienie może potrwać około minuty.",
       "recognizeFailed": "Rozpoznawanie nie powiodło się",
       "fieldRequired": "\"{label}\" jest wymagane"
     },

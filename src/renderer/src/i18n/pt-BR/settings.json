@@ -2809,6 +2809,7 @@
       "templatePlaceholder": "Selecionar modelo",
       "recognize": "Reconhecer",
       "recognizing": "Reconhecendo…",
+      "recognizePdfHint": "PDFs digitalizados passam primeiro por OCR local; a primeira execução pode levar cerca de um minuto.",
       "recognizeFailed": "Falha no reconhecimento",
       "fieldRequired": "\"{label}\" é obrigatório"
     },
