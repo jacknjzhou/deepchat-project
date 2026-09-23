@@ -1,0 +1,197 @@
+import { describe, expect, it, vi } from 'vitest'
+import { RecognitionTaskManager } from '@/documents/taskManager'
+import type { DocumentTask } from '@/documents/repository'
+
+vi.unmock('fs')
+vi.unmock('node:fs')
+vi.unmock('path')
+vi.unmock('node:path')
+
+function makeTask(overrides: Partial<DocumentTask> = {}): DocumentTask {
+  return {
+    id: overrides.id ?? Math.random().toString(36).slice(2),
+    batchId: 'b1',
+    filePath: 'C:\\a.png',
+    fileName: 'a.png',
+    templateId: 'auto',
+    source: 'manual',
+    status: 'pending',
+    typeKey: null,
+    documentId: null,
+    error: null,
+    createdAt: 1,
+    updatedAt: 1,
+    ...overrides
+  }
+}
+
+describe('RecognitionTaskManager', () => {
+  it('creates tasks and returns immediately, then processes to done', async () => {
+    const updates: Array<{
+      id: string
+      status: string
+      typeKey?: string | null
+      documentId?: string | null
+    }> = []
+    const published: string[] = []
+    const manager = new RecognitionTaskManager({
+      repository: {
+        insertTasks: (inputs) =>
+          inputs.map((input, i) =>
+            makeTask({ id: `t${i}`, filePath: input.filePath, fileName: input.fileName })
+          ),
+        updateTask: (id, input) => {
+          updates.push({
+            id,
+            status: input.status,
+            typeKey: input.typeKey,
+            documentId: input.documentId
+          })
+          return makeTask({
+            id,
+            status: input.status,
+            typeKey: input.typeKey ?? null,
+            documentId: input.documentId ?? null
+          })
+        },
+        listRecentTasks: () => [],
+        listPendingTasks: () => [],
+        markRunningTasksFailed: () => {},
+        countTaskBatch: (batchId) => ({ done: 0, total: batchId === 'b1' ? 1 : 0 }),
+        insertDocument: () => ({ id: 'doc-1' })
+      },
+      extractor: {
+        extract: async () => ({
+          template: { id: 'tpl1', typeKey: 'invoice_special' },
+          route: 'vision',
+          fields: {},
+          rawOutput: '',
+          durationMs: 1,
+          issues: []
+        })
+      },
+      publishTaskUpdated: ({ task }) => published.push(task.status)
+    })
+    const tasks = manager.submit({
+      files: [{ path: 'C:\\a.png', name: 'a.png' }],
+      templateId: 'auto',
+      source: 'manual'
+    })
+    expect(tasks).toHaveLength(1)
+    expect(tasks[0]?.status).toBe('pending') // 立即返回
+    await manager.idle()
+    expect(updates.map((u) => u.status)).toEqual(['running', 'done'])
+    expect(updates[1]?.typeKey).toBe('invoice_special')
+    expect(updates[1]?.documentId).toBe('doc-1')
+    expect(published).toEqual(['running', 'done'])
+  })
+
+  it('marks failed tasks with the error message', async () => {
+    const updates: Array<{ status: string; error?: string | null }> = []
+    const manager = new RecognitionTaskManager({
+      repository: {
+        insertTasks: (inputs) => inputs.map((input, i) => makeTask({ id: `t${i}` })),
+        updateTask: (id, input) => {
+          updates.push({ status: input.status, error: input.error ?? null })
+          return makeTask({ id, status: input.status, error: input.error ?? null })
+        },
+        listRecentTasks: () => [],
+        listPendingTasks: () => [],
+        markRunningTasksFailed: () => {},
+        countTaskBatch: () => ({ done: 1, total: 1 }),
+        insertDocument: () => ({ id: 'doc-1' })
+      },
+      extractor: {
+        extract: async () => {
+          throw new Error('auto classification failed')
+        }
+      },
+      publishTaskUpdated: () => {}
+    })
+    manager.submit({ files: [{ path: 'C:\\a.png' }], templateId: 'auto', source: 'manual' })
+    await manager.idle()
+    expect(updates.map((u) => u.status)).toEqual(['running', 'failed'])
+    expect(updates[1]?.error).toBe('auto classification failed')
+  })
+
+  it('processes with bounded concurrency', async () => {
+    let inFlight = 0
+    let maxInFlight = 0
+    const manager = new RecognitionTaskManager({
+      repository: {
+        insertTasks: (inputs) => inputs.map((input, i) => makeTask({ id: `t${i}` })),
+        updateTask: (id, input) => makeTask({ id, status: input.status }),
+        listRecentTasks: () => [],
+        listPendingTasks: () => [],
+        markRunningTasksFailed: () => {},
+        countTaskBatch: () => ({ done: 0, total: 4 }),
+        insertDocument: () => ({ id: 'doc' })
+      },
+      extractor: {
+        extract: async () => {
+          inFlight += 1
+          maxInFlight = Math.max(maxInFlight, inFlight)
+          await new Promise((resolve) => setTimeout(resolve, 5))
+          inFlight -= 1
+          return {
+            template: { id: 'tpl1', typeKey: 'k' },
+            route: 'vision',
+            fields: {},
+            rawOutput: '',
+            durationMs: 1,
+            issues: []
+          }
+        }
+      },
+      publishTaskUpdated: () => {},
+      concurrency: 2
+    })
+    manager.submit({
+      files: [{ path: 'C:\\1' }, { path: 'C:\\2' }, { path: 'C:\\3' }, { path: 'C:\\4' }],
+      templateId: 'auto',
+      source: 'manual'
+    })
+    await manager.idle()
+    expect(maxInFlight).toBe(2)
+  })
+
+  it('resumePending fails running tasks and re-queues pending ones', async () => {
+    const stored = [
+      makeTask({ id: 'running-1', status: 'running' }),
+      makeTask({ id: 'pending-1', status: 'pending' })
+    ]
+    let markedFailed = false
+    const processed: string[] = []
+    const manager = new RecognitionTaskManager({
+      repository: {
+        insertTasks: () => [],
+        updateTask: (id, input) => makeTask({ id, status: input.status }),
+        listRecentTasks: () => [],
+        listPendingTasks: () => stored.filter((t) => t.status === 'pending'),
+        markRunningTasksFailed: () => {
+          markedFailed = true
+        },
+        countTaskBatch: () => ({ done: 0, total: 1 }),
+        insertDocument: () => ({ id: 'doc' })
+      },
+      extractor: {
+        extract: async (input) => {
+          processed.push(input.templateId)
+          return {
+            template: { id: 'tpl1', typeKey: 'k' },
+            route: 'vision',
+            fields: {},
+            rawOutput: '',
+            durationMs: 1,
+            issues: []
+          }
+        }
+      },
+      publishTaskUpdated: () => {}
+    })
+    await manager.resumePending()
+    await manager.idle()
+    expect(markedFailed).toBe(true)
+    expect(processed).toEqual(['auto'])
+  })
+})

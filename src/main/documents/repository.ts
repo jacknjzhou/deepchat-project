@@ -53,6 +53,42 @@ export interface DocumentTask {
   updatedAt: number
 }
 
+export interface DocumentRepositoryTaskPort {
+  insertTasks(
+    inputs: Array<{
+      batchId: string
+      filePath: string
+      fileName: string
+      templateId: string
+      source?: 'chat' | 'manual'
+    }>
+  ): DocumentTask[]
+  updateTask(
+    id: string,
+    input: {
+      status: DocumentTaskStatus
+      typeKey?: string | null
+      documentId?: string | null
+      error?: string | null
+    }
+  ): DocumentTask | null
+  listRecentTasks(limit?: number): DocumentTask[]
+  listPendingTasks(): DocumentTask[]
+  markRunningTasksFailed(error: string): void
+  countTaskBatch(batchId: string): { done: number; total: number }
+  insertDocument(input: {
+    templateId: string
+    typeKey: string
+    templateSnapshot: unknown
+    fields: Record<string, { value: unknown; uncertain: boolean }>
+    fileUris: string[]
+    source: 'chat' | 'manual'
+    sessionId: string | null
+    status: 'draft' | 'confirmed'
+    now?: number
+  }): { id: string }
+}
+
 const toTemplate = (row: DocumentTemplateRow): DocumentTemplate => ({
   id: row.id,
   typeKey: row.type_key,
