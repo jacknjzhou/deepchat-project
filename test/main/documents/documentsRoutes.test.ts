@@ -225,13 +225,6 @@ describe('documents route contracts', () => {
     })
     expect(input.files).toHaveLength(2)
     expect(input.source).toBe('manual')
-    expect(
-      () =>
-        documentsTasksCreateRoute.input.parse({
-          files: [{ path: 'C:\\a.png' }],
-          templateId: 'auto'
-        } as never).files
-    ).toBeDefined()
     // 上限 20
     expect(() =>
       documentsTasksCreateRoute.input.parse({
