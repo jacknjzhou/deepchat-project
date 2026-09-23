@@ -2823,7 +2823,8 @@
       "taskRetryFailed": "Failed to retry task",
       "filesSelected": "{count} file(s) selected",
       "autoClassify": "Auto classify",
-      "taskQueuedToast": "Submitted {count} recognition task(s)"
+      "taskQueuedToast": "Submitted {count} recognition task(s)",
+      "filesLimit": "You can select up to 20 files"
     },
     "test": {
       "title": "Prøvetest",

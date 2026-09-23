@@ -207,6 +207,16 @@ describe('DocumentRecognizeDialog', () => {
     expect(filesInputValue(wrapper)).toContain('1')
   })
 
+  it('选择超过 20 个文件时截断并提示上限', async () => {
+    const paths = Array.from({ length: 21 }, (_, i) => `C:\\f${i}.png`)
+    const { wrapper } = await setup()
+    await selectFiles(wrapper, paths)
+    expect(wrapper.findAll('[data-testid^="recognize-file-remove-"]').length).toBe(20)
+    expect(wrapper.get('[data-testid="recognize-error"]').text()).toContain(
+      'settings.documents.archive.filesLimit'
+    )
+  })
+
   it('提交中按钮禁用', async () => {
     let resolveTasks!: (value: Array<Record<string, unknown>>) => void
     stubStore.createRecognitionTasks.mockImplementationOnce(

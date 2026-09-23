@@ -322,7 +322,8 @@
       "taskRetryFailed": "重试失败",
       "filesSelected": "已选 {count} 个文件",
       "autoClassify": "自动分类",
-      "taskQueuedToast": "已提交 {count} 个识别任务"
+      "taskQueuedToast": "已提交 {count} 个识别任务",
+      "filesLimit": "最多选择 20 个文件"
     },
     "test": {
       "title": "样张测试",

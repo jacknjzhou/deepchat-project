@@ -10,7 +10,9 @@
           <div class="flex items-center gap-2">
             <Input
               :model-value="
-                t('settings.documents.archive.filesSelected', { count: selectedFiles.length })
+                selectedFiles.length === 0
+                  ? t('settings.documents.archive.filePlaceholder')
+                  : t('settings.documents.archive.filesSelected', { count: selectedFiles.length })
               "
               readonly
               data-testid="recognize-file-input"
@@ -52,7 +54,7 @@
           >
             <SelectTrigger data-testid="recognize-template-trigger"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="__auto__">
+              <SelectItem :value="AUTO_VALUE">
                 {{ t('settings.documents.archive.autoClassify') }}
               </SelectItem>
               <SelectItem v-for="tpl in store.templates" :key="tpl.id" :value="tpl.id">
@@ -122,6 +124,8 @@ const store = useDocumentsStore()
 const deviceClient = createDeviceClient()
 
 const AUTO_VALUE = '__auto__'
+// Keep in sync with documents.tasks.create input max in documents.routes.ts.
+const MAX_FILES = 20
 const selectedFiles = ref<Array<{ path: string; name: string }>>([])
 const templateId = ref(AUTO_VALUE)
 const submitting = ref(false)
@@ -161,11 +165,16 @@ async function onSelectFile() {
       return
     }
     const existing = new Set(selectedFiles.value.map((file) => file.path))
+    let limitReached = false
     for (const uri of result.filePaths) {
+      if (selectedFiles.value.length >= MAX_FILES) {
+        limitReached = true
+        break
+      }
       if (existing.has(uri)) continue
       selectedFiles.value.push({ path: uri, name: uri.split(/[\\/]/).pop() ?? uri })
     }
-    error.value = ''
+    error.value = limitReached ? t('settings.documents.archive.filesLimit') : ''
   } catch (err) {
     console.error('[DocumentRecognizeDialog] select files failed', err)
   }
