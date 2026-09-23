@@ -1,4 +1,4 @@
-import { mkdir } from 'node:fs/promises'
+import { mkdir, readlink, rm, symlink } from 'node:fs/promises'
 import path from 'node:path'
 
 import type { ToolchainKind } from '@shared/types/toolchains'
@@ -52,6 +52,37 @@ export class OcrRuntimeBusyError extends Error {
     super('OCR cache cannot be cleared while extraction is active')
     this.name = 'OcrRuntimeBusyError'
   }
+}
+
+const HELPER_BUNDLE_PATH_LIMIT = 240
+const HELPER_BUNDLE_LINK_NAME = 'bundle-link'
+
+/**
+ * The native OCR helper (std::filesystem) cannot open bundle files under
+ * paths longer than MAX_PATH, which happens with deep pnpm store paths on
+ * Windows (e.g. CoreML weights inside the model bundle). Expose the bundle
+ * through a short junction so the helper sees a MAX_PATH-safe path.
+ * No-op on non-Windows platforms and for short paths.
+ */
+export async function resolveHelperAccessibleBundlePath(
+  bundlePath: string,
+  anchorDir: string
+): Promise<string> {
+  if (process.platform !== 'win32' || bundlePath.length < HELPER_BUNDLE_PATH_LIMIT) {
+    return bundlePath
+  }
+  const linkPath = path.join(anchorDir, HELPER_BUNDLE_LINK_NAME)
+  let linked = false
+  try {
+    linked = (await readlink(linkPath)) === bundlePath
+  } catch {
+    linked = false
+  }
+  if (!linked) {
+    await rm(linkPath, { force: true, recursive: true })
+    await symlink(bundlePath, linkPath, 'junction')
+  }
+  return linkPath
 }
 
 /** Lazily owns the offline OCR helper, engine, and derived cache for the application lifetime. */
@@ -199,7 +230,10 @@ export class OcrRuntimeService {
       host = new LightOcrProcessHost({
         nodeExecutable: availability.assets.nodeExecutable,
         helperEntryPath: availability.assets.helperEntryPath,
-        bundlePath: availability.assets.bundlePath,
+        bundlePath: await resolveHelperAccessibleBundlePath(
+          availability.assets.bundlePath,
+          cacheDir
+        ),
         expectedBundleId: availability.assets.bundleId,
         expectedNodeVersion: availability.assets.nodeVersion,
         nativePackageDir: availability.assets.nativePackageDir,
