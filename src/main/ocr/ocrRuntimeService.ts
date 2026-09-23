@@ -76,7 +76,9 @@ export async function resolveHelperAccessibleBundlePath(
     return bundlePath
   }
   const copyPath = path.join(anchorDir, HELPER_BUNDLE_COPY_NAME)
-  const markerPath = path.join(copyPath, HELPER_BUNDLE_ID_MARKER)
+  // Keep the marker outside the copy: the helper rejects bundles containing
+  // files that are not listed in SHA256SUMS.
+  const markerPath = path.join(anchorDir, `${HELPER_BUNDLE_COPY_NAME}${HELPER_BUNDLE_ID_MARKER}`)
   let valid = false
   try {
     valid = (await readFile(markerPath, 'utf8')).trim() === bundleId

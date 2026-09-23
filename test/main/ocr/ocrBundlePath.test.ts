@@ -71,10 +71,18 @@ describe('resolveHelperAccessibleBundlePath', () => {
     const bundle = await makeBundle('payload')
     const copyPath = path.join(root, 'bundle-copy')
     await cp(bundle, copyPath, { recursive: true })
-    await writeFile(path.join(copyPath, '.bundle-id'), 'stale-id')
+    await writeFile(path.join(root, 'bundle-copy.bundle-id'), 'stale-id')
 
     const resolved = await resolveHelperAccessibleBundlePath(bundle, root, BUNDLE_ID)
     expect(resolved).toBe(copyPath)
-    await expect(readFile(path.join(resolved, '.bundle-id'), 'utf8')).resolves.toBe(BUNDLE_ID)
+    await expect(readFile(path.join(root, 'bundle-copy.bundle-id'), 'utf8')).resolves.toBe(
+      BUNDLE_ID
+    )
+  })
+
+  it.runIf(process.platform === 'win32')('keeps the marker outside the bundle copy', async () => {
+    const bundle = await makeBundle('payload')
+    const resolved = await resolveHelperAccessibleBundlePath(bundle, root, BUNDLE_ID)
+    await expect(readFile(path.join(resolved, '.bundle-id'), 'utf8')).rejects.toThrow()
   })
 })
