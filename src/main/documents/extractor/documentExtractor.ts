@@ -48,7 +48,10 @@ export interface DocumentExtractorDeps {
     hasTextLayer: boolean
     pageCount?: number
   }>
-  renderPdfPages: (filePath: string) => Promise<{ dataUrls: string[]; pageCount: number }>
+  renderPdfPages: (
+    filePath: string,
+    options?: { maxPages?: number }
+  ) => Promise<{ dataUrls: string[]; pageCount: number }>
   extractOcrText: (filePath: string) => Promise<string>
   now?: () => number
 }
@@ -344,12 +347,40 @@ export class DocumentExtractor {
         }
       ]
     } else if (isPdfFile(file)) {
-      target = this.requireTarget(await this.deps.resolveTextTarget(), 'defaultModel')
-      const sample = (pdfText?.text ?? '').slice(0, 4000)
-      messages = [
-        { role: 'system', content: system },
-        { role: 'user', content: [user, '', sample].join('\n') }
-      ]
+      const scanned = pdfText !== null && !pdfText.hasTextLayer
+      let visionTarget: ModelTarget | null = null
+      let visionMessages: ChatMessage[] | null = null
+      if (scanned) {
+        const candidate = await this.deps.resolveVisionTarget()
+        if (candidate) {
+          const { dataUrls } = await this.deps.renderPdfPages(file.path, { maxPages: 1 })
+          const firstPage = dataUrls[0]
+          if (firstPage) {
+            visionTarget = candidate
+            visionMessages = [
+              { role: 'system', content: system },
+              {
+                role: 'user',
+                content: [
+                  { type: 'text', text: user },
+                  { type: 'image_url', image_url: { url: firstPage, detail: 'low' } }
+                ]
+              }
+            ]
+          }
+        }
+      }
+      if (visionTarget !== null && visionMessages !== null) {
+        target = visionTarget
+        messages = visionMessages
+      } else {
+        target = this.requireTarget(await this.deps.resolveTextTarget(), 'defaultModel')
+        const sample = (pdfText?.text ?? '').slice(0, 4000)
+        messages = [
+          { role: 'system', content: system },
+          { role: 'user', content: [user, '', sample].join('\n') }
+        ]
+      }
     } else {
       throw new Error(`unsupported file type for extraction: ${file.mimeType ?? file.path}`)
     }

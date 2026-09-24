@@ -362,6 +362,64 @@ describe('pdf vision routing', () => {
   })
 })
 
+describe('scanned pdf classification', () => {
+  const makeClassifyDeps = (overrides: Partial<DocumentExtractorDeps> = {}) =>
+    makeDeps({
+      repository: {
+        getTemplate: vi.fn((id: string) => (id === 'tpl-1' ? makeTemplate() : null)),
+        getTemplateByTypeKey: vi.fn((typeKey: string) =>
+          typeKey === 'invoice_special' ? makeTemplate() : null
+        ),
+        listTemplates: vi.fn(() => [makeTemplate()])
+      },
+      extractPdfText: vi.fn(async () => ({ text: '', hasTextLayer: false, pageCount: 2 })),
+      generateCompletion: vi
+        .fn()
+        .mockResolvedValueOnce('{"typeKey": "invoice_special"}')
+        .mockResolvedValueOnce(
+          '{"fields": {"invoice_code": "123456789012"}, "uncertain_fields": []}'
+        ),
+      ...overrides
+    })
+
+  it('扫描件 auto 分类使用第 1 页图片', async () => {
+    const deps = makeClassifyDeps()
+    const extractor = new DocumentExtractor(deps)
+    const result = await extractor.extract({
+      templateId: 'auto',
+      file: { path: '/tmp/a.pdf', mimeType: 'application/pdf' }
+    })
+    expect(result.template.typeKey).toBe('invoice_special')
+    expect(result.route).toBe('vision')
+    const renderMock = vi.mocked(deps.renderPdfPages)
+    expect(renderMock).toHaveBeenCalledTimes(2)
+    expect(renderMock.mock.calls[0]).toEqual(['/tmp/a.pdf', { maxPages: 1 }])
+    const classifyCall = vi.mocked(deps.generateCompletion).mock.calls[0][0]
+    expect(classifyCall.modelId).toBe('gpt-4o')
+    expect(JSON.stringify(classifyCall.messages[1]?.content)).toContain('"detail":"low"')
+    expect(JSON.stringify(classifyCall.messages[1]?.content)).toContain('base64,AA')
+  })
+
+  it('扫描件无视觉模型时回退文本分类', async () => {
+    const deps = makeClassifyDeps({
+      resolveVisionTarget: vi.fn(() => null),
+      extractOcrText: vi.fn(async () => 'OCR 识别出的文本')
+    })
+    const extractor = new DocumentExtractor(deps)
+    const result = await extractor.extract({
+      templateId: 'auto',
+      file: { path: '/tmp/a.pdf', mimeType: 'application/pdf' }
+    })
+    expect(result.route).toBe('ocr')
+    expect(deps.renderPdfPages).not.toHaveBeenCalled()
+    expect(deps.extractOcrText).toHaveBeenCalledWith('/tmp/a.pdf')
+    const classifyCall = vi.mocked(deps.generateCompletion).mock.calls[0][0]
+    expect(classifyCall.modelId).toBe('gpt-4o-mini')
+    expect(Array.isArray(classifyCall.messages[1]?.content)).toBe(false)
+    expect(JSON.stringify(classifyCall.messages[1]?.content)).not.toContain('image_url')
+  })
+})
+
 describe('DocumentExtractor.extract auto 分类', () => {
   it('templateId=auto 时图片先分类再提取', async () => {
     const secondTemplate = makeTemplate({

@@ -2952,9 +2952,9 @@ export async function createMainProcessControl(dependencies: {
           pageCount: pages?.length ?? 0
         }
       },
-      renderPdfPages: async (filePath) => {
+      renderPdfPages: async (filePath, options) => {
         try {
-          return await renderPdfPagesToDataUrls(filePath)
+          return await renderPdfPagesToDataUrls(filePath, options)
         } catch (error) {
           const reason = error instanceof Error ? error.message : String(error)
           throw new Error(`failed to render pdf pages for vision: ${filePath} (${reason})`, {
