@@ -39,7 +39,7 @@ export interface RecognitionTaskManagerDeps {
   now?: () => number
 }
 
-const DEFAULT_CONCURRENCY = 2
+const DEFAULT_CONCURRENCY = 4
 
 export class RecognitionTaskManager {
   private readonly concurrency: number

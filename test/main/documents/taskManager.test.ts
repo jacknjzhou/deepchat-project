@@ -155,6 +155,55 @@ describe('RecognitionTaskManager', () => {
     expect(maxInFlight).toBe(2)
   })
 
+  it('defaults to concurrency 4 when not specified', async () => {
+    let inFlight = 0
+    let maxInFlight = 0
+    const manager = new RecognitionTaskManager({
+      repository: {
+        insertTasks: (inputs) => inputs.map((input, i) => makeTask({ id: `t${i}` })),
+        updateTask: (id, input) => makeTask({ id, status: input.status }),
+        listRecentTasks: () => [],
+        listPendingTasks: () => [],
+        markRunningTasksFailed: () => {},
+        countTaskBatch: () => ({ done: 0, total: 6 }),
+        insertDocument: () => ({ id: 'doc' })
+      },
+      extractor: {
+        extract: async () => {
+          inFlight += 1
+          maxInFlight = Math.max(maxInFlight, inFlight)
+          await new Promise((resolve) => setTimeout(resolve, 5))
+          inFlight -= 1
+          return {
+            template: { id: 'tpl1', typeKey: 'k' },
+            route: 'vision',
+            fields: {},
+            rawOutput: '',
+            durationMs: 1,
+            issues: []
+          }
+        }
+      },
+      publishTaskUpdated: () => {}
+    })
+    manager.submit({
+      files: [
+        { path: 'C:\\1' },
+        { path: 'C:\\2' },
+        { path: 'C:\\3' },
+        { path: 'C:\\4' },
+        { path: 'C:\\5' },
+        { path: 'C:\\6' }
+      ],
+      templateId: 'auto',
+      source: 'manual'
+    })
+    // submit 同步 pump：6 个任务在默认并发 4 下恰好启动 4 个，峰值确定地等于 4（> 2）
+    expect(maxInFlight).toBe(4)
+    await manager.idle()
+    expect(maxInFlight).toBe(4)
+  })
+
   it('resumePending fails running tasks and re-queues pending ones', async () => {
     const stored = [
       makeTask({ id: 'running-1', status: 'running' }),
