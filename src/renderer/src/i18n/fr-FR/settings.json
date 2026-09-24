@@ -2703,6 +2703,11 @@
       "purchase": "Achats",
       "payment": "Justificatifs de paiement",
       "invoice": "Factures",
+      "finance": "Finances",
+      "asset": "Actifs",
+      "admin": "Administratif",
+      "hr": "RH",
+      "tender": "Appels d'offres",
       "custom": "Personnalisé"
     },
     "valueType": {

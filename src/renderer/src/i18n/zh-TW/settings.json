@@ -2703,6 +2703,11 @@
       "purchase": "採購類",
       "payment": "支付憑證類",
       "invoice": "發票類",
+      "finance": "財務類",
+      "asset": "資產類",
+      "admin": "行政類",
+      "hr": "人事類",
+      "tender": "招投標類",
       "custom": "自訂"
     },
     "valueType": {

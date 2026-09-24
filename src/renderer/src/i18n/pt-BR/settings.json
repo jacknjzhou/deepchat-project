@@ -2703,6 +2703,11 @@
       "purchase": "Compras",
       "payment": "Comprovantes de pagamento",
       "invoice": "Faturas",
+      "finance": "Financeiro",
+      "asset": "Patrimônio",
+      "admin": "Administrativo",
+      "hr": "RH",
+      "tender": "Licitações",
       "custom": "Personalizado"
     },
     "valueType": {

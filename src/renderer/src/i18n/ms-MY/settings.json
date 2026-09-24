@@ -202,6 +202,11 @@
       "purchase": "Pembelian",
       "payment": "Bukti Bayaran",
       "invoice": "Invois",
+      "finance": "Kewangan",
+      "asset": "Aset",
+      "admin": "Pentadbiran",
+      "hr": "HR",
+      "tender": "Tender",
       "custom": "Tersuai"
     },
     "valueType": {

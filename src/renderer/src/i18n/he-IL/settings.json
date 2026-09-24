@@ -2703,6 +2703,11 @@
       "purchase": "רכש",
       "payment": "אישורי תשלום",
       "invoice": "חשבוניות",
+      "finance": "כספים",
+      "asset": "נכסים",
+      "admin": "מנהלי",
+      "hr": "משאבי אנוש",
+      "tender": "מכרזים",
       "custom": "מותאם"
     },
     "valueType": {

@@ -202,6 +202,11 @@
       "purchase": "Purchasing",
       "payment": "Payment Proofs",
       "invoice": "Invoices",
+      "finance": "Finance",
+      "asset": "Assets",
+      "admin": "Administrative",
+      "hr": "HR",
+      "tender": "Tendering",
       "custom": "Custom"
     },
     "valueType": {

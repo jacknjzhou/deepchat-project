@@ -202,6 +202,11 @@
       "purchase": "Einkauf",
       "payment": "Zahlungsnachweise",
       "invoice": "Rechnungen",
+      "finance": "Finanzen",
+      "asset": "Anlagen",
+      "admin": "Verwaltung",
+      "hr": "Personal",
+      "tender": "Ausschreibung",
       "custom": "Eigene"
     },
     "valueType": {

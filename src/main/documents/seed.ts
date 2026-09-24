@@ -14,6 +14,8 @@ interface SeedFieldRaw {
   type: string
   desc: string
   required?: boolean
+  rule?: string
+  enum_values?: string[]
 }
 
 interface SeedTemplateRaw {
@@ -37,8 +39,8 @@ const toFields = (raw: SeedFieldRaw[]): DocumentTemplateField[] =>
       'text') as DocumentFieldValueType,
     required: field.required ?? true,
     promptHint: field.desc,
-    validation: null,
-    enumOptions: null,
+    validation: field.rule ?? null,
+    enumOptions: field.enum_values ?? null,
     order: index + 1
   }))
 
@@ -47,25 +49,47 @@ export function seedPresetTemplates(
   options: { now?: number } = {}
 ): number {
   const now = options.now ?? Date.now()
-  let inserted = 0
+  let changed = 0
   const templates = (presetJson as { templates: SeedTemplateRaw[] }).templates
   for (const template of templates) {
     const typeKey = PRESET_TEMPLATE_TYPE_KEY_MAP[template.name]
     if (!typeKey) {
       throw new Error(`Unmapped preset template name: ${template.name}`)
     }
-    if (database.documentTemplatesTable.getByTypeKey(typeKey)) {
-      continue
+    const fields = toFields(template.fields)
+    const existing = database.documentTemplatesTable.getByTypeKey(typeKey)
+    if (existing) {
+      // fork 出的自定义模板使用独立 typeKey，不应命中此处；isBuiltin 检查防御性保护用户数据
+      if (existing.is_builtin !== 1) {
+        continue
+      }
+      const upgraded =
+        existing.name !== template.name ||
+        existing.category !== template.category ||
+        JSON.stringify(JSON.parse(existing.fields_json)) !== JSON.stringify(fields)
+      if (!upgraded) {
+        continue
+      }
+      database.documentTemplatesTable.upsert({
+        id: existing.id,
+        typeKey,
+        name: template.name,
+        category: template.category as DocumentTemplateCategory,
+        fields: fields as unknown[],
+        isBuiltin: true,
+        now
+      })
+    } else {
+      database.documentTemplatesTable.upsert({
+        typeKey,
+        name: template.name,
+        category: template.category as DocumentTemplateCategory,
+        fields: fields as unknown[],
+        isBuiltin: true,
+        now
+      })
     }
-    database.documentTemplatesTable.upsert({
-      typeKey,
-      name: template.name,
-      category: template.category as DocumentTemplateCategory,
-      fields: toFields(template.fields) as unknown[],
-      isBuiltin: true,
-      now
-    })
-    inserted += 1
+    changed += 1
   }
-  return inserted
+  return changed
 }

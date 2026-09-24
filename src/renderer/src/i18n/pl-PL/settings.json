@@ -202,6 +202,11 @@
       "purchase": "Zakupy",
       "payment": "Potwierdzenia płatności",
       "invoice": "Faktury",
+      "finance": "Finanse",
+      "asset": "Aktywa",
+      "admin": "Administracja",
+      "hr": "HR",
+      "tender": "Przetargi",
       "custom": "Własny"
     },
     "valueType": {

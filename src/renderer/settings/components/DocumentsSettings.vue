@@ -217,6 +217,11 @@ function categoryKey(category: DocumentTemplateCategory): string {
     采购类: 'purchase',
     支付凭证类: 'payment',
     发票类: 'invoice',
+    财务类: 'finance',
+    资产类: 'asset',
+    行政类: 'admin',
+    人事类: 'hr',
+    招投标类: 'tender',
     自定义: 'custom'
   }
   return map[category] ?? 'custom'

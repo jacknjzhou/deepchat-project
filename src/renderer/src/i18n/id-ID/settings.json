@@ -202,6 +202,11 @@
       "purchase": "Pembelian",
       "payment": "Bukti Pembayaran",
       "invoice": "Faktur",
+      "finance": "Keuangan",
+      "asset": "Aset",
+      "admin": "Administrasi",
+      "hr": "HR",
+      "tender": "Tender",
       "custom": "Kustom"
     },
     "valueType": {

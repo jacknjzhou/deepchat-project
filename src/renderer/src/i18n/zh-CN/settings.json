@@ -202,6 +202,11 @@
       "purchase": "采购类",
       "payment": "支付凭证类",
       "invoice": "发票类",
+      "finance": "财务类",
+      "asset": "资产类",
+      "admin": "行政类",
+      "hr": "人事类",
+      "tender": "招投标类",
       "custom": "自定义"
     },
     "valueType": {

@@ -2113,6 +2113,11 @@ declare module 'vue-i18n' {
         purchase: string
         payment: string
         invoice: string
+        finance: string
+        asset: string
+        admin: string
+        hr: string
+        tender: string
         custom: string
       }
       valueType: {
@@ -2210,6 +2215,7 @@ declare module 'vue-i18n' {
         deleteConfirmTitle: string
         deleteConfirmDescription: string
         deleteFailed: string
+        reRecognizing: string
         reRecognize: string
         reRecognizeHint: string
         reRecognizeFailed: string

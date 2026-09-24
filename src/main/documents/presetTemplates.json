@@ -1,6 +1,6 @@
 {
-  "version": "1.0",
-  "remark": "系统预置关键词模板（seed 数据），首次启动 alembic 迁移后自动写入 extract_schema 表，is_preset=true",
+  "version": "2.0",
+  "remark": "系统预置单据模板（seed 数据），应用启动时由 seedPresetTemplates 写入 document_templates 表，is_builtin=1",
   "templates": [
     {
       "name": "合同模板",
@@ -11,25 +11,26 @@
           "key": "party_a",
           "label": "甲方名称",
           "type": "string",
-          "desc": "合同中甲方（发包方/采购方）的全称"
+          "desc": "合同中甲方（发包方/采购方）的全称，落款处全称，不用简称"
         },
         {
           "key": "party_b",
           "label": "乙方名称",
           "type": "string",
-          "desc": "合同中乙方（承包方/供应方）的全称"
+          "desc": "合同中乙方（承包方/供应方）的全称，落款处全称，不用简称"
         },
         {
           "key": "contract_amount",
           "label": "合同金额",
           "type": "number",
-          "desc": "合同总价款，含税总金额，数值型"
+          "desc": "合同总价款，含税总金额，数值型；大小写冲突时以小写为准并标黄"
         },
         {
           "key": "sign_date",
           "label": "签订日期",
           "type": "date",
-          "desc": "合同签署日期，YYYY-MM-DD"
+          "desc": "落款日期；双方日期不同取晚者并标黄",
+          "required": false
         },
         {
           "key": "term",
@@ -48,6 +49,71 @@
           "label": "合同编号",
           "type": "string",
           "desc": "合同上的编号"
+        },
+        {
+          "key": "contract_name",
+          "label": "合同名称",
+          "type": "string",
+          "desc": "首页标题"
+        },
+        {
+          "key": "contract_type",
+          "label": "合同类型",
+          "type": "enum",
+          "desc": "",
+          "required": false,
+          "enum_values": ["采购合同", "销售合同", "服务合同", "框架协议"]
+        },
+        {
+          "key": "subject_matter",
+          "label": "合同标的",
+          "type": "string",
+          "desc": "采购/销售货物或服务内容，一句话",
+          "required": false
+        },
+        {
+          "key": "tax_rate",
+          "label": "税率",
+          "type": "enum",
+          "desc": "",
+          "required": false,
+          "enum_values": ["13%", "9%", "6%", "3%", "1%", "含税未注明", "不含税"]
+        },
+        {
+          "key": "payment_schedule",
+          "label": "付款节点",
+          "type": "array",
+          "desc": "字段值为 JSON 数组，元素结构：[{milestone(节点说明), ratio(比例), amount(金额（元）), trigger(触发条件)}]，如无则填 null",
+          "required": false
+        },
+        {
+          "key": "start_date",
+          "label": "合同起始日",
+          "type": "date",
+          "desc": "",
+          "required": false
+        },
+        {
+          "key": "end_date",
+          "label": "合同到期日",
+          "type": "date",
+          "desc": "",
+          "required": false
+        },
+        {
+          "key": "breach_clause",
+          "label": "违约责任摘要",
+          "type": "string",
+          "desc": "提取违约金比例/计算方式，如\"日万分之五\"",
+          "required": false
+        },
+        {
+          "key": "seal_status",
+          "label": "盖章状态",
+          "type": "enum",
+          "desc": "扫描件看落款印章",
+          "required": false,
+          "enum_values": ["双方已盖章", "仅甲方盖章", "仅乙方盖章", "未盖章", "无法判断"]
         }
       ]
     },
@@ -387,9 +453,9 @@
         },
         {
           "key": "lease_object",
-          "label": "租赁物",
+          "label": "租赁物地址/描述",
           "type": "string",
-          "desc": "租赁房屋地址或设备名称"
+          "desc": "房屋填详细地址；设备填名称型号"
         },
         {
           "key": "lease_start",
@@ -407,25 +473,65 @@
           "key": "monthly_rent",
           "label": "月租金",
           "type": "number",
-          "desc": "每期租金金额"
+          "desc": "每期租金金额；按月计价填月租金，按日/按年折算为月租金并标黄"
         },
         {
           "key": "deposit",
           "label": "押金",
           "type": "number",
-          "desc": "押金金额"
+          "desc": "押金金额",
+          "required": false
         },
         {
           "key": "payment_cycle",
-          "label": "付款周期",
-          "type": "string",
-          "desc": "如押一付三、按月支付"
+          "label": "支付周期",
+          "type": "enum",
+          "desc": "如押一付三、按月支付",
+          "required": false,
+          "enum_values": ["月付", "季付", "半年付", "年付", "一次性"]
         },
         {
           "key": "contract_no",
           "label": "合同编号",
           "type": "string",
-          "desc": "租赁合同编号"
+          "desc": "租赁合同编号",
+          "required": false
+        },
+        {
+          "key": "lease_type",
+          "label": "租赁类型",
+          "type": "enum",
+          "desc": "",
+          "required": false,
+          "enum_values": ["房屋租赁", "场地租赁", "设备租赁", "车位租赁", "其他"]
+        },
+        {
+          "key": "area",
+          "label": "面积（㎡）",
+          "type": "number",
+          "desc": "",
+          "required": false
+        },
+        {
+          "key": "escalation_clause",
+          "label": "租金递增条款",
+          "type": "string",
+          "desc": "如\"第三年起每年递增5%\"；无则留空",
+          "required": false
+        },
+        {
+          "key": "free_rent_period",
+          "label": "免租期",
+          "type": "string",
+          "desc": "",
+          "required": false
+        },
+        {
+          "key": "breach_clause",
+          "label": "违约条款摘要",
+          "type": "string",
+          "desc": "",
+          "required": false
         }
       ]
     },
@@ -478,16 +584,32 @@
       "description": "增值税专用发票信息提取（含明细行）",
       "fields": [
         {
+          "key": "invoice_type",
+          "label": "发票类型",
+          "type": "enum",
+          "desc": "看票面标题；\"电子\"或\"数电\"按标题判断",
+          "enum_values": [
+            "增值税专用发票",
+            "增值税普通发票",
+            "增值税电子专用发票",
+            "增值税电子普通发票",
+            "数电发票"
+          ]
+        },
+        {
           "key": "invoice_code",
           "label": "发票代码",
           "type": "string",
-          "desc": "12位发票代码"
+          "desc": "12位发票代码；数电发票无此字段，留空",
+          "required": false,
+          "rule": "^[0-9]{10,12}$"
         },
         {
           "key": "invoice_number",
           "label": "发票号码",
           "type": "string",
-          "desc": "8位发票号码"
+          "desc": "数电发票为20位数字，纸质票为8位数字或\"发票代码+号码\"",
+          "rule": "^[0-9]{8}$|^[0-9]{20}$"
         },
         {
           "key": "invoice_date",
@@ -505,7 +627,8 @@
           "key": "buyer_tax_no",
           "label": "购买方税号",
           "type": "string",
-          "desc": "纳税人识别号"
+          "desc": "纳税人识别号",
+          "rule": "^[0-9A-Z]{18}$"
         },
         {
           "key": "buyer_address",
@@ -529,7 +652,8 @@
           "key": "seller_tax_no",
           "label": "销售方税号",
           "type": "string",
-          "desc": "纳税人识别号"
+          "desc": "纳税人识别号",
+          "rule": "^[0-9A-Z]{18}$"
         },
         {
           "key": "seller_address",
@@ -547,7 +671,7 @@
           "key": "total_amount",
           "label": "价税合计",
           "type": "number",
-          "desc": "价税合计金额（大写）"
+          "desc": "价税合计金额；含大小写金额时以数字为准，与小写金额冲突标黄"
         },
         {
           "key": "amount_upper",
@@ -565,13 +689,14 @@
           "key": "amount_ex_tax",
           "label": "不含税金额",
           "type": "number",
-          "desc": "金额（不含税）"
+          "desc": "金额（不含税）；价税合计上方的不含税金额，多行明细取合计行"
         },
         {
           "key": "tax_rate",
           "label": "税率",
-          "type": "string",
-          "desc": "如 13%、6%、9%"
+          "type": "enum",
+          "desc": "多档税率时取主要档；\"免税\"填免税",
+          "enum_values": ["13%", "9%", "6%", "5%", "3%", "1%", "0%", "免税"]
         },
         {
           "key": "drawer",
@@ -612,16 +737,32 @@
       "description": "增值税普通发票、卷式发票等通用发票（含明细行）",
       "fields": [
         {
+          "key": "invoice_type",
+          "label": "发票类型",
+          "type": "enum",
+          "desc": "看票面标题；\"电子\"或\"数电\"按标题判断",
+          "enum_values": [
+            "增值税专用发票",
+            "增值税普通发票",
+            "增值税电子专用发票",
+            "增值税电子普通发票",
+            "数电发票"
+          ]
+        },
+        {
           "key": "invoice_code",
           "label": "发票代码",
           "type": "string",
-          "desc": "发票代码"
+          "desc": "12位发票代码；数电发票无此字段，留空",
+          "required": false,
+          "rule": "^[0-9]{10,12}$"
         },
         {
           "key": "invoice_number",
           "label": "发票号码",
           "type": "string",
-          "desc": "发票号码"
+          "desc": "数电发票为20位数字，纸质票为8位数字",
+          "rule": "^[0-9]{8}$|^[0-9]{20}$"
         },
         {
           "key": "invoice_date",
@@ -634,6 +775,14 @@
           "label": "购买方名称",
           "type": "string",
           "desc": "购货单位名称"
+        },
+        {
+          "key": "buyer_tax_no",
+          "label": "购买方税号",
+          "type": "string",
+          "desc": "纳税人识别号；个人购买无税号时留空",
+          "required": false,
+          "rule": "^[0-9A-Z]{18}$"
         },
         {
           "key": "seller_name",
@@ -660,6 +809,25 @@
           "desc": "如 壹佰元整"
         },
         {
+          "key": "tax_amount",
+          "label": "税额",
+          "type": "number",
+          "desc": "税额"
+        },
+        {
+          "key": "amount_ex_tax",
+          "label": "不含税金额",
+          "type": "number",
+          "desc": "金额（不含税）；多行明细取合计行"
+        },
+        {
+          "key": "tax_rate",
+          "label": "税率",
+          "type": "enum",
+          "desc": "多档税率时取主要档；\"免税\"填免税",
+          "enum_values": ["13%", "9%", "6%", "5%", "3%", "1%", "0%", "免税"]
+        },
+        {
           "key": "drawer",
           "label": "开票人",
           "type": "string",
@@ -676,6 +844,788 @@
           "label": "明细行",
           "type": "string",
           "desc": "商品明细列表，格式为 JSON 数组：[{name, qty, price, amount}]，如无则填 null",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "报销单",
+      "category": "财务类",
+      "description": "费用报销单（含OA导出/纸质单据）关键要素提取，支持费用明细一对多",
+      "fields": [
+        {
+          "key": "claimant",
+          "label": "报销人",
+          "type": "string"
+        },
+        {
+          "key": "department",
+          "label": "部门",
+          "type": "string"
+        },
+        {
+          "key": "claim_date",
+          "label": "填单日期",
+          "type": "date",
+          "required": false
+        },
+        {
+          "key": "reason",
+          "label": "报销事由",
+          "type": "string",
+          "desc": "一句话概括，超过50字截断"
+        },
+        {
+          "key": "items",
+          "label": "费用明细",
+          "type": "array",
+          "desc": "字段值为 JSON 数组，元素结构：[{expense_type(费用类型，差旅费/交通费/住宿费/餐饮费/招待费/办公用品/通讯费/培训费/其他), expense_date(费用发生日期), amount(金额（元）), invoice_count(单据张数)}]，如无则填 null"
+        },
+        {
+          "key": "total_amount",
+          "label": "报销总金额（元）",
+          "type": "number"
+        },
+        {
+          "key": "receipt_count",
+          "label": "附件张数",
+          "type": "number",
+          "desc": "明细单据张数之和应等于附件张数，不符标黄",
+          "required": false
+        },
+        {
+          "key": "approval_status",
+          "label": "审批状态",
+          "type": "enum",
+          "desc": "无明确审批栏则填\"已通过\"（纸质单据通常已签批）",
+          "required": false,
+          "enum_values": ["待审批", "审批中", "已通过", "已驳回", "已支付"]
+        }
+      ]
+    },
+    {
+      "name": "资产验收单",
+      "category": "资产类",
+      "description": "固定资产/设备验收单要素提取，用于资产台账",
+      "fields": [
+        {
+          "key": "acceptance_no",
+          "label": "验收单号",
+          "type": "string",
+          "required": false
+        },
+        {
+          "key": "asset_no",
+          "label": "资产编号",
+          "type": "string",
+          "desc": "贴牌编号或验收单上的编号"
+        },
+        {
+          "key": "asset_name",
+          "label": "资产名称",
+          "type": "string"
+        },
+        {
+          "key": "model",
+          "label": "型号/规格",
+          "type": "string",
+          "required": false
+        },
+        {
+          "key": "category",
+          "label": "资产类别",
+          "type": "enum",
+          "required": false,
+          "enum_values": ["电子设备", "办公家具", "车辆", "仪器设备", "软件", "其他"]
+        },
+        {
+          "key": "quantity",
+          "label": "数量",
+          "type": "number"
+        },
+        {
+          "key": "unit_price",
+          "label": "单价（元）",
+          "type": "number",
+          "required": false
+        },
+        {
+          "key": "total_amount",
+          "label": "总金额（元）",
+          "type": "number",
+          "required": false
+        },
+        {
+          "key": "supplier",
+          "label": "供应商",
+          "type": "string",
+          "required": false
+        },
+        {
+          "key": "purchase_date",
+          "label": "采购日期",
+          "type": "date",
+          "required": false
+        },
+        {
+          "key": "acceptance_date",
+          "label": "验收日期",
+          "type": "date"
+        },
+        {
+          "key": "location",
+          "label": "存放地点",
+          "type": "string",
+          "required": false
+        },
+        {
+          "key": "custodian",
+          "label": "领用人/保管人",
+          "type": "string",
+          "required": false
+        },
+        {
+          "key": "condition",
+          "label": "验收结论",
+          "type": "enum",
+          "enum_values": ["验收合格", "部分合格", "不合格", "待整改"]
+        },
+        {
+          "key": "remarks",
+          "label": "备注",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "银行回单",
+      "category": "财务类",
+      "description": "银行电子回单/转账凭证关键要素提取",
+      "fields": [
+        {
+          "key": "bank_name",
+          "label": "出账银行",
+          "type": "string",
+          "desc": "回单抬头银行名称",
+          "required": false
+        },
+        {
+          "key": "serial_no",
+          "label": "流水号",
+          "type": "string",
+          "desc": "流水号/交易流水号/凭证号，通常长数字串"
+        },
+        {
+          "key": "value_date",
+          "label": "交易日期",
+          "type": "date"
+        },
+        {
+          "key": "payer_name",
+          "label": "付款方名称",
+          "type": "string"
+        },
+        {
+          "key": "payer_account",
+          "label": "付款账号",
+          "type": "string",
+          "required": false,
+          "rule": "^[0-9-]{10,32}$"
+        },
+        {
+          "key": "payee_name",
+          "label": "收款方名称",
+          "type": "string"
+        },
+        {
+          "key": "payee_account",
+          "label": "收款账号",
+          "type": "string",
+          "required": false,
+          "rule": "^[0-9-]{10,32}$"
+        },
+        {
+          "key": "amount",
+          "label": "交易金额（元）",
+          "type": "number",
+          "desc": "有大小写金额以小写为准；外币回单记录原币金额到备注"
+        },
+        {
+          "key": "currency",
+          "label": "币种",
+          "type": "enum",
+          "required": false,
+          "enum_values": ["CNY", "USD", "EUR", "HKD", "JPY", "其他"]
+        },
+        {
+          "key": "purpose",
+          "label": "用途/摘要",
+          "type": "string",
+          "desc": "用途/摘要/附言字段",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "会议纪要",
+      "category": "行政类",
+      "description": "会议纪要/会议记录要素提取，行动项一对多展开",
+      "fields": [
+        {
+          "key": "title",
+          "label": "会议主题",
+          "type": "string"
+        },
+        {
+          "key": "meeting_date",
+          "label": "会议日期",
+          "type": "date"
+        },
+        {
+          "key": "location",
+          "label": "会议地点",
+          "type": "string",
+          "required": false
+        },
+        {
+          "key": "organizer",
+          "label": "组织人/主持人",
+          "type": "string",
+          "required": false
+        },
+        {
+          "key": "recorder",
+          "label": "记录人",
+          "type": "string",
+          "required": false
+        },
+        {
+          "key": "attendees",
+          "label": "参会人",
+          "type": "array",
+          "desc": "逗号/顿号分隔的人名列表逐个拆分；字段值为 JSON 数组，元素结构：[{name(姓名), department(部门)}]，如无则填 null",
+          "required": false
+        },
+        {
+          "key": "topics",
+          "label": "议题",
+          "type": "array",
+          "desc": "字段值为 JSON 数组，元素结构：[{topic(议题内容)}]，如无则填 null",
+          "required": false
+        },
+        {
+          "key": "decisions",
+          "label": "决议事项",
+          "type": "array",
+          "desc": "字段值为 JSON 数组，元素结构：[{decision(决议内容), related_topic(关联议题)}]，如无则填 null",
+          "required": false
+        },
+        {
+          "key": "action_items",
+          "label": "行动项",
+          "type": "array",
+          "desc": "每个待办一条；无明确负责人填\"未指定\"并标黄；字段值为 JSON 数组，元素结构：[{task(任务描述), owner(负责人), due_date(截止日期), priority(优先级，高/中/低)}]，如无则填 null"
+        },
+        {
+          "key": "next_meeting_date",
+          "label": "下次会议时间",
+          "type": "date",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "红头文件/收文",
+      "category": "行政类",
+      "description": "外来公文、红头文件收文登记要素提取",
+      "fields": [
+        {
+          "key": "sender_org",
+          "label": "来文单位",
+          "type": "string",
+          "desc": "红头（文件眉首）发文机关"
+        },
+        {
+          "key": "doc_number",
+          "label": "文号",
+          "type": "string",
+          "desc": "形如\"X办发〔2026〕12号\"，注意六角括号〔〕"
+        },
+        {
+          "key": "title",
+          "label": "文件标题",
+          "type": "string"
+        },
+        {
+          "key": "doc_type",
+          "label": "文种",
+          "type": "enum",
+          "required": false,
+          "enum_values": ["通知", "函", "批复", "意见", "通报", "决定", "纪要", "其他"]
+        },
+        {
+          "key": "received_date",
+          "label": "收文日期",
+          "type": "date",
+          "desc": "收文登记栏日期；无则填成文日期并标黄",
+          "required": false
+        },
+        {
+          "key": "secrecy_level",
+          "label": "密级",
+          "type": "enum",
+          "required": false,
+          "enum_values": ["公开", "内部", "秘密", "机密", "绝密", "未标注"]
+        },
+        {
+          "key": "urgency",
+          "label": "缓急",
+          "type": "enum",
+          "required": false,
+          "enum_values": ["特急", "加急", "平件", "未标注"]
+        },
+        {
+          "key": "deadline",
+          "label": "办理时限",
+          "type": "date",
+          "desc": "明确要求反馈/办结的日期；\"X日内\"按收文日期推算",
+          "required": false
+        },
+        {
+          "key": "handling_dept",
+          "label": "承办部门",
+          "type": "string",
+          "desc": "领导批示/拟办意见中指定的部门",
+          "required": false
+        },
+        {
+          "key": "summary",
+          "label": "内容摘要",
+          "type": "string",
+          "desc": "100字以内概括来文主旨",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "入职/离职单",
+      "category": "人事类",
+      "description": "入职登记表、离职申请单关键要素提取",
+      "fields": [
+        {
+          "key": "doc_type",
+          "label": "单据类型",
+          "type": "enum",
+          "enum_values": ["入职登记", "离职申请"]
+        },
+        {
+          "key": "name",
+          "label": "姓名",
+          "type": "string"
+        },
+        {
+          "key": "employee_id",
+          "label": "工号",
+          "type": "string",
+          "required": false
+        },
+        {
+          "key": "department",
+          "label": "部门",
+          "type": "string"
+        },
+        {
+          "key": "position",
+          "label": "岗位",
+          "type": "string"
+        },
+        {
+          "key": "entry_date",
+          "label": "入职日期",
+          "type": "date",
+          "desc": "doc_type=入职登记 时通常必填，缺失标黄",
+          "required": false
+        },
+        {
+          "key": "leave_date",
+          "label": "离职日期",
+          "type": "date",
+          "desc": "doc_type=离职申请 时通常必填，缺失标黄",
+          "required": false
+        },
+        {
+          "key": "leave_reason",
+          "label": "离职原因",
+          "type": "string",
+          "required": false
+        },
+        {
+          "key": "handover_person",
+          "label": "交接人",
+          "type": "string",
+          "required": false
+        },
+        {
+          "key": "contact",
+          "label": "联系电话",
+          "type": "string",
+          "required": false,
+          "rule": "^1[3-9][0-9]{9}$"
+        },
+        {
+          "key": "approval_status",
+          "label": "审批状态",
+          "type": "enum",
+          "required": false,
+          "enum_values": ["待审批", "审批中", "已完成", "已驳回"]
+        },
+        {
+          "key": "remarks",
+          "label": "备注",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "简历",
+      "category": "人事类",
+      "description": "求职简历关键要素提取，用于人才库标准化入库；支持工作/教育经历一对多",
+      "fields": [
+        {
+          "key": "name",
+          "label": "姓名",
+          "type": "string"
+        },
+        {
+          "key": "gender",
+          "label": "性别",
+          "type": "enum",
+          "required": false,
+          "enum_values": ["男", "女", "未注明"]
+        },
+        {
+          "key": "phone",
+          "label": "手机号",
+          "type": "string",
+          "desc": "去掉空格和分隔符后校验",
+          "rule": "^1[3-9][0-9]{9}$"
+        },
+        {
+          "key": "email",
+          "label": "邮箱",
+          "type": "string",
+          "required": false
+        },
+        {
+          "key": "birth_date",
+          "label": "出生年月",
+          "type": "date",
+          "required": false
+        },
+        {
+          "key": "highest_degree",
+          "label": "最高学历",
+          "type": "enum",
+          "enum_values": ["博士", "硕士", "本科", "大专", "其他"]
+        },
+        {
+          "key": "university",
+          "label": "毕业院校",
+          "type": "string",
+          "desc": "最高学历对应院校",
+          "required": false
+        },
+        {
+          "key": "major",
+          "label": "专业",
+          "type": "string",
+          "required": false
+        },
+        {
+          "key": "graduation_date",
+          "label": "毕业时间",
+          "type": "date",
+          "required": false
+        },
+        {
+          "key": "work_years",
+          "label": "工作年限（年）",
+          "type": "number",
+          "desc": "明确写\"X年\"取值；未写则按最早工作经历推算并标黄",
+          "required": false
+        },
+        {
+          "key": "recent_company",
+          "label": "最近任职公司",
+          "type": "string"
+        },
+        {
+          "key": "recent_position",
+          "label": "最近职位",
+          "type": "string"
+        },
+        {
+          "key": "expected_position",
+          "label": "求职意向岗位",
+          "type": "string",
+          "required": false
+        },
+        {
+          "key": "expected_salary",
+          "label": "期望薪资",
+          "type": "string",
+          "desc": "原样记录，如\"20-25K·14薪\"",
+          "required": false
+        },
+        {
+          "key": "skills",
+          "label": "技能标签",
+          "type": "array",
+          "desc": "从技能栏/自我评价提炼，每项一个，最多10个；字段值为 JSON 数组，元素结构：[{skill(技能)}]，如无则填 null",
+          "required": false
+        },
+        {
+          "key": "work_history",
+          "label": "工作经历",
+          "type": "array",
+          "desc": "字段值为 JSON 数组，元素结构：[{company(公司), position(职位), start(开始时间), end(结束时间，至今填当天日期)}]，如无则填 null",
+          "required": false
+        },
+        {
+          "key": "education_history",
+          "label": "教育经历",
+          "type": "array",
+          "desc": "字段值为 JSON 数组，元素结构：[{school(学校), degree(学历), major(专业), start(开始时间), end(结束时间)}]，如无则填 null",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "报价单",
+      "category": "采购类",
+      "description": "供应商报价单要素提取，支持多物料明细，用于比价汇总",
+      "fields": [
+        {
+          "key": "supplier",
+          "label": "供应商名称",
+          "type": "string"
+        },
+        {
+          "key": "quote_no",
+          "label": "报价单号",
+          "type": "string",
+          "required": false
+        },
+        {
+          "key": "quote_date",
+          "label": "报价日期",
+          "type": "date",
+          "required": false
+        },
+        {
+          "key": "valid_until",
+          "label": "报价有效期至",
+          "type": "date",
+          "desc": "报价有效期30天按报价日期推算",
+          "required": false
+        },
+        {
+          "key": "currency",
+          "label": "币种",
+          "type": "enum",
+          "required": false,
+          "enum_values": ["CNY", "USD", "EUR", "HKD", "其他"]
+        },
+        {
+          "key": "tax_included",
+          "label": "价格是否含税",
+          "type": "enum",
+          "required": false,
+          "enum_values": ["含税", "不含税", "未注明"]
+        },
+        {
+          "key": "tax_rate",
+          "label": "税率",
+          "type": "enum",
+          "required": false,
+          "enum_values": ["13%", "9%", "6%", "3%", "1%", "0%", "未注明"]
+        },
+        {
+          "key": "items",
+          "label": "报价明细",
+          "type": "array",
+          "desc": "字段值为 JSON 数组，元素结构：[{material_name(物料名称), model(型号/规格), quantity(数量), unit(单位), unit_price(单价（元）), total_price(小计（元）), delivery_days(交货期（天）), warranty(质保期)}]，如无则填 null"
+        },
+        {
+          "key": "total_amount",
+          "label": "报价总额（元）",
+          "type": "number"
+        },
+        {
+          "key": "payment_terms",
+          "label": "付款条件",
+          "type": "string",
+          "required": false
+        },
+        {
+          "key": "remarks",
+          "label": "备注",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "保密协议（NDA）",
+      "category": "合同类",
+      "description": "保密协议/保密条款关键要素提取",
+      "fields": [
+        {
+          "key": "doc_title",
+          "label": "文件标题",
+          "type": "string"
+        },
+        {
+          "key": "party_a",
+          "label": "甲方",
+          "type": "string"
+        },
+        {
+          "key": "party_b",
+          "label": "乙方",
+          "type": "string"
+        },
+        {
+          "key": "nda_type",
+          "label": "协议类型",
+          "type": "enum",
+          "required": false,
+          "enum_values": ["单向保密", "双向保密", "员工保密", "含竞业条款"]
+        },
+        {
+          "key": "scope",
+          "label": "保密范围",
+          "type": "string",
+          "desc": "概括技术/商业/客户信息等范围"
+        },
+        {
+          "key": "term",
+          "label": "保密期限",
+          "type": "string",
+          "desc": "如\"自签署日起3年\"或\"永久\"；具体年限"
+        },
+        {
+          "key": "penalty",
+          "label": "违约金",
+          "type": "string",
+          "desc": "金额或计算方式，如\"违约金人民币50万元\"",
+          "required": false
+        },
+        {
+          "key": "governing_law",
+          "label": "争议解决",
+          "type": "string",
+          "desc": "诉讼管辖地或仲裁机构",
+          "required": false
+        },
+        {
+          "key": "sign_date",
+          "label": "签署日期",
+          "type": "date",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "招标公告/招标文件",
+      "category": "招投标类",
+      "description": "招标公告、招标文件关键要素提取，生成投标 checklist",
+      "fields": [
+        {
+          "key": "project_name",
+          "label": "项目名称",
+          "type": "string"
+        },
+        {
+          "key": "tender_no",
+          "label": "招标编号",
+          "type": "string"
+        },
+        {
+          "key": "tenderer",
+          "label": "招标人",
+          "type": "string",
+          "required": false
+        },
+        {
+          "key": "agency",
+          "label": "招标代理机构",
+          "type": "string",
+          "required": false
+        },
+        {
+          "key": "agency_contact",
+          "label": "代理联系方式",
+          "type": "string",
+          "desc": "电话/邮箱",
+          "required": false
+        },
+        {
+          "key": "procurement_method",
+          "label": "采购方式",
+          "type": "enum",
+          "required": false,
+          "enum_values": ["公开招标", "邀请招标", "竞争性谈判", "竞争性磋商", "询价", "单一来源"]
+        },
+        {
+          "key": "qualification_reqs",
+          "label": "资质要求",
+          "type": "array",
+          "desc": "逐条拆分（营业执照、行业资质、业绩要求、财务要求等），这是投标 checklist 的核心；字段值为 JSON 数组，元素结构：[{requirement(资质条件)}]，如无则填 null"
+        },
+        {
+          "key": "bid_deadline",
+          "label": "投标截止时间",
+          "type": "date",
+          "desc": "含具体时刻则记录到溯源"
+        },
+        {
+          "key": "opening_time",
+          "label": "开标时间",
+          "type": "date",
+          "required": false
+        },
+        {
+          "key": "deposit",
+          "label": "投标保证金（元）",
+          "type": "number",
+          "required": false
+        },
+        {
+          "key": "doc_fee",
+          "label": "标书费（元）",
+          "type": "number",
+          "required": false
+        },
+        {
+          "key": "evaluation_method",
+          "label": "评标办法摘要",
+          "type": "string",
+          "desc": "综合评分法/最低价中标等，简述权重设置",
+          "required": false
+        },
+        {
+          "key": "tender_budget",
+          "label": "招标控制价/预算（元）",
+          "type": "number",
+          "required": false
+        },
+        {
+          "key": "submission_place",
+          "label": "递交地点/方式",
+          "type": "string",
           "required": false
         }
       ]

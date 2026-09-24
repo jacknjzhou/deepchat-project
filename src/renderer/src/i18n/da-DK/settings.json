@@ -2703,6 +2703,11 @@
       "purchase": "Indkøb",
       "payment": "Betalingsbeviser",
       "invoice": "Fakturaer",
+      "finance": "Økonomi",
+      "asset": "Aktiver",
+      "admin": "Administration",
+      "hr": "HR",
+      "tender": "Udbud",
       "custom": "Brugerdefineret"
     },
     "valueType": {

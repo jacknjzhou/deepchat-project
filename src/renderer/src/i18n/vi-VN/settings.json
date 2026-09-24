@@ -202,6 +202,11 @@
       "purchase": "Mua hàng",
       "payment": "Bằng chứng thanh toán",
       "invoice": "Hóa đơn",
+      "finance": "Tài chính",
+      "asset": "Tài sản",
+      "admin": "Hành chính",
+      "hr": "Nhân sự",
+      "tender": "Đấu thầu",
       "custom": "Tùy chỉnh"
     },
     "valueType": {

@@ -617,36 +617,55 @@ describeIfSqlite('DocumentsRepository', () => {
 })
 
 describeIfSeed('seedPresetTemplates', () => {
-  it('seeds all 10 preset templates idempotently', () => {
+  const makeSeedDatabase = () => {
     const db = new DatabaseCtor(':memory:')
     new DocumentTemplatesTableCtor(db).createTable()
     const database = new DocumentsDatabaseCtor({ getDatabase: () => db })
+    return { db, database }
+  }
+
+  it('seeds all 20 preset templates idempotently', () => {
+    const { db, database } = makeSeedDatabase()
     const count1 = seedPresetTemplates!(database, { now: 100 })
-    expect(count1).toBe(10)
+    expect(count1).toBe(20)
     const templates = database.documentTemplatesTable.list()
     const typeKeys = templates.map((t) => t.type_key).sort()
-    expect(typeKeys).toEqual(
-      [
-        'catering_receipt',
-        'contract',
-        'contract_supplement',
-        'hotel_receipt',
-        'invoice_general',
-        'invoice_special',
-        'lease_contract',
-        'payment_screenshot',
-        'purchase_order',
-        'travel_itinerary'
-      ].sort()
-    )
+    expect(typeKeys).toEqual([
+      'asset_acceptance',
+      'bank_receipt',
+      'catering_receipt',
+      'contract',
+      'contract_supplement',
+      'expense_claim',
+      'hotel_receipt',
+      'invoice_general',
+      'invoice_special',
+      'lease_contract',
+      'meeting_minutes',
+      'nda',
+      'official_incoming',
+      'onboarding_offboarding',
+      'payment_screenshot',
+      'purchase_order',
+      'quotation',
+      'resume',
+      'tender_notice',
+      'travel_itinerary'
+    ])
     const invoice = templates.find((t) => t.type_key === 'invoice_special')!
     const fields = JSON.parse(invoice.fields_json) as Array<{
       key: string
       valueType: string
       order: number
       required: boolean
+      validation: string | null
+      enumOptions: string[] | null
     }>
-    expect(fields[0]).toMatchObject({ key: 'invoice_code', valueType: 'text', order: 1 })
+    expect(fields[0]).toMatchObject({ key: 'invoice_type', valueType: 'enum', order: 1 })
+    expect(fields[0].enumOptions).not.toBeNull()
+    const invoiceCode = fields.find((f) => f.key === 'invoice_code')
+    expect(invoiceCode?.required).toBe(false)
+    expect(invoiceCode?.validation).toBe('^[0-9]{10,12}$')
     expect(fields.find((f) => f.key === 'line_items')?.valueType).toBe('array')
     const lineItems = fields.find((f) => f.key === 'line_items')
     expect(lineItems?.required).toBe(false)
@@ -655,7 +674,73 @@ describeIfSeed('seedPresetTemplates', () => {
 
     const count2 = seedPresetTemplates!(database, { now: 200 })
     expect(count2).toBe(0)
+    expect(database.documentTemplatesTable.list().every((t) => t.version === 1)).toBe(true)
     expect(database.documentTemplatesTable.list().every((t) => t.created_at === 100)).toBe(true)
+    db.close()
+  })
+
+  it('upgrades existing builtin templates when seeded fields differ', () => {
+    const { db, database } = makeSeedDatabase()
+    new DocumentTemplatesTableCtor(db).upsert({
+      typeKey: 'invoice_special',
+      name: '增值税专用发票',
+      category: '发票类',
+      fields: [
+        {
+          key: 'invoice_code',
+          label: '发票代码',
+          valueType: 'text',
+          required: true,
+          promptHint: '发票代码',
+          validation: null,
+          enumOptions: null,
+          order: 1
+        }
+      ],
+      isBuiltin: true,
+      now: 50
+    })
+    const count = seedPresetTemplates!(database, { now: 100 })
+    expect(count).toBe(20)
+    const upgraded = database.documentTemplatesTable.getByTypeKey('invoice_special')!
+    expect(upgraded.created_at).toBe(50)
+    expect(upgraded.updated_at).toBe(100)
+    expect(upgraded.version).toBe(2)
+    const fields = JSON.parse(upgraded.fields_json) as Array<{ key: string }>
+    expect(fields[0]?.key).toBe('invoice_type')
+    expect(fields.some((f) => f.key === 'invoice_code')).toBe(true)
+    db.close()
+  })
+
+  it('does not overwrite user templates occupying a preset typeKey', () => {
+    const { db, database } = makeSeedDatabase()
+    const userFields = [
+      {
+        key: 'custom_field',
+        label: '自定义字段',
+        valueType: 'text',
+        required: true,
+        promptHint: null,
+        validation: null,
+        enumOptions: null,
+        order: 1
+      }
+    ]
+    new DocumentTemplatesTableCtor(db).upsert({
+      typeKey: 'contract',
+      name: '自定义合同',
+      category: '自定义',
+      fields: userFields,
+      isBuiltin: false,
+      now: 50
+    })
+    const count = seedPresetTemplates!(database, { now: 100 })
+    expect(count).toBe(19)
+    const preserved = database.documentTemplatesTable.getByTypeKey('contract')!
+    expect(preserved.name).toBe('自定义合同')
+    expect(preserved.is_builtin).toBe(0)
+    expect(preserved.version).toBe(1)
+    expect(JSON.parse(preserved.fields_json)).toEqual(userFields)
     db.close()
   })
 })

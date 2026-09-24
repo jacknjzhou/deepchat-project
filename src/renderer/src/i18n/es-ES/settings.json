@@ -202,6 +202,11 @@
       "purchase": "Compras",
       "payment": "Justificantes de pago",
       "invoice": "Facturas",
+      "finance": "Finanzas",
+      "asset": "Activos",
+      "admin": "Administración",
+      "hr": "RRHH",
+      "tender": "Licitaciones",
       "custom": "Personalizada"
     },
     "valueType": {

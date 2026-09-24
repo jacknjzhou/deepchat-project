@@ -2703,6 +2703,11 @@
       "purchase": "購買",
       "payment": "支払証憑",
       "invoice": "請求書",
+      "finance": "財務",
+      "asset": "資産",
+      "admin": "行政",
+      "hr": "人事",
+      "tender": "入札",
       "custom": "カスタム"
     },
     "valueType": {

@@ -202,6 +202,11 @@
       "purchase": "Acquisti",
       "payment": "Prove di pagamento",
       "invoice": "Fatture",
+      "finance": "Finanza",
+      "asset": "Attività",
+      "admin": "Amministrazione",
+      "hr": "HR",
+      "tender": "Gare d'appalto",
       "custom": "Personalizzato"
     },
     "valueType": {

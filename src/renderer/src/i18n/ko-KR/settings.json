@@ -2703,6 +2703,11 @@
       "purchase": "구매",
       "payment": "지급 증빙",
       "invoice": "세금계산서",
+      "finance": "재무",
+      "asset": "자산",
+      "admin": "행정",
+      "hr": "인사",
+      "tender": "입찰",
       "custom": "사용자 지정"
     },
     "valueType": {
