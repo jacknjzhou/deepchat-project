@@ -116,7 +116,9 @@ export class DocumentExtractor {
               ]
             }
           ]
-          const output = await this.completeWithRetry(template, messages, target)
+          const output = await this.completeWithRetry(template, messages, target, {
+            allowRequiredGapRetry: false
+          })
           partials.push(parseModelOutput(output, template).fields)
           rawOutput += (rawOutput ? '\n---\n' : '') + output
         }
@@ -247,8 +249,10 @@ export class DocumentExtractor {
   private async completeWithRetry(
     template: DocumentTemplate,
     messages: ChatMessage[],
-    target: ModelTarget
+    target: ModelTarget,
+    options: { allowRequiredGapRetry?: boolean } = {}
   ): Promise<string> {
+    const { allowRequiredGapRetry = true } = options
     const request = { providerId: target.providerId, modelId: target.modelId }
     const first = await this.deps.generateCompletion({
       ...request,
@@ -260,6 +264,7 @@ export class DocumentExtractor {
     const firstScore = this.scoreParsed(template, firstParsed)
     const requiredFields = template.fields.filter((field) => field.required)
     const hasRequiredGap =
+      allowRequiredGapRetry &&
       requiredFields.length > 0 &&
       requiredFields.every((field) => firstParsed.fields[field.key]?.value === null)
     if (!firstParsed.issues.includes('model output is not valid JSON') && !hasRequiredGap) {

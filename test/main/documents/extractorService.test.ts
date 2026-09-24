@@ -265,6 +265,53 @@ describe('pdf vision routing', () => {
     expect(result.rawOutput).toContain('\n---\n')
   })
 
+  it('某页必填字段全部为空时不触发重试', async () => {
+    const deps = makeDeps({
+      extractPdfText: vi.fn(async () => ({ text: '', hasTextLayer: false, pageCount: 2 })),
+      renderPdfPages: vi.fn(async () => ({
+        dataUrls: ['data:image/jpeg;base64,AA', 'data:image/jpeg;base64,BB'],
+        pageCount: 2
+      })),
+      generateCompletion: vi.fn(async (input: CompletionRequest) => {
+        const content = JSON.stringify(input.messages[1]?.content)
+        return content.includes('base64,AA')
+          ? '{"fields": {"invoice_code": "888888888888"}, "uncertain_fields": []}'
+          : '{"fields": {"invoice_code": null}, "uncertain_fields": []}'
+      })
+    })
+    const extractor = new DocumentExtractor(deps)
+    const result = await extractor.extract({
+      templateId: 'tpl-1',
+      file: { path: '/tmp/a.pdf', mimeType: 'application/pdf' }
+    })
+    expect(result.route).toBe('vision')
+    expect(deps.generateCompletion).toHaveBeenCalledTimes(2)
+    expect(result.fields.invoice_code).toEqual({ value: '888888888888', uncertain: false })
+  })
+
+  it('某页输出非法 JSON 时仍重试', async () => {
+    const deps = makeDeps({
+      renderPdfPages: vi.fn(async () => ({
+        dataUrls: ['data:image/jpeg;base64,AA'],
+        pageCount: 1
+      })),
+      generateCompletion: vi
+        .fn()
+        .mockResolvedValueOnce('抱歉，我无法输出 JSON')
+        .mockResolvedValueOnce(
+          '{"fields": {"invoice_code": "888888888888"}, "uncertain_fields": []}'
+        )
+    })
+    const extractor = new DocumentExtractor(deps)
+    const result = await extractor.extract({
+      templateId: 'tpl-1',
+      file: { path: '/tmp/a.pdf', mimeType: 'application/pdf' }
+    })
+    expect(result.route).toBe('vision')
+    expect(deps.generateCompletion).toHaveBeenCalledTimes(2)
+    expect(result.fields.invoice_code).toEqual({ value: '888888888888', uncertain: false })
+  })
+
   it('扫描件 PDF 无视觉模型时回落 OCR', async () => {
     const deps = makeDeps({
       resolveVisionTarget: vi.fn(() => null),
