@@ -679,6 +679,19 @@ describeIfSeed('seedPresetTemplates', () => {
     db.close()
   })
 
+  it('produces templates that satisfy the templates list route contract', async () => {
+    const { db, database } = makeSeedDatabase()
+    seedPresetTemplates!(database, { now: 100 })
+    const { DocumentsRepository } = await import('@/documents/repository')
+    const { documentTemplatesListRoute } = await import('@shared/contracts/routes')
+    const repository = new DocumentsRepository(database)
+    const parsed = documentTemplatesListRoute.output.parse({
+      templates: repository.listTemplates()
+    })
+    expect(parsed.templates).toHaveLength(20)
+    db.close()
+  })
+
   it('upgrades existing builtin templates when seeded fields differ', () => {
     const { db, database } = makeSeedDatabase()
     new DocumentTemplatesTableCtor(db).upsert({

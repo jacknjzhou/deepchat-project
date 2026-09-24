@@ -12,7 +12,7 @@ interface SeedFieldRaw {
   key: string
   label: string
   type: string
-  desc: string
+  desc?: string
   required?: boolean
   rule?: string
   enum_values?: string[]
@@ -38,7 +38,7 @@ const toFields = (raw: SeedFieldRaw[]): DocumentTemplateField[] =>
       SEED_VALUE_TYPE_MAP[field.type] ??
       'text') as DocumentFieldValueType,
     required: field.required ?? true,
-    promptHint: field.desc,
+    promptHint: field.desc ?? null,
     validation: field.rule ?? null,
     enumOptions: field.enum_values ?? null,
     order: index + 1
