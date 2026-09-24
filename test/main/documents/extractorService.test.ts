@@ -671,18 +671,21 @@ describe('DocumentExtractor.extract auto 分类', () => {
 })
 
 describe('DocumentExtractor.extract 分段', () => {
-  it('超长文本分段提取并合并', async () => {
+  it('超长文本分段并行提取并按段序合并', async () => {
     const longText = 'z'.repeat(60001)
+    let active = 0
+    let maxActive = 0
     const deps = makeDeps({
       extractPdfText: vi.fn(async () => ({ text: longText, hasTextLayer: true })),
-      generateCompletion: vi
-        .fn()
-        .mockResolvedValueOnce(
-          '{"fields": {"invoice_code": "111111111111"}, "uncertain_fields": []}'
-        )
-        .mockResolvedValueOnce(
-          '{"fields": {"invoice_code": "222222222222"}, "uncertain_fields": []}'
-        )
+      generateCompletion: vi.fn(async (input: CompletionRequest) => {
+        const content = String(input.messages[1]?.content)
+        const value = content.includes('第 1/') ? '111111111111' : '222222222222'
+        active += 1
+        maxActive = Math.max(maxActive, active)
+        await new Promise((resolve) => setTimeout(resolve, 20))
+        active -= 1
+        return `{"fields": {"invoice_code": "${value}"}, "uncertain_fields": []}`
+      })
     })
     const extractor = new DocumentExtractor(deps)
     const result = await extractor.extract({
@@ -690,6 +693,10 @@ describe('DocumentExtractor.extract 分段', () => {
       file: { path: '/tmp/a.pdf', mimeType: 'application/pdf' }
     })
     expect(deps.generateCompletion).toHaveBeenCalledTimes(2)
+    expect(maxActive).toBe(2)
+    expect(result.rawOutput.indexOf('111111111111')).toBeLessThan(
+      result.rawOutput.indexOf('222222222222')
+    )
     expect(result.fields.invoice_code).toEqual({ value: '111111111111', uncertain: true })
     expect(result.issues).toContain('invoice_code: conflicting values across segments')
   })

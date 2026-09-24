@@ -61,7 +61,7 @@ const IMAGE_EXTENSIONS = /\.(jpe?g|png|gif|webp|bmp)$/i
 const CLASSIFY_TEMPERATURE = 0
 const EXTRACT_TEMPERATURE = 0.2
 const EXTRACT_MAX_TOKENS = 4096
-const PAGE_EXTRACT_CONCURRENCY = 3
+const EXTRACT_CONCURRENCY = 3
 
 const isImageFile = (file: DocumentExtractFileInput): boolean => {
   if (file.mimeType) return file.mimeType.startsWith(IMAGE_MIME_PREFIX)
@@ -176,7 +176,7 @@ export class DocumentExtractor {
           }
         }
         await Promise.all(
-          Array.from({ length: Math.min(PAGE_EXTRACT_CONCURRENCY, dataUrls.length) }, () =>
+          Array.from({ length: Math.min(EXTRACT_CONCURRENCY, dataUrls.length) }, () =>
             extractPage()
           )
         )
@@ -232,36 +232,60 @@ export class DocumentExtractor {
         fields = parsed.fields
         issues.push(...parsed.issues)
       } else {
-        const partials: Record<string, DocumentFieldEntry>[] = []
-        const segmentOutputs: string[] = []
+        // Bounded parallel extraction; results stay position-indexed so the
+        // merge order always matches the segment order.
+        const partials: Record<string, DocumentFieldEntry>[] = Array.from({
+          length: segments.length
+        })
+        const segmentOutputs: string[] = Array.from({ length: segments.length })
         const systemMessage: ChatMessage = {
           role: 'system',
           content: buildExtractionSystemPrompt(template)
         }
-        for (let index = 0; index < segments.length; index += 1) {
-          if (input.signal?.aborted) {
-            throw new Error('extraction aborted')
-          }
-          const messages: ChatMessage[] = [
-            systemMessage,
-            {
-              role: 'user',
-              content: buildExtractionUserPrompt(template, segments[index], {
-                segmentIndex: index + 1,
-                segmentCount: segments.length
-              })
+        let next = 0
+        let failed = false
+        const extractSegment = async (): Promise<void> => {
+          while (next < segments.length) {
+            if (input.signal?.aborted) {
+              throw new Error('extraction aborted')
             }
-          ]
-          const output = await this.deps.generateCompletion({
-            providerId: target.providerId,
-            modelId: target.modelId,
-            messages,
-            temperature: EXTRACT_TEMPERATURE,
-            maxTokens: EXTRACT_MAX_TOKENS
-          })
-          segmentOutputs.push(output)
-          partials.push(parseModelOutput(output, template).fields)
+            if (failed) {
+              return
+            }
+            const index = next
+            next += 1
+            try {
+              const messages: ChatMessage[] = [
+                systemMessage,
+                {
+                  role: 'user',
+                  content: buildExtractionUserPrompt(template, segments[index], {
+                    segmentIndex: index + 1,
+                    segmentCount: segments.length
+                  })
+                }
+              ]
+              const output = await this.deps.generateCompletion({
+                providerId: target.providerId,
+                modelId: target.modelId,
+                messages,
+                temperature: EXTRACT_TEMPERATURE,
+                maxTokens: EXTRACT_MAX_TOKENS
+              })
+              segmentOutputs[index] = output
+              partials[index] = parseModelOutput(output, template).fields
+            } catch (error) {
+              // Stop other workers from claiming further segments once one fails.
+              failed = true
+              throw error
+            }
+          }
         }
+        await Promise.all(
+          Array.from({ length: Math.min(EXTRACT_CONCURRENCY, segments.length) }, () =>
+            extractSegment()
+          )
+        )
         rawOutput = segmentOutputs.join('\n---\n')
         fields = mergeSegmentOutputs(
           Object.fromEntries(
