@@ -249,8 +249,55 @@ describe('validateTemplateRules', () => {
     expect(issues).toContainEqual(expect.stringContaining('buyer_tax_no'))
   })
 
+  it('已知格式：seller_tax_no 少于 15 位时报 issue', () => {
+    const template = makeTemplate([field('seller_tax_no', 'text')])
+    const issues = validateTemplateRules(template, {
+      seller_tax_no: { value: '913301', uncertain: false }
+    })
+    expect(issues).toContainEqual(expect.stringContaining('seller_tax_no'))
+  })
+
+  it('已知格式：invoice_code 位数不符时报 issue，10 位通过', () => {
+    const template = makeTemplate([field('invoice_code', 'text')])
+    const bad = validateTemplateRules(template, {
+      invoice_code: { value: '123456789', uncertain: false }
+    })
+    expect(bad).toContainEqual(expect.stringContaining('invoice_code'))
+    const ok = validateTemplateRules(template, {
+      invoice_code: { value: '0410320001', uncertain: false }
+    })
+    expect(ok).toHaveLength(0)
+  })
+
+  it('已知格式：tax_rate 接受免税、不征税与常见税率', () => {
+    const template = makeTemplate([field('tax_rate', 'text')])
+    for (const value of ['免税', '不征税', '13%', '3%']) {
+      const issues = validateTemplateRules(template, {
+        tax_rate: { value, uncertain: false }
+      })
+      expect(issues).toHaveLength(0)
+    }
+    const issues = validateTemplateRules(template, {
+      tax_rate: { value: '17%', uncertain: false }
+    })
+    expect(issues).toContainEqual(expect.stringContaining('tax_rate'))
+  })
+
+  it('已知格式：值两侧空白先 trim 再校验', () => {
+    const template = makeTemplate([field('invoice_number', 'text')])
+    const issues = validateTemplateRules(template, {
+      invoice_number: { value: ' 12345678 ', uncertain: false }
+    })
+    expect(issues).toHaveLength(0)
+  })
+
   it('大写金额：amount_upper 与 total_amount 矛盾时报 issue', () => {
-    const template = makeTemplate([field('total_amount', 'number'), field('amount_upper', 'text')])
+    const template = makeTemplate([
+      field('total_amount', 'number'),
+      field('amount_ex_tax', 'number'),
+      field('tax_amount', 'number'),
+      field('amount_upper', 'text')
+    ])
     const issues = validateTemplateRules(template, {
       total_amount: { value: 30000, uncertain: false },
       amount_upper: { value: '伍万元整', uncertain: false }
@@ -259,10 +306,38 @@ describe('validateTemplateRules', () => {
   })
 
   it('大写金额：amount_upper 与 total_amount 一致时通过', () => {
-    const template = makeTemplate([field('total_amount', 'number'), field('amount_upper', 'text')])
+    const template = makeTemplate([
+      field('total_amount', 'number'),
+      field('amount_ex_tax', 'number'),
+      field('tax_amount', 'number'),
+      field('amount_upper', 'text')
+    ])
     const issues = validateTemplateRules(template, {
       total_amount: { value: 30000, uncertain: false },
       amount_upper: { value: '叁万元整', uncertain: false }
+    })
+    expect(issues).toHaveLength(0)
+  })
+
+  it('大写金额：模板缺求和对时跳过交叉核对（普票口径）', () => {
+    const template = makeTemplate([field('total_amount', 'number'), field('amount_upper', 'text')])
+    const issues = validateTemplateRules(template, {
+      total_amount: { value: 200, uncertain: false },
+      amount_upper: { value: '贰佰贰拾陆元整', uncertain: false }
+    })
+    expect(issues).toHaveLength(0)
+  })
+
+  it('大写金额：amount_upper 无法解析时跳过', () => {
+    const template = makeTemplate([
+      field('total_amount', 'number'),
+      field('amount_ex_tax', 'number'),
+      field('tax_amount', 'number'),
+      field('amount_upper', 'text')
+    ])
+    const issues = validateTemplateRules(template, {
+      total_amount: { value: 30000, uncertain: false },
+      amount_upper: { value: 'abc', uncertain: false }
     })
     expect(issues).toHaveLength(0)
   })
@@ -275,7 +350,11 @@ describe('chineseAmountToNumber', () => {
     ['拾贰元', 12],
     ['人民币壹佰元整', 100],
     ['贰拾元零伍分', 20.05],
-    ['壹拾元整', 10]
+    ['壹拾元整', 10],
+    ['拾元整', 10],
+    ['拾万元整', 100000],
+    ['壹亿贰仟万元整', 120000000],
+    ['壹亿零壹拾万元整', 100100000]
   ])('解析 %s -> %d', (raw, expected) => {
     expect(chineseAmountToNumber(raw)).toBe(expected)
   })
@@ -283,5 +362,6 @@ describe('chineseAmountToNumber', () => {
   it('无法解析或空串返回 null', () => {
     expect(chineseAmountToNumber('abc')).toBeNull()
     expect(chineseAmountToNumber('')).toBeNull()
+    expect(chineseAmountToNumber('两万元整')).toBeNull()
   })
 })

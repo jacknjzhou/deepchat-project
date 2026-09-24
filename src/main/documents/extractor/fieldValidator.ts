@@ -185,7 +185,7 @@ const KNOWN_FIELD_VALIDATIONS: Record<string, RegExp> = {
   invoice_number: /^\d{8}$|^\d{20}$/,
   buyer_tax_no: /^[A-Z0-9]{15,20}$/,
   seller_tax_no: /^[A-Z0-9]{15,20}$/,
-  tax_rate: /^(13|12|9|6|5|3|1|0)(\.\d+)?%$/
+  tax_rate: /^(免税|不征税|(13|12|9|6|5|3|1|0)(\.\d+)?%)$/
 }
 
 const CN_DIGITS: Record<string, number> = {
@@ -225,16 +225,24 @@ export function chineseAmountToNumber(raw: string): number | null {
     }
     const small = CN_SMALL_UNITS[char]
     if (small !== undefined) {
-      section += (pending || (seenDigit ? 0 : 1)) * small
+      if (pending === 0 && !seenDigit) {
+        pending = 1
+        seenDigit = true
+      }
+      section += pending * small
       pending = 0
       continue
     }
     const big = CN_BIG_UNITS[char]
     if (big !== undefined) {
       section += pending
-      total = (total + section) * big
-      section = 0
       pending = 0
+      if (char === '万') {
+        total += section * big
+      } else {
+        total = (total + section) * big
+      }
+      section = 0
       continue
     }
     return null
@@ -307,8 +315,9 @@ export function validateTemplateRules(
     }
 
     const knownPattern = KNOWN_FIELD_VALIDATIONS[field.key]
-    if (!field.validation && knownPattern && typeof value === 'string' && value.length > 0) {
-      if (!knownPattern.test(value)) {
+    if (!field.validation && knownPattern && typeof value === 'string') {
+      const trimmed = value.trim()
+      if (trimmed.length > 0 && !knownPattern.test(trimmed)) {
         issues.push(`${field.key}: known format validation failed`)
       }
     }
@@ -331,10 +340,10 @@ export function validateTemplateRules(
 
   const upperEntry = fields['amount_upper']
   const upperValue = typeof upperEntry?.value === 'string' ? upperEntry.value : null
-  const upperTotalKey = AMOUNT_CONSERVATION_TOTAL_KEYS.find((key) => key in fields)
-  if (upperValue && upperTotalKey) {
+  if (upperValue && matchesAmountConservation(template)) {
+    const upperTotalKey = AMOUNT_CONSERVATION_TOTAL_KEYS.find((key) => key in fields)
     const upper = chineseAmountToNumber(upperValue)
-    const total = asNumber(fields[upperTotalKey])
+    const total = upperTotalKey ? asNumber(fields[upperTotalKey]) : null
     if (upper !== null && total !== null && Math.abs(upper - total) > AMOUNT_TOLERANCE) {
       issues.push(`amount_upper does not match ${upperTotalKey}`)
     }
