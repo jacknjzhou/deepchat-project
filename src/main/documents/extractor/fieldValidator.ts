@@ -180,6 +180,87 @@ const AMOUNT_CONSERVATION_SUM_KEYS: string[][] = [
 ]
 const DATE_FORMAT_PATTERN = /^\d{4}-\d{2}-\d{2}$/
 
+const KNOWN_FIELD_VALIDATIONS: Record<string, RegExp> = {
+  invoice_code: /^\d{10}$|^\d{12}$/,
+  invoice_number: /^\d{8}$|^\d{20}$/,
+  buyer_tax_no: /^[A-Z0-9]{15,20}$/,
+  seller_tax_no: /^[A-Z0-9]{15,20}$/,
+  tax_rate: /^(13|12|9|6|5|3|1|0)(\.\d+)?%$/
+}
+
+const CN_DIGITS: Record<string, number> = {
+  零: 0,
+  壹: 1,
+  贰: 2,
+  叁: 3,
+  肆: 4,
+  伍: 5,
+  陆: 6,
+  柒: 7,
+  捌: 8,
+  玖: 9
+}
+const CN_SMALL_UNITS: Record<string, number> = { 拾: 10, 佰: 100, 仟: 1000 }
+const CN_BIG_UNITS: Record<string, number> = { 万: 10_000, 亿: 100_000_000 }
+
+// 中文大写金额 → 数字；不支持的形式返回 null（不臆造）
+export function chineseAmountToNumber(raw: string): number | null {
+  const text = raw
+    .trim()
+    .replace(/^(人民币|￥|¥|（大写）|\(大写\))+/, '')
+    .replace(/整$/, '')
+  const [intRaw = '', decRaw = ''] = text.split(/[元圆]/)
+  if (!intRaw && !decRaw) return null
+
+  let total = 0
+  let section = 0
+  let pending = 0
+  let seenDigit = false
+  for (const char of intRaw) {
+    const digit = CN_DIGITS[char]
+    if (digit !== undefined) {
+      pending = digit
+      seenDigit = true
+      continue
+    }
+    const small = CN_SMALL_UNITS[char]
+    if (small !== undefined) {
+      section += (pending || (seenDigit ? 0 : 1)) * small
+      pending = 0
+      continue
+    }
+    const big = CN_BIG_UNITS[char]
+    if (big !== undefined) {
+      section += pending
+      total = (total + section) * big
+      section = 0
+      pending = 0
+      continue
+    }
+    return null
+  }
+  if (!seenDigit) return null
+
+  // 小数部分逐字符扫描：角=0.1 位、分=0.01 位，取其前最近的数字
+  let fraction = 0
+  let decPending = 0
+  for (const char of decRaw) {
+    const digit = CN_DIGITS[char]
+    if (digit !== undefined) {
+      decPending = digit
+      continue
+    }
+    if (char === '角') {
+      fraction += decPending * 0.1
+      decPending = 0
+    } else if (char === '分') {
+      fraction += decPending * 0.01
+      decPending = 0
+    }
+  }
+  return Number((total + section + pending + fraction).toFixed(2))
+}
+
 const matchesAmountConservation = (template: DocumentTemplate): boolean => {
   const keys = new Set(template.fields.map((field) => field.key))
   if (!AMOUNT_CONSERVATION_TOTAL_KEYS.some((key) => keys.has(key))) return false
@@ -224,6 +305,13 @@ export function validateTemplateRules(
     ) {
       issues.push(`${field.key}: date_format validation failed`)
     }
+
+    const knownPattern = KNOWN_FIELD_VALIDATIONS[field.key]
+    if (!field.validation && knownPattern && typeof value === 'string' && value.length > 0) {
+      if (!knownPattern.test(value)) {
+        issues.push(`${field.key}: known format validation failed`)
+      }
+    }
   }
 
   if (matchesAmountConservation(template)) {
@@ -238,6 +326,17 @@ export function validateTemplateRules(
           issues.push(`amount_conservation violated: ${sumPair[0]} + ${sumPair[1]} != ${totalKey}`)
         }
       }
+    }
+  }
+
+  const upperEntry = fields['amount_upper']
+  const upperValue = typeof upperEntry?.value === 'string' ? upperEntry.value : null
+  const upperTotalKey = AMOUNT_CONSERVATION_TOTAL_KEYS.find((key) => key in fields)
+  if (upperValue && upperTotalKey) {
+    const upper = chineseAmountToNumber(upperValue)
+    const total = asNumber(fields[upperTotalKey])
+    if (upper !== null && total !== null && Math.abs(upper - total) > AMOUNT_TOLERANCE) {
+      issues.push(`amount_upper does not match ${upperTotalKey}`)
     }
   }
 

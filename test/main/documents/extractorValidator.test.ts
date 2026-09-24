@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  chineseAmountToNumber,
   extractJsonBlock,
   parseModelOutput,
   validateTemplateRules
@@ -222,5 +223,65 @@ describe('validateTemplateRules', () => {
       invoice_code: { value: 'abc', uncertain: false }
     })
     expect(issues.length).toBe(1)
+  })
+
+  it('已知格式：invoice_number 位数不符时报 issue', () => {
+    const template = makeTemplate([field('invoice_number', 'text')])
+    const issues = validateTemplateRules(template, {
+      invoice_number: { value: '1234567', uncertain: false }
+    })
+    expect(issues).toContainEqual(expect.stringContaining('invoice_number'))
+  })
+
+  it('已知格式：接受 8 位或 20 位 invoice_number', () => {
+    const template = makeTemplate([field('invoice_number', 'text')])
+    const issues = validateTemplateRules(template, {
+      invoice_number: { value: '24120000000123456789', uncertain: false }
+    })
+    expect(issues).toHaveLength(0)
+  })
+
+  it('已知格式：buyer_tax_no 少于 15 位时报 issue', () => {
+    const template = makeTemplate([field('buyer_tax_no', 'text')])
+    const issues = validateTemplateRules(template, {
+      buyer_tax_no: { value: '913301', uncertain: false }
+    })
+    expect(issues).toContainEqual(expect.stringContaining('buyer_tax_no'))
+  })
+
+  it('大写金额：amount_upper 与 total_amount 矛盾时报 issue', () => {
+    const template = makeTemplate([field('total_amount', 'number'), field('amount_upper', 'text')])
+    const issues = validateTemplateRules(template, {
+      total_amount: { value: 30000, uncertain: false },
+      amount_upper: { value: '伍万元整', uncertain: false }
+    })
+    expect(issues).toContainEqual(expect.stringContaining('amount_upper does not match'))
+  })
+
+  it('大写金额：amount_upper 与 total_amount 一致时通过', () => {
+    const template = makeTemplate([field('total_amount', 'number'), field('amount_upper', 'text')])
+    const issues = validateTemplateRules(template, {
+      total_amount: { value: 30000, uncertain: false },
+      amount_upper: { value: '叁万元整', uncertain: false }
+    })
+    expect(issues).toHaveLength(0)
+  })
+})
+
+describe('chineseAmountToNumber', () => {
+  it.each([
+    ['叁万元整', 30000],
+    ['壹佰贰拾叁万肆仟伍佰陆拾柒元捌角玖分', 1234567.89],
+    ['拾贰元', 12],
+    ['人民币壹佰元整', 100],
+    ['贰拾元零伍分', 20.05],
+    ['壹拾元整', 10]
+  ])('解析 %s -> %d', (raw, expected) => {
+    expect(chineseAmountToNumber(raw)).toBe(expected)
+  })
+
+  it('无法解析或空串返回 null', () => {
+    expect(chineseAmountToNumber('abc')).toBeNull()
+    expect(chineseAmountToNumber('')).toBeNull()
   })
 })
