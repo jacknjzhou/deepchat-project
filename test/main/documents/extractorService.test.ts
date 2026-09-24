@@ -69,6 +69,7 @@ describe('DocumentExtractor.extract 路由', () => {
     const content = call.messages[1]?.content
     expect(Array.isArray(content)).toBe(true)
     expect(JSON.stringify(content)).toContain('image_url')
+    expect(JSON.stringify(content)).toContain('"detail":"auto"')
     expect(result.fields.invoice_code).toEqual({ value: '123456789012', uncertain: false })
     expect(result.durationMs).toBe(0)
   })
@@ -253,7 +254,9 @@ describe('DocumentExtractor.extract auto 分类', () => {
     })
     expect(result.template.typeKey).toBe('hotel_receipt')
     expect(deps.generateCompletion).toHaveBeenCalledTimes(2)
-    expect(vi.mocked(deps.generateCompletion).mock.calls[0][0].messages[0]?.role).toBe('system')
+    const classifyCall = vi.mocked(deps.generateCompletion).mock.calls[0][0]
+    expect(classifyCall.messages[0]?.role).toBe('system')
+    expect(JSON.stringify(classifyCall.messages[1]?.content)).toContain('"detail":"low"')
     expect(vi.mocked(deps.generateCompletion).mock.calls[1][0].modelId).toBe('gpt-4o')
   })
 

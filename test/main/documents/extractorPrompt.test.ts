@@ -169,4 +169,29 @@ describe('buildClassificationPrompts', () => {
     expect(user).toContain('invoice_special')
     expect(user).toContain('增值税专用发票')
   })
+
+  it('includes category and distinguishing field keys per template', () => {
+    const templates = [
+      makeTemplate({
+        typeKey: 'invoice_special',
+        name: '增值税专用发票',
+        category: '发票类',
+        fields: [
+          makeField('checker', '复核人', false, 2),
+          makeField('buyer_bank', '开户行', true, 1)
+        ]
+      }),
+      makeTemplate({
+        typeKey: 'invoice_general',
+        name: '普通发票',
+        category: '发票类',
+        fields: [makeField('seller_name', '销售方名称', true, 1)]
+      })
+    ]
+    const { system, user } = buildClassificationPrompts(templates)
+    expect(system).toContain('注意区分字段集合不同但名称相近的类型')
+    expect(user).toContain('invoice_special（发票类）: 增值税专用发票')
+    expect(user).toContain('典型字段: buyer_bank, checker')
+    expect(user).toContain('invoice_general（发票类）: 普通发票')
+  })
 })

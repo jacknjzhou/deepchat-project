@@ -80,10 +80,20 @@ export function buildClassificationPrompts(templates: DocumentTemplate[]): {
 } {
   const system = [
     '你是单据类型分类助手。根据给定的单据内容，从候选类型中选出最匹配的一个。',
+    '注意区分字段集合不同但名称相近的类型，以单据上实际出现的字段和版式为准。',
     '只输出一个 JSON 对象：{ "typeKey": "<选中的typeKey>" }，不要输出任何其他文字。'
   ].join('\n')
 
-  const catalog = templates.map((template) => `- ${template.typeKey}: ${template.name}`).join('\n')
+  const catalog = templates
+    .map((template) => {
+      const keys = template.fields
+        .slice()
+        .sort((a, b) => a.order - b.order)
+        .map((field) => field.key)
+        .join(', ')
+      return `- ${template.typeKey}（${template.category}）: ${template.name}；典型字段: ${keys}`
+    })
+    .join('\n')
 
   const user = ['候选类型清单：', catalog, '', '请判断这份单据属于哪个类型。'].join('\n')
 

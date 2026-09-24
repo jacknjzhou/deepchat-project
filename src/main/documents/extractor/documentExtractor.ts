@@ -230,7 +230,7 @@ export class DocumentExtractor {
           role: 'user',
           content: [
             { type: 'text', text: user },
-            { type: 'image_url', image_url: { url: dataUrl, detail: 'auto' } }
+            { type: 'image_url', image_url: { url: dataUrl, detail: 'low' } }
           ]
         }
       ]
