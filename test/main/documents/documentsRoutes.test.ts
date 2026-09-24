@@ -16,8 +16,10 @@ import {
   documentsListRoute,
   documentsPreviewFileRoute,
   documentsStatsRoute,
+  documentsTasksClearFailedRoute,
   documentsTasksCreateRoute,
   documentsTasksListRoute,
+  documentsTasksRetryRoute,
   documentsUpsertRoute,
   type DeepchatRouteName
 } from '@shared/contracts/routes'
@@ -253,6 +255,14 @@ describe('documents route contracts', () => {
     }
     expect(documentsTasksCreateRoute.output.parse({ tasks: [task] }).tasks).toHaveLength(1)
     expect(documentsTasksListRoute.output.parse({ tasks: [] }).tasks).toEqual([])
+  })
+
+  it('documents.tasks.retry/clearFailed 契约解析', () => {
+    expect(documentsTasksRetryRoute.input.parse({ id: 't1' }).id).toBe('t1')
+    expect(() => documentsTasksRetryRoute.input.parse({ id: '' })).toThrow()
+    expect(documentsTasksRetryRoute.output.parse({ task: null }).task).toBeNull()
+    expect(documentsTasksClearFailedRoute.output.parse({ removed: 3 }).removed).toBe(3)
+    expect(() => documentsTasksClearFailedRoute.output.parse({ removed: -1 })).toThrow()
   })
 
   it('documents.task.updated event payload parses', async () => {
@@ -698,5 +708,49 @@ describeIfSqlite('documents stats and tasks route handlers', () => {
     const output = documentsTasksListRoute.output.parse(await handler({}))
     expect(output.tasks).toHaveLength(1)
     expect(output.tasks[0]).toMatchObject({ filePath: 'C:\\a.png', status: 'pending' })
+  })
+
+  it('documents.tasks.retry delegates to task manager and returns the task', async () => {
+    const repository = makeRepository()
+    const created = repository.insertTasks([
+      { batchId: 'b1', filePath: 'C:\\a.png', fileName: 'a.png', templateId: 'auto' }
+    ])[0]
+    expect(created).toBeDefined()
+    if (!created) {
+      throw new Error('task not created')
+    }
+    repository.updateTask(created.id, { status: 'failed', error: 'boom' })
+    const retryTask = vi
+      .fn()
+      .mockReturnValue(repository.updateTask(created.id, { status: 'pending', error: null }))
+    const taskManager = { submit: vi.fn(), resumePending: vi.fn(), retryTask }
+    const routes = createDocumentsRoutes(repository, fakeExtractor, taskManager as never)
+    const handler = getRouteHandler(routes, documentsTasksRetryRoute.name)
+    const output = documentsTasksRetryRoute.output.parse(await handler({ id: created.id }))
+    expect(output.task).toMatchObject({ id: created.id, status: 'pending', error: null })
+    expect(retryTask).toHaveBeenCalledWith(created.id)
+  })
+
+  it('documents.tasks.clearFailed removes only failed tasks', async () => {
+    const repository = makeRepository()
+    const inserted = repository.insertTasks([
+      { batchId: 'b1', filePath: 'C:\\a.png', fileName: 'a.png', templateId: 'auto' },
+      { batchId: 'b1', filePath: 'C:\\b.png', fileName: 'b.png', templateId: 'auto' }
+    ])
+    const first = inserted[0]
+    expect(first).toBeDefined()
+    if (!first) {
+      throw new Error('task not created')
+    }
+    repository.updateTask(first.id, { status: 'failed', error: 'boom' })
+    const routes = createDocumentsRoutes(repository, fakeExtractor, fakeTaskManager)
+    const handler = getRouteHandler(routes, documentsTasksClearFailedRoute.name)
+    const output = documentsTasksClearFailedRoute.output.parse(await handler({}))
+    expect(output.removed).toBe(1)
+    const remaining = documentsTasksListRoute.output.parse(
+      await getRouteHandler(routes, documentsTasksListRoute.name)({})
+    )
+    expect(remaining.tasks).toHaveLength(1)
+    expect(remaining.tasks[0]).toMatchObject({ filePath: 'C:\\b.png', status: 'pending' })
   })
 })

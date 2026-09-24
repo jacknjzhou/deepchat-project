@@ -74,6 +74,7 @@ export interface DocumentRepositoryTaskPort {
   ): DocumentTask | null
   listRecentTasks(limit?: number): DocumentTask[]
   listPendingTasks(): DocumentTask[]
+  getTask(id: string): DocumentTask | null
   markRunningTasksFailed(error: string): void
   countTaskBatch(batchId: string): { done: number; total: number }
   insertDocument(input: {
@@ -323,6 +324,15 @@ export class DocumentsRepository {
 
   listPendingTasks(): DocumentTask[] {
     return this.database.documentTasksTable.listPending().map(toTask)
+  }
+
+  getTask(id: string): DocumentTask | null {
+    const row = this.database.documentTasksTable.get(id)
+    return row ? toTask(row) : null
+  }
+
+  deleteFailedTasks(): number {
+    return this.database.documentTasksTable.deleteFailed()
   }
 
   markRunningTasksFailed(error: string): void {

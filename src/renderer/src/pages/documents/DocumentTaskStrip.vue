@@ -1,8 +1,20 @@
 <template>
   <div class="border-b bg-muted/30 px-6 py-2" data-testid="archive-task-strip">
-    <p class="mb-1 text-xs font-medium text-muted-foreground">
-      {{ t('settings.documents.archive.taskStripTitle') }}
-    </p>
+    <div class="mb-1 flex items-center gap-2">
+      <p class="text-xs font-medium text-muted-foreground">
+        {{ t('settings.documents.archive.taskStripTitle') }}
+      </p>
+      <DcButton
+        v-if="hasFailedTasks"
+        variant="outline"
+        size="sm"
+        data-testid="task-clear-failed"
+        :disabled="clearing"
+        @click="emit('clear-failed')"
+      >
+        {{ t('settings.documents.archive.taskClearFailed') }}
+      </DcButton>
+    </div>
     <ul class="space-y-1">
       <li
         v-for="task in tasks"
@@ -43,23 +55,27 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Icon } from '@iconify/vue'
 import { DcButton } from '@dc-ui/components/button'
 import { DcBadge } from '@dc-ui/components/badge'
 import type { DocumentsTaskItem } from '@api/documentTasks'
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     tasks: DocumentsTaskItem[]
     typeNameFor: (typeKey: string | null) => string | null
     retryingTaskIds?: ReadonlySet<string>
+    clearing?: boolean
   }>(),
-  { retryingTaskIds: () => new Set<string>() }
+  { retryingTaskIds: () => new Set<string>(), clearing: false }
 )
 
-const emit = defineEmits<{ retry: [task: DocumentsTaskItem] }>()
+const emit = defineEmits<{ retry: [task: DocumentsTaskItem]; 'clear-failed': [] }>()
 const { t } = useI18n()
+
+const hasFailedTasks = computed(() => props.tasks.some((task) => task.status === 'failed'))
 
 function statusIcon(status: DocumentsTaskItem['status']): string {
   if (status === 'running') return 'lucide:loader-2'

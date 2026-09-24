@@ -294,3 +294,15 @@ export const documentsTasksListRoute = defineRouteContract({
   input: z.object({}),
   output: z.object({ tasks: z.array(documentTaskSchema) })
 })
+
+export const documentsTasksRetryRoute = defineRouteContract({
+  name: 'documents.tasks.retry',
+  input: z.object({ id: z.string().min(1) }),
+  output: z.object({ task: documentTaskSchema.nullable() })
+})
+
+export const documentsTasksClearFailedRoute = defineRouteContract({
+  name: 'documents.tasks.clearFailed',
+  input: z.object({}),
+  output: z.object({ removed: z.number().int().nonnegative() })
+})

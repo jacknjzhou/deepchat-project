@@ -72,6 +72,28 @@ export class RecognitionTaskManager {
     this.pump()
   }
 
+  // Re-run a failed task in place: reset the same row and re-queue it instead
+  // of inserting a fresh one, so the strip keeps a single entry per file.
+  retryTask(taskId: string): DocumentTask | null {
+    const task = this.deps.repository.getTask(taskId)
+    if (!task || task.status !== 'failed') {
+      return null
+    }
+    const reset = this.deps.repository.updateTask(taskId, {
+      status: 'pending',
+      typeKey: null,
+      documentId: null,
+      error: null
+    })
+    if (!reset) {
+      return null
+    }
+    this.publish(reset)
+    this.queue.push(reset)
+    this.pump()
+    return reset
+  }
+
   async idle(): Promise<void> {
     while (this.running > 0 || this.queue.length > 0) {
       await new Promise((resolve) => setTimeout(resolve, 1))

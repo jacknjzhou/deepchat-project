@@ -86,7 +86,9 @@
       :tasks="visibleTasks"
       :type-name-for="typeNameFor"
       :retrying-task-ids="retryingTaskIds"
+      :clearing="clearingFailedTasks"
       @retry="onRetryTask"
+      @clear-failed="onClearFailedTasks"
     />
 
     <div v-if="store.archiveLoadError" class="flex flex-col items-center gap-3 px-6 py-10">
@@ -397,6 +399,7 @@ function typeNameFor(typeKey: string | null): string | null {
 
 // Replaced wholesale on mutation so the Set change triggers reactivity.
 const retryingTaskIds = ref(new Set<string>())
+const clearingFailedTasks = ref(false)
 
 async function onRetryTask(task: DocumentsTaskItem) {
   if (retryingTaskIds.value.has(task.id)) {
@@ -421,6 +424,30 @@ async function onRetryTask(task: DocumentsTaskItem) {
     const next = new Set(retryingTaskIds.value)
     next.delete(task.id)
     retryingTaskIds.value = next
+  }
+}
+
+async function onClearFailedTasks() {
+  if (clearingFailedTasks.value) {
+    return
+  }
+  clearingFailedTasks.value = true
+  try {
+    const removed = await store.clearFailedRecognitionTasks()
+    notifyTransient(
+      'success',
+      'documents.archive.taskClearFailedSuccess',
+      t('settings.documents.archive.taskClearFailedSuccess', { count: removed })
+    )
+  } catch (error) {
+    console.error('[DocumentsArchivePage] clear failed tasks error', error)
+    notifyTransient(
+      'error',
+      'documents.archive.taskClearFailedError',
+      t('settings.documents.archive.taskClearFailedError')
+    )
+  } finally {
+    clearingFailedTasks.value = false
   }
 }
 

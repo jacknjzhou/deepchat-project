@@ -145,6 +145,11 @@ export class DocumentTasksTable extends BaseTable {
       .run(error, now ?? Date.now())
   }
 
+  deleteFailed(): number {
+    const info = this.db.prepare("DELETE FROM document_tasks WHERE status = 'failed'").run()
+    return info.changes
+  }
+
   countBatch(batchId: string): { done: number; total: number } {
     const row = this.db
       .prepare(

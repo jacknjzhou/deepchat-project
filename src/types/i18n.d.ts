@@ -2230,6 +2230,9 @@ declare module 'vue-i18n' {
         taskQueued: string
         taskRetryQueued: string
         taskRetryFailed: string
+        taskClearFailed: string
+        taskClearFailedSuccess: string
+        taskClearFailedError: string
         filesSelected: string
         autoClassify: string
         taskQueuedToast: string

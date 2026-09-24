@@ -391,6 +391,8 @@ import {
   documentsStatsRoute,
   documentsTasksCreateRoute,
   documentsTasksListRoute,
+  documentsTasksRetryRoute,
+  documentsTasksClearFailedRoute,
   documentsUpsertRoute
 } from './routes/documents.routes'
 import {
@@ -821,6 +823,8 @@ const DEEPCHAT_ROUTE_CATALOG_PART_1 = {
   [documentsStatsRoute.name]: documentsStatsRoute,
   [documentsTasksCreateRoute.name]: documentsTasksCreateRoute,
   [documentsTasksListRoute.name]: documentsTasksListRoute,
+  [documentsTasksRetryRoute.name]: documentsTasksRetryRoute,
+  [documentsTasksClearFailedRoute.name]: documentsTasksClearFailedRoute,
   [pluginsListRoute.name]: pluginsListRoute,
   [pluginsGetRoute.name]: pluginsGetRoute,
   [pluginsEnableRoute.name]: pluginsEnableRoute,

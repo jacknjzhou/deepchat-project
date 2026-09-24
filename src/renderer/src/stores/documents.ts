@@ -240,14 +240,26 @@ export const useDocumentsStore = defineStore('documents', () => {
     task: DocumentsTaskItem,
     client: DocumentsClient = defaultClient
   ) {
-    const created = await createRecognitionTasks(
-      { files: [{ path: task.filePath, name: task.fileName }], templateId: task.templateId },
-      client
-    )
-    // The manager inserts a fresh task row instead of resetting the old one;
-    // drop the stale entry so the strip does not keep offering retry forever.
-    tasks.value = tasks.value.filter((t) => t.id !== task.id)
-    return created
+    // The manager resets the same task row and re-queues it; keep the strip
+    // entry in place instead of creating a second task for the same file.
+    const result = await client.retryTask(task.id)
+    if (!result.task) {
+      throw new Error(`Task is not retryable: ${task.id}`)
+    }
+    const reset = result.task as DocumentsTaskItem
+    const index = tasks.value.findIndex((t) => t.id === reset.id)
+    if (index >= 0) {
+      tasks.value[index] = reset
+    } else {
+      tasks.value.unshift(reset)
+    }
+    return reset
+  }
+
+  async function clearFailedRecognitionTasks(client: DocumentsClient = defaultClient) {
+    const result = await client.clearFailedTasks()
+    tasks.value = tasks.value.filter((t) => t.status !== 'failed')
+    return result.removed
   }
 
   function replaceArchiveDocument(document: DocumentRecord) {
@@ -325,6 +337,7 @@ export const useDocumentsStore = defineStore('documents', () => {
     handleTaskUpdated,
     createRecognitionTasks,
     retryRecognitionTask,
+    clearFailedRecognitionTasks,
     saveArchiveDocument,
     removeArchiveDocument,
     recognizeDocument,

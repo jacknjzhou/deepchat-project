@@ -13,6 +13,8 @@ const previewFile = vi.fn()
 const stats = vi.fn()
 const listTasks = vi.fn()
 const createTasks = vi.fn()
+const retryTask = vi.fn()
+const clearFailedTasks = vi.fn()
 
 vi.doMock('@api/DocumentsClient', () => ({
   createDocumentsClient: () => ({
@@ -24,7 +26,9 @@ vi.doMock('@api/DocumentsClient', () => ({
     previewFile,
     stats,
     listTasks,
-    createTasks
+    createTasks,
+    retryTask,
+    clearFailedTasks
   })
 }))
 
@@ -280,18 +284,39 @@ describe('documents archive store', () => {
     expect(store.tasks[0]?.id).toBe('t1')
   })
 
-  it('retryRecognitionTask 前插新任务并移除旧 failed 任务', async () => {
-    createTasks.mockResolvedValue({ tasks: [{ ...makeTask(), id: 't2' }] })
+  it('retryRecognitionTask 原位重置 failed 任务，不新建任务', async () => {
+    retryTask.mockResolvedValue({ task: { ...makeTask(), status: 'pending' } })
     const store = useDocumentsStore()
-    const oldTask = { ...makeTask(), status: 'failed' as const }
-    store.tasks = [oldTask]
-    const created = await store.retryRecognitionTask(oldTask)
-    expect(createTasks).toHaveBeenCalledWith({
-      files: [{ path: 'C:\\a.png', name: 'a.png' }],
-      templateId: 'auto',
-      source: 'manual'
-    })
+    const failedTask = { ...makeTask(), status: 'failed' as const, error: 'boom' }
+    store.tasks = [failedTask]
+    const retried = await store.retryRecognitionTask(failedTask)
+    expect(retryTask).toHaveBeenCalledWith('t1')
+    expect(createTasks).not.toHaveBeenCalled()
+    expect(store.tasks.map((task) => task.id)).toEqual(['t1'])
+    expect(store.tasks[0]).toMatchObject({ id: 't1', status: 'pending', error: null })
+    expect(retried?.status).toBe('pending')
+  })
+
+  it('retryRecognitionTask 任务不可重试时抛错并保留原任务', async () => {
+    retryTask.mockResolvedValue({ task: null })
+    const store = useDocumentsStore()
+    const failedTask = { ...makeTask(), status: 'failed' as const, error: 'boom' }
+    store.tasks = [failedTask]
+    await expect(store.retryRecognitionTask(failedTask)).rejects.toThrow('not retryable')
+    expect(store.tasks.map((task) => task.id)).toEqual(['t1'])
+  })
+
+  it('clearFailedRecognitionTasks 移除列表中的 failed 任务并返回数量', async () => {
+    clearFailedTasks.mockResolvedValue({ removed: 2 })
+    const store = useDocumentsStore()
+    store.tasks = [
+      { ...makeTask(), id: 't1', status: 'failed' as const },
+      { ...makeTask(), id: 't2', status: 'done' as const },
+      { ...makeTask(), id: 't3', status: 'failed' as const }
+    ]
+    const removed = await store.clearFailedRecognitionTasks()
+    expect(clearFailedTasks).toHaveBeenCalledWith()
+    expect(removed).toBe(2)
     expect(store.tasks.map((task) => task.id)).toEqual(['t2'])
-    expect(created).toHaveLength(1)
   })
 })

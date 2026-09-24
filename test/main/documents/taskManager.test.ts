@@ -289,4 +289,101 @@ describe('RecognitionTaskManager', () => {
     expect(statuses).toEqual(['t0:running', 't1:running', 't0:failed', 't1:done'])
     expect(calls).toBe(2)
   })
+
+  it('retryTask resets the failed row and reprocesses it in place', async () => {
+    const failed = makeTask({ id: 't-fail', status: 'failed', error: 'boom' })
+    const updates: Array<{
+      id: string
+      status: string
+      typeKey?: string | null
+      documentId?: string | null
+      error?: string | null
+    }> = []
+    let insertCalls = 0
+    const published: string[] = []
+    const manager = new RecognitionTaskManager({
+      repository: {
+        insertTasks: (inputs) => {
+          insertCalls += 1
+          return inputs.map((input, i) =>
+            makeTask({ id: `t${i}`, filePath: input.filePath, fileName: input.fileName })
+          )
+        },
+        getTask: (id) => (id === failed.id ? failed : null),
+        updateTask: (id, input) => {
+          updates.push({
+            id,
+            status: input.status,
+            typeKey: input.typeKey,
+            documentId: input.documentId,
+            error: input.error ?? null
+          })
+          return makeTask({
+            id,
+            status: input.status,
+            typeKey: input.typeKey ?? null,
+            documentId: input.documentId ?? null,
+            error: input.error ?? null
+          })
+        },
+        listRecentTasks: () => [],
+        listPendingTasks: () => [],
+        markRunningTasksFailed: () => {},
+        countTaskBatch: () => ({ done: 0, total: 1 }),
+        insertDocument: () => ({ id: 'doc-1' })
+      },
+      extractor: {
+        extract: async () => ({
+          template: { id: 'tpl1', typeKey: 'invoice_special' },
+          route: 'vision',
+          fields: {},
+          rawOutput: '',
+          durationMs: 1,
+          issues: []
+        })
+      },
+      publishTaskUpdated: ({ task }) => published.push(task.status)
+    })
+    const retried = manager.retryTask(failed.id)
+    expect(retried?.id).toBe(failed.id)
+    expect(retried?.status).toBe('pending')
+    // 不新建任务行，仅重置原行
+    expect(insertCalls).toBe(0)
+    expect(updates[0]).toMatchObject({
+      id: failed.id,
+      status: 'pending',
+      typeKey: null,
+      documentId: null,
+      error: null
+    })
+    await manager.idle()
+    expect(updates.map((u) => u.status)).toEqual(['pending', 'running', 'done'])
+    expect(published).toEqual(['pending', 'running', 'done'])
+  })
+
+  it('retryTask ignores tasks that are not failed or missing', async () => {
+    const done = makeTask({ id: 't-done', status: 'done' })
+    const manager = new RecognitionTaskManager({
+      repository: {
+        insertTasks: () => [],
+        getTask: (id) => (id === done.id ? done : null),
+        updateTask: () => {
+          throw new Error('should not update')
+        },
+        listRecentTasks: () => [],
+        listPendingTasks: () => [],
+        markRunningTasksFailed: () => {},
+        countTaskBatch: () => ({ done: 0, total: 0 }),
+        insertDocument: () => ({ id: 'doc' })
+      },
+      extractor: {
+        extract: async () => {
+          throw new Error('should not extract')
+        }
+      },
+      publishTaskUpdated: () => {}
+    })
+    expect(manager.retryTask(done.id)).toBeNull()
+    expect(manager.retryTask('missing')).toBeNull()
+  })
 })

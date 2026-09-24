@@ -15,7 +15,9 @@ import {
   documentsPreviewFileRoute,
   documentsStatsRoute,
   documentsTasksCreateRoute,
+  documentsTasksClearFailedRoute,
   documentsTasksListRoute,
+  documentsTasksRetryRoute,
   documentsUpsertRoute
 } from '@shared/contracts/routes'
 import { dialog } from 'electron'
@@ -169,6 +171,22 @@ export function createDocumentsRoutes(
       async (rawInput) => {
         documentsTasksListRoute.input.parse(rawInput)
         return documentsTasksListRoute.output.parse({ tasks: repository.listRecentTasks() })
+      }
+    ],
+    [
+      documentsTasksRetryRoute.name,
+      async (rawInput) => {
+        const input = documentsTasksRetryRoute.input.parse(rawInput)
+        return documentsTasksRetryRoute.output.parse({ task: taskManager.retryTask(input.id) })
+      }
+    ],
+    [
+      documentsTasksClearFailedRoute.name,
+      async (rawInput) => {
+        documentsTasksClearFailedRoute.input.parse(rawInput)
+        return documentsTasksClearFailedRoute.output.parse({
+          removed: repository.deleteFailedTasks()
+        })
       }
     ],
     [
