@@ -108,8 +108,8 @@
               data-testid="detail-preview-image"
             />
             <embed
-              v-else-if="preview && preview.mimeType === 'application/pdf'"
-              :src="`data:application/pdf;base64,${preview.dataBase64}`"
+              v-else-if="preview && preview.mimeType === 'application/pdf' && pdfObjectUrl"
+              :src="pdfObjectUrl"
               type="application/pdf"
               class="h-[55vh] w-full rounded border"
               data-testid="detail-preview-pdf"
@@ -242,6 +242,7 @@ const deleteOpen = ref(false)
 const fieldError = ref<string | null>(null)
 const preview = ref<PreviewPayload | null>(null)
 const previewError = ref(false)
+const pdfObjectUrl = ref<string | null>(null)
 const feedback = ref<{ kind: 'success' | 'error'; text: string } | null>(null)
 const saving = ref(false)
 const recognizing = ref(false)
@@ -269,6 +270,7 @@ watch(
     }
     preview.value = null
     previewError.value = false
+    releasePdfObjectUrl()
     fieldError.value = null
     if (doc && doc.fileUris.length > 0) {
       void loadPreview(0)
@@ -312,6 +314,7 @@ onUnmounted(() => {
     feedbackTimer = null
   }
   stopRecognizeTimer()
+  releasePdfObjectUrl()
 })
 
 function onSave() {
@@ -407,11 +410,33 @@ async function loadPreview(index: number) {
   }
   try {
     previewError.value = false
-    preview.value = await store.previewArchiveFile(doc.id, index)
+    const payload = await store.previewArchiveFile(doc.id, index)
+    preview.value = payload
+    if (payload.mimeType === 'application/pdf') {
+      // Chromium's built-in PDF viewer fails its init sync IPC for data: URLs
+      // (console TypeError from sandbox_bundle); blob URLs render reliably.
+      const binary = atob(payload.dataBase64)
+      const bytes = new Uint8Array(binary.length)
+      for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i)
+      }
+      releasePdfObjectUrl()
+      pdfObjectUrl.value = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }))
+    } else {
+      releasePdfObjectUrl()
+    }
   } catch (error) {
     console.error('[DocumentDetailDialog] preview failed', error)
     preview.value = null
     previewError.value = true
+    releasePdfObjectUrl()
+  }
+}
+
+function releasePdfObjectUrl() {
+  if (pdfObjectUrl.value) {
+    URL.revokeObjectURL(pdfObjectUrl.value)
+    pdfObjectUrl.value = null
   }
 }
 </script>

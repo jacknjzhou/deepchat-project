@@ -298,4 +298,32 @@ describe('DocumentDetailDialog', () => {
       'settings.documents.archive.previewFailed'
     )
   })
+
+  it('PDF 预览改用 blob URL 加载并在卸载时释放', async () => {
+    const originalCreate = URL.createObjectURL
+    const originalRevoke = URL.revokeObjectURL
+    const createObjectURL = vi.fn(() => 'blob:mock-pdf-url')
+    const revokeObjectURL = vi.fn()
+    URL.createObjectURL = createObjectURL as unknown as typeof URL.createObjectURL
+    URL.revokeObjectURL = revokeObjectURL as unknown as typeof URL.revokeObjectURL
+    try {
+      stubStore.previewArchiveFile.mockResolvedValueOnce({
+        dataBase64: 'JVBERi0=',
+        mimeType: 'application/pdf',
+        name: 'a.pdf'
+      })
+      const { wrapper } = await setup()
+      expect(wrapper.get('[data-testid="detail-preview-pdf"]').attributes('src')).toBe(
+        'blob:mock-pdf-url'
+      )
+      expect(createObjectURL).toHaveBeenCalledTimes(1)
+      const blobArg = createObjectURL.mock.calls[0]?.[0] as Blob
+      expect(blobArg.type).toBe('application/pdf')
+      wrapper.unmount()
+      expect(revokeObjectURL).toHaveBeenCalledWith('blob:mock-pdf-url')
+    } finally {
+      URL.createObjectURL = originalCreate
+      URL.revokeObjectURL = originalRevoke
+    }
+  })
 })
