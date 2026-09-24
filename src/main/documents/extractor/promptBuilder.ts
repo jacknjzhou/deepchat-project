@@ -110,6 +110,7 @@ export function buildClassificationPrompts(templates: DocumentTemplate[]): {
   const system = [
     '你是单据类型分类助手。根据给定的单据内容，从候选类型中选出最匹配的一个。',
     '注意区分字段集合不同但名称相近的类型，以单据上实际出现的字段和版式为准。',
+    '必须从候选清单中选择一个 typeKey：即使没有完全匹配的类型，也输出最接近的一个；禁止输出清单之外的值（如 unknown）。',
     '只输出一个 JSON 对象：{ "typeKey": "<选中的typeKey>" }，不要输出任何其他文字。'
   ].join('\n')
 

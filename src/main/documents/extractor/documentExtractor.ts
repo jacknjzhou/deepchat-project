@@ -390,13 +390,36 @@ export class DocumentExtractor {
       messages,
       temperature: CLASSIFY_TEMPERATURE
     })
-    const match = output.match(/"typeKey"\s*:\s*"([a-z0-9_]+)"/)
-    const typeKey = match?.[1]
-    const template = typeKey ? this.deps.repository.getTemplateByTypeKey(typeKey) : null
+    const template = this.resolveClassifiedTemplate(output, candidates)
     if (!template) {
-      throw new Error(`auto classification failed: unknown typeKey ${typeKey ?? '(none)'}`)
+      const flattened = output.replace(/\s+/g, ' ').trim().slice(0, 200)
+      throw new Error(`auto classification failed: no matching template in output: ${flattened}`)
     }
     return template
+  }
+
+  // Models occasionally drift from the strict JSON contract: uppercase keys,
+  // prose answers, or echoing the template name. Try those rescues before
+  // giving up so weak models still classify into a real template.
+  private resolveClassifiedTemplate(
+    output: string,
+    candidates: DocumentTemplate[]
+  ): DocumentTemplate | null {
+    const match = output.match(/"typeKey"\s*:\s*"([a-zA-Z0-9_-]+)"/)
+    const raw = match?.[1]
+    if (raw) {
+      const exact = this.deps.repository.getTemplateByTypeKey(raw)
+      if (exact) return exact
+      const lowered = this.deps.repository.getTemplateByTypeKey(raw.toLowerCase())
+      if (lowered) return lowered
+    }
+    const loweredOutput = output.toLowerCase()
+    const ordered = [...candidates].sort((a, b) => b.typeKey.length - a.typeKey.length)
+    for (const candidate of ordered) {
+      if (loweredOutput.includes(candidate.typeKey.toLowerCase())) return candidate
+      if (output.includes(candidate.name)) return candidate
+    }
+    return null
   }
 
   private async buildRoutePlan(

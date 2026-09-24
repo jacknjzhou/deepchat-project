@@ -457,6 +457,64 @@ describe('DocumentExtractor.extract auto 分类', () => {
     expect(vi.mocked(deps.generateCompletion).mock.calls[1][0].modelId).toBe('gpt-4o')
   })
 
+  it('auto 分类输出大写 typeKey 时按小写兜底解析', async () => {
+    const secondTemplate = makeTemplate({
+      id: 'tpl-2',
+      typeKey: 'hotel_receipt',
+      name: '住宿单模板'
+    })
+    const deps = makeDeps({
+      repository: {
+        getTemplate: vi.fn((id: string) => (id === 'tpl-2' ? secondTemplate : null)),
+        getTemplateByTypeKey: vi.fn((typeKey: string) =>
+          typeKey === 'hotel_receipt' ? secondTemplate : null
+        ),
+        listTemplates: vi.fn(() => [makeTemplate(), secondTemplate])
+      },
+      generateCompletion: vi
+        .fn()
+        .mockResolvedValueOnce('{"typeKey": "Hotel_Receipt"}')
+        .mockResolvedValueOnce(
+          '{"fields": {"invoice_code": "123456789012"}, "uncertain_fields": []}'
+        )
+    })
+    const extractor = new DocumentExtractor(deps)
+    const result = await extractor.extract({
+      templateId: 'auto',
+      file: { path: '/tmp/a.jpg', mimeType: 'image/jpeg' }
+    })
+    expect(result.template.typeKey).toBe('hotel_receipt')
+  })
+
+  it('auto 分类输出模板名称时兜底解析', async () => {
+    const secondTemplate = makeTemplate({
+      id: 'tpl-2',
+      typeKey: 'hotel_receipt',
+      name: '住宿单模板'
+    })
+    const deps = makeDeps({
+      repository: {
+        getTemplate: vi.fn((id: string) => (id === 'tpl-2' ? secondTemplate : null)),
+        getTemplateByTypeKey: vi.fn((typeKey: string) =>
+          typeKey === 'hotel_receipt' ? secondTemplate : null
+        ),
+        listTemplates: vi.fn(() => [makeTemplate(), secondTemplate])
+      },
+      generateCompletion: vi
+        .fn()
+        .mockResolvedValueOnce('根据分析，这份单据应归入“住宿单模板”处理。')
+        .mockResolvedValueOnce(
+          '{"fields": {"invoice_code": "123456789012"}, "uncertain_fields": []}'
+        )
+    })
+    const extractor = new DocumentExtractor(deps)
+    const result = await extractor.extract({
+      templateId: 'auto',
+      file: { path: '/tmp/a.jpg', mimeType: 'image/jpeg' }
+    })
+    expect(result.template.typeKey).toBe('hotel_receipt')
+  })
+
   it('auto 分类返回未知 typeKey 时抛错', async () => {
     const deps = makeDeps({
       generateCompletion: vi.fn().mockResolvedValue('{"typeKey": "unknown_type"}')
