@@ -195,6 +195,7 @@ import { RecognitionTaskManager } from '@/documents/taskManager'
 import { seedPresetTemplates } from '@/documents/seed'
 import { ImageFileAdapter } from '@/file/adapters/ImageFileAdapter'
 import { PdfFileAdapter } from '@/file/adapters/PdfFileAdapter'
+import { renderPdfPagesToDataUrls } from '@/file/adapters/pdfPageRenderer'
 import { AppDatabase } from '@/app/data/database'
 import { createOrchestrationRoutes } from '@/orchestration/routes'
 import { OrchestrationCapabilityResolver } from '@/orchestration/capability'
@@ -2945,7 +2946,18 @@ export async function createMainProcessControl(dependencies: {
         const adapter = new PdfFileAdapter(filePath, documentsMaxFileSize())
         const pages = await adapter.getAllPagesMarkdown()
         const text = (pages ?? []).join('\n\n')
-        return { text, hasTextLayer: text.replace(/\s/g, '').length >= 200 }
+        return {
+          text,
+          hasTextLayer: text.replace(/\s/g, '').length >= 200,
+          pageCount: pages?.length ?? 0
+        }
+      },
+      renderPdfPages: async (filePath) => {
+        try {
+          return await renderPdfPagesToDataUrls(filePath)
+        } catch (error) {
+          throw new Error(`failed to render pdf pages for vision: ${filePath}`, { cause: error })
+        }
       },
       extractOcrText: async (filePath) => {
         const result = await ocrRuntimeService.extractDocument({

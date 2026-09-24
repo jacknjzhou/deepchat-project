@@ -8,6 +8,7 @@ import {
 } from './promptBuilder'
 import { parseModelOutput, validateTemplateRules, type ParsedModelOutput } from './fieldValidator'
 import { mergeSegmentOutputs, splitTextIntoSegments } from './segmentMerger'
+import { PDF_VISION_MAX_PAGES } from '@/file/adapters/pdfPageRenderer'
 
 export type DocumentExtractRoute = 'vision' | 'text' | 'ocr'
 
@@ -42,7 +43,12 @@ export interface DocumentExtractorDeps {
   resolveVisionTarget: () => ModelTarget | null | Promise<ModelTarget | null>
   resolveTextTarget: () => ModelTarget | null | Promise<ModelTarget | null>
   readImageAsDataUrl: (filePath: string) => Promise<string>
-  extractPdfText: (filePath: string) => Promise<{ text: string; hasTextLayer: boolean }>
+  extractPdfText: (filePath: string) => Promise<{
+    text: string
+    hasTextLayer: boolean
+    pageCount?: number
+  }>
+  renderPdfPages: (filePath: string) => Promise<{ dataUrls: string[]; pageCount: number }>
   extractOcrText: (filePath: string) => Promise<string>
   now?: () => number
 }
@@ -82,21 +88,71 @@ export class DocumentExtractor {
 
     if (plan.route === 'vision') {
       const target = this.requireTarget(await this.deps.resolveVisionTarget(), 'defaultVisionModel')
-      const dataUrl = await this.deps.readImageAsDataUrl(input.file.path)
-      const messages: ChatMessage[] = [
-        { role: 'system', content: buildExtractionSystemPrompt(template) },
-        {
-          role: 'user',
-          content: [
-            { type: 'text', text: buildExtractionUserPrompt(template, null) },
-            { type: 'image_url', image_url: { url: dataUrl, detail: 'auto' } }
-          ]
+      if (isPdfFile(input.file)) {
+        const { dataUrls, pageCount } = await this.deps.renderPdfPages(input.file.path)
+        if (pageCount > dataUrls.length) {
+          issues.push(
+            `pdf has ${pageCount} pages; only first ${dataUrls.length} processed by vision`
+          )
         }
-      ]
-      rawOutput = await this.completeWithRetry(template, messages, target)
-      const parsed = parseModelOutput(rawOutput, template)
-      fields = parsed.fields
-      issues.push(...parsed.issues)
+        const partials: Record<string, DocumentFieldEntry>[] = []
+        for (let index = 0; index < dataUrls.length; index += 1) {
+          if (input.signal?.aborted) {
+            throw new Error('extraction aborted')
+          }
+          const messages: ChatMessage[] = [
+            { role: 'system', content: buildExtractionSystemPrompt(template) },
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'text',
+                  text:
+                    dataUrls.length > 1
+                      ? `这是扫描件第 ${index + 1}/${dataUrls.length} 页。只提取本页出现的字段值；本页没有的字段填 null，后续页面会补充。`
+                      : buildExtractionUserPrompt(template, null)
+                },
+                { type: 'image_url', image_url: { url: dataUrls[index], detail: 'auto' } }
+              ]
+            }
+          ]
+          const output = await this.completeWithRetry(template, messages, target)
+          partials.push(parseModelOutput(output, template).fields)
+          rawOutput += (rawOutput ? '\n---\n' : '') + output
+        }
+        fields = mergeSegmentOutputs(
+          Object.fromEntries(
+            template.fields.map((field) => [field.key, { value: null, uncertain: false }])
+          ),
+          partials
+        )
+        for (const field of template.fields) {
+          const values = partials
+            .map((partial) => partial[field.key]?.value)
+            .filter((value) => value !== null && value !== undefined)
+          const distinct = new Set(values.map((value) => JSON.stringify(value)))
+          if (distinct.size > 1) {
+            issues.push(`${field.key}: conflicting values across pages`)
+            fields[field.key] = { ...(fields[field.key] ?? { value: null }), uncertain: true }
+          }
+        }
+      } else {
+        const dataUrl = await this.deps.readImageAsDataUrl(input.file.path)
+        const messages: ChatMessage[] = [
+          { role: 'system', content: buildExtractionSystemPrompt(template) },
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: buildExtractionUserPrompt(template, null) },
+              { type: 'image_url', image_url: { url: dataUrl, detail: 'auto' } }
+            ]
+          }
+        ]
+        rawOutput = await this.completeWithRetry(template, messages, target)
+        const parsed = parseModelOutput(rawOutput, template)
+        fields = parsed.fields
+        issues.push(...parsed.issues)
+      }
     } else {
       const text =
         plan.route === 'ocr' ? await this.deps.extractOcrText(input.file.path) : (plan.text ?? '')
@@ -253,7 +309,7 @@ export class DocumentExtractor {
   private async resolveTemplate(
     templateId: string,
     file: DocumentExtractFileInput,
-    pdfText: { text: string; hasTextLayer: boolean } | null
+    pdfText: { text: string; hasTextLayer: boolean; pageCount?: number } | null
   ): Promise<DocumentTemplate> {
     if (templateId !== 'auto') {
       const template = this.deps.repository.getTemplate(templateId)
@@ -310,7 +366,7 @@ export class DocumentExtractor {
   private async buildRoutePlan(
     template: DocumentTemplate,
     file: DocumentExtractFileInput,
-    pdfText: { text: string; hasTextLayer: boolean } | null
+    pdfText: { text: string; hasTextLayer: boolean; pageCount?: number } | null
   ): Promise<{ route: DocumentExtractRoute; text?: string }> {
     const mode = template.extractionMode
     if (isImageFile(file)) {
@@ -327,14 +383,14 @@ export class DocumentExtractor {
     }
     if (isPdfFile(file)) {
       if (mode === 'vision') {
-        throw new Error(
-          'extractionMode=vision only supports image files; use auto or text mode for PDFs'
-        )
+        return { route: 'vision' }
       }
       if (pdfText?.hasTextLayer) {
         return { route: 'text', text: pdfText.text }
       }
-      return { route: 'ocr' }
+      const visionAvailable = (await this.deps.resolveVisionTarget()) !== null
+      const withinPageLimit = (pdfText?.pageCount ?? 0) <= PDF_VISION_MAX_PAGES
+      return visionAvailable && withinPageLimit ? { route: 'vision' } : { route: 'ocr' }
     }
     throw new Error(`unsupported file type for extraction: ${file.mimeType ?? file.path}`)
   }

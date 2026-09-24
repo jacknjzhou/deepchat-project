@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
 import { DocumentExtractor } from '@/documents/extractor/documentExtractor'
-import type { DocumentExtractorDeps } from '@/documents/extractor/documentExtractor'
+import type {
+  CompletionRequest,
+  DocumentExtractorDeps
+} from '@/documents/extractor/documentExtractor'
 import type { DocumentTemplate } from '@shared/documents'
 
 const makeTemplate = (overrides: Partial<DocumentTemplate> = {}): DocumentTemplate => ({
@@ -44,6 +47,7 @@ const makeDeps = (overrides: Partial<DocumentExtractorDeps> = {}): DocumentExtra
   resolveTextTarget: vi.fn(() => ({ providerId: 'openai', modelId: 'gpt-4o-mini' })),
   readImageAsDataUrl: vi.fn(async () => 'data:image/jpeg;base64,AAAA'),
   extractPdfText: vi.fn(async () => ({ text: '', hasTextLayer: false })),
+  renderPdfPages: vi.fn(async () => ({ dataUrls: ['data:image/jpeg;base64,AAAA'], pageCount: 1 })),
   extractOcrText: vi.fn(async () => ''),
   now: () => 1000,
   ...overrides
@@ -90,8 +94,9 @@ describe('DocumentExtractor.extract 路由', () => {
     expect(call.messages[1]?.content).toContain('发票全文内容')
   })
 
-  it('扫描件 PDF 走 OCR 再走文本模型', async () => {
+  it('扫描件 PDF 无视觉模型时走 OCR 再走文本模型', async () => {
     const deps = makeDeps({
+      resolveVisionTarget: vi.fn(() => null),
       extractPdfText: vi.fn(async () => ({ text: '', hasTextLayer: false })),
       extractOcrText: vi.fn(async () => 'OCR 识别出的文本')
     })
@@ -123,23 +128,6 @@ describe('DocumentExtractor.extract 路由', () => {
     })
     expect(result.route).toBe('ocr')
     expect(deps.readImageAsDataUrl).not.toHaveBeenCalled()
-  })
-
-  it('extractionMode=vision 对 PDF 抛错', async () => {
-    const deps = makeDeps({
-      repository: {
-        getTemplate: vi.fn(() => makeTemplate({ extractionMode: 'vision' })),
-        getTemplateByTypeKey: vi.fn(() => null),
-        listTemplates: vi.fn(() => [])
-      }
-    })
-    const extractor = new DocumentExtractor(deps)
-    await expect(
-      extractor.extract({
-        templateId: 'tpl-1',
-        file: { path: '/tmp/a.pdf', mimeType: 'application/pdf' }
-      })
-    ).rejects.toThrow(/vision/)
   })
 
   it('extractionMode=vision 视觉模型未配置时抛带引导语的错误', async () => {
@@ -177,7 +165,10 @@ describe('DocumentExtractor.extract 路由', () => {
   })
 
   it('文本模型未配置时抛带引导语的错误', async () => {
-    const deps = makeDeps({ resolveTextTarget: vi.fn(() => null) })
+    const deps = makeDeps({
+      resolveTextTarget: vi.fn(() => null),
+      extractPdfText: vi.fn(async () => ({ text: '发票全文内容', hasTextLayer: true }))
+    })
     const extractor = new DocumentExtractor(deps)
     await expect(
       extractor.extract({
@@ -222,6 +213,105 @@ describe('DocumentExtractor.extract 路由', () => {
         file: { path: '/tmp/a.jpg', mimeType: 'image/jpeg' }
       })
     ).rejects.toThrow(/template/i)
+  })
+})
+
+describe('pdf vision routing', () => {
+  const makeScannedTemplate = () =>
+    makeTemplate({
+      fields: [
+        {
+          key: 'invoice_code',
+          label: '发票代码',
+          valueType: 'text',
+          required: false,
+          promptHint: '12位发票代码',
+          validation: null,
+          enumOptions: null,
+          order: 1
+        }
+      ]
+    })
+
+  it('扫描件 PDF 页数在限制内走 vision 并逐页提取合并', async () => {
+    const deps = makeDeps({
+      repository: {
+        getTemplate: vi.fn(() => makeScannedTemplate()),
+        getTemplateByTypeKey: vi.fn(() => null),
+        listTemplates: vi.fn(() => [])
+      },
+      extractPdfText: vi.fn(async () => ({ text: '', hasTextLayer: false, pageCount: 2 })),
+      renderPdfPages: vi.fn(async () => ({
+        dataUrls: ['data:image/jpeg;base64,AA', 'data:image/jpeg;base64,BB'],
+        pageCount: 2
+      })),
+      generateCompletion: vi.fn(async (input: CompletionRequest) => {
+        const content = JSON.stringify(input.messages[1]?.content)
+        return content.includes('base64,AA')
+          ? '{"fields": {"invoice_code": "888888888888"}, "uncertain_fields": []}'
+          : '{"fields": {"invoice_code": null}, "uncertain_fields": []}'
+      })
+    })
+    const extractor = new DocumentExtractor(deps)
+    const result = await extractor.extract({
+      templateId: 'tpl-1',
+      file: { path: '/tmp/a.pdf', mimeType: 'application/pdf' }
+    })
+    expect(result.route).toBe('vision')
+    expect(deps.renderPdfPages).toHaveBeenCalledWith('/tmp/a.pdf')
+    expect(deps.generateCompletion).toHaveBeenCalledTimes(2)
+    expect(result.fields.invoice_code).toEqual({ value: '888888888888', uncertain: false })
+    expect(result.issues).not.toContain('invoice_code: conflicting values across pages')
+    expect(result.rawOutput).toContain('\n---\n')
+  })
+
+  it('扫描件 PDF 无视觉模型时回落 OCR', async () => {
+    const deps = makeDeps({
+      resolveVisionTarget: vi.fn(() => null),
+      extractOcrText: vi.fn(async () => 'OCR 识别出的文本')
+    })
+    const extractor = new DocumentExtractor(deps)
+    const result = await extractor.extract({
+      templateId: 'tpl-1',
+      file: { path: '/tmp/a.pdf', mimeType: 'application/pdf' }
+    })
+    expect(result.route).toBe('ocr')
+    expect(deps.renderPdfPages).not.toHaveBeenCalled()
+    expect(deps.extractOcrText).toHaveBeenCalledWith('/tmp/a.pdf')
+  })
+
+  it('扫描件 PDF 超过视觉页数上限时走 OCR', async () => {
+    const deps = makeDeps({
+      extractPdfText: vi.fn(async () => ({ text: '', hasTextLayer: false, pageCount: 9 })),
+      extractOcrText: vi.fn(async () => 'OCR 识别出的文本')
+    })
+    const extractor = new DocumentExtractor(deps)
+    const result = await extractor.extract({
+      templateId: 'tpl-1',
+      file: { path: '/tmp/a.pdf', mimeType: 'application/pdf' }
+    })
+    expect(result.route).toBe('ocr')
+    expect(deps.renderPdfPages).not.toHaveBeenCalled()
+    expect(deps.extractOcrText).toHaveBeenCalledWith('/tmp/a.pdf')
+  })
+
+  it('extractionMode=vision 对 PDF 走逐页视觉提取', async () => {
+    const deps = makeDeps({
+      repository: {
+        getTemplate: vi.fn(() => makeTemplate({ extractionMode: 'vision' })),
+        getTemplateByTypeKey: vi.fn(() => null),
+        listTemplates: vi.fn(() => [])
+      }
+    })
+    const extractor = new DocumentExtractor(deps)
+    const result = await extractor.extract({
+      templateId: 'tpl-1',
+      file: { path: '/tmp/a.pdf', mimeType: 'application/pdf' }
+    })
+    expect(result.route).toBe('vision')
+    expect(deps.renderPdfPages).toHaveBeenCalledWith('/tmp/a.pdf')
+    expect(deps.readImageAsDataUrl).not.toHaveBeenCalled()
+    expect(deps.generateCompletion).toHaveBeenCalledTimes(1)
   })
 })
 
