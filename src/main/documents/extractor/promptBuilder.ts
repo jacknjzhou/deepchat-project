@@ -48,6 +48,35 @@ export function buildExtractionSystemPrompt(template: DocumentTemplate): string 
     '5. 金额保留两位小数；日期统一为 YYYY-MM-DD。'
   ]
 
+  const firstKey = template.fields.slice().sort((a, b) => a.order - b.order)[0]?.key
+  if (firstKey) {
+    parts.push(
+      '',
+      '输出示例（仅示意结构，值必须替换为单据实际内容，其余字段同样按清单逐个输出）：',
+      `   { "fields": { "${firstKey}": "<该字段提取值>" }, "uncertain_fields": [] }`
+    )
+  }
+
+  parts.push(
+    '',
+    '通用提取要求（适用于所有单据类型，包括自定义模板）：',
+    '- 先逐个字段在单据内容中定位文字依据，再输出该字段的值。',
+    '- 字段清单中的提示（hint）是字段含义的权威定义；单据内容与提示含义不符时不要硬套。',
+    '- 单据上找不到明确依据的字段填 null 并加入 uncertain_fields；禁止用常识或经验推断补全。'
+  )
+
+  if (template.category === '发票类') {
+    parts.push(
+      '',
+      '发票类专项提示：',
+      '- 发票号码通常为 8 位数字（全电发票为 20 位），发票代码为 10 或 12 位数字，不要把两者混填。',
+      '- 税率输出为如 13% 的形式；金额为纯数字，不要包含 ¥ 符号或千分位逗号。',
+      '- 价税合计需与"金额大写"一致，若明显不一致，把相关金额字段加入 uncertain_fields。',
+      '- 明细行逐行完整提取，不要省略、合并或概括行。',
+      '- 印章遮挡、反光或打印模糊导致无法确认的字符不要猜测，相应字段加入 uncertain_fields。'
+    )
+  }
+
   if (template.promptPreset && template.promptPreset.trim().length > 0) {
     parts.push('', '用户附加提取指令：', template.promptPreset.trim())
   }

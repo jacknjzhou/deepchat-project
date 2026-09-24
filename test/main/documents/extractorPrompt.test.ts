@@ -143,6 +143,48 @@ describe('buildExtractionSystemPrompt', () => {
   })
 })
 
+describe('buildExtractionSystemPrompt enhancements', () => {
+  it('appends invoice guidance for invoice-category templates', () => {
+    const template = makeTemplate({
+      category: '发票类',
+      fields: [makeField('invoice_number', '发票号码', true, 1)]
+    })
+    const system = buildExtractionSystemPrompt(template)
+    expect(system).toContain('发票类专项提示')
+    expect(system).toContain('发票号码通常为 8 位数字（全电发票为 20 位）')
+    expect(system).toContain('价税合计需与"金额大写"一致')
+  })
+
+  it('does not append invoice guidance for other categories', () => {
+    const template = makeTemplate({
+      category: '合同类',
+      fields: [makeField('party_a', '甲方', true, 1)]
+    })
+    expect(buildExtractionSystemPrompt(template)).not.toContain('发票类专项提示')
+  })
+
+  it('includes a structural output example', () => {
+    const template = makeTemplate({
+      category: '合同类',
+      fields: [makeField('party_a', '甲方', true, 1)]
+    })
+    const system = buildExtractionSystemPrompt(template)
+    expect(system).toContain('输出示例')
+    expect(system).toContain('"party_a"')
+  })
+
+  it('adds per-field grounding rules that also guard custom templates', () => {
+    const template = makeTemplate({
+      category: '自定义',
+      fields: [makeField('my_field', '自定义字段', true, 1)]
+    })
+    const system = buildExtractionSystemPrompt(template)
+    expect(system).toContain('通用提取要求')
+    expect(system).toContain('提示（hint）是字段含义的权威定义')
+    expect(system).toContain('禁止用常识或经验推断补全')
+  })
+})
+
 describe('buildExtractionUserPrompt', () => {
   it('文本通道携带文档文本', () => {
     const prompt = buildExtractionUserPrompt(makeTemplate(), '发票抬头：某某公司')
