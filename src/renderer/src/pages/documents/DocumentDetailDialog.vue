@@ -116,7 +116,15 @@
 
       <DialogFooter class="flex-wrap gap-2">
         <span
-          v-if="feedback"
+          v-if="recognizing"
+          class="mr-auto text-sm text-muted-foreground"
+          data-testid="detail-recognizing"
+        >
+          {{ t('settings.documents.archive.reRecognizing') }}
+          <span class="tabular-nums">({{ recognizeSeconds }}s)</span>
+        </span>
+        <span
+          v-else-if="feedback"
           class="mr-auto text-sm"
           :class="feedback.kind === 'success' ? 'text-emerald-500' : 'text-destructive'"
           data-testid="detail-feedback"
@@ -233,6 +241,7 @@ const previewError = ref(false)
 const feedback = ref<{ kind: 'success' | 'error'; text: string } | null>(null)
 const saving = ref(false)
 const recognizing = ref(false)
+const recognizeSeconds = ref(0)
 const deleting = ref(false)
 
 const busy = computed(() => saving.value || recognizing.value || deleting.value)
@@ -274,11 +283,28 @@ function showFeedback(kind: 'success' | 'error', text: string) {
   }, 3000)
 }
 
+let recognizeTimer: ReturnType<typeof setInterval> | null = null
+
+function startRecognizeTimer() {
+  recognizeSeconds.value = 0
+  recognizeTimer = setInterval(() => {
+    recognizeSeconds.value += 1
+  }, 1000)
+}
+
+function stopRecognizeTimer() {
+  if (recognizeTimer) {
+    clearInterval(recognizeTimer)
+    recognizeTimer = null
+  }
+}
+
 onUnmounted(() => {
   if (feedbackTimer) {
     clearTimeout(feedbackTimer)
     feedbackTimer = null
   }
+  stopRecognizeTimer()
 })
 
 function onSave() {
@@ -331,6 +357,7 @@ async function onReRecognize() {
     return
   }
   recognizing.value = true
+  startRecognizeTimer()
   try {
     const result = await store.recognizeDocument({
       templateId: doc.templateId,
@@ -343,6 +370,7 @@ async function onReRecognize() {
     console.error('[DocumentDetailDialog] re-recognize failed', error)
     showFeedback('error', t('settings.documents.archive.reRecognizeFailed'))
   } finally {
+    stopRecognizeTimer()
     recognizing.value = false
   }
 }

@@ -299,6 +299,7 @@
       "deleteConfirmTitle": "Padam dokumen",
       "deleteConfirmDescription": "Padam dokumen ini? Tindakan ini tidak boleh dibatalkan.",
       "deleteFailed": "Gagal memadam",
+      "reRecognizing": "Mengenali semula…",
       "reRecognize": "Kenali semula",
       "reRecognizeHint": "Menjalankan semula pengekstrakan dengan fail asal dan templat semasa; mencipta draf baharu",
       "reRecognizeFailed": "Pengecaman semula gagal",

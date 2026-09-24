@@ -2800,6 +2800,7 @@
       "deleteConfirmTitle": "刪除單據",
       "deleteConfirmDescription": "刪除該單據？此操作無法復原。",
       "deleteFailed": "刪除失敗",
+      "reRecognizing": "正在重新識別…",
       "reRecognize": "重新識別",
       "reRecognizeHint": "用原始檔案與目前範本重新擷取，會產生一筆新的待確認記錄",
       "reRecognizeFailed": "重新識別失敗",

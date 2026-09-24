@@ -299,6 +299,7 @@
       "deleteConfirmTitle": "Hapus dokumen",
       "deleteConfirmDescription": "Hapus dokumen ini? Tindakan ini tidak dapat dibatalkan.",
       "deleteFailed": "Gagal menghapus",
+      "reRecognizing": "Mengenali ulang…",
       "reRecognize": "Kenali ulang",
       "reRecognizeHint": "Menjalankan ulang ekstraksi dengan berkas asli dan templat saat ini; membuat draf baru",
       "reRecognizeFailed": "Pengenalan ulang gagal",

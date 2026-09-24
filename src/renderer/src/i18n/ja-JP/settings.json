@@ -2800,6 +2800,7 @@
       "deleteConfirmTitle": "ドキュメントを削除",
       "deleteConfirmDescription": "このドキュメントを削除しますか？元に戻せません。",
       "deleteFailed": "削除に失敗しました",
+      "reRecognizing": "再認識中…",
       "reRecognize": "再認識",
       "reRecognizeHint": "元ファイルと現在のテンプレートで再抽出し、新しい確認待ちレコードを作成します",
       "reRecognizeFailed": "再認識に失敗しました",

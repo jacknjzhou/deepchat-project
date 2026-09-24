@@ -2800,6 +2800,7 @@
       "deleteConfirmTitle": "Excluir documento",
       "deleteConfirmDescription": "Excluir este documento? Esta ação não pode ser desfeita.",
       "deleteFailed": "Falha ao excluir",
+      "reRecognizing": "Reconhecendo novamente…",
       "reRecognize": "Reconhecer novamente",
       "reRecognizeHint": "Executa novamente a extração com o arquivo original e o modelo atual; cria um novo rascunho",
       "reRecognizeFailed": "Falha ao reconhecer novamente",

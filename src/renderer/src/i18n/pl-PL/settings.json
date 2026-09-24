@@ -299,6 +299,7 @@
       "deleteConfirmTitle": "Usuń dokument",
       "deleteConfirmDescription": "Usunąć ten dokument? Tej operacji nie można cofnąć.",
       "deleteFailed": "Usunięcie nie powiodło się",
+      "reRecognizing": "Ponowne rozpoznawanie…",
       "reRecognize": "Rozpoznaj ponownie",
       "reRecognizeHint": "Ponawia ekstrakcję z oryginalnego pliku i bieżącego szablonu; tworzy nowy szkic",
       "reRecognizeFailed": "Ponowne rozpoznawanie nie powiodło się",

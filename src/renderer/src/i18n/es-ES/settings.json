@@ -299,6 +299,7 @@
       "deleteConfirmTitle": "Eliminar documento",
       "deleteConfirmDescription": "¿Eliminar este documento? Esta acción no se puede deshacer.",
       "deleteFailed": "Error al eliminar",
+      "reRecognizing": "Volviendo a reconocer…",
       "reRecognize": "Volver a reconocer",
       "reRecognizeHint": "Repite la extracción con el archivo original y la plantilla actual; crea un nuevo borrador",
       "reRecognizeFailed": "Error al volver a reconocer",

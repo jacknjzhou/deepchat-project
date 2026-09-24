@@ -299,6 +299,7 @@
       "deleteConfirmTitle": "删除单据",
       "deleteConfirmDescription": "删除该单据？此操作不可撤销。",
       "deleteFailed": "删除失败",
+      "reRecognizing": "正在重新识别…",
       "reRecognize": "重新识别",
       "reRecognizeHint": "用原文件与当前模板重新提取，会生成一条新的待确认记录",
       "reRecognizeFailed": "重新识别失败",

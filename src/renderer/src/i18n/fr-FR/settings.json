@@ -2800,6 +2800,7 @@
       "deleteConfirmTitle": "Supprimer le document",
       "deleteConfirmDescription": "Supprimer ce document ? Cette action est irréversible.",
       "deleteFailed": "Échec de la suppression",
+      "reRecognizing": "Nouvelle reconnaissance en cours…",
       "reRecognize": "Reconnaître à nouveau",
       "reRecognizeHint": "Relance l'extraction avec le fichier original et le modèle actuel ; crée un nouveau brouillon",
       "reRecognizeFailed": "Échec de la nouvelle reconnaissance",

@@ -299,6 +299,7 @@
       "deleteConfirmTitle": "Elimina documento",
       "deleteConfirmDescription": "Eliminare questo documento? L'operazione non è annullabile.",
       "deleteFailed": "Eliminazione non riuscita",
+      "reRecognizing": "Riconoscimento in corso…",
       "reRecognize": "Ripeti riconoscimento",
       "reRecognizeHint": "Ripete l'estrazione con il file originale e il modello attuale; crea una nuova bozza",
       "reRecognizeFailed": "Ripetizione del riconoscimento non riuscita",

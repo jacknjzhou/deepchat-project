@@ -2800,6 +2800,7 @@
       "deleteConfirmTitle": "문서 삭제",
       "deleteConfirmDescription": "이 문서를 삭제하시겠습니까? 되돌릴 수 없습니다.",
       "deleteFailed": "삭제 실패",
+      "reRecognizing": "다시 인식 중…",
       "reRecognize": "다시 인식",
       "reRecognizeHint": "원본 파일과 현재 템플릿으로 다시 추출하여 새 확인 대기 레코드를 만듭니다",
       "reRecognizeFailed": "다시 인식 실패",

@@ -299,6 +299,7 @@
       "deleteConfirmTitle": "Dokument löschen",
       "deleteConfirmDescription": "Dieses Dokument löschen? Dies kann nicht rückgängig gemacht werden.",
       "deleteFailed": "Löschen fehlgeschlagen",
+      "reRecognizing": "Erneute Erkennung läuft…",
       "reRecognize": "Erneut erkennen",
       "reRecognizeHint": "Extrahiert mit der Originaldatei und der aktuellen Vorlage erneut; erstellt einen neuen Entwurf",
       "reRecognizeFailed": "Erneute Erkennung fehlgeschlagen",

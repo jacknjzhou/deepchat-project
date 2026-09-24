@@ -299,6 +299,7 @@
       "deleteConfirmTitle": "Delete Document",
       "deleteConfirmDescription": "Delete this document? This cannot be undone.",
       "deleteFailed": "Delete failed",
+      "reRecognizing": "Re-recognizing…",
       "reRecognize": "Re-recognize",
       "reRecognizeHint": "Re-runs extraction with the original file and the same template; creates a new draft",
       "reRecognizeFailed": "Re-recognition failed",

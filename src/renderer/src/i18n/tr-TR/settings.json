@@ -299,6 +299,7 @@
       "deleteConfirmTitle": "Belgeyi sil",
       "deleteConfirmDescription": "Bu belge silinsin mi? Bu işlem geri alınamaz.",
       "deleteFailed": "Silme başarısız",
+      "reRecognizing": "Yeniden tanıyor…",
       "reRecognize": "Yeniden tanı",
       "reRecognizeHint": "Orijinal dosya ve geçerli şablonla çıkarımı yineler; yeni bir taslak oluşturur",
       "reRecognizeFailed": "Yeniden tanıma başarısız",

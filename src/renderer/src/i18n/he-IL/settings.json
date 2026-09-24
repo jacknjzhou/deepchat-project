@@ -2800,6 +2800,7 @@
       "deleteConfirmTitle": "מחיקת מסמך",
       "deleteConfirmDescription": "למחוק את המסמך הזה? לא ניתן לבטל.",
       "deleteFailed": "מחיקה נכשלה",
+      "reRecognizing": "מזהה שוב…",
       "reRecognize": "זהה שוב",
       "reRecognizeHint": "מריץ שוב את החילוץ עם הקובץ המקורי והתבנית הנוכחית; יוצר טיוטה חדשה",
       "reRecognizeFailed": "זיהוי חוזר נכשל",

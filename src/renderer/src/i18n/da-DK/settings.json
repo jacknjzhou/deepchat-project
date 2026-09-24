@@ -2800,6 +2800,7 @@
       "deleteConfirmTitle": "Slet dokument",
       "deleteConfirmDescription": "Slet dette dokument? Dette kan ikke fortrydes.",
       "deleteFailed": "Kunne ikke slette",
+      "reRecognizing": "Genkender igen…",
       "reRecognize": "Genkend igen",
       "reRecognizeHint": "Kører ekstraktion igen med originalfilen og den aktuelle skabelon; opretter et nyt udkast",
       "reRecognizeFailed": "Genkendelse igen mislykkedes",

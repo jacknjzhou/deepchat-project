@@ -2800,6 +2800,7 @@
       "deleteConfirmTitle": "حذف سند",
       "deleteConfirmDescription": "این سند حذف شود؟ این عمل قابل بازگشت نیست.",
       "deleteFailed": "حذف ناموفق بود",
+      "reRecognizing": "در حال شناسایی مجدد…",
       "reRecognize": "شناسایی مجدد",
       "reRecognizeHint": "استخراج را با فایل اصلی و قالب فعلی دوباره اجرا می‌کند؛ یک پیش‌نویس جدید می‌سازد",
       "reRecognizeFailed": "شناسایی مجدد ناموفق بود",

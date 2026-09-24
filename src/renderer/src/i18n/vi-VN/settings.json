@@ -299,6 +299,7 @@
       "deleteConfirmTitle": "Xóa chứng từ",
       "deleteConfirmDescription": "Xóa chứng từ này? Hành động này không thể hoàn tác.",
       "deleteFailed": "Xóa thất bại",
+      "reRecognizing": "Đang nhận diện lại…",
       "reRecognize": "Nhận diện lại",
       "reRecognizeHint": "Chạy lại trích xuất với tệp gốc và mẫu hiện tại; tạo bản nháp mới",
       "reRecognizeFailed": "Nhận diện lại thất bại",
