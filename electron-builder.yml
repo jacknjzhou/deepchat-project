@@ -32,6 +32,7 @@ files:
 asarUnpack:
   - '**/node_modules/sharp/**/*'
   - '**/node_modules/@img/**/*'
+  - '**/node_modules/@napi-rs/**/*'
   - '**/node_modules/@ff-labs/fff-node/**/*'
   - '**/node_modules/@ff-labs/fff-bin-*/**/*'
   - '**/node_modules/opendal/**/*'
