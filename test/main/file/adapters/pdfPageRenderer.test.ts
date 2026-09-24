@@ -81,4 +81,24 @@ describe('renderPdfPagesToDataUrls', () => {
     await expect(renderPdfPagesToDataUrls(filePath)).rejects.toThrow('boom')
     expect(destroy).toHaveBeenCalledTimes(1)
   })
+
+  it('isolates a foreign globalThis.pdfjsWorker during render and restores it', async () => {
+    const host = globalThis as { pdfjsWorker?: unknown }
+    const fakeWorker = { WorkerMessageHandler: { pdfjsVersion: '4.5.136' } }
+    host.pdfjsWorker = fakeWorker
+    let seenDuringRender: unknown = 'not-called'
+    pdfMock.mockImplementation(async () => ({ length: 1, getPage, destroy }))
+    getPage.mockImplementation(async () => {
+      seenDuringRender = host.pdfjsWorker
+      return makePng(600, 400)
+    })
+    try {
+      const { dataUrls } = await renderPdfPagesToDataUrls(filePath)
+      expect(dataUrls).toHaveLength(1)
+      expect(seenDuringRender).toBeUndefined()
+      expect(host.pdfjsWorker).toBe(fakeWorker)
+    } finally {
+      delete host.pdfjsWorker
+    }
+  })
 })

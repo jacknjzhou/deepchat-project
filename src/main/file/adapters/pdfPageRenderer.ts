@@ -6,6 +6,11 @@ import sharp from 'sharp'
 export const PDF_VISION_MAX_PAGES = 8
 const PAGE_RENDER_SCALE = 2
 
+// pdf-parse-new loads its own older pdfjs worker into globalThis.pdfjsWorker at
+// require time; pdfjs-dist prefers that stale global over its own matching
+// worker, so hide it for the duration of each render.
+const globalWorkerHost = globalThis as { pdfjsWorker?: unknown }
+
 export interface PdfPagesRenderResult {
   dataUrls: string[]
   pageCount: number
@@ -17,6 +22,8 @@ export async function renderPdfPagesToDataUrls(
 ): Promise<PdfPagesRenderResult> {
   const { maxPages = PDF_VISION_MAX_PAGES, maxDimension = 2048, jpegQuality = 85 } = options
   const buffer = await readFile(filePath)
+  const savedWorker = globalWorkerHost.pdfjsWorker
+  delete globalWorkerHost.pdfjsWorker
   const document = await pdf(buffer, { scale: PAGE_RENDER_SCALE })
   const pageCount = document.length
   const dataUrls: string[] = []
@@ -30,6 +37,7 @@ export async function renderPdfPagesToDataUrls(
       dataUrls.push(`data:image/jpeg;base64,${jpeg.toString('base64')}`)
     }
   } finally {
+    globalWorkerHost.pdfjsWorker = savedWorker
     await document.destroy()
   }
   return { dataUrls, pageCount }
