@@ -188,6 +188,7 @@ import { SettingsDatabase } from '@/settings/data/database'
 import { SchedulerDatabase } from '@/scheduler/data/database'
 import { DocumentsDatabase } from '@/documents/data/database'
 import { DocumentExtractor } from '@/documents/extractor/documentExtractor'
+import { pickVisionTarget } from '@/documents/extractor/visionTarget'
 import { DocumentsRepository } from '@/documents/repository'
 import { createDocumentsRoutes } from '@/documents/routes'
 import { RecognitionTaskManager } from '@/documents/taskManager'
@@ -2885,14 +2886,39 @@ export async function createMainProcessControl(dependencies: {
         const selection = providerSettings.getSetting<{ providerId: string; modelId: string }>(
           'defaultVisionModel'
         )
-        if (selection?.providerId && selection?.modelId) {
-          return selection
-        }
         const agentConfig = await agentSettings.getDeepChatAgentConfig(BUILTIN_DEEPCHAT_AGENT_ID)
         const visionModel = agentConfig?.visionModel
-        return visionModel?.providerId && visionModel?.modelId
-          ? { providerId: visionModel.providerId, modelId: visionModel.modelId }
-          : null
+        const textSelection = providerSettings.getSetting<{ providerId: string; modelId: string }>(
+          'defaultModel'
+        )
+        const mainModel = agentConfig?.defaultModelPreset
+        const textTarget =
+          textSelection?.providerId && textSelection?.modelId
+            ? { providerId: textSelection.providerId, modelId: textSelection.modelId }
+            : mainModel?.providerId && mainModel?.modelId
+              ? { providerId: mainModel.providerId, modelId: mainModel.modelId }
+              : null
+        return pickVisionTarget({
+          explicitVision:
+            selection?.providerId && selection?.modelId
+              ? { providerId: selection.providerId, modelId: selection.modelId }
+              : null,
+          agentVision:
+            visionModel?.providerId && visionModel?.modelId
+              ? { providerId: visionModel.providerId, modelId: visionModel.modelId }
+              : null,
+          textTarget,
+          isVisionCapable: async ({ providerId, modelId }) => {
+            try {
+              const model = providerSettings
+                .getProviderModels(providerId)
+                .find((m) => m.id === modelId)
+              return model?.vision === true
+            } catch {
+              return false
+            }
+          }
+        })
       },
       resolveTextTarget: async () => {
         const selection = providerSettings.getSetting<{ providerId: string; modelId: string }>(
