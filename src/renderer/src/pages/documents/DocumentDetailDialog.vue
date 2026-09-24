@@ -1,6 +1,6 @@
 <template>
   <Dialog :open="open" @update:open="(value) => emit('update:open', value)">
-    <DialogContent class="max-w-6xl" data-testid="document-detail-dialog">
+    <DialogContent class="max-w-[min(144rem,95vw)]" data-testid="document-detail-dialog">
       <DialogHeader>
         <DialogTitle>{{ t('settings.documents.archive.detailTitle') }}</DialogTitle>
       </DialogHeader>
