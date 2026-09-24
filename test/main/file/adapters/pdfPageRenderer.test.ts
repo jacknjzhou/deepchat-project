@@ -73,4 +73,12 @@ describe('renderPdfPagesToDataUrls', () => {
     expect(pageCount).toBe(PDF_VISION_MAX_PAGES + 3)
     expect(dataUrls).toHaveLength(PDF_VISION_MAX_PAGES)
   })
+
+  it('propagates getPage errors and still destroys the document once', async () => {
+    getPage.mockImplementation(async () => {
+      throw new Error('boom')
+    })
+    await expect(renderPdfPagesToDataUrls(filePath)).rejects.toThrow('boom')
+    expect(destroy).toHaveBeenCalledTimes(1)
+  })
 })
