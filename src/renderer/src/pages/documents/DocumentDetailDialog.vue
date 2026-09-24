@@ -5,7 +5,7 @@
         <DialogTitle>{{ t('settings.documents.archive.detailTitle') }}</DialogTitle>
       </DialogHeader>
 
-      <div v-if="document" class="space-y-3">
+      <div v-if="document" class="min-w-0 space-y-3">
         <div class="flex items-center gap-2 text-sm text-muted-foreground">
           <span>{{ templateName }}</span>
           <span>·</span>
@@ -46,7 +46,10 @@
           </button>
         </div>
 
-        <section v-if="activeTab === 'fields'" class="h-[70vh] space-y-2 overflow-y-auto pr-1">
+        <section
+          v-if="activeTab === 'fields'"
+          class="h-[min(70vh,calc(100vh-16rem))] space-y-2 overflow-y-auto pr-1"
+        >
           <div class="grid grid-cols-1 gap-x-4 gap-y-3 md:grid-cols-2">
             <div
               v-for="state in editStates"
@@ -99,7 +102,7 @@
           </p>
         </section>
 
-        <section v-else class="h-[70vh] space-y-2 overflow-y-auto">
+        <section v-else class="h-[min(70vh,calc(100vh-16rem))] space-y-2 overflow-y-auto">
           <p v-if="document.fileUris.length === 0" class="text-sm text-muted-foreground">
             {{ t('settings.documents.archive.noFiles') }}
           </p>
@@ -131,14 +134,14 @@
               v-if="preview && preview.mimeType.startsWith('image/')"
               :src="`data:${preview.mimeType};base64,${preview.dataBase64}`"
               :alt="preview.name"
-              class="max-h-[55vh] w-full rounded border object-contain"
+              class="max-h-[min(55vh,calc(100vh-22rem))] w-full rounded border object-contain"
               data-testid="detail-preview-image"
             />
             <embed
               v-else-if="preview && preview.mimeType === 'application/pdf' && pdfObjectUrl"
               :src="pdfObjectUrl"
               type="application/pdf"
-              class="h-[55vh] w-full rounded border"
+              class="h-[min(55vh,calc(100vh-22rem))] w-full rounded border"
               data-testid="detail-preview-pdf"
             />
           </div>
