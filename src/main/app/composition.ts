@@ -2909,7 +2909,7 @@ export async function createMainProcessControl(dependencies: {
       },
       readImageAsDataUrl: async (filePath) => {
         const adapter = new ImageFileAdapter(filePath, documentsMaxFileSize())
-        const dataUrl = await adapter.getLLMContent()
+        const dataUrl = await adapter.getLLMContent({ maxDimension: 2048, jpegQuality: 85 })
         if (!dataUrl) {
           throw new Error(`failed to read image for vision extraction: ${filePath}`)
         }

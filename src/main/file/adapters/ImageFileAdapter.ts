@@ -5,6 +5,11 @@ import sharp from 'sharp'
 // import { VisionService } from '../llm/VisionService'
 // import { loadVisionConfig } from '../../utils/env'
 
+export interface LlmContentOptions {
+  maxDimension?: number
+  jpegQuality?: number
+}
+
 export class ImageFileAdapter extends BaseFileAdapter {
   private maxFileSize: number
   imageMetadata: {
@@ -63,7 +68,8 @@ export class ImageFileAdapter extends BaseFileAdapter {
     return `data:image/jpeg;base64,${base64ImageString}`
   }
 
-  public async getLLMContent(): Promise<string | undefined> {
+  public async getLLMContent(options: LlmContentOptions = {}): Promise<string | undefined> {
+    const { maxDimension = 1200, jpegQuality = 70 } = options
     const stats = await fs.stat(this.filePath)
     if (stats.size > this.maxFileSize) {
       return undefined
@@ -73,15 +79,15 @@ export class ImageFileAdapter extends BaseFileAdapter {
     await this.extractImageMetadata()
 
     // 压缩图片并转换为JPG格式
-    const compressedImage = await sharp(this.filePath)
-      .resize(1200, 1200, {
+    const compressedImage = sharp(this.filePath)
+      .resize(maxDimension, maxDimension, {
         // 限制最大尺寸
         fit: 'inside',
         withoutEnlargement: true
       })
       .jpeg({
         // 统一转换为JPG
-        quality: 70, // 压缩质量
+        quality: jpegQuality,
         mozjpeg: true // 使用mozjpeg优化
       })
     this.imageMetadata.compressWidth =
