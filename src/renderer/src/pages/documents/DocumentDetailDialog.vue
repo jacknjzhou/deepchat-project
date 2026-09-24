@@ -1,75 +1,77 @@
 <template>
   <Dialog :open="open" @update:open="(value) => emit('update:open', value)">
-    <DialogContent class="max-w-4xl" data-testid="document-detail-dialog">
+    <DialogContent class="max-w-6xl" data-testid="document-detail-dialog">
       <DialogHeader>
         <DialogTitle>{{ t('settings.documents.archive.detailTitle') }}</DialogTitle>
       </DialogHeader>
 
-      <div v-if="document" class="max-h-[70vh] space-y-4 overflow-y-auto pr-1">
-        <div class="flex items-center gap-2 text-sm text-muted-foreground">
-          <span>{{ templateName }}</span>
-          <span>·</span>
-          <span>{{ statusText }}</span>
-          <span v-if="document.status === 'confirmed'">
-            · {{ new Date(document.updatedAt).toLocaleString() }}
-          </span>
-        </div>
+      <div v-if="document" class="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div class="max-h-[70vh] space-y-4 overflow-y-auto pr-1">
+          <div class="flex items-center gap-2 text-sm text-muted-foreground">
+            <span>{{ templateName }}</span>
+            <span>·</span>
+            <span>{{ statusText }}</span>
+            <span v-if="document.status === 'confirmed'">
+              · {{ new Date(document.updatedAt).toLocaleString() }}
+            </span>
+          </div>
 
-        <section class="space-y-2">
-          <h3 class="text-sm font-medium">{{ t('settings.documents.archive.fieldsTitle') }}</h3>
-          <div class="grid grid-cols-1 gap-x-4 gap-y-3 md:grid-cols-2">
-            <div
-              v-for="state in editStates"
-              :key="state.key"
-              :class="state.valueType === 'array' ? 'col-span-full' : ''"
-            >
-              <label class="mb-1 block text-sm font-medium" :for="`field-${state.key}`">
-                {{ state.label }}
-                <span v-if="state.entry?.uncertain" class="text-amber-500">*</span>
-              </label>
-              <div>
-                <Select
-                  v-if="state.valueType === 'enum' && state.enumOptions"
-                  :id="`field-${state.key}`"
-                  :model-value="state.raw"
-                  @update:model-value="(value) => (state.raw = String(value))"
-                >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem v-for="option in state.enumOptions" :key="option" :value="option">
-                      {{ option }}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                <Textarea
-                  v-else-if="state.valueType === 'array'"
-                  :id="`field-${state.key}`"
-                  v-model="state.raw"
-                  rows="3"
-                  data-testid="detail-field-array"
-                />
-                <Input
-                  v-else
-                  :id="`field-${state.key}`"
-                  v-model="state.raw"
-                  :type="
-                    state.valueType === 'number'
-                      ? 'number'
-                      : state.valueType === 'date'
-                        ? 'date'
-                        : 'text'
-                  "
-                  :data-testid="`detail-field-${state.key}`"
-                />
+          <section class="space-y-2">
+            <h3 class="text-sm font-medium">{{ t('settings.documents.archive.fieldsTitle') }}</h3>
+            <div class="grid grid-cols-1 gap-x-4 gap-y-3 md:grid-cols-2">
+              <div
+                v-for="state in editStates"
+                :key="state.key"
+                :class="state.valueType === 'array' ? 'col-span-full' : ''"
+              >
+                <label class="mb-1 block text-sm font-medium" :for="`field-${state.key}`">
+                  {{ state.label }}
+                  <span v-if="state.entry?.uncertain" class="text-amber-500">*</span>
+                </label>
+                <div>
+                  <Select
+                    v-if="state.valueType === 'enum' && state.enumOptions"
+                    :id="`field-${state.key}`"
+                    :model-value="state.raw"
+                    @update:model-value="(value) => (state.raw = String(value))"
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem v-for="option in state.enumOptions" :key="option" :value="option">
+                        {{ option }}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Textarea
+                    v-else-if="state.valueType === 'array'"
+                    :id="`field-${state.key}`"
+                    v-model="state.raw"
+                    rows="3"
+                    data-testid="detail-field-array"
+                  />
+                  <Input
+                    v-else
+                    :id="`field-${state.key}`"
+                    v-model="state.raw"
+                    :type="
+                      state.valueType === 'number'
+                        ? 'number'
+                        : state.valueType === 'date'
+                          ? 'date'
+                          : 'text'
+                    "
+                    :data-testid="`detail-field-${state.key}`"
+                  />
+                </div>
               </div>
             </div>
-          </div>
-          <p v-if="fieldError" class="text-xs text-destructive" data-testid="detail-field-error">
-            {{ fieldError }}
-          </p>
-        </section>
+            <p v-if="fieldError" class="text-xs text-destructive" data-testid="detail-field-error">
+              {{ fieldError }}
+            </p>
+          </section>
+        </div>
 
-        <section class="space-y-2">
+        <section class="max-h-[70vh] space-y-2 overflow-y-auto">
           <h3 class="text-sm font-medium">{{ t('settings.documents.archive.filesTitle') }}</h3>
           <p v-if="document.fileUris.length === 0" class="text-sm text-muted-foreground">
             {{ t('settings.documents.archive.noFiles') }}
@@ -86,7 +88,7 @@
                 variant="outline"
                 size="sm"
                 :data-testid="`detail-preview-${index}`"
-                @click="togglePreview(index)"
+                @click="loadPreview(index)"
               >
                 {{ t('settings.documents.archive.filesTitle') }}
               </DcButton>
@@ -102,14 +104,14 @@
               v-if="preview && preview.mimeType.startsWith('image/')"
               :src="`data:${preview.mimeType};base64,${preview.dataBase64}`"
               :alt="preview.name"
-              class="max-h-96 rounded border"
+              class="max-h-[55vh] w-full rounded border object-contain"
               data-testid="detail-preview-image"
             />
             <embed
               v-else-if="preview && preview.mimeType === 'application/pdf'"
               :src="`data:application/pdf;base64,${preview.dataBase64}`"
               type="application/pdf"
-              class="h-96 w-full rounded border"
+              class="h-[55vh] w-full rounded border"
               data-testid="detail-preview-pdf"
             />
           </div>
@@ -268,6 +270,9 @@ watch(
     preview.value = null
     previewError.value = false
     fieldError.value = null
+    if (doc && doc.fileUris.length > 0) {
+      void loadPreview(0)
+    }
   },
   { immediate: true }
 )
@@ -395,7 +400,7 @@ async function onDelete() {
   }
 }
 
-async function togglePreview(index: number) {
+async function loadPreview(index: number) {
   const doc = props.document
   if (!doc) {
     return

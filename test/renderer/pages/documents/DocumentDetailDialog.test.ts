@@ -277,22 +277,22 @@ describe('DocumentDetailDialog', () => {
     expect(wrapper.emitted('re-recognized')).toEqual([[newDoc]])
   })
 
-  it('文件区列出 fileUris 并可预览图片', async () => {
+  it('文件区列出 fileUris 并自动预览图片，可手动重新加载', async () => {
     const { wrapper } = await setup()
+    expect(stubStore.previewArchiveFile).toHaveBeenCalledWith('d1', 0)
     expect(wrapper.get('[data-testid="detail-preview-0"]').text()).toContain(
       'settings.documents.archive.filesTitle'
     )
-    await wrapper.get('[data-testid="detail-preview-0"]').trigger('click')
-    await flushPromises()
-    expect(stubStore.previewArchiveFile).toHaveBeenCalledWith('d1', 0)
     const image = wrapper.get('[data-testid="detail-preview-image"]')
     expect(image.attributes('src')).toBe('data:image/png;base64,aGk=')
+    await wrapper.get('[data-testid="detail-preview-0"]').trigger('click')
+    await flushPromises()
+    expect(stubStore.previewArchiveFile).toHaveBeenCalledTimes(2)
   })
 
   it('preview 失败显示 previewFailed', async () => {
     stubStore.previewArchiveFile.mockRejectedValueOnce(new Error('preview failed'))
     const { wrapper } = await setup()
-    await wrapper.get('[data-testid="detail-preview-0"]').trigger('click')
     await flushPromises()
     expect(wrapper.get('[data-testid="detail-preview-error"]').text()).toContain(
       'settings.documents.archive.previewFailed'
