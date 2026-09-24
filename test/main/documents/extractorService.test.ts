@@ -245,7 +245,9 @@ describe('DocumentExtractor.extract auto 分类', () => {
       generateCompletion: vi
         .fn()
         .mockResolvedValueOnce('{"typeKey": "hotel_receipt"}')
-        .mockResolvedValueOnce('{"fields": {"invoice_code": null}, "uncertain_fields": []}')
+        .mockResolvedValueOnce(
+          '{"fields": {"invoice_code": "123456789012"}, "uncertain_fields": []}'
+        )
     })
     const extractor = new DocumentExtractor(deps)
     const result = await extractor.extract({
@@ -296,5 +298,52 @@ describe('DocumentExtractor.extract 分段', () => {
     expect(deps.generateCompletion).toHaveBeenCalledTimes(2)
     expect(result.fields.invoice_code).toEqual({ value: '111111111111', uncertain: true })
     expect(result.issues).toContain('invoice_code: conflicting values across segments')
+  })
+})
+
+describe('DocumentExtractor.extract 解析失败重试', () => {
+  it('首次输出非法 JSON 时重试一次并采用更好的结果', async () => {
+    const deps = makeDeps({
+      generateCompletion: vi
+        .fn()
+        .mockResolvedValueOnce('抱歉，我无法输出 JSON')
+        .mockResolvedValueOnce(
+          '{"fields": {"invoice_code": "123456789012"}, "uncertain_fields": []}'
+        )
+    })
+    const extractor = new DocumentExtractor(deps)
+    const result = await extractor.extract({
+      templateId: 'tpl-1',
+      file: { path: '/tmp/a.jpg', mimeType: 'image/jpeg' }
+    })
+    expect(deps.generateCompletion).toHaveBeenCalledTimes(2)
+    expect(result.fields.invoice_code).toEqual({ value: '123456789012', uncertain: false })
+    expect(result.issues).not.toContain('model output is not valid JSON')
+  })
+
+  it('首次输出可解析时不重试', async () => {
+    const deps = makeDeps()
+    const extractor = new DocumentExtractor(deps)
+    await extractor.extract({
+      templateId: 'tpl-1',
+      file: { path: '/tmp/a.jpg', mimeType: 'image/jpeg' }
+    })
+    expect(deps.generateCompletion).toHaveBeenCalledTimes(1)
+  })
+
+  it('重试仍未改善时保留首次结果', async () => {
+    const deps = makeDeps({
+      generateCompletion: vi
+        .fn()
+        .mockResolvedValueOnce('不是JSON')
+        .mockResolvedValueOnce('也不是JSON')
+    })
+    const extractor = new DocumentExtractor(deps)
+    const result = await extractor.extract({
+      templateId: 'tpl-1',
+      file: { path: '/tmp/a.jpg', mimeType: 'image/jpeg' }
+    })
+    expect(deps.generateCompletion).toHaveBeenCalledTimes(2)
+    expect(result.issues).toContain('model output is not valid JSON')
   })
 })

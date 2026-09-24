@@ -6,7 +6,7 @@ import {
   buildExtractionSystemPrompt,
   buildExtractionUserPrompt
 } from './promptBuilder'
-import { parseModelOutput, validateTemplateRules } from './fieldValidator'
+import { parseModelOutput, validateTemplateRules, type ParsedModelOutput } from './fieldValidator'
 import { mergeSegmentOutputs, splitTextIntoSegments } from './segmentMerger'
 
 export type DocumentExtractRoute = 'vision' | 'text' | 'ocr'
@@ -93,13 +93,7 @@ export class DocumentExtractor {
           ]
         }
       ]
-      rawOutput = await this.deps.generateCompletion({
-        providerId: target.providerId,
-        modelId: target.modelId,
-        messages,
-        temperature: EXTRACT_TEMPERATURE,
-        maxTokens: EXTRACT_MAX_TOKENS
-      })
+      rawOutput = await this.completeWithRetry(template, messages, target)
       const parsed = parseModelOutput(rawOutput, template)
       fields = parsed.fields
       issues.push(...parsed.issues)
@@ -116,13 +110,7 @@ export class DocumentExtractor {
           { role: 'system', content: buildExtractionSystemPrompt(template) },
           { role: 'user', content: buildExtractionUserPrompt(template, text) }
         ]
-        rawOutput = await this.deps.generateCompletion({
-          providerId: target.providerId,
-          modelId: target.modelId,
-          messages,
-          temperature: EXTRACT_TEMPERATURE,
-          maxTokens: EXTRACT_MAX_TOKENS
-        })
+        rawOutput = await this.completeWithRetry(template, messages, target)
         const parsed = parseModelOutput(rawOutput, template)
         fields = parsed.fields
         issues.push(...parsed.issues)
@@ -188,6 +176,51 @@ export class DocumentExtractor {
       durationMs: endedAt - startedAt,
       issues
     }
+  }
+
+  private scoreParsed(template: DocumentTemplate, parsed: ParsedModelOutput): number {
+    const filledRequired = template.fields.filter(
+      (field) => field.required && parsed.fields[field.key]?.value !== null
+    ).length
+    return filledRequired * 100 - parsed.issues.length
+  }
+
+  private async completeWithRetry(
+    template: DocumentTemplate,
+    messages: ChatMessage[],
+    target: ModelTarget
+  ): Promise<string> {
+    const request = { providerId: target.providerId, modelId: target.modelId }
+    const first = await this.deps.generateCompletion({
+      ...request,
+      messages,
+      temperature: EXTRACT_TEMPERATURE,
+      maxTokens: EXTRACT_MAX_TOKENS
+    })
+    const firstParsed = parseModelOutput(first, template)
+    const firstScore = this.scoreParsed(template, firstParsed)
+    const hasRequiredGap = template.fields.some(
+      (field) => field.required && firstParsed.fields[field.key]?.value === null
+    )
+    if (!firstParsed.issues.includes('model output is not valid JSON') && !hasRequiredGap) {
+      return first
+    }
+    const retried = await this.deps.generateCompletion({
+      ...request,
+      messages: [
+        ...messages,
+        { role: 'assistant', content: first },
+        {
+          role: 'user',
+          content:
+            '上一次输出无法解析（不是合法 JSON）或必填字段全部缺失。请严格按系统提示重新输出一个完整的 JSON 对象，不要输出任何其他文字。'
+        }
+      ],
+      temperature: EXTRACT_TEMPERATURE,
+      maxTokens: EXTRACT_MAX_TOKENS
+    })
+    const retriedParsed = parseModelOutput(retried, template)
+    return this.scoreParsed(template, retriedParsed) > firstScore ? retried : first
   }
 
   private requireTarget(
