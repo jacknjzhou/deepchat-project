@@ -2956,7 +2956,10 @@ export async function createMainProcessControl(dependencies: {
         try {
           return await renderPdfPagesToDataUrls(filePath)
         } catch (error) {
-          throw new Error(`failed to render pdf pages for vision: ${filePath}`, { cause: error })
+          const reason = error instanceof Error ? error.message : String(error)
+          throw new Error(`failed to render pdf pages for vision: ${filePath} (${reason})`, {
+            cause: error
+          })
         }
       },
       extractOcrText: async (filePath) => {
