@@ -5,74 +5,101 @@
         <DialogTitle>{{ t('settings.documents.archive.detailTitle') }}</DialogTitle>
       </DialogHeader>
 
-      <div v-if="document" class="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div class="max-h-[70vh] space-y-4 overflow-y-auto pr-1">
-          <div class="flex items-center gap-2 text-sm text-muted-foreground">
-            <span>{{ templateName }}</span>
-            <span>·</span>
-            <span>{{ statusText }}</span>
-            <span v-if="document.status === 'confirmed'">
-              · {{ new Date(document.updatedAt).toLocaleString() }}
-            </span>
-          </div>
-
-          <section class="space-y-2">
-            <h3 class="text-sm font-medium">{{ t('settings.documents.archive.fieldsTitle') }}</h3>
-            <div class="grid grid-cols-1 gap-x-4 gap-y-3 md:grid-cols-2">
-              <div
-                v-for="state in editStates"
-                :key="state.key"
-                :class="state.valueType === 'array' ? 'col-span-full' : ''"
-              >
-                <label class="mb-1 block text-sm font-medium" :for="`field-${state.key}`">
-                  {{ state.label }}
-                  <span v-if="state.entry?.uncertain" class="text-amber-500">*</span>
-                </label>
-                <div>
-                  <Select
-                    v-if="state.valueType === 'enum' && state.enumOptions"
-                    :id="`field-${state.key}`"
-                    :model-value="state.raw"
-                    @update:model-value="(value) => (state.raw = String(value))"
-                  >
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem v-for="option in state.enumOptions" :key="option" :value="option">
-                        {{ option }}
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Textarea
-                    v-else-if="state.valueType === 'array'"
-                    :id="`field-${state.key}`"
-                    v-model="state.raw"
-                    rows="3"
-                    data-testid="detail-field-array"
-                  />
-                  <Input
-                    v-else
-                    :id="`field-${state.key}`"
-                    v-model="state.raw"
-                    :type="
-                      state.valueType === 'number'
-                        ? 'number'
-                        : state.valueType === 'date'
-                          ? 'date'
-                          : 'text'
-                    "
-                    :data-testid="`detail-field-${state.key}`"
-                  />
-                </div>
-              </div>
-            </div>
-            <p v-if="fieldError" class="text-xs text-destructive" data-testid="detail-field-error">
-              {{ fieldError }}
-            </p>
-          </section>
+      <div v-if="document" class="space-y-3">
+        <div class="flex items-center gap-2 text-sm text-muted-foreground">
+          <span>{{ templateName }}</span>
+          <span>·</span>
+          <span>{{ statusText }}</span>
+          <span v-if="document.status === 'confirmed'">
+            · {{ new Date(document.updatedAt).toLocaleString() }}
+          </span>
         </div>
 
-        <section class="max-h-[70vh] space-y-2 overflow-y-auto">
-          <h3 class="text-sm font-medium">{{ t('settings.documents.archive.filesTitle') }}</h3>
+        <div class="flex gap-1 rounded-md bg-muted p-1" role="tablist">
+          <button
+            class="flex-1 rounded-sm px-3 py-1.5 text-sm font-medium transition-colors"
+            :class="
+              activeTab === 'fields'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            "
+            role="tab"
+            :aria-selected="activeTab === 'fields'"
+            data-testid="detail-tab-fields"
+            @click="activeTab = 'fields'"
+          >
+            {{ t('settings.documents.archive.fieldsTitle') }}
+          </button>
+          <button
+            class="flex-1 rounded-sm px-3 py-1.5 text-sm font-medium transition-colors"
+            :class="
+              activeTab === 'files'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            "
+            role="tab"
+            :aria-selected="activeTab === 'files'"
+            data-testid="detail-tab-files"
+            @click="activeTab = 'files'"
+          >
+            {{ t('settings.documents.archive.filesTitle') }}
+          </button>
+        </div>
+
+        <section v-if="activeTab === 'fields'" class="max-h-[70vh] space-y-2 overflow-y-auto pr-1">
+          <div class="grid grid-cols-1 gap-x-4 gap-y-3 md:grid-cols-2">
+            <div
+              v-for="state in editStates"
+              :key="state.key"
+              :class="state.valueType === 'array' ? 'col-span-full' : ''"
+            >
+              <label class="mb-1 block text-sm font-medium" :for="`field-${state.key}`">
+                {{ state.label }}
+                <span v-if="state.entry?.uncertain" class="text-amber-500">*</span>
+              </label>
+              <div>
+                <Select
+                  v-if="state.valueType === 'enum' && state.enumOptions"
+                  :id="`field-${state.key}`"
+                  :model-value="state.raw"
+                  @update:model-value="(value) => (state.raw = String(value))"
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem v-for="option in state.enumOptions" :key="option" :value="option">
+                      {{ option }}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <Textarea
+                  v-else-if="state.valueType === 'array'"
+                  :id="`field-${state.key}`"
+                  v-model="state.raw"
+                  rows="3"
+                  data-testid="detail-field-array"
+                />
+                <Input
+                  v-else
+                  :id="`field-${state.key}`"
+                  v-model="state.raw"
+                  :type="
+                    state.valueType === 'number'
+                      ? 'number'
+                      : state.valueType === 'date'
+                        ? 'date'
+                        : 'text'
+                  "
+                  :data-testid="`detail-field-${state.key}`"
+                />
+              </div>
+            </div>
+          </div>
+          <p v-if="fieldError" class="text-xs text-destructive" data-testid="detail-field-error">
+            {{ fieldError }}
+          </p>
+        </section>
+
+        <section v-else class="max-h-[70vh] space-y-2 overflow-y-auto">
           <p v-if="document.fileUris.length === 0" class="text-sm text-muted-foreground">
             {{ t('settings.documents.archive.noFiles') }}
           </p>
@@ -248,6 +275,7 @@ const saving = ref(false)
 const recognizing = ref(false)
 const recognizeSeconds = ref(0)
 const deleting = ref(false)
+const activeTab = ref<'fields' | 'files'>('fields')
 
 const busy = computed(() => saving.value || recognizing.value || deleting.value)
 const statusText = computed(() =>
@@ -272,12 +300,17 @@ watch(
     previewError.value = false
     releasePdfObjectUrl()
     fieldError.value = null
-    if (doc && doc.fileUris.length > 0) {
-      void loadPreview(0)
-    }
+    activeTab.value = 'fields'
   },
   { immediate: true }
 )
+
+watch(activeTab, (tab) => {
+  const doc = props.document
+  if (tab === 'files' && doc && doc.fileUris.length > 0 && !preview.value && !previewError.value) {
+    void loadPreview(0)
+  }
+})
 
 let feedbackTimer: ReturnType<typeof setTimeout> | null = null
 

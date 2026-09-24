@@ -277,8 +277,12 @@ describe('DocumentDetailDialog', () => {
     expect(wrapper.emitted('re-recognized')).toEqual([[newDoc]])
   })
 
-  it('文件区列出 fileUris 并自动预览图片，可手动重新加载', async () => {
+  it('默认识别数据页不加载预览，切到源文件页懒加载并可手动重载', async () => {
     const { wrapper } = await setup()
+    expect(stubStore.previewArchiveFile).not.toHaveBeenCalled()
+    expect(wrapper.find('[data-testid="detail-preview-image"]').exists()).toBe(false)
+    await wrapper.get('[data-testid="detail-tab-files"]').trigger('click')
+    await flushPromises()
     expect(stubStore.previewArchiveFile).toHaveBeenCalledWith('d1', 0)
     expect(wrapper.get('[data-testid="detail-preview-0"]').text()).toContain(
       'settings.documents.archive.filesTitle'
@@ -293,6 +297,7 @@ describe('DocumentDetailDialog', () => {
   it('preview 失败显示 previewFailed', async () => {
     stubStore.previewArchiveFile.mockRejectedValueOnce(new Error('preview failed'))
     const { wrapper } = await setup()
+    await wrapper.get('[data-testid="detail-tab-files"]').trigger('click')
     await flushPromises()
     expect(wrapper.get('[data-testid="detail-preview-error"]').text()).toContain(
       'settings.documents.archive.previewFailed'
@@ -313,6 +318,8 @@ describe('DocumentDetailDialog', () => {
         name: 'a.pdf'
       })
       const { wrapper } = await setup()
+      await wrapper.get('[data-testid="detail-tab-files"]').trigger('click')
+      await flushPromises()
       expect(wrapper.get('[data-testid="detail-preview-pdf"]').attributes('src')).toBe(
         'blob:mock-pdf-url'
       )
