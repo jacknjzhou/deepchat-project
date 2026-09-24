@@ -46,7 +46,7 @@
           </button>
         </div>
 
-        <section v-if="activeTab === 'fields'" class="max-h-[70vh] space-y-2 overflow-y-auto pr-1">
+        <section v-if="activeTab === 'fields'" class="h-[70vh] space-y-2 overflow-y-auto pr-1">
           <div class="grid grid-cols-1 gap-x-4 gap-y-3 md:grid-cols-2">
             <div
               v-for="state in editStates"
@@ -99,7 +99,7 @@
           </p>
         </section>
 
-        <section v-else class="max-h-[70vh] space-y-2 overflow-y-auto">
+        <section v-else class="h-[70vh] space-y-2 overflow-y-auto">
           <p v-if="document.fileUris.length === 0" class="text-sm text-muted-foreground">
             {{ t('settings.documents.archive.noFiles') }}
           </p>
