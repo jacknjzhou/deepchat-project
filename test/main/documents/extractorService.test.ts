@@ -265,6 +265,93 @@ describe('pdf vision routing', () => {
     expect(result.rawOutput).toContain('\n---\n')
   })
 
+  it('逐页提取并发执行且结果按页序归位', async () => {
+    let active = 0
+    let maxActive = 0
+    const deps = makeDeps({
+      repository: {
+        getTemplate: vi.fn(() => makeScannedTemplate()),
+        getTemplateByTypeKey: vi.fn(() => null),
+        listTemplates: vi.fn(() => [])
+      },
+      extractPdfText: vi.fn(async () => ({ text: '', hasTextLayer: false, pageCount: 4 })),
+      renderPdfPages: vi.fn(async () => ({
+        dataUrls: [
+          'data:image/jpeg;base64,AA',
+          'data:image/jpeg;base64,BB',
+          'data:image/jpeg;base64,CC',
+          'data:image/jpeg;base64,DD'
+        ],
+        pageCount: 4
+      })),
+      generateCompletion: vi.fn(async (input: CompletionRequest) => {
+        const content = JSON.stringify(input.messages[1]?.content)
+        const value = content.includes('base64,AA')
+          ? '111111111111'
+          : content.includes('base64,BB')
+            ? '222222222222'
+            : content.includes('base64,CC')
+              ? '333333333333'
+              : '444444444444'
+        active += 1
+        maxActive = Math.max(maxActive, active)
+        await new Promise((resolve) => setTimeout(resolve, content.includes('base64,AA') ? 40 : 10))
+        active -= 1
+        return `{"fields": {"invoice_code": "${value}"}, "uncertain_fields": []}`
+      })
+    })
+    const extractor = new DocumentExtractor(deps)
+    const result = await extractor.extract({
+      templateId: 'tpl-1',
+      file: { path: '/tmp/a.pdf', mimeType: 'application/pdf' }
+    })
+    expect(maxActive).toBe(3)
+    expect(result.rawOutput.indexOf('111111111111')).toBeLessThan(
+      result.rawOutput.indexOf('222222222222')
+    )
+    expect(result.rawOutput.indexOf('222222222222')).toBeLessThan(
+      result.rawOutput.indexOf('333333333333')
+    )
+    expect(result.rawOutput.indexOf('333333333333')).toBeLessThan(
+      result.rawOutput.indexOf('444444444444')
+    )
+    expect(result.fields.invoice_code).toEqual({ value: '111111111111', uncertain: true })
+    expect(result.issues).toContain('invoice_code: conflicting values across pages')
+  })
+
+  it('某页失败后不再发起新的页调用', async () => {
+    const deps = makeDeps({
+      repository: {
+        getTemplate: vi.fn(() => makeScannedTemplate()),
+        getTemplateByTypeKey: vi.fn(() => null),
+        listTemplates: vi.fn(() => [])
+      },
+      extractPdfText: vi.fn(async () => ({ text: '', hasTextLayer: false, pageCount: 6 })),
+      renderPdfPages: vi.fn(async () => ({
+        dataUrls: ['AA', 'BB', 'CC', 'DD', 'EE', 'FF'].map((t) => `data:image/jpeg;base64,${t}`),
+        pageCount: 6
+      })),
+      generateCompletion: vi.fn(async (input: CompletionRequest) => {
+        const content = JSON.stringify(input.messages[1]?.content)
+        if (content.includes('base64,CC')) {
+          throw new Error('model unavailable')
+        }
+        // Delay siblings so CC's rejection lands before they claim new pages,
+        // matching real model-call timing.
+        await new Promise((resolve) => setTimeout(resolve, 20))
+        return '{"fields": {"invoice_code": "888888888888"}, "uncertain_fields": []}'
+      })
+    })
+    const extractor = new DocumentExtractor(deps)
+    await expect(
+      extractor.extract({
+        templateId: 'tpl-1',
+        file: { path: '/tmp/a.pdf', mimeType: 'application/pdf' }
+      })
+    ).rejects.toThrow('model unavailable')
+    expect(deps.generateCompletion).toHaveBeenCalledTimes(3)
+  })
+
   it('某页必填字段全部为空时不触发重试', async () => {
     const deps = makeDeps({
       extractPdfText: vi.fn(async () => ({ text: '', hasTextLayer: false, pageCount: 2 })),
@@ -376,14 +463,17 @@ describe('scanned pdf classification', () => {
       generateCompletion: vi
         .fn()
         .mockResolvedValueOnce('{"typeKey": "invoice_special"}')
-        .mockResolvedValueOnce(
-          '{"fields": {"invoice_code": "123456789012"}, "uncertain_fields": []}'
-        ),
+        .mockResolvedValue('{"fields": {"invoice_code": "123456789012"}, "uncertain_fields": []}'),
       ...overrides
     })
 
-  it('扫描件 auto 分类使用第 1 页图片', async () => {
-    const deps = makeClassifyDeps()
+  it('扫描件 auto 分类使用第 1 页图片且整份只渲染一次', async () => {
+    const deps = makeClassifyDeps({
+      renderPdfPages: vi.fn(async () => ({
+        dataUrls: ['data:image/jpeg;base64,AA', 'data:image/jpeg;base64,BB'],
+        pageCount: 2
+      }))
+    })
     const extractor = new DocumentExtractor(deps)
     const result = await extractor.extract({
       templateId: 'auto',
@@ -392,12 +482,63 @@ describe('scanned pdf classification', () => {
     expect(result.template.typeKey).toBe('invoice_special')
     expect(result.route).toBe('vision')
     const renderMock = vi.mocked(deps.renderPdfPages)
-    expect(renderMock).toHaveBeenCalledTimes(2)
-    expect(renderMock.mock.calls[0]).toEqual(['/tmp/a.pdf', { maxPages: 1 }])
+    expect(renderMock).toHaveBeenCalledTimes(1)
+    expect(renderMock.mock.calls[0]).toEqual(['/tmp/a.pdf', { maxPages: 8 }])
+    expect(deps.generateCompletion).toHaveBeenCalledTimes(3)
     const classifyCall = vi.mocked(deps.generateCompletion).mock.calls[0][0]
     expect(classifyCall.modelId).toBe('gpt-4o')
     expect(JSON.stringify(classifyCall.messages[1]?.content)).toContain('"detail":"low"')
     expect(JSON.stringify(classifyCall.messages[1]?.content)).toContain('base64,AA')
+  })
+
+  it('扫描件超页数上限时分类仍用首页图片且提取走 OCR', async () => {
+    const deps = makeClassifyDeps({
+      extractPdfText: vi.fn(async () => ({ text: '', hasTextLayer: false, pageCount: 9 })),
+      extractOcrText: vi.fn(async () => 'OCR 识别出的文本')
+    })
+    const extractor = new DocumentExtractor(deps)
+    const result = await extractor.extract({
+      templateId: 'auto',
+      file: { path: '/tmp/a.pdf', mimeType: 'application/pdf' }
+    })
+    expect(result.route).toBe('ocr')
+    const renderMock = vi.mocked(deps.renderPdfPages)
+    expect(renderMock).toHaveBeenCalledTimes(1)
+    expect(renderMock.mock.calls[0]).toEqual(['/tmp/a.pdf', { maxPages: 1 }])
+    expect(deps.extractOcrText).toHaveBeenCalledWith('/tmp/a.pdf')
+    const classifyCall = vi.mocked(deps.generateCompletion).mock.calls[0][0]
+    expect(classifyCall.modelId).toBe('gpt-4o')
+  })
+
+  it('auto 超页数命中 vision 模式模板时提取阶段补渲染全量页', async () => {
+    const allUrls = Array.from({ length: 8 }, (_, i) => `data:image/jpeg;base64,P${i}`)
+    const renderCalls: Array<{ maxPages?: number } | undefined> = []
+    const deps = makeDeps({
+      repository: {
+        getTemplate: vi.fn(() => makeTemplate({ extractionMode: 'vision' })),
+        getTemplateByTypeKey: vi.fn(() => makeTemplate({ extractionMode: 'vision' })),
+        listTemplates: vi.fn(() => [makeTemplate({ extractionMode: 'vision' })])
+      },
+      extractPdfText: vi.fn(async () => ({ text: '', hasTextLayer: false, pageCount: 9 })),
+      renderPdfPages: vi.fn(async (_path: string, options?: { maxPages?: number }) => {
+        renderCalls.push(options)
+        const max = options?.maxPages ?? 8
+        return { dataUrls: allUrls.slice(0, max), pageCount: 9 }
+      }),
+      generateCompletion: vi
+        .fn()
+        .mockResolvedValueOnce('{"typeKey": "invoice_special"}')
+        .mockResolvedValue('{"fields": {"invoice_code": "123456789012"}, "uncertain_fields": []}')
+    })
+    const extractor = new DocumentExtractor(deps)
+    const result = await extractor.extract({
+      templateId: 'auto',
+      file: { path: '/tmp/a.pdf', mimeType: 'application/pdf' }
+    })
+    expect(result.route).toBe('vision')
+    expect(renderCalls).toEqual([{ maxPages: 1 }, undefined])
+    expect(deps.generateCompletion).toHaveBeenCalledTimes(9)
+    expect(result.issues).toContain('pdf has 9 pages; only first 8 processed by vision')
   })
 
   it('扫描件无视觉模型时回退文本分类', async () => {

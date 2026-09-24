@@ -61,6 +61,7 @@ const IMAGE_EXTENSIONS = /\.(jpe?g|png|gif|webp|bmp)$/i
 const CLASSIFY_TEMPERATURE = 0
 const EXTRACT_TEMPERATURE = 0.2
 const EXTRACT_MAX_TOKENS = 4096
+const PAGE_EXTRACT_CONCURRENCY = 3
 
 const isImageFile = (file: DocumentExtractFileInput): boolean => {
   if (file.mimeType) return file.mimeType.startsWith(IMAGE_MIME_PREFIX)
@@ -81,8 +82,27 @@ export class DocumentExtractor {
     signal?: AbortSignal
   }): Promise<DocumentExtractResult> {
     const startedAt = this.deps.now?.() ?? Date.now()
-    const pdfText = isPdfFile(input.file) ? await this.deps.extractPdfText(input.file.path) : null
-    const template = await this.resolveTemplate(input.templateId, input.file, pdfText)
+    const isPdf = isPdfFile(input.file)
+    const pdfText = isPdf ? await this.deps.extractPdfText(input.file.path) : null
+
+    // Render scanned PDF pages once up front: page 1 feeds auto classification
+    // and all pages feed vision extraction, instead of parsing and rendering
+    // the document separately for each stage.
+    let pdfPages: { dataUrls: string[]; pageCount: number } | null = null
+    if (
+      isPdf &&
+      input.templateId === 'auto' &&
+      pdfText !== null &&
+      !pdfText.hasTextLayer &&
+      (await this.deps.resolveVisionTarget()) !== null
+    ) {
+      const withinPageLimit = (pdfText.pageCount ?? 0) <= PDF_VISION_MAX_PAGES
+      pdfPages = await this.deps.renderPdfPages(input.file.path, {
+        maxPages: withinPageLimit ? PDF_VISION_MAX_PAGES : 1
+      })
+    }
+
+    const template = await this.resolveTemplate(input.templateId, input.file, pdfText, pdfPages)
     const plan = await this.buildRoutePlan(template, input.file, pdfText)
 
     const issues: string[] = []
@@ -92,39 +112,75 @@ export class DocumentExtractor {
     if (plan.route === 'vision') {
       const target = this.requireTarget(await this.deps.resolveVisionTarget(), 'defaultVisionModel')
       if (isPdfFile(input.file)) {
-        const { dataUrls, pageCount } = await this.deps.renderPdfPages(input.file.path)
+        // A partial pre-render (single classification page for oversized
+        // documents) must not limit vision extraction; re-render fully then.
+        let preRendered: { dataUrls: string[]; pageCount: number } | null = null
+        if (
+          pdfPages !== null &&
+          pdfPages.dataUrls.length >= Math.min(pdfPages.pageCount, PDF_VISION_MAX_PAGES)
+        ) {
+          preRendered = pdfPages
+        }
+        const { dataUrls, pageCount } =
+          preRendered ?? (await this.deps.renderPdfPages(input.file.path))
         if (pageCount > dataUrls.length) {
           issues.push(
             `pdf has ${pageCount} pages; only first ${dataUrls.length} processed by vision`
           )
         }
-        const partials: Record<string, DocumentFieldEntry>[] = []
-        for (let index = 0; index < dataUrls.length; index += 1) {
-          if (input.signal?.aborted) {
-            throw new Error('extraction aborted')
-          }
-          const messages: ChatMessage[] = [
-            { role: 'system', content: buildExtractionSystemPrompt(template) },
-            {
-              role: 'user',
-              content: [
-                {
-                  type: 'text',
-                  text:
-                    dataUrls.length > 1
-                      ? `这是扫描件第 ${index + 1}/${dataUrls.length} 页。只提取本页出现的字段值；本页没有的字段填 null，后续页面会补充。`
-                      : buildExtractionUserPrompt(template, null)
-                },
-                { type: 'image_url', image_url: { url: dataUrls[index], detail: 'auto' } }
-              ]
+        // Bounded parallel extraction; partials stay position-indexed so the
+        // merge order always matches the page order.
+        const partials: Record<string, DocumentFieldEntry>[] = Array.from({
+          length: dataUrls.length
+        })
+        const pageOutputs: string[] = Array.from({ length: dataUrls.length })
+        let next = 0
+        let failed = false
+        const extractPage = async (): Promise<void> => {
+          while (next < dataUrls.length) {
+            if (input.signal?.aborted) {
+              throw new Error('extraction aborted')
             }
-          ]
-          const output = await this.completeWithRetry(template, messages, target, {
-            allowRequiredGapRetry: false
-          })
-          partials.push(parseModelOutput(output, template).fields)
-          rawOutput += (rawOutput ? '\n---\n' : '') + output
+            if (failed) {
+              return
+            }
+            const index = next
+            next += 1
+            try {
+              const messages: ChatMessage[] = [
+                { role: 'system', content: buildExtractionSystemPrompt(template) },
+                {
+                  role: 'user',
+                  content: [
+                    {
+                      type: 'text',
+                      text:
+                        dataUrls.length > 1
+                          ? `这是扫描件第 ${index + 1}/${dataUrls.length} 页。只提取本页出现的字段值；本页没有的字段填 null，后续页面会补充。`
+                          : buildExtractionUserPrompt(template, null)
+                    },
+                    { type: 'image_url', image_url: { url: dataUrls[index], detail: 'auto' } }
+                  ]
+                }
+              ]
+              const output = await this.completeWithRetry(template, messages, target, {
+                allowRequiredGapRetry: false
+              })
+              partials[index] = parseModelOutput(output, template).fields
+              pageOutputs[index] = output
+            } catch (error) {
+              // Stop other workers from claiming further pages once one fails.
+              failed = true
+              throw error
+            }
+          }
         }
+        await Promise.all(
+          Array.from({ length: Math.min(PAGE_EXTRACT_CONCURRENCY, dataUrls.length) }, () =>
+            extractPage()
+          )
+        )
+        rawOutput = pageOutputs.join('\n---\n')
         fields = mergeSegmentOutputs(
           Object.fromEntries(
             template.fields.map((field) => [field.key, { value: null, uncertain: false }])
@@ -317,7 +373,8 @@ export class DocumentExtractor {
   private async resolveTemplate(
     templateId: string,
     file: DocumentExtractFileInput,
-    pdfText: { text: string; hasTextLayer: boolean; pageCount?: number } | null
+    pdfText: { text: string; hasTextLayer: boolean; pageCount?: number } | null,
+    pdfPages: { dataUrls: string[] } | null
   ): Promise<DocumentTemplate> {
     if (templateId !== 'auto') {
       const template = this.deps.repository.getTemplate(templateId)
@@ -348,31 +405,21 @@ export class DocumentExtractor {
       ]
     } else if (isPdfFile(file)) {
       const scanned = pdfText !== null && !pdfText.hasTextLayer
-      let visionTarget: ModelTarget | null = null
-      let visionMessages: ChatMessage[] | null = null
-      if (scanned) {
-        const candidate = await this.deps.resolveVisionTarget()
-        if (candidate) {
-          const { dataUrls } = await this.deps.renderPdfPages(file.path, { maxPages: 1 })
-          const firstPage = dataUrls[0]
-          if (firstPage) {
-            visionTarget = candidate
-            visionMessages = [
-              { role: 'system', content: system },
-              {
-                role: 'user',
-                content: [
-                  { type: 'text', text: user },
-                  { type: 'image_url', image_url: { url: firstPage, detail: 'low' } }
-                ]
-              }
+      // extract() pre-renders pages whenever scanned auto classification can
+      // use vision; a first page present here implies a vision model exists.
+      const firstPage = scanned ? pdfPages?.dataUrls[0] : undefined
+      if (firstPage) {
+        target = this.requireTarget(await this.deps.resolveVisionTarget(), 'defaultVisionModel')
+        messages = [
+          { role: 'system', content: system },
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: user },
+              { type: 'image_url', image_url: { url: firstPage, detail: 'low' } }
             ]
           }
-        }
-      }
-      if (visionTarget !== null && visionMessages !== null) {
-        target = visionTarget
-        messages = visionMessages
+        ]
       } else {
         target = this.requireTarget(await this.deps.resolveTextTarget(), 'defaultModel')
         const sample = (pdfText?.text ?? '').slice(0, 4000)
