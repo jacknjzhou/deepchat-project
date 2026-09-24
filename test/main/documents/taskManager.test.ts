@@ -284,7 +284,7 @@ describe('RecognitionTaskManager', () => {
       source: 'manual'
     })
     await manager.idle()
-    // 并发 2：pump 同步启动 t0/t1（两个 running 先入列），t0 的 rejection 续体作为先入队
+    // 默认并发足以同步启动 t0/t1（两个 running 先入列），t0 的 rejection 续体作为先入队
     // 的微任务先于 t1 的 resolve 续体执行，因此顺序是确定的。
     expect(statuses).toEqual(['t0:running', 't1:running', 't0:failed', 't1:done'])
     expect(calls).toBe(2)
