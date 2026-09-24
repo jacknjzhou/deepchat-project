@@ -205,9 +205,7 @@ describe('DocumentDetailDialog', () => {
     expect(stubStore.saveArchiveDocument).toHaveBeenCalledWith('d1', {
       buyer: { value: '新值', uncertain: false }
     })
-    expect(wrapper.get('[data-testid="detail-feedback"]').text()).toContain(
-      'settings.documents.archive.saved'
-    )
+    expect(wrapper.emitted('update:open')).toEqual([[false]])
   })
 
   it('未编辑字段原样透传原 entry', async () => {

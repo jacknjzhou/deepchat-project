@@ -1,6 +1,6 @@
 <template>
   <Dialog :open="open" @update:open="(value) => emit('update:open', value)">
-    <DialogContent class="max-w-3xl" data-testid="document-detail-dialog">
+    <DialogContent class="max-w-4xl" data-testid="document-detail-dialog">
       <DialogHeader>
         <DialogTitle>{{ t('settings.documents.archive.detailTitle') }}</DialogTitle>
       </DialogHeader>
@@ -17,49 +17,51 @@
 
         <section class="space-y-2">
           <h3 class="text-sm font-medium">{{ t('settings.documents.archive.fieldsTitle') }}</h3>
-          <div
-            v-for="state in editStates"
-            :key="state.key"
-            class="grid grid-cols-[10rem_1fr] items-start gap-2"
-          >
-            <label class="pt-2 text-sm" :for="`field-${state.key}`">
-              {{ state.label }}
-              <span v-if="state.entry?.uncertain" class="text-amber-500">*</span>
-            </label>
-            <div>
-              <Select
-                v-if="state.valueType === 'enum' && state.enumOptions"
-                :id="`field-${state.key}`"
-                :model-value="state.raw"
-                @update:model-value="(value) => (state.raw = String(value))"
-              >
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem v-for="option in state.enumOptions" :key="option" :value="option">
-                    {{ option }}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-              <Textarea
-                v-else-if="state.valueType === 'array'"
-                :id="`field-${state.key}`"
-                v-model="state.raw"
-                rows="3"
-                data-testid="detail-field-array"
-              />
-              <Input
-                v-else
-                :id="`field-${state.key}`"
-                v-model="state.raw"
-                :type="
-                  state.valueType === 'number'
-                    ? 'number'
-                    : state.valueType === 'date'
-                      ? 'date'
-                      : 'text'
-                "
-                :data-testid="`detail-field-${state.key}`"
-              />
+          <div class="grid grid-cols-1 gap-x-4 gap-y-3 md:grid-cols-2">
+            <div
+              v-for="state in editStates"
+              :key="state.key"
+              :class="state.valueType === 'array' ? 'col-span-full' : ''"
+            >
+              <label class="mb-1 block text-sm font-medium" :for="`field-${state.key}`">
+                {{ state.label }}
+                <span v-if="state.entry?.uncertain" class="text-amber-500">*</span>
+              </label>
+              <div>
+                <Select
+                  v-if="state.valueType === 'enum' && state.enumOptions"
+                  :id="`field-${state.key}`"
+                  :model-value="state.raw"
+                  @update:model-value="(value) => (state.raw = String(value))"
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem v-for="option in state.enumOptions" :key="option" :value="option">
+                      {{ option }}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <Textarea
+                  v-else-if="state.valueType === 'array'"
+                  :id="`field-${state.key}`"
+                  v-model="state.raw"
+                  rows="3"
+                  data-testid="detail-field-array"
+                />
+                <Input
+                  v-else
+                  :id="`field-${state.key}`"
+                  v-model="state.raw"
+                  :type="
+                    state.valueType === 'number'
+                      ? 'number'
+                      : state.valueType === 'date'
+                        ? 'date'
+                        : 'text'
+                  "
+                  :data-testid="`detail-field-${state.key}`"
+                />
+              </div>
             </div>
           </div>
           <p v-if="fieldError" class="text-xs text-destructive" data-testid="detail-field-error">
@@ -338,7 +340,7 @@ async function runSave(id: string, fields: Record<string, DocumentFieldEntry>) {
   saving.value = true
   try {
     await store.saveArchiveDocument(id, fields)
-    showFeedback('success', t('settings.documents.archive.saved'))
+    emit('update:open', false)
   } catch (error) {
     console.error('[DocumentDetailDialog] save failed', error)
     showFeedback('error', t('settings.documents.archive.saveFailed'))
