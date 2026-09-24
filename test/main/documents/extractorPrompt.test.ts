@@ -152,7 +152,7 @@ describe('buildExtractionSystemPrompt enhancements', () => {
     const system = buildExtractionSystemPrompt(template)
     expect(system).toContain('发票类专项提示')
     expect(system).toContain('发票号码通常为 8 位数字（全电发票为 20 位）')
-    expect(system).toContain('价税合计需与"金额大写"一致')
+    expect(system).toContain('价税合计需与“金额大写”一致')
   })
 
   it('does not append invoice guidance for other categories', () => {
