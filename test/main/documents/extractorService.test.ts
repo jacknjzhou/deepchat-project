@@ -416,7 +416,7 @@ describe('pdf vision routing', () => {
 
   it('扫描件 PDF 超过视觉页数上限时走 OCR', async () => {
     const deps = makeDeps({
-      extractPdfText: vi.fn(async () => ({ text: '', hasTextLayer: false, pageCount: 9 })),
+      extractPdfText: vi.fn(async () => ({ text: '', hasTextLayer: false, pageCount: 13 })),
       extractOcrText: vi.fn(async () => 'OCR 识别出的文本')
     })
     const extractor = new DocumentExtractor(deps)
@@ -483,7 +483,7 @@ describe('scanned pdf classification', () => {
     expect(result.route).toBe('vision')
     const renderMock = vi.mocked(deps.renderPdfPages)
     expect(renderMock).toHaveBeenCalledTimes(1)
-    expect(renderMock.mock.calls[0]).toEqual(['/tmp/a.pdf', { maxPages: 8 }])
+    expect(renderMock.mock.calls[0]).toEqual(['/tmp/a.pdf', { maxPages: 12 }])
     expect(deps.generateCompletion).toHaveBeenCalledTimes(3)
     const classifyCall = vi.mocked(deps.generateCompletion).mock.calls[0][0]
     expect(classifyCall.modelId).toBe('gpt-4o')
@@ -493,7 +493,7 @@ describe('scanned pdf classification', () => {
 
   it('扫描件超页数上限时分类仍用首页图片且提取走 OCR', async () => {
     const deps = makeClassifyDeps({
-      extractPdfText: vi.fn(async () => ({ text: '', hasTextLayer: false, pageCount: 9 })),
+      extractPdfText: vi.fn(async () => ({ text: '', hasTextLayer: false, pageCount: 13 })),
       extractOcrText: vi.fn(async () => 'OCR 识别出的文本')
     })
     const extractor = new DocumentExtractor(deps)
@@ -511,7 +511,7 @@ describe('scanned pdf classification', () => {
   })
 
   it('auto 超页数命中 vision 模式模板时提取阶段补渲染全量页', async () => {
-    const allUrls = Array.from({ length: 8 }, (_, i) => `data:image/jpeg;base64,P${i}`)
+    const allUrls = Array.from({ length: 12 }, (_, i) => `data:image/jpeg;base64,P${i}`)
     const renderCalls: Array<{ maxPages?: number } | undefined> = []
     const deps = makeDeps({
       repository: {
@@ -519,11 +519,11 @@ describe('scanned pdf classification', () => {
         getTemplateByTypeKey: vi.fn(() => makeTemplate({ extractionMode: 'vision' })),
         listTemplates: vi.fn(() => [makeTemplate({ extractionMode: 'vision' })])
       },
-      extractPdfText: vi.fn(async () => ({ text: '', hasTextLayer: false, pageCount: 9 })),
+      extractPdfText: vi.fn(async () => ({ text: '', hasTextLayer: false, pageCount: 13 })),
       renderPdfPages: vi.fn(async (_path: string, options?: { maxPages?: number }) => {
         renderCalls.push(options)
-        const max = options?.maxPages ?? 8
-        return { dataUrls: allUrls.slice(0, max), pageCount: 9 }
+        const max = options?.maxPages ?? 12
+        return { dataUrls: allUrls.slice(0, max), pageCount: 13 }
       }),
       generateCompletion: vi
         .fn()
@@ -537,8 +537,8 @@ describe('scanned pdf classification', () => {
     })
     expect(result.route).toBe('vision')
     expect(renderCalls).toEqual([{ maxPages: 1 }, undefined])
-    expect(deps.generateCompletion).toHaveBeenCalledTimes(9)
-    expect(result.issues).toContain('pdf has 9 pages; only first 8 processed by vision')
+    expect(deps.generateCompletion).toHaveBeenCalledTimes(13)
+    expect(result.issues).toContain('pdf has 13 pages; only first 12 processed by vision')
   })
 
   it('扫描件无视觉模型时回退文本分类', async () => {

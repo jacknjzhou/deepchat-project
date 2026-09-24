@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises'
 import { pdf } from 'pdf-to-img'
 import sharp from 'sharp'
 
-export const PDF_VISION_MAX_PAGES = 8
+export const PDF_VISION_MAX_PAGES = 12
 const PAGE_RENDER_SCALE = 2
 
 // pdf-parse-new loads its own older pdfjs worker into globalThis.pdfjsWorker at
