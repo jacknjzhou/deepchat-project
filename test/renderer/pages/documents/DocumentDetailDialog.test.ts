@@ -48,6 +48,38 @@ const makeRecord = (overrides = {}) => ({
 
 const stubStore = reactive({
   archiveDocuments: [] as Array<Record<string, unknown>>,
+  templates: [
+    {
+      id: 'tpl-1',
+      typeKey: 'contract',
+      name: 'Contract',
+      icon: null,
+      category: '合同类',
+      fields: [],
+      extractionMode: 'auto',
+      promptPreset: null,
+      isBuiltin: true,
+      builtinSourceId: null,
+      version: 1,
+      createdAt: 1,
+      updatedAt: 1
+    },
+    {
+      id: 'tpl-2',
+      typeKey: 'receipt',
+      name: 'Receipt',
+      icon: null,
+      category: '其他',
+      fields: [],
+      extractionMode: 'auto',
+      promptPreset: null,
+      isBuiltin: true,
+      builtinSourceId: null,
+      version: 1,
+      createdAt: 1,
+      updatedAt: 1
+    }
+  ] as Array<Record<string, unknown>>,
   saveArchiveDocument: vi.fn(async (_id: string, _fields: Record<string, unknown>) => null),
   removeArchiveDocument: vi.fn(async (_id: string) => {}),
   recognizeDocument: vi.fn(async (_input: Record<string, unknown>) => ({
@@ -263,8 +295,8 @@ describe('DocumentDetailDialog', () => {
     expect(wrapper.emitted('update:open')).toEqual([[false]])
   })
 
-  it('重新识别调用 recognizeDocument(fileUris[0], 原模板) 并 emit re-recognized', async () => {
-    const newDoc = makeRecord({ id: 'd2' })
+  it('重新识别调用 recognizeDocument(fileUris[0], 原模板, 当前单据) 并 emit re-recognized', async () => {
+    const newDoc = makeRecord({ id: 'd1' })
     stubStore.recognizeDocument.mockResolvedValueOnce({ document: newDoc, meta: {} })
     const { wrapper, record } = await setup()
     await wrapper.get('[data-testid="detail-re-recognize"]').trigger('click')
@@ -272,9 +304,71 @@ describe('DocumentDetailDialog', () => {
     expect(stubStore.recognizeDocument).toHaveBeenCalledWith({
       templateId: 'tpl-1',
       file: { path: record.fileUris[0] },
-      source: 'manual'
+      source: 'manual',
+      documentId: 'd1'
     })
     expect(wrapper.emitted('re-recognized')).toEqual([[newDoc]])
+  })
+
+  it('重新识别未提取到任何字段时报错并保留原单据', async () => {
+    stubStore.recognizeDocument.mockResolvedValueOnce({
+      document: makeRecord({
+        id: 'd1',
+        fields: { buyer: { value: null, uncertain: true } }
+      }),
+      meta: { route: 'vision', durationMs: 5, issues: ['model output is not valid JSON'] }
+    })
+    const { wrapper } = await setup()
+    await wrapper.get('[data-testid="detail-re-recognize"]').trigger('click')
+    await flushPromises()
+    // 全空结果视为失败：不切换到新单据，展示真实原因
+    expect(wrapper.emitted('re-recognized')).toBeUndefined()
+    expect(wrapper.text()).toContain('settings.documents.archive.reRecognizeFailed')
+    expect(wrapper.text()).toContain('model output is not valid JSON')
+  })
+
+  it('重新识别进行中切换到其他文档不继承识别中状态', async () => {
+    let resolveRecognize!: (value: { document: Record<string, unknown>; meta: unknown }) => void
+    stubStore.recognizeDocument.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveRecognize = resolve
+        })
+    )
+    const { wrapper, record } = await setup()
+    await wrapper.get('[data-testid="detail-re-recognize"]').trigger('click')
+    expect(wrapper.find('[data-testid="detail-recognizing"]').exists()).toBe(true)
+    // Extraction keeps running in the background; browsing another document
+    // must not inherit the busy state.
+    await wrapper.setProps({ document: makeRecord({ id: 'd2' }) })
+    expect(wrapper.find('[data-testid="detail-recognizing"]').exists()).toBe(false)
+    expect((wrapper.get('[data-testid="detail-save"]').element as HTMLButtonElement).disabled).toBe(
+      false
+    )
+    // Completion still emits so the archive row updates, without feedback on
+    // the other document's view.
+    resolveRecognize({ document: record, meta: {} })
+    await flushPromises()
+    expect(wrapper.emitted('re-recognized')).toEqual([[record]])
+    expect(wrapper.find('[data-testid="detail-recognizing"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="detail-feedback"]').exists()).toBe(false)
+    // Switching back shows no stale busy state either.
+    await wrapper.setProps({ document: record })
+    expect(wrapper.find('[data-testid="detail-recognizing"]').exists()).toBe(false)
+  })
+
+  it('重新识别前手动切换类别后按新模板提取', async () => {
+    const { wrapper, record } = await setup()
+    // SelectTrigger is stubbed as a fragment, target the native select element.
+    await wrapper.get('select').setValue('tpl-2')
+    await wrapper.get('[data-testid="detail-re-recognize"]').trigger('click')
+    await flushPromises()
+    expect(stubStore.recognizeDocument).toHaveBeenCalledWith({
+      templateId: 'tpl-2',
+      file: { path: record.fileUris[0] },
+      source: 'manual',
+      documentId: 'd1'
+    })
   })
 
   it('默认识别数据页不加载预览，切到源文件页懒加载并可手动重载', async () => {

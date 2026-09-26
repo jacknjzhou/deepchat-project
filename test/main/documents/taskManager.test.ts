@@ -361,6 +361,63 @@ describe('RecognitionTaskManager', () => {
     expect(published).toEqual(['pending', 'running', 'done'])
   })
 
+  it('retryTask can override the template for the re-queued task', async () => {
+    const failed = makeTask({ id: 't-fail', status: 'failed', error: 'classify failed' })
+    const updates: Array<{ status: string; templateId?: string; typeKey?: string | null }> = []
+    const extractedTemplates: string[] = []
+    // Emulates the sqlite update contract: omitted fields keep their stored value.
+    let storedTemplateId = failed.templateId
+    const manager = new RecognitionTaskManager({
+      repository: {
+        insertTasks: () => [],
+        getTask: (id) => (id === failed.id ? failed : null),
+        updateTask: (id, input) => {
+          if (input.templateId !== undefined) {
+            storedTemplateId = input.templateId
+          }
+          updates.push({
+            status: input.status,
+            templateId: input.templateId,
+            typeKey: input.typeKey
+          })
+          return makeTask({
+            id,
+            templateId: storedTemplateId,
+            status: input.status,
+            typeKey: input.typeKey ?? null
+          })
+        },
+        listRecentTasks: () => [],
+        listPendingTasks: () => [],
+        markRunningTasksFailed: () => {},
+        countTaskBatch: () => ({ done: 0, total: 1 }),
+        insertDocument: () => ({ id: 'doc-1' })
+      },
+      extractor: {
+        extract: async (input) => {
+          extractedTemplates.push(input.templateId)
+          return {
+            template: { id: input.templateId, typeKey: 'contract_purchase' },
+            route: 'vision',
+            fields: {},
+            rawOutput: '',
+            durationMs: 1,
+            issues: []
+          }
+        }
+      },
+      publishTaskUpdated: () => {}
+    })
+    const retried = manager.retryTask(failed.id, { templateId: 'tpl-contract' })
+    expect(retried?.templateId).toBe('tpl-contract')
+    // 重置原行时写入新模板并清空上次的分类结果
+    expect(updates[0]).toMatchObject({ status: 'pending', templateId: 'tpl-contract' })
+    await manager.idle()
+    // 重新识别时使用覆盖后的模板，而不是原来的 'auto'
+    expect(extractedTemplates).toEqual(['tpl-contract'])
+    expect(updates.at(-1)).toMatchObject({ status: 'done', typeKey: 'contract_purchase' })
+  })
+
   it('retryTask ignores tasks that are not failed or missing', async () => {
     const done = makeTask({ id: 't-done', status: 'done' })
     const manager = new RecognitionTaskManager({

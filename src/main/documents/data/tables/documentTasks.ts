@@ -28,6 +28,7 @@ export interface DocumentTaskInsertInput {
 
 export interface DocumentTaskUpdateInput {
   status: 'pending' | 'running' | 'done' | 'failed'
+  templateId?: string
   typeKey?: string | null
   documentId?: string | null
   error?: string | null
@@ -109,11 +110,12 @@ export class DocumentTasksTable extends BaseTable {
     this.db
       .prepare(
         `UPDATE document_tasks
-         SET status = ?, type_key = ?, document_id = ?, error = ?, updated_at = ?
+         SET status = ?, template_id = ?, type_key = ?, document_id = ?, error = ?, updated_at = ?
          WHERE id = ?`
       )
       .run(
         input.status,
+        input.templateId !== undefined ? input.templateId : existing.template_id,
         input.typeKey !== undefined ? input.typeKey : existing.type_key,
         input.documentId !== undefined ? input.documentId : existing.document_id,
         input.error !== undefined ? input.error : existing.error,

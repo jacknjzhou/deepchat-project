@@ -177,7 +177,12 @@ export function createDocumentsRoutes(
       documentsTasksRetryRoute.name,
       async (rawInput) => {
         const input = documentsTasksRetryRoute.input.parse(rawInput)
-        return documentsTasksRetryRoute.output.parse({ task: taskManager.retryTask(input.id) })
+        return documentsTasksRetryRoute.output.parse({
+          task: taskManager.retryTask(
+            input.id,
+            input.templateId ? { templateId: input.templateId } : undefined
+          )
+        })
       }
     ],
     [
@@ -214,17 +219,32 @@ export function createDocumentsRoutes(
       async (rawInput) => {
         const input = documentsExtractAndDraftRoute.input.parse(rawInput)
         const result = await extractor.extract({ templateId: input.templateId, file: input.file })
-        const document = repository.insertDocument({
-          templateId: result.template.id,
-          typeKey: result.template.typeKey,
-          templateSnapshot: result.template,
-          fields: result.fields,
-          fileUris: [input.file.path],
-          source: input.source ?? 'manual',
-          sessionId: input.sessionId ?? null,
-          status: 'draft',
-          now: Date.now()
-        })
+        // With documentId (re-recognize from the detail dialog) the extraction
+        // result replaces the existing record in place; without it a new draft
+        // is archived (chat tool / first-time recognition flow).
+        const document = input.documentId
+          ? repository.updateDocument(input.documentId, {
+              templateId: result.template.id,
+              typeKey: result.template.typeKey,
+              templateSnapshot: result.template,
+              fields: result.fields,
+              status: 'draft',
+              now: Date.now()
+            })
+          : repository.insertDocument({
+              templateId: result.template.id,
+              typeKey: result.template.typeKey,
+              templateSnapshot: result.template,
+              fields: result.fields,
+              fileUris: [input.file.path],
+              source: input.source ?? 'manual',
+              sessionId: input.sessionId ?? null,
+              status: 'draft',
+              now: Date.now()
+            })
+        if (!document) {
+          throw new Error(`Document not found: ${input.documentId}`)
+        }
         return documentsExtractAndDraftRoute.output.parse({
           document,
           meta: {

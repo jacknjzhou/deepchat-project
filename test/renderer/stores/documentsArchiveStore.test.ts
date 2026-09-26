@@ -149,6 +149,25 @@ describe('documents archive store', () => {
     expect(store.archiveDocuments[0].id).toBe('new')
   })
 
+  it('recognizeDocument 带 documentId 时原位替换不新增', async () => {
+    listDocuments.mockResolvedValue({ documents: [draft] })
+    extractAndDraft.mockResolvedValue({
+      document: { ...draft, status: 'draft', fields: { buyer: { value: '乙', uncertain: false } } },
+      meta: { route: 'vision', rawOutput: '', durationMs: 1, issues: [] }
+    })
+    const store = useDocumentsStore()
+    await store.loadArchiveDocuments()
+    const result = await store.recognizeDocument({
+      templateId: 'tpl-1',
+      file: { path: '/a.png' },
+      documentId: 'd1'
+    })
+    expect(extractAndDraft).toHaveBeenCalledWith(expect.objectContaining({ documentId: 'd1' }))
+    expect(result.document.id).toBe('d1')
+    expect(store.archiveDocuments).toHaveLength(1)
+    expect(store.archiveDocuments[0].fields.buyer).toEqual({ value: '乙', uncertain: false })
+  })
+
   it('exportArchiveCsv 透传当前筛选', async () => {
     exportCsv.mockResolvedValue({ canceled: false, path: 'C:\\a.csv' })
     const store = useDocumentsStore()
@@ -290,11 +309,24 @@ describe('documents archive store', () => {
     const failedTask = { ...makeTask(), status: 'failed' as const, error: 'boom' }
     store.tasks = [failedTask]
     const retried = await store.retryRecognitionTask(failedTask)
-    expect(retryTask).toHaveBeenCalledWith('t1')
+    expect(retryTask).toHaveBeenCalledWith('t1', undefined)
     expect(createTasks).not.toHaveBeenCalled()
     expect(store.tasks.map((task) => task.id)).toEqual(['t1'])
     expect(store.tasks[0]).toMatchObject({ id: 't1', status: 'pending', error: null })
     expect(retried?.status).toBe('pending')
+  })
+
+  it('retryRecognitionTask 可携带手动指定的模板覆盖类别', async () => {
+    retryTask.mockResolvedValue({
+      task: { ...makeTask(), templateId: 'tpl-receipt', status: 'pending' }
+    })
+    const store = useDocumentsStore()
+    const failedTask = { ...makeTask(), status: 'failed' as const, error: 'boom' }
+    store.tasks = [failedTask]
+    const retried = await store.retryRecognitionTask(failedTask, { templateId: 'tpl-receipt' })
+    expect(retryTask).toHaveBeenCalledWith('t1', 'tpl-receipt')
+    expect(retried?.templateId).toBe('tpl-receipt')
+    expect(store.tasks[0]?.templateId).toBe('tpl-receipt')
   })
 
   it('retryRecognitionTask 任务不可重试时抛错并保留原任务', async () => {

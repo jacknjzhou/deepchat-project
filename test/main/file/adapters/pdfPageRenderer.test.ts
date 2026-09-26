@@ -82,23 +82,13 @@ describe('renderPdfPagesToDataUrls', () => {
     expect(destroy).toHaveBeenCalledTimes(1)
   })
 
-  it('isolates a foreign globalThis.pdfjsWorker during render and restores it', async () => {
-    const host = globalThis as { pdfjsWorker?: unknown }
-    const fakeWorker = { WorkerMessageHandler: { pdfjsVersion: '4.5.136' } }
-    host.pdfjsWorker = fakeWorker
-    let seenDuringRender: unknown = 'not-called'
-    pdfMock.mockImplementation(async () => ({ length: 1, getPage, destroy }))
-    getPage.mockImplementation(async () => {
-      seenDuringRender = host.pdfjsWorker
-      return makePng(600, 400)
-    })
-    try {
-      const { dataUrls } = await renderPdfPagesToDataUrls(filePath)
-      expect(dataUrls).toHaveLength(1)
-      expect(seenDuringRender).toBeUndefined()
-      expect(host.pdfjsWorker).toBe(fakeWorker)
-    } finally {
-      delete host.pdfjsWorker
-    }
+  it('passes explicit pdfjs asset dirs so CMaps load outside app.asar', async () => {
+    getPage.mockImplementation(async () => makePng(600, 400))
+    await renderPdfPagesToDataUrls(filePath)
+    const initParams = pdfMock.mock.calls[0]?.[1]?.docInitParams as Record<string, unknown>
+    expect(initParams.cMapPacked).toBe(true)
+    expect(String(initParams.cMapUrl)).toContain('cmaps')
+    expect(String(initParams.standardFontDataUrl)).toContain('standard_fonts')
+    expect(String(initParams.wasmUrl)).toContain('wasm')
   })
 })

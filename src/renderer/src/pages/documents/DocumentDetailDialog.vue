@@ -165,6 +165,20 @@
         >
           {{ feedback.text }}
         </span>
+        <Select v-model="reRecognizeTemplateId" :disabled="busy || store.templates.length === 0">
+          <SelectTrigger
+            class="w-44"
+            data-testid="detail-re-recognize-template"
+            :aria-label="t('settings.documents.archive.templatePlaceholder')"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem v-for="tpl in store.templates" :key="tpl.id" :value="tpl.id">
+              {{ tpl.name }}
+            </SelectItem>
+          </SelectContent>
+        </Select>
         <DcButton
           variant="outline"
           :disabled="busy"
@@ -275,10 +289,20 @@ const previewError = ref(false)
 const pdfObjectUrl = ref<string | null>(null)
 const feedback = ref<{ kind: 'success' | 'error'; text: string } | null>(null)
 const saving = ref(false)
-const recognizing = ref(false)
+// Re-recognize progress is scoped to the document it started on: the
+// extraction keeps running in the background while other documents are
+// browsed, and only that document's dialog shows the busy state.
+const recognizingDocIds = ref(new Set<string>())
+const recognizing = computed(() => {
+  const id = props.document?.id
+  return id !== undefined && recognizingDocIds.value.has(id)
+})
 const recognizeSeconds = ref(0)
 const deleting = ref(false)
 const activeTab = ref<'fields' | 'files'>('fields')
+// Category used by 重新识别; defaults to the document's own template and can
+// be switched before re-running extraction.
+const reRecognizeTemplateId = ref('')
 
 const busy = computed(() => saving.value || recognizing.value || deleting.value)
 const statusText = computed(() =>
@@ -304,6 +328,7 @@ watch(
     releasePdfObjectUrl()
     fieldError.value = null
     activeTab.value = 'fields'
+    reRecognizeTemplateId.value = doc?.templateId ?? ''
   },
   { immediate: true }
 )
@@ -402,22 +427,50 @@ async function onReRecognize() {
     showFeedback('error', t('settings.documents.archive.reRecognizeFailed'))
     return
   }
-  recognizing.value = true
+  recognizingDocIds.value = new Set(recognizingDocIds.value).add(doc.id)
   startRecognizeTimer()
   try {
     const result = await store.recognizeDocument({
-      templateId: doc.templateId,
+      templateId: reRecognizeTemplateId.value || doc.templateId,
       file: { path: doc.fileUris[0] },
-      source: 'manual'
+      source: 'manual',
+      // Re-recognize updates the current document in place instead of
+      // archiving a duplicate record.
+      documentId: doc.id
     })
+    // Extraction can "succeed" with every field left null (unparseable model
+    // output, empty OCR text, ...). Treat that as a failure: keep the current
+    // document in the dialog and show why, instead of claiming success.
+    const extractedCount = Object.values(result.document.fields ?? {}).filter(
+      (entry) => entry?.value !== null && entry?.value !== undefined && entry?.value !== ''
+    ).length
+    // Feedback belongs to the document that was re-recognized; if the user has
+    // moved on to another document, the archive row still updates silently.
+    const showsHere = props.document?.id === doc.id
+    if (extractedCount === 0) {
+      const issues = result.meta?.issues ?? []
+      const detail = issues.length > 0 ? `: ${issues[0]}` : ''
+      if (showsHere) {
+        showFeedback('error', `${t('settings.documents.archive.reRecognizeFailed')}${detail}`)
+      }
+      return
+    }
     emit('re-recognized', result.document)
-    showFeedback('success', t('settings.documents.archive.reRecognized'))
+    if (showsHere) {
+      showFeedback('success', t('settings.documents.archive.reRecognized'))
+    }
   } catch (error) {
     console.error('[DocumentDetailDialog] re-recognize failed', error)
-    showFeedback('error', t('settings.documents.archive.reRecognizeFailed'))
+    if (props.document?.id === doc.id) {
+      showFeedback('error', t('settings.documents.archive.reRecognizeFailed'))
+    }
   } finally {
-    stopRecognizeTimer()
-    recognizing.value = false
+    const next = new Set(recognizingDocIds.value)
+    next.delete(doc.id)
+    recognizingDocIds.value = next
+    if (next.size === 0) {
+      stopRecognizeTimer()
+    }
   }
 }
 

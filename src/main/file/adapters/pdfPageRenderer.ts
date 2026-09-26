@@ -3,13 +3,10 @@ import { readFile } from 'node:fs/promises'
 import { pdf } from 'pdf-to-img'
 import sharp from 'sharp'
 
+import { resolvePdfJsAssetDirs } from './pdfJsAssets'
+
 export const PDF_VISION_MAX_PAGES = 12
 const PAGE_RENDER_SCALE = 2
-
-// pdf-parse-new loads its own older pdfjs worker into globalThis.pdfjsWorker at
-// require time; pdfjs-dist prefers that stale global over its own matching
-// worker, so hide it for the duration of each render.
-const globalWorkerHost = globalThis as { pdfjsWorker?: unknown }
 
 export interface PdfPagesRenderResult {
   dataUrls: string[]
@@ -22,9 +19,14 @@ export async function renderPdfPagesToDataUrls(
 ): Promise<PdfPagesRenderResult> {
   const { maxPages = PDF_VISION_MAX_PAGES, maxDimension = 2048, jpegQuality = 85 } = options
   const buffer = await readFile(filePath)
-  const savedWorker = globalWorkerHost.pdfjsWorker
-  delete globalWorkerHost.pdfjsWorker
-  const document = await pdf(buffer, { scale: PAGE_RENDER_SCALE })
+  // Explicit asset dirs override pdf-to-img's defaults, which resolve inside
+  // app.asar in packaged builds — there CMap/standard-font loads fail and
+  // CJK PDF pages render with garbled text for the vision model.
+  const { cMapUrl, standardFontDataUrl, wasmUrl } = resolvePdfJsAssetDirs()
+  const document = await pdf(buffer, {
+    scale: PAGE_RENDER_SCALE,
+    docInitParams: { cMapUrl, cMapPacked: true, standardFontDataUrl, wasmUrl }
+  })
   const pageCount = document.length
   const dataUrls: string[] = []
   try {
@@ -37,7 +39,6 @@ export async function renderPdfPagesToDataUrls(
       dataUrls.push(`data:image/jpeg;base64,${jpeg.toString('base64')}`)
     }
   } finally {
-    globalWorkerHost.pdfjsWorker = savedWorker
     await document.destroy()
   }
   return { dataUrls, pageCount }

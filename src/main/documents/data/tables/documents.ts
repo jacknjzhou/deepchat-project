@@ -31,6 +31,9 @@ export interface DocumentTableInsertInput {
 export interface DocumentTableUpdateInput {
   fields?: Record<string, unknown>
   status?: 'draft' | 'confirmed'
+  templateId?: string
+  typeKey?: string
+  templateSnapshot?: Record<string, unknown>
   now?: number
 }
 
@@ -177,9 +180,19 @@ export class DocumentsTable extends BaseTable {
     const now = input.now ?? Date.now()
     const fields = input.fields ? JSON.stringify(input.fields) : existing.fields_json
     const status = input.status ?? existing.status
+    const templateId = input.templateId ?? existing.template_id
+    const typeKey = input.typeKey ?? existing.type_key
+    const templateSnapshot = input.templateSnapshot
+      ? JSON.stringify(input.templateSnapshot)
+      : existing.template_snapshot_json
     this.db
-      .prepare('UPDATE documents SET fields_json = ?, status = ?, updated_at = ? WHERE id = ?')
-      .run(fields, status, now, id)
+      .prepare(
+        `UPDATE documents
+         SET fields_json = ?, status = ?, template_id = ?, type_key = ?, template_snapshot_json = ?,
+             updated_at = ?
+         WHERE id = ?`
+      )
+      .run(fields, status, templateId, typeKey, templateSnapshot, now, id)
     return this.get(id)
   }
 

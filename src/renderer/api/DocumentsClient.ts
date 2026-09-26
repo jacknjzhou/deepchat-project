@@ -89,7 +89,11 @@ export function createDocumentsClient(bridge: DeepchatBridge = getDeepchatBridge
     createTasks: (input: z.input<typeof documentsTasksCreateRoute.input>) =>
       invokeRoute(bridge, documentsTasksCreateRoute.name, input),
     listTasks: () => invokeRoute(bridge, documentsTasksListRoute.name, {}),
-    retryTask: (id: string) => invokeRoute(bridge, documentsTasksRetryRoute.name, { id }),
+    retryTask: (id: string, templateId?: string) =>
+      invokeRoute(bridge, documentsTasksRetryRoute.name, {
+        id,
+        ...(templateId ? { templateId } : {})
+      }),
     clearFailedTasks: () => invokeRoute(bridge, documentsTasksClearFailedRoute.name, {}),
     onTaskUpdated: (
       listener: (payload: z.infer<typeof documentsTaskUpdatedEvent.payload>) => void

@@ -74,13 +74,16 @@ export class RecognitionTaskManager {
 
   // Re-run a failed task in place: reset the same row and re-queue it instead
   // of inserting a fresh one, so the strip keeps a single entry per file.
-  retryTask(taskId: string): DocumentTask | null {
+  // An optional template override lets the user pick a different category
+  // (e.g. instead of re-running the 'auto' classifier that already failed).
+  retryTask(taskId: string, options?: { templateId?: string }): DocumentTask | null {
     const task = this.deps.repository.getTask(taskId)
     if (!task || task.status !== 'failed') {
       return null
     }
     const reset = this.deps.repository.updateTask(taskId, {
       status: 'pending',
+      templateId: options?.templateId,
       typeKey: null,
       documentId: null,
       error: null

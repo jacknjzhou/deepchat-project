@@ -28,6 +28,71 @@ export function formatArrayLine(item: unknown): string {
   return String(item)
 }
 
+// Read-only display formatting for archive cells and the summary column. Edit
+// states keep using formatFieldValue/formatArrayLine so the JSON round-trip
+// stays lossless; this path optimizes for human readability instead.
+export function formatDisplayValue(value: unknown): string {
+  if (value === null || value === undefined) {
+    return ''
+  }
+  if (Array.isArray(value)) {
+    const hasObject = value.some((item) => item !== null && typeof item === 'object')
+    return value.map((item) => formatDisplayItem(item)).join(hasObject ? '；' : '、')
+  }
+  if (typeof value === 'object') {
+    return formatDisplayObject(value as Record<string, unknown>, '，', false)
+  }
+  return String(value)
+}
+
+function formatDisplayItem(item: unknown): string {
+  if (item === null || item === undefined) {
+    return ''
+  }
+  if (typeof item === 'object') {
+    // Array entries read as bare values joined by '·' (resume-style rows);
+    // start/end keys collapse into a （起~止） range suffix.
+    return formatDisplayObject(item as Record<string, unknown>, '·', true)
+  }
+  return String(item)
+}
+
+function formatDisplayObject(
+  value: Record<string, unknown>,
+  separator: string,
+  bareValues: boolean
+): string {
+  const parts: string[] = []
+  let range: string[] = []
+  // start/end collapse into a （起~止） suffix attached to the previous value
+  // (e.g. 公司·职位（2022-09-01~2023-01-01）·描述), rendered where the keys occur.
+  const flushRange = () => {
+    if (range.length === 0) {
+      return
+    }
+    const text = `（${range.join('~')}）`
+    if (parts.length > 0) {
+      parts[parts.length - 1] += text
+    } else {
+      parts.push(text)
+    }
+    range = []
+  }
+  for (const [key, val] of Object.entries(value)) {
+    if (val === null || val === undefined || val === '') {
+      continue
+    }
+    if (key === 'start' || key === 'end') {
+      range.push(formatDisplayValue(val))
+      continue
+    }
+    flushRange()
+    parts.push(bareValues ? formatDisplayValue(val) : `${key}: ${formatDisplayValue(val)}`)
+  }
+  flushRange()
+  return parts.join(separator)
+}
+
 export function buildMoneyColumns(documents: DocumentRecord[]): MoneyColumn[] {
   const seen = new Map<string, MoneyColumn>()
   for (const document of documents) {

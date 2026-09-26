@@ -238,11 +238,13 @@ export const useDocumentsStore = defineStore('documents', () => {
 
   async function retryRecognitionTask(
     task: DocumentsTaskItem,
+    options?: { templateId?: string },
     client: DocumentsClient = defaultClient
   ) {
     // The manager resets the same task row and re-queues it; keep the strip
     // entry in place instead of creating a second task for the same file.
-    const result = await client.retryTask(task.id)
+    // A template override re-targets the task at a user-picked category.
+    const result = await client.retryTask(task.id, options?.templateId)
     if (!result.task) {
       throw new Error(`Task is not retryable: ${task.id}`)
     }
@@ -295,7 +297,13 @@ export const useDocumentsStore = defineStore('documents', () => {
   ) {
     const result = await client.extractAndDraft(input)
     const document = result.document as DocumentRecord
-    archiveDocuments.value.unshift(document)
+    // With documentId the main process updated the existing record in place
+    // (re-recognize); without it a new draft was archived, so prepend it.
+    if (input.documentId) {
+      replaceArchiveDocument(document)
+    } else {
+      archiveDocuments.value.unshift(document)
+    }
     return { document, meta: result.meta }
   }
 

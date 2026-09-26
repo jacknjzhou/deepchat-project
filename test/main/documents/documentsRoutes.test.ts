@@ -259,6 +259,9 @@ describe('documents route contracts', () => {
 
   it('documents.tasks.retry/clearFailed 契约解析', () => {
     expect(documentsTasksRetryRoute.input.parse({ id: 't1' }).id).toBe('t1')
+    expect(
+      documentsTasksRetryRoute.input.parse({ id: 't1', templateId: 'tpl-contract' }).templateId
+    ).toBe('tpl-contract')
     expect(() => documentsTasksRetryRoute.input.parse({ id: '' })).toThrow()
     expect(documentsTasksRetryRoute.output.parse({ task: null }).task).toBeNull()
     expect(documentsTasksClearFailedRoute.output.parse({ removed: 3 }).removed).toBe(3)
@@ -412,6 +415,52 @@ describeIfSqlite('documents extraction handlers', () => {
 
     const listed = repository.listDocuments({ typeKey: 'invoice_special' })
     expect(listed.length).toBe(1)
+  })
+
+  it('documents.extractAndDraft 带 documentId 时原位更新不新建', async () => {
+    const repository = makeRepository()
+    const extractor = makeExtractorStub()
+    const routes = createDocumentsRoutes(repository, extractor as never, fakeTaskManager)
+    const handler = routes.get('documents.extractAndDraft')
+    expect(handler).toBeDefined()
+
+    const created = await handler!({
+      templateId: 'tpl-1',
+      file: { path: '/tmp/a.jpg' },
+      source: 'manual'
+    })
+    const existingId = (created as { document: { id: string } }).document.id
+
+    const updated = await handler!({
+      templateId: 'tpl-1',
+      file: { path: '/tmp/a.jpg' },
+      source: 'manual',
+      documentId: existingId
+    })
+    const document = (updated as { document: { id: string; status: string } }).document
+    expect(document.id).toBe(existingId)
+    expect(document.status).toBe('draft')
+
+    // Still exactly one archived document: re-recognize replaced it in place.
+    expect(repository.listDocuments({})).toHaveLength(1)
+  })
+
+  it('documents.extractAndDraft 带未知 documentId 时报错', async () => {
+    const repository = makeRepository()
+    const extractor = makeExtractorStub()
+    const routes = createDocumentsRoutes(repository, extractor as never, fakeTaskManager)
+    const handler = routes.get('documents.extractAndDraft')
+    expect(handler).toBeDefined()
+
+    await expect(
+      handler!({
+        templateId: 'tpl-1',
+        file: { path: '/tmp/a.jpg' },
+        source: 'manual',
+        documentId: 'missing'
+      })
+    ).rejects.toThrow('Document not found: missing')
+    expect(repository.listDocuments({})).toHaveLength(0)
   })
 })
 
@@ -728,7 +777,35 @@ describeIfSqlite('documents stats and tasks route handlers', () => {
     const handler = getRouteHandler(routes, documentsTasksRetryRoute.name)
     const output = documentsTasksRetryRoute.output.parse(await handler({ id: created.id }))
     expect(output.task).toMatchObject({ id: created.id, status: 'pending', error: null })
-    expect(retryTask).toHaveBeenCalledWith(created.id)
+    expect(retryTask).toHaveBeenCalledWith(created.id, undefined)
+  })
+
+  it('documents.tasks.retry forwards a manual template override to the task manager', async () => {
+    const repository = makeRepository()
+    const created = repository.insertTasks([
+      { batchId: 'b1', filePath: 'C:\\a.png', fileName: 'a.png', templateId: 'auto' }
+    ])[0]
+    expect(created).toBeDefined()
+    if (!created) {
+      throw new Error('task not created')
+    }
+    repository.updateTask(created.id, { status: 'failed', error: 'boom' })
+    const retryTask = vi.fn().mockReturnValue(
+      repository.updateTask(created.id, {
+        status: 'pending',
+        templateId: 'tpl-contract',
+        error: null,
+        typeKey: null
+      })
+    )
+    const taskManager = { submit: vi.fn(), resumePending: vi.fn(), retryTask }
+    const routes = createDocumentsRoutes(repository, fakeExtractor, taskManager as never)
+    const handler = getRouteHandler(routes, documentsTasksRetryRoute.name)
+    const output = documentsTasksRetryRoute.output.parse(
+      await handler({ id: created.id, templateId: 'tpl-contract' })
+    )
+    expect(output.task).toMatchObject({ id: created.id, templateId: 'tpl-contract' })
+    expect(retryTask).toHaveBeenCalledWith(created.id, { templateId: 'tpl-contract' })
   })
 
   it('documents.tasks.clearFailed removes only failed tasks', async () => {

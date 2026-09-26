@@ -84,6 +84,7 @@
     <DocumentTaskStrip
       v-if="visibleTasks.length"
       :tasks="visibleTasks"
+      :templates="store.templates"
       :type-name-for="typeNameFor"
       :retrying-task-ids="retryingTaskIds"
       :clearing="clearingFailedTasks"
@@ -129,10 +130,19 @@
             <td v-if="!selectedTypeKey" class="px-2 py-2">
               {{ templateNameById.get(document.templateId) ?? document.typeKey }}
             </td>
-            <td v-for="column in tableFieldColumns" :key="column.key" class="px-2 py-2">
-              {{ formatFieldValue(document.fields[column.key]?.value ?? null) }}
+            <td
+              v-for="column in tableFieldColumns"
+              :key="column.key"
+              class="max-w-48 truncate px-2 py-2"
+              :title="formatDisplayValue(document.fields[column.key]?.value ?? null)"
+            >
+              {{ formatDisplayValue(document.fields[column.key]?.value ?? null) }}
             </td>
-            <td v-if="!selectedTypeKey" class="max-w-64 truncate px-2 py-2">
+            <td
+              v-if="!selectedTypeKey"
+              class="max-w-64 truncate px-2 py-2"
+              :title="summarizeDocument(document)"
+            >
               {{ summarizeDocument(document) }}
             </td>
             <td class="px-2 py-2">
@@ -204,7 +214,7 @@ import {
   buildDefaultDateRangeTexts,
   buildMoneyColumns,
   formatDateRangeToMs,
-  formatFieldValue,
+  formatDisplayValue,
   orderedSnapshotFields,
   type MoneyColumn
 } from './documentArchive'
@@ -374,7 +384,11 @@ function openDetail(document: DocumentRecord) {
 }
 
 function onReRecognized(document: DocumentRecord) {
-  detailDocument.value = document
+  // A background re-recognize may finish while the dialog shows another
+  // document; only swap the record when that document is still being viewed.
+  if (detailDocument.value?.id === document.id) {
+    detailDocument.value = document
+  }
 }
 
 function onTasksSubmitted(count: number) {
@@ -401,13 +415,13 @@ function typeNameFor(typeKey: string | null): string | null {
 const retryingTaskIds = ref(new Set<string>())
 const clearingFailedTasks = ref(false)
 
-async function onRetryTask(task: DocumentsTaskItem) {
+async function onRetryTask(task: DocumentsTaskItem, templateId: string) {
   if (retryingTaskIds.value.has(task.id)) {
     return
   }
   retryingTaskIds.value = new Set(retryingTaskIds.value).add(task.id)
   try {
-    await store.retryRecognitionTask(task)
+    await store.retryRecognitionTask(task, { templateId })
     notifyTransient(
       'success',
       'documents.archive.taskRetryQueued',

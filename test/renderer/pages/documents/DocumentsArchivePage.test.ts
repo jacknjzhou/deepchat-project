@@ -208,6 +208,57 @@ describe('DocumentsArchivePage', () => {
     expect(wrapper.text()).toContain('购买方: 甲公司')
   })
 
+  it('数组/对象字段单元格渲染为可读文本并带 title', async () => {
+    const { wrapper } = await setup()
+    // setup 会重置 stub 数据，这里在挂载后注入含 array 字段的模板与档案
+    stubStore.templates = [
+      {
+        ...contractTemplate,
+        fields: [
+          ...contractTemplate.fields,
+          {
+            key: 'work_history',
+            label: '工作经历',
+            valueType: 'array',
+            required: false,
+            promptHint: null,
+            validation: null,
+            enumOptions: null,
+            order: 2
+          }
+        ]
+      }
+    ]
+    stubStore.archiveDocuments = [
+      makeRecord({
+        fields: {
+          buyer: { value: '甲公司', uncertain: false },
+          work_history: {
+            value: [
+              {
+                company: '大众计算机股份有限公司',
+                position: '软件研发助理',
+                start: '2022-09-01',
+                end: '2023-01-01'
+              }
+            ],
+            uncertain: false
+          }
+        }
+      })
+    ]
+    await flushPromises()
+    // work_history 不是金额字段，只在类型 Tab 视图（该模板全部字段列）下渲染
+    await wrapper.get('[data-testid="archive-tab-contract"]').trigger('click')
+    await flushPromises()
+    const expected = '大众计算机股份有限公司·软件研发助理（2022-09-01~2023-01-01）'
+    expect(wrapper.text()).toContain(expected)
+    const cell = wrapper
+      .findAll('td')
+      .find((node) => node.text().includes('大众计算机股份有限公司'))
+    expect(cell?.attributes('title')).toBe(expected)
+  })
+
   it('默认日期为最近一周并加载第一页', async () => {
     await setup()
     const from = stubStore.archiveFilter.dateFrom as number
@@ -275,6 +326,23 @@ describe('DocumentsArchivePage', () => {
     const dialog = wrapper.get('[data-testid="detail-dialog-stub"]')
     expect(dialog.attributes('data-open')).toBe('true')
     expect(dialog.attributes('data-document-id')).toBe('d1')
+  })
+
+  it('后台完成的重新识别仅替换仍在查看的单据', async () => {
+    const { wrapper } = await setup()
+    await wrapper.get('[data-testid="archive-row"]').trigger('click')
+    await flushPromises()
+    const dialog = wrapper.findComponent(DetailDialogStub)
+    expect(dialog.props('document')?.id).toBe('d1')
+    // A background completion for another document must not replace the view.
+    await dialog.vm.$emit('re-recognized', makeRecord({ id: 'd2' }))
+    await flushPromises()
+    expect(dialog.props('document')?.id).toBe('d1')
+    // The document still being viewed is swapped in place.
+    const updated = makeRecord({ fields: { buyer: { value: '乙公司', uncertain: false } } })
+    await dialog.vm.$emit('re-recognized', updated)
+    await flushPromises()
+    expect(dialog.props('document')?.fields?.buyer?.value).toBe('乙公司')
   })
 
   it('点击新建识别打开识别对话框', async () => {

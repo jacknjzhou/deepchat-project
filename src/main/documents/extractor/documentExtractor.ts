@@ -63,6 +63,11 @@ const EXTRACT_TEMPERATURE = 0.2
 const EXTRACT_MAX_TOKENS = 4096
 const EXTRACT_CONCURRENCY = 3
 
+// Configuration problems (no model configured for a required target) must
+// surface to the user; the runtime OCR fallback in extract() is only for
+// failures of model calls that were actually attempted.
+class ModelNotConfiguredError extends Error {}
+
 const isImageFile = (file: DocumentExtractFileInput): boolean => {
   if (file.mimeType) return file.mimeType.startsWith(IMAGE_MIME_PREFIX)
   return IMAGE_EXTENSIONS.test(file.path)
@@ -106,203 +111,166 @@ export class DocumentExtractor {
     const plan = await this.buildRoutePlan(template, input.file, pdfText)
 
     const issues: string[] = []
-    let fields: Record<string, DocumentFieldEntry>
+    let fields: Record<string, DocumentFieldEntry> = {}
     let rawOutput = ''
+    let usedRoute: DocumentExtractRoute = plan.route
 
-    if (plan.route === 'vision') {
-      const target = this.requireTarget(await this.deps.resolveVisionTarget(), 'defaultVisionModel')
-      if (isPdfFile(input.file)) {
-        // A partial pre-render (single classification page for oversized
-        // documents) must not limit vision extraction; re-render fully then.
-        let preRendered: { dataUrls: string[]; pageCount: number } | null = null
-        if (
-          pdfPages !== null &&
-          pdfPages.dataUrls.length >= Math.min(pdfPages.pageCount, PDF_VISION_MAX_PAGES)
-        ) {
-          preRendered = pdfPages
-        }
-        const { dataUrls, pageCount } =
-          preRendered ?? (await this.deps.renderPdfPages(input.file.path))
-        if (pageCount > dataUrls.length) {
-          issues.push(
-            `pdf has ${pageCount} pages; only first ${dataUrls.length} processed by vision`
+    try {
+      if (plan.route === 'vision') {
+        const target = this.requireTarget(
+          await this.deps.resolveVisionTarget(),
+          'defaultVisionModel'
+        )
+        if (isPdfFile(input.file)) {
+          // A partial pre-render (single classification page for oversized
+          // documents) must not limit vision extraction; re-render fully then.
+          let preRendered: { dataUrls: string[]; pageCount: number } | null = null
+          if (
+            pdfPages !== null &&
+            pdfPages.dataUrls.length >= Math.min(pdfPages.pageCount, PDF_VISION_MAX_PAGES)
+          ) {
+            preRendered = pdfPages
+          }
+          const { dataUrls, pageCount } =
+            preRendered ?? (await this.deps.renderPdfPages(input.file.path))
+          if (pageCount > dataUrls.length) {
+            issues.push(
+              `pdf has ${pageCount} pages; only first ${dataUrls.length} processed by vision`
+            )
+          }
+          // Bounded parallel extraction; partials stay position-indexed so the
+          // merge order always matches the page order.
+          const partials: Record<string, DocumentFieldEntry>[] = Array.from({
+            length: dataUrls.length
+          })
+          const pageOutputs: string[] = Array.from({ length: dataUrls.length })
+          let next = 0
+          let failed = false
+          const extractPage = async (): Promise<void> => {
+            while (next < dataUrls.length) {
+              if (input.signal?.aborted) {
+                throw new Error('extraction aborted')
+              }
+              if (failed) {
+                return
+              }
+              const index = next
+              next += 1
+              try {
+                const messages: ChatMessage[] = [
+                  { role: 'system', content: buildExtractionSystemPrompt(template) },
+                  {
+                    role: 'user',
+                    content: [
+                      {
+                        type: 'text',
+                        text:
+                          dataUrls.length > 1
+                            ? `这是扫描件第 ${index + 1}/${dataUrls.length} 页。只提取本页出现的字段值；本页没有的字段填 null，后续页面会补充。`
+                            : buildExtractionUserPrompt(template, null)
+                      },
+                      { type: 'image_url', image_url: { url: dataUrls[index], detail: 'auto' } }
+                    ]
+                  }
+                ]
+                const output = await this.completeWithRetry(template, messages, target, {
+                  allowRequiredGapRetry: false
+                })
+                partials[index] = parseModelOutput(output, template).fields
+                pageOutputs[index] = output
+              } catch (error) {
+                // Stop other workers from claiming further pages once one fails.
+                failed = true
+                throw error
+              }
+            }
+          }
+          await Promise.all(
+            Array.from({ length: Math.min(EXTRACT_CONCURRENCY, dataUrls.length) }, () =>
+              extractPage()
+            )
           )
-        }
-        // Bounded parallel extraction; partials stay position-indexed so the
-        // merge order always matches the page order.
-        const partials: Record<string, DocumentFieldEntry>[] = Array.from({
-          length: dataUrls.length
-        })
-        const pageOutputs: string[] = Array.from({ length: dataUrls.length })
-        let next = 0
-        let failed = false
-        const extractPage = async (): Promise<void> => {
-          while (next < dataUrls.length) {
-            if (input.signal?.aborted) {
-              throw new Error('extraction aborted')
+          rawOutput = pageOutputs.join('\n---\n')
+          fields = mergeSegmentOutputs(
+            Object.fromEntries(
+              template.fields.map((field) => [field.key, { value: null, uncertain: false }])
+            ),
+            partials
+          )
+          for (const field of template.fields) {
+            const values = partials
+              .map((partial) => partial[field.key]?.value)
+              .filter((value) => value !== null && value !== undefined)
+            const distinct = new Set(values.map((value) => JSON.stringify(value)))
+            if (distinct.size > 1) {
+              issues.push(`${field.key}: conflicting values across pages`)
+              fields[field.key] = { ...(fields[field.key] ?? { value: null }), uncertain: true }
             }
-            if (failed) {
-              return
-            }
-            const index = next
-            next += 1
-            try {
-              const messages: ChatMessage[] = [
-                { role: 'system', content: buildExtractionSystemPrompt(template) },
-                {
-                  role: 'user',
-                  content: [
-                    {
-                      type: 'text',
-                      text:
-                        dataUrls.length > 1
-                          ? `这是扫描件第 ${index + 1}/${dataUrls.length} 页。只提取本页出现的字段值；本页没有的字段填 null，后续页面会补充。`
-                          : buildExtractionUserPrompt(template, null)
-                    },
-                    { type: 'image_url', image_url: { url: dataUrls[index], detail: 'auto' } }
-                  ]
-                }
+          }
+        } else {
+          const dataUrl = await this.deps.readImageAsDataUrl(input.file.path)
+          const messages: ChatMessage[] = [
+            { role: 'system', content: buildExtractionSystemPrompt(template) },
+            {
+              role: 'user',
+              content: [
+                { type: 'text', text: buildExtractionUserPrompt(template, null) },
+                { type: 'image_url', image_url: { url: dataUrl, detail: 'auto' } }
               ]
-              const output = await this.completeWithRetry(template, messages, target, {
-                allowRequiredGapRetry: false
-              })
-              partials[index] = parseModelOutput(output, template).fields
-              pageOutputs[index] = output
-            } catch (error) {
-              // Stop other workers from claiming further pages once one fails.
-              failed = true
-              throw error
             }
-          }
-        }
-        await Promise.all(
-          Array.from({ length: Math.min(EXTRACT_CONCURRENCY, dataUrls.length) }, () =>
-            extractPage()
-          )
-        )
-        rawOutput = pageOutputs.join('\n---\n')
-        fields = mergeSegmentOutputs(
-          Object.fromEntries(
-            template.fields.map((field) => [field.key, { value: null, uncertain: false }])
-          ),
-          partials
-        )
-        for (const field of template.fields) {
-          const values = partials
-            .map((partial) => partial[field.key]?.value)
-            .filter((value) => value !== null && value !== undefined)
-          const distinct = new Set(values.map((value) => JSON.stringify(value)))
-          if (distinct.size > 1) {
-            issues.push(`${field.key}: conflicting values across pages`)
-            fields[field.key] = { ...(fields[field.key] ?? { value: null }), uncertain: true }
-          }
+          ]
+          rawOutput = await this.completeWithRetry(template, messages, target)
+          const parsed = parseModelOutput(rawOutput, template)
+          fields = parsed.fields
+          issues.push(...parsed.issues)
         }
       } else {
-        const dataUrl = await this.deps.readImageAsDataUrl(input.file.path)
-        const messages: ChatMessage[] = [
-          { role: 'system', content: buildExtractionSystemPrompt(template) },
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: buildExtractionUserPrompt(template, null) },
-              { type: 'image_url', image_url: { url: dataUrl, detail: 'auto' } }
-            ]
-          }
-        ]
-        rawOutput = await this.completeWithRetry(template, messages, target)
-        const parsed = parseModelOutput(rawOutput, template)
-        fields = parsed.fields
-        issues.push(...parsed.issues)
+        const text =
+          plan.route === 'ocr' ? await this.deps.extractOcrText(input.file.path) : (plan.text ?? '')
+        if (plan.route === 'ocr' && text.trim() === '') {
+          issues.push('ocr produced no text')
+        }
+        ;({ fields, rawOutput } = await this.extractWithTextModel(
+          template,
+          text,
+          issues,
+          input.signal
+        ))
       }
-    } else {
-      const text =
-        plan.route === 'ocr' ? await this.deps.extractOcrText(input.file.path) : (plan.text ?? '')
-      if (plan.route === 'ocr' && text.trim() === '') {
-        issues.push('ocr produced no text')
+    } catch (error) {
+      // Runtime degradation: a hard model failure (provider error, timeout) on
+      // the planned route gets one more attempt against a different data
+      // source — local OCR text fed to the text model. Configuration errors
+      // (no model configured), aborts, and OCR-route failures (already the
+      // last resort) must surface instead of degrading.
+      if (
+        error instanceof ModelNotConfiguredError ||
+        input.signal?.aborted ||
+        plan.route === 'ocr'
+      ) {
+        throw error
       }
-      const target = this.requireTarget(await this.deps.resolveTextTarget(), 'defaultModel')
-      const segments = splitTextIntoSegments(text)
-      if (segments.length === 1) {
-        const messages: ChatMessage[] = [
-          { role: 'system', content: buildExtractionSystemPrompt(template) },
-          { role: 'user', content: buildExtractionUserPrompt(template, text) }
-        ]
-        rawOutput = await this.completeWithRetry(template, messages, target)
-        const parsed = parseModelOutput(rawOutput, template)
-        fields = parsed.fields
-        issues.push(...parsed.issues)
-      } else {
-        // Bounded parallel extraction; results stay position-indexed so the
-        // merge order always matches the segment order.
-        const partials: Record<string, DocumentFieldEntry>[] = Array.from({
-          length: segments.length
-        })
-        const segmentOutputs: string[] = Array.from({ length: segments.length })
-        const systemMessage: ChatMessage = {
-          role: 'system',
-          content: buildExtractionSystemPrompt(template)
-        }
-        let next = 0
-        let failed = false
-        const extractSegment = async (): Promise<void> => {
-          while (next < segments.length) {
-            if (input.signal?.aborted) {
-              throw new Error('extraction aborted')
-            }
-            if (failed) {
-              return
-            }
-            const index = next
-            next += 1
-            try {
-              const messages: ChatMessage[] = [
-                systemMessage,
-                {
-                  role: 'user',
-                  content: buildExtractionUserPrompt(template, segments[index], {
-                    segmentIndex: index + 1,
-                    segmentCount: segments.length
-                  })
-                }
-              ]
-              const output = await this.deps.generateCompletion({
-                providerId: target.providerId,
-                modelId: target.modelId,
-                messages,
-                temperature: EXTRACT_TEMPERATURE,
-                maxTokens: EXTRACT_MAX_TOKENS
-              })
-              segmentOutputs[index] = output
-              partials[index] = parseModelOutput(output, template).fields
-            } catch (error) {
-              // Stop other workers from claiming further segments once one fails.
-              failed = true
-              throw error
-            }
-          }
-        }
-        await Promise.all(
-          Array.from({ length: Math.min(EXTRACT_CONCURRENCY, segments.length) }, () =>
-            extractSegment()
-          )
-        )
-        rawOutput = segmentOutputs.join('\n---\n')
-        fields = mergeSegmentOutputs(
-          Object.fromEntries(
-            template.fields.map((field) => [field.key, { value: null, uncertain: false }])
-          ),
-          partials
-        )
-        for (const field of template.fields) {
-          const values = partials
-            .map((partial) => partial[field.key]?.value)
-            .filter((value) => value !== null && value !== undefined)
-          const distinct = new Set(values.map((value) => JSON.stringify(value)))
-          if (distinct.size > 1) {
-            issues.push(`${field.key}: conflicting values across segments`)
-            fields[field.key] = { ...(fields[field.key] ?? { value: null }), uncertain: true }
-          }
-        }
+      const message = error instanceof Error ? error.message : String(error)
+      const textTarget = await this.deps.resolveTextTarget()
+      const ocrText = textTarget
+        ? await this.deps.extractOcrText(input.file.path).catch(() => '')
+        : ''
+      if (textTarget === null || ocrText.trim() === '') {
+        throw error
+      }
+      issues.push(`${plan.route} extraction failed: ${message}; fell back to local ocr`)
+      try {
+        ;({ fields, rawOutput } = await this.extractWithTextModel(
+          template,
+          ocrText,
+          issues,
+          input.signal
+        ))
+        usedRoute = 'ocr'
+      } catch (fallbackError) {
+        // The primary failure is the actionable diagnosis; surface it unless
+        // the user aborted during the fallback attempt.
+        throw input.signal?.aborted ? fallbackError : error
       }
     }
 
@@ -311,12 +279,105 @@ export class DocumentExtractor {
 
     return {
       template,
-      route: plan.route,
+      route: usedRoute,
       fields,
       rawOutput,
       durationMs: endedAt - startedAt,
       issues
     }
+  }
+
+  // Text-model extraction over a plain-text source (pdfjs text layer or OCR
+  // text). Used both as the planned text/ocr route and as the degradation
+  // target when the vision route fails at runtime.
+  private async extractWithTextModel(
+    template: DocumentTemplate,
+    text: string,
+    issues: string[],
+    signal?: AbortSignal
+  ): Promise<{ fields: Record<string, DocumentFieldEntry>; rawOutput: string }> {
+    const target = this.requireTarget(await this.deps.resolveTextTarget(), 'defaultModel')
+    const segments = splitTextIntoSegments(text)
+    if (segments.length === 1) {
+      const messages: ChatMessage[] = [
+        { role: 'system', content: buildExtractionSystemPrompt(template) },
+        { role: 'user', content: buildExtractionUserPrompt(template, text) }
+      ]
+      const rawOutput = await this.completeWithRetry(template, messages, target)
+      const parsed = parseModelOutput(rawOutput, template)
+      issues.push(...parsed.issues)
+      return { fields: parsed.fields, rawOutput }
+    }
+    // Bounded parallel extraction; results stay position-indexed so the
+    // merge order always matches the segment order.
+    const partials: Record<string, DocumentFieldEntry>[] = Array.from({
+      length: segments.length
+    })
+    const segmentOutputs: string[] = Array.from({ length: segments.length })
+    const systemMessage: ChatMessage = {
+      role: 'system',
+      content: buildExtractionSystemPrompt(template)
+    }
+    let next = 0
+    let failed = false
+    const extractSegment = async (): Promise<void> => {
+      while (next < segments.length) {
+        if (signal?.aborted) {
+          throw new Error('extraction aborted')
+        }
+        if (failed) {
+          return
+        }
+        const index = next
+        next += 1
+        try {
+          const messages: ChatMessage[] = [
+            systemMessage,
+            {
+              role: 'user',
+              content: buildExtractionUserPrompt(template, segments[index], {
+                segmentIndex: index + 1,
+                segmentCount: segments.length
+              })
+            }
+          ]
+          const output = await this.deps.generateCompletion({
+            providerId: target.providerId,
+            modelId: target.modelId,
+            messages,
+            temperature: EXTRACT_TEMPERATURE,
+            maxTokens: EXTRACT_MAX_TOKENS
+          })
+          segmentOutputs[index] = output
+          partials[index] = parseModelOutput(output, template).fields
+        } catch (error) {
+          // Stop other workers from claiming further segments once one fails.
+          failed = true
+          throw error
+        }
+      }
+    }
+    await Promise.all(
+      Array.from({ length: Math.min(EXTRACT_CONCURRENCY, segments.length) }, () => extractSegment())
+    )
+    const rawOutput = segmentOutputs.join('\n---\n')
+    const fields = mergeSegmentOutputs(
+      Object.fromEntries(
+        template.fields.map((field) => [field.key, { value: null, uncertain: false }])
+      ),
+      partials
+    )
+    for (const field of template.fields) {
+      const values = partials
+        .map((partial) => partial[field.key]?.value)
+        .filter((value) => value !== null && value !== undefined)
+      const distinct = new Set(values.map((value) => JSON.stringify(value)))
+      if (distinct.size > 1) {
+        issues.push(`${field.key}: conflicting values across segments`)
+        fields[field.key] = { ...(fields[field.key] ?? { value: null }), uncertain: true }
+      }
+    }
+    return { fields, rawOutput }
   }
 
   private scoreParsed(template: DocumentTemplate, parsed: ParsedModelOutput): number {
@@ -375,7 +436,13 @@ export class DocumentExtractor {
         temperature: EXTRACT_TEMPERATURE,
         maxTokens: EXTRACT_MAX_TOKENS
       })
-    } catch {
+    } catch (error) {
+      // A hard failure on the retry (timeout, network, provider error) must
+      // not silently downgrade to an unparseable first output — surface the
+      // real error so the task fails visibly instead of drafting an empty doc.
+      if (firstParsed.issues.includes('model output is not valid JSON')) {
+        throw error
+      }
       return first
     }
     const retriedParsed = parseModelOutput(retried, template)
@@ -387,7 +454,7 @@ export class DocumentExtractor {
     settingName: string
   ): { providerId: string; modelId: string } {
     if (!target) {
-      throw new Error(
+      throw new ModelNotConfiguredError(
         `No model available for extraction: configure "${settingName}" in provider settings first`
       )
     }

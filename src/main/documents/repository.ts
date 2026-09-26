@@ -33,6 +33,9 @@ export interface DocumentInsertInput {
 export interface DocumentUpdateInput {
   fields?: Record<string, { value: unknown; uncertain: boolean }>
   status?: 'draft' | 'confirmed'
+  templateId?: string
+  typeKey?: string
+  templateSnapshot?: DocumentTemplate
   now?: number
 }
 
@@ -67,6 +70,7 @@ export interface DocumentRepositoryTaskPort {
     id: string,
     input: {
       status: DocumentTaskStatus
+      templateId?: string
       typeKey?: string | null
       documentId?: string | null
       error?: string | null
@@ -244,6 +248,9 @@ export class DocumentsRepository {
     const row = this.database.documentsTable.updateFieldsAndStatus(id, {
       fields: input.fields as Record<string, unknown> | undefined,
       status: input.status,
+      templateId: input.templateId,
+      typeKey: input.typeKey,
+      templateSnapshot: input.templateSnapshot as unknown as Record<string, unknown> | undefined,
       now: input.now
     })
     return row ? toRecord(row) : null
@@ -309,6 +316,7 @@ export class DocumentsRepository {
     id: string,
     input: {
       status: DocumentTaskStatus
+      templateId?: string
       typeKey?: string | null
       documentId?: string | null
       error?: string | null

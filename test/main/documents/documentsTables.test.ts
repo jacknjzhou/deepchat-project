@@ -281,6 +281,38 @@ describeIfSqlite('DocumentsTable', () => {
     expect(updated?.status).toBe('confirmed')
     db.close()
   })
+
+  it('updates template identity in place and keeps fileUris/source', () => {
+    const db = makeDb()
+    const table = new DocumentsTableCtor(db)
+    const row = table.insert({
+      templateId: 't1',
+      typeKey: 'contract',
+      templateSnapshot: { id: 't1' },
+      fields: { party_a: { value: '甲公司', uncertain: false } },
+      fileUris: ['deepchat-file://a.png'],
+      source: 'manual',
+      sessionId: null,
+      status: 'confirmed',
+      now: 10
+    })
+    const updated = table.updateFieldsAndStatus(row.id, {
+      templateId: 't2',
+      typeKey: 'invoice_special',
+      templateSnapshot: { id: 't2' },
+      fields: { invoice_code: { value: '123', uncertain: false } },
+      status: 'draft',
+      now: 40
+    })
+    expect(updated?.template_id).toBe('t2')
+    expect(updated?.type_key).toBe('invoice_special')
+    expect(JSON.parse(updated?.template_snapshot_json ?? '{}')).toEqual({ id: 't2' })
+    expect(updated?.file_uris_json).toBe(row.file_uris_json)
+    expect(updated?.source).toBe('manual')
+    expect(updated?.status).toBe('draft')
+    expect(updated?.updated_at).toBe(40)
+    db.close()
+  })
 })
 
 describeIfSqlite('documentsTable count and stats', () => {
@@ -361,6 +393,16 @@ describeIfSqlite('documentTasksTable', () => {
     const failed = table.update(task.id, { status: 'failed', error: 'boom' })
     expect(failed?.error).toBe('boom')
     expect(failed?.type_key).toBe('invoice_special')
+    // retry 时手动指定模板：写入新 template_id，省略时保持原值
+    const retargeted = table.update(task.id, {
+      status: 'pending',
+      templateId: 'tpl-contract',
+      typeKey: null,
+      error: null
+    })
+    expect(retargeted?.template_id).toBe('tpl-contract')
+    const requeued = table.update(task.id, { status: 'running' })
+    expect(requeued?.template_id).toBe('tpl-contract')
     db.close()
   })
 

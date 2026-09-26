@@ -39,16 +39,34 @@
         <span class="ml-auto shrink-0 text-xs text-muted-foreground">
           {{ statusText(task.status) }}
         </span>
-        <DcButton
-          v-if="task.status === 'failed'"
-          variant="outline"
-          size="sm"
-          data-testid="task-retry"
-          :disabled="retryingTaskIds.has(task.id)"
-          @click="emit('retry', task)"
-        >
-          {{ t('settings.documents.archive.taskRetry') }}
-        </DcButton>
+        <DropdownMenu v-if="task.status === 'failed'">
+          <DropdownMenuTrigger as-child>
+            <DcButton
+              variant="outline"
+              size="sm"
+              data-testid="task-retry"
+              :disabled="retryingTaskIds.has(task.id)"
+            >
+              {{ t('settings.documents.archive.taskRetry') }}
+            </DcButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" data-testid="task-retry-menu">
+            <DropdownMenuItem
+              data-testid="task-retry-auto"
+              @click="emit('retry', task, AUTO_TEMPLATE_ID)"
+            >
+              {{ t('settings.documents.archive.autoClassify') }}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              v-for="tpl in templates"
+              :key="tpl.id"
+              :data-testid="`task-retry-template-${tpl.typeKey}`"
+              @click="emit('retry', task, tpl.id)"
+            >
+              {{ tpl.name }}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </li>
     </ul>
   </div>
@@ -60,11 +78,19 @@ import { useI18n } from 'vue-i18n'
 import { Icon } from '@iconify/vue'
 import { DcButton } from '@dc-ui/components/button'
 import { DcBadge } from '@dc-ui/components/badge'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from '@shadcn/components/ui/dropdown-menu'
+import type { DocumentTemplate } from '@shared/documents'
 import type { DocumentsTaskItem } from '@api/documentTasks'
 
 const props = withDefaults(
   defineProps<{
     tasks: DocumentsTaskItem[]
+    templates: DocumentTemplate[]
     typeNameFor: (typeKey: string | null) => string | null
     retryingTaskIds?: ReadonlySet<string>
     clearing?: boolean
@@ -72,7 +98,12 @@ const props = withDefaults(
   { retryingTaskIds: () => new Set<string>(), clearing: false }
 )
 
-const emit = defineEmits<{ retry: [task: DocumentsTaskItem]; 'clear-failed': [] }>()
+const emit = defineEmits<{
+  retry: [task: DocumentsTaskItem, templateId: string]
+  'clear-failed': []
+}>()
+
+const AUTO_TEMPLATE_ID = 'auto'
 const { t } = useI18n()
 
 const hasFailedTasks = computed(() => props.tasks.some((task) => task.status === 'failed'))

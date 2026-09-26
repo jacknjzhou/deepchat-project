@@ -207,7 +207,10 @@ export const documentsExtractAndDraftRoute = defineRouteContract({
     templateId: z.string().min(1),
     file: documentExtractFileSchema,
     source: documentSourceSchema.default('manual'),
-    sessionId: z.string().min(1).optional()
+    sessionId: z.string().min(1).optional(),
+    // When provided, recognition updates the existing document in place
+    // (re-recognize from the detail dialog) instead of inserting a new one.
+    documentId: z.string().min(1).optional()
   }),
   output: z.object({
     document: documentRecordSchema,
@@ -297,7 +300,12 @@ export const documentsTasksListRoute = defineRouteContract({
 
 export const documentsTasksRetryRoute = defineRouteContract({
   name: 'documents.tasks.retry',
-  input: z.object({ id: z.string().min(1) }),
+  input: z.object({
+    id: z.string().min(1),
+    // Optional category override: retry with a specific template instead of
+    // the task's original one (which may be the 'auto' classifier).
+    templateId: z.string().min(1).optional()
+  }),
   output: z.object({ task: documentTaskSchema.nullable() })
 })
 

@@ -4,6 +4,7 @@ import {
   buildFieldEditStates,
   buildMoneyColumns,
   formatDateRangeToMs,
+  formatDisplayValue,
   formatFieldValue,
   orderedSnapshotFields,
   parseFieldEditState
@@ -64,6 +65,43 @@ describe('formatFieldValue', () => {
     expect(formatFieldValue(null)).toBe('')
     expect(formatFieldValue(['a'])).toBe('["a"]')
     expect(formatFieldValue(1.5)).toBe('1.5')
+  })
+})
+
+describe('formatDisplayValue', () => {
+  it('null/undefined→空串，原始值与数字直出', () => {
+    expect(formatDisplayValue(null)).toBe('')
+    expect(formatDisplayValue(undefined)).toBe('')
+    expect(formatDisplayValue('Java')).toBe('Java')
+    expect(formatDisplayValue(1.5)).toBe('1.5')
+  })
+
+  it('原始值数组用、连接', () => {
+    expect(formatDisplayValue(['Java', 'IDEA'])).toBe('Java、IDEA')
+  })
+
+  it('对象数组每项取值用·拼接，start/end 合并为区间，多条用；分隔', () => {
+    const value = [
+      {
+        company: '大众计算机股份有限公司',
+        position: '软件研发助理',
+        start: '2022-09-01',
+        end: '2023-01-01',
+        description: '负责开发'
+      },
+      { company: '乙公司', position: '工程师', start: '2023-02-01', end: null }
+    ]
+    expect(formatDisplayValue(value)).toBe(
+      '大众计算机股份有限公司·软件研发助理（2022-09-01~2023-01-01）·负责开发；乙公司·工程师（2023-02-01）'
+    )
+  })
+
+  it('普通对象用键: 值、，连接', () => {
+    expect(formatDisplayValue({ 名称: '标准间', 金额: 300 })).toBe('名称: 标准间，金额: 300')
+  })
+
+  it('对象内嵌套数组递归可读化', () => {
+    expect(formatDisplayValue({ skills: ['Java', 'Go'] })).toBe('skills: Java、Go')
   })
 })
 

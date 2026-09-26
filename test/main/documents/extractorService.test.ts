@@ -748,11 +748,30 @@ describe('DocumentExtractor.extract 解析失败重试', () => {
     expect(result.issues).toContain('model output is not valid JSON')
   })
 
-  it('重试调用抛错时回退首次结果', async () => {
+  it('重试调用抛错且首次输出非法 JSON 时抛出真实错误', async () => {
+    // 首次输出无法解析时，重试的硬失败（超时/网络/服务端错误）必须浮出水面，
+    // 而不是静默降级为"全空字段的成功"起草空单据。
     const deps = makeDeps({
       generateCompletion: vi
         .fn()
         .mockResolvedValueOnce('抱歉，我无法输出 JSON')
+        .mockRejectedValueOnce(new Error('model unavailable'))
+    })
+    const extractor = new DocumentExtractor(deps)
+    await expect(
+      extractor.extract({
+        templateId: 'tpl-1',
+        file: { path: '/tmp/a.jpg', mimeType: 'image/jpeg' }
+      })
+    ).rejects.toThrow('model unavailable')
+    expect(deps.generateCompletion).toHaveBeenCalledTimes(2)
+  })
+
+  it('重试调用抛错但首次输出可解析时回退首次结果', async () => {
+    const deps = makeDeps({
+      generateCompletion: vi
+        .fn()
+        .mockResolvedValueOnce('{"fields": {"invoice_code": null}, "uncertain_fields": []}')
         .mockRejectedValueOnce(new Error('model unavailable'))
     })
     const extractor = new DocumentExtractor(deps)
@@ -761,8 +780,8 @@ describe('DocumentExtractor.extract 解析失败重试', () => {
       file: { path: '/tmp/a.jpg', mimeType: 'image/jpeg' }
     })
     expect(deps.generateCompletion).toHaveBeenCalledTimes(2)
-    expect(result.rawOutput).toBe('抱歉，我无法输出 JSON')
-    expect(result.issues).toContain('model output is not valid JSON')
+    expect(result.fields.invoice_code?.value).toBeNull()
+    expect(result.issues).not.toContain('model output is not valid JSON')
   })
 
   it('首次输出必填字段全为空时重试并采用填充结果', async () => {
@@ -782,5 +801,176 @@ describe('DocumentExtractor.extract 解析失败重试', () => {
     expect(deps.generateCompletion).toHaveBeenCalledTimes(2)
     expect(result.fields.invoice_code).toEqual({ value: '123456789012', uncertain: false })
     expect(result.issues).not.toContain('model output is not valid JSON')
+  })
+})
+
+describe('模型调用异常降级', () => {
+  it('vision 调用硬失败时降级为 OCR + 文本模型', async () => {
+    const deps = makeDeps({
+      generateCompletion: vi
+        .fn()
+        .mockRejectedValueOnce(new Error('vision model unavailable'))
+        .mockResolvedValueOnce(
+          '{"fields": {"invoice_code": "123456789012"}, "uncertain_fields": []}'
+        ),
+      extractOcrText: vi.fn(async () => 'OCR 识别出的文本')
+    })
+    const extractor = new DocumentExtractor(deps)
+    const result = await extractor.extract({
+      templateId: 'tpl-1',
+      file: { path: '/tmp/a.jpg', mimeType: 'image/jpeg' }
+    })
+    expect(result.route).toBe('ocr')
+    expect(deps.readImageAsDataUrl).toHaveBeenCalledTimes(1)
+    expect(deps.extractOcrText).toHaveBeenCalledWith('/tmp/a.jpg')
+    expect(deps.generateCompletion).toHaveBeenCalledTimes(2)
+    const fallbackCall = vi.mocked(deps.generateCompletion).mock.calls[1][0]
+    expect(fallbackCall.modelId).toBe('gpt-4o-mini')
+    expect(fallbackCall.messages[1]?.content).toContain('OCR 识别出的文本')
+    expect(result.fields.invoice_code).toEqual({ value: '123456789012', uncertain: false })
+    expect(result.issues).toContain(
+      'vision extraction failed: vision model unavailable; fell back to local ocr'
+    )
+  })
+
+  it('扫描 PDF 逐页 vision 失败时降级为 OCR', async () => {
+    const deps = makeDeps({
+      extractPdfText: vi.fn(async () => ({ text: '', hasTextLayer: false, pageCount: 2 })),
+      renderPdfPages: vi.fn(async () => ({
+        dataUrls: ['data:image/jpeg;base64,AA', 'data:image/jpeg;base64,BB'],
+        pageCount: 2
+      })),
+      generateCompletion: vi
+        .fn()
+        .mockRejectedValueOnce(new Error('vision down'))
+        .mockRejectedValueOnce(new Error('vision down'))
+        .mockResolvedValueOnce(
+          '{"fields": {"invoice_code": "123456789012"}, "uncertain_fields": []}'
+        ),
+      extractOcrText: vi.fn(async () => 'OCR 识别出的文本')
+    })
+    const extractor = new DocumentExtractor(deps)
+    const result = await extractor.extract({
+      templateId: 'tpl-1',
+      file: { path: '/tmp/a.pdf', mimeType: 'application/pdf' }
+    })
+    expect(result.route).toBe('ocr')
+    expect(deps.extractOcrText).toHaveBeenCalledWith('/tmp/a.pdf')
+    expect(result.issues).toContain('vision extraction failed: vision down; fell back to local ocr')
+    expect(result.fields.invoice_code).toEqual({ value: '123456789012', uncertain: false })
+  })
+
+  it('降级时 OCR 无文本则抛出原始错误', async () => {
+    const deps = makeDeps({
+      generateCompletion: vi.fn().mockRejectedValue(new Error('vision model unavailable')),
+      extractOcrText: vi.fn(async () => '')
+    })
+    const extractor = new DocumentExtractor(deps)
+    await expect(
+      extractor.extract({
+        templateId: 'tpl-1',
+        file: { path: '/tmp/a.jpg', mimeType: 'image/jpeg' }
+      })
+    ).rejects.toThrow('vision model unavailable')
+    expect(deps.extractOcrText).toHaveBeenCalledTimes(1)
+  })
+
+  it('降级后文本模型仍失败时抛出原始错误', async () => {
+    const deps = makeDeps({
+      generateCompletion: vi
+        .fn()
+        .mockRejectedValueOnce(new Error('vision model unavailable'))
+        .mockRejectedValueOnce(new Error('text model down')),
+      extractOcrText: vi.fn(async () => 'OCR 识别出的文本')
+    })
+    const extractor = new DocumentExtractor(deps)
+    await expect(
+      extractor.extract({
+        templateId: 'tpl-1',
+        file: { path: '/tmp/a.jpg', mimeType: 'image/jpeg' }
+      })
+    ).rejects.toThrow('vision model unavailable')
+    expect(deps.generateCompletion).toHaveBeenCalledTimes(2)
+  })
+
+  it('text 路由模型失败时降级为 OCR 文本重试', async () => {
+    const deps = makeDeps({
+      extractPdfText: vi.fn(async () => ({ text: '发票全文内容', hasTextLayer: true })),
+      extractOcrText: vi.fn(async () => 'OCR 兜底文本'),
+      generateCompletion: vi
+        .fn()
+        .mockRejectedValueOnce(new Error('text model error'))
+        .mockResolvedValueOnce(
+          '{"fields": {"invoice_code": "123456789012"}, "uncertain_fields": []}'
+        )
+    })
+    const extractor = new DocumentExtractor(deps)
+    const result = await extractor.extract({
+      templateId: 'tpl-1',
+      file: { path: '/tmp/a.pdf', mimeType: 'application/pdf' }
+    })
+    expect(result.route).toBe('ocr')
+    expect(deps.extractOcrText).toHaveBeenCalledWith('/tmp/a.pdf')
+    expect(result.issues).toContain(
+      'text extraction failed: text model error; fell back to local ocr'
+    )
+    const fallbackCall = vi.mocked(deps.generateCompletion).mock.calls[1][0]
+    expect(fallbackCall.messages[1]?.content).toContain('OCR 兜底文本')
+    expect(result.fields.invoice_code).toEqual({ value: '123456789012', uncertain: false })
+  })
+
+  it('ocr 路由失败时不再二次降级', async () => {
+    const deps = makeDeps({
+      resolveVisionTarget: vi.fn(() => null),
+      extractOcrText: vi.fn(async () => 'OCR 识别出的文本'),
+      generateCompletion: vi.fn().mockRejectedValue(new Error('text model error'))
+    })
+    const extractor = new DocumentExtractor(deps)
+    await expect(
+      extractor.extract({
+        templateId: 'tpl-1',
+        file: { path: '/tmp/a.jpg', mimeType: 'image/jpeg' }
+      })
+    ).rejects.toThrow('text model error')
+    expect(deps.extractOcrText).toHaveBeenCalledTimes(1)
+  })
+
+  it('视觉模型未配置属于配置错误，不触发降级', async () => {
+    const deps = makeDeps({
+      resolveVisionTarget: vi.fn(() => null),
+      repository: {
+        getTemplate: vi.fn(() => makeTemplate({ extractionMode: 'vision' })),
+        getTemplateByTypeKey: vi.fn(() => null),
+        listTemplates: vi.fn(() => [])
+      },
+      extractOcrText: vi.fn(async () => 'OCR 识别出的文本')
+    })
+    const extractor = new DocumentExtractor(deps)
+    await expect(
+      extractor.extract({
+        templateId: 'tpl-1',
+        file: { path: '/tmp/a.jpg', mimeType: 'image/jpeg' }
+      })
+    ).rejects.toThrow(/defaultVisionModel/)
+    expect(deps.extractOcrText).not.toHaveBeenCalled()
+  })
+
+  it('已中止的任务直接抛出中止错误且不降级', async () => {
+    const controller = new AbortController()
+    controller.abort()
+    const deps = makeDeps({
+      extractPdfText: vi.fn(async () => ({ text: 'z'.repeat(60001), hasTextLayer: true })),
+      extractOcrText: vi.fn(async () => 'OCR 识别出的文本')
+    })
+    const extractor = new DocumentExtractor(deps)
+    await expect(
+      extractor.extract({
+        templateId: 'tpl-1',
+        file: { path: '/tmp/a.pdf', mimeType: 'application/pdf' },
+        signal: controller.signal
+      })
+    ).rejects.toThrow('extraction aborted')
+    expect(deps.extractOcrText).not.toHaveBeenCalled()
+    expect(deps.generateCompletion).not.toHaveBeenCalled()
   })
 })

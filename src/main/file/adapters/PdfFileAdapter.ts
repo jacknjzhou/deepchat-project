@@ -1,6 +1,6 @@
 import { BaseFileAdapter } from './BaseFileAdapter'
 import fs from 'fs/promises'
-import pdfParse from 'pdf-parse-new'
+import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs'
 import {
   PDF_LOW_TEXT_PAGE_SAMPLE_LIMIT,
   PDF_ROUTING_REVISION,
@@ -8,15 +8,25 @@ import {
   PDF_PAGE_COUNT_SANITY_LIMIT,
   type PdfEmbeddedTextCoverage
 } from '@shared/types/attachment'
+import { resolvePdfJsAssetDirs } from './pdfJsAssets'
+
+interface PdfPageInfo {
+  PDFFormatVersion?: string
+  Producer?: string
+  Creator?: string
+}
+
+interface LoadedPdfText {
+  numpages: number
+  pageContents: string[]
+  info: PdfPageInfo | null
+}
 
 export class PdfFileAdapter extends BaseFileAdapter {
   private fileContent: string | undefined
   private maxFileSize: number
-  private pdfData: (pdfParse.Result & { pageContents?: string[] }) | undefined
   private textCoverage: PdfEmbeddedTextCoverage | undefined
-  private pdfLoadPromise:
-    | Promise<(pdfParse.Result & { pageContents?: string[] }) | undefined>
-    | undefined
+  private pdfLoadPromise: Promise<LoadedPdfText | undefined> | undefined
 
   constructor(filePath: string, maxFileSize: number) {
     super(filePath)
@@ -27,7 +37,7 @@ export class PdfFileAdapter extends BaseFileAdapter {
     return 'PDF Document'
   }
 
-  private loadPdfData(): Promise<(pdfParse.Result & { pageContents?: string[] }) | undefined> {
+  private loadPdfData(): Promise<LoadedPdfText | undefined> {
     this.pdfLoadPromise ??= this.readPdfData().catch((error) => {
       console.error('Error reading PDF:', error)
       return undefined
@@ -35,73 +45,49 @@ export class PdfFileAdapter extends BaseFileAdapter {
     return this.pdfLoadPromise
   }
 
-  private async readPdfData(): Promise<
-    (pdfParse.Result & { pageContents?: string[] }) | undefined
-  > {
+  private async readPdfData(): Promise<LoadedPdfText | undefined> {
     const stats = await fs.stat(this.filePath)
     if (stats.size > this.maxFileSize) return undefined
     const buffer = await fs.readFile(this.filePath)
 
-    // Create custom rendering options to collect content for each page
-    const pageTexts: string[] = []
-    const renderOptions = {
-      verbosityLevel: 0 as 0 | 5 | undefined,
-      pageTexts,
-      normalizeWhitespace: false,
-      disableCombineTextItems: false,
-      // Custom renderer to collect text by page
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      pagerender: function (pageData: any) {
-        const pageIndex =
-          Number.isSafeInteger(pageData?.pageNumber) && pageData.pageNumber > 0
-            ? pageData.pageNumber - 1
-            : pageTexts.length
-        // Get text content from current page
-        const renderOptions = {
-          normalizeWhitespace: false,
-          disableCombineTextItems: false
-        }
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return pageData.getTextContent(renderOptions).then(function (textContent: any) {
-          let lastY: number | null = null
-          let text = ''
+    // pdf-parse-new (still used by OCR smoke fixtures) can leave a stale v4
+    // pdfjs worker on globalThis; pdfjs-dist prefers that global and crashes
+    // on version mismatch, so clear it before opening a document.
+    delete (globalThis as { pdfjsWorker?: unknown }).pdfjsWorker
 
-          // Process text items, try to preserve paragraph structure
-          for (const item of textContent.items) {
-            if (lastY === null || Math.abs(lastY - item.transform[5]) > 5) {
-              if (text) text += '\n'
-              lastY = item.transform[5]
-            } else if (text && !text.endsWith(' ')) {
-              text += ' '
-            }
-            text += item.str
-          }
-
-          // Add current page text to page collection
-          pageTexts[pageIndex] = text
-          return text
-        })
-      }
-    }
+    // Chinese invoice PDFs rely on CMap-encoded fonts; without these asset
+    // dirs the extracted text is garbled and recognition silently degrades.
+    const { cMapUrl, standardFontDataUrl, wasmUrl } = resolvePdfJsAssetDirs()
+    const loadingTask = pdfjsLib.getDocument({
+      data: new Uint8Array(buffer),
+      cMapUrl,
+      cMapPacked: true,
+      standardFontDataUrl,
+      wasmUrl,
+      // Suppress PDF.js warn() noise (e.g. benign font fallbacks); real
+      // failures still throw from the API calls below.
+      verbosity: 0
+    })
+    const document = await loadingTask.promise
 
     try {
-      this.pdfData = await pdfParse(buffer, renderOptions)
-      const normalizedPageTexts =
-        Number.isSafeInteger(this.pdfData.numpages) &&
-        this.pdfData.numpages > 0 &&
-        this.pdfData.numpages <= PDF_PAGE_COUNT_SANITY_LIMIT
-          ? Array.from(
-              { length: this.pdfData.numpages },
-              (_, pageIndex) => pageTexts[pageIndex] ?? ''
-            )
-          : pageTexts
-      // Add page contents to pdfData object
-      this.pdfData.pageContents = normalizedPageTexts
-      this.textCoverage = buildPdfEmbeddedTextCoverage(this.pdfData.numpages, normalizedPageTexts)
-      return this.pdfData
-    } catch (error) {
-      console.error('Error parsing PDF:', error)
-      return undefined
+      const pageContents: string[] = []
+      for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
+        const page = await document.getPage(pageNumber)
+        const textContent = await page.getTextContent()
+        pageContents.push(
+          extractPageText(textContent.items as Array<{ str?: string; transform?: number[] }>)
+        )
+      }
+      this.textCoverage = buildPdfEmbeddedTextCoverage(document.numPages, pageContents)
+      const metadata = await document.getMetadata().catch(() => null)
+      return {
+        numpages: document.numPages,
+        pageContents,
+        info: (metadata?.info ?? null) as PdfPageInfo | null
+      }
+    } finally {
+      await loadingTask.destroy()
     }
   }
 
@@ -243,13 +229,7 @@ export class PdfFileAdapter extends BaseFileAdapter {
     if (this.fileContent === undefined) {
       const pdfData = await this.loadPdfData()
       if (pdfData) {
-        // If page contents exist, use page contents
-        if (pdfData.pageContents && pdfData.pageContents.length > 0) {
-          this.fileContent = pdfData.pageContents.join('\n\n--- Page Separator ---\n\n')
-        } else {
-          // Otherwise use overall content
-          this.fileContent = pdfData.text
-        }
+        this.fileContent = pdfData.pageContents.join('\n\n--- Page Separator ---\n\n')
       }
     }
     return this.fileContent
@@ -260,19 +240,13 @@ export class PdfFileAdapter extends BaseFileAdapter {
     if (!pdfData) return undefined
 
     // Get Markdown content for all pages
-    let allPagesMarkdown = ''
-    if (pdfData.pageContents) {
-      const markdownPages = pdfData.pageContents.map((pageContent, index) => {
-        const pageNumber = index + 1
-        const pageMarkdown = this.convertTextToMarkdown(pageContent)
-        return `## Page ${pageNumber}\n\n${pageMarkdown}`
-      })
+    const markdownPages = pdfData.pageContents.map((pageContent, index) => {
+      const pageNumber = index + 1
+      const pageMarkdown = this.convertTextToMarkdown(pageContent)
+      return `## Page ${pageNumber}\n\n${pageMarkdown}`
+    })
 
-      allPagesMarkdown = markdownPages.join('\n\n---\n\n')
-    } else {
-      // If no page contents, use overall content
-      allPagesMarkdown = this.convertTextToMarkdown(pdfData.text)
-    }
+    const allPagesMarkdown = markdownPages.join('\n\n---\n\n')
 
     const fileDescription = `
       # PDF file description
@@ -292,6 +266,25 @@ export class PdfFileAdapter extends BaseFileAdapter {
   async getThumbnail(): Promise<string | undefined> {
     return ''
   }
+}
+
+// Process text items, preserving line breaks via the same Y-gap heuristic the
+// previous pdf-parse-new renderer used (5pt vertical delta starts a new line).
+function extractPageText(items: Array<{ str?: string; transform?: number[] }>): string {
+  let lastY: number | null = null
+  let text = ''
+  for (const item of items) {
+    if (typeof item.str !== 'string' || !item.transform) continue
+    const y = item.transform[5]
+    if (lastY === null || Math.abs(lastY - y) > 5) {
+      if (text) text += '\n'
+      lastY = y
+    } else if (text && !text.endsWith(' ')) {
+      text += ' '
+    }
+    text += item.str
+  }
+  return text
 }
 
 export function buildPdfEmbeddedTextCoverage(
