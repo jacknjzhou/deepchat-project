@@ -69,7 +69,7 @@
     "moveAndDeleteAgent": "Flyt og slet agent",
     "moveConversation": "Flyt samtale",
     "agentType": {
-      "deepchat": "DeepChat",
+      "deepchat": "SRIBD Office Agent",
       "acp": "ACP"
     },
     "blockReason": {
@@ -84,7 +84,7 @@
       "draft": "Kladde",
       "subagent": "Underagent"
     },
-    "deepChatTargetOnly": "Kun DeepChat-agenter kan vælges som overførselsmål. ACP-samtaler kan flyttes til DeepChat, men ikke ind i ACP."
+    "deepChatTargetOnly": "Kun SRIBD Office Agent-agenter kan vælges som overførselsmål. ACP-samtaler kan flyttes til SRIBD Office Agent, men ikke ind i ACP."
   },
   "deleteMessage": {
     "title": "Slet denne besked?",
