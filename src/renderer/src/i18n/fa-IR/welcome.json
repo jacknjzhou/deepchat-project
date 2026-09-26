@@ -2,7 +2,7 @@
   "steps": {
     "welcome": {
       "title": "خوش‌آمدید",
-      "description": "بیایید راه‌اندازی دیپ‌چت را آغاز کنیم"
+      "description": "بیایید راه‌اندازی SRIBD Office Agent را آغاز کنیم"
     },
     "provider": {
       "title": "فراهم‌کننده مدل",
@@ -17,7 +17,7 @@
       "description": "همه‌چیز آماده است!"
     }
   },
-  "title": "خوش‌آمدید به دیپ‌چت",
+  "title": "خوش‌آمدید به SRIBD Office Agent",
   "description": "بیایید فرآیند راه‌اندازی را تکمیل کنیم",
   "provider": {
     "select": "انتخاب فراهم‌کننده",
