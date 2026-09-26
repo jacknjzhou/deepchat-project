@@ -386,7 +386,7 @@ export class AgentPreviewCoordinator {
     try {
       const attached = overlay.attachHost({
         id: this.hostId(host.id),
-        title: host.getTitle().trim() || app.getName() || 'DeepChat',
+        title: host.getTitle().trim() || app.getName() || 'SRIBD办公智能体',
         bounds: this.normalizeBounds(host.getContentBounds()),
         windowHandle: host.getNativeWindowHandle(),
         anchor: {
