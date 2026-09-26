@@ -3263,7 +3263,7 @@
     "tabConfig": "Konfigurasi",
     "tabManage": "Kelola",
     "config": {
-      "rootHint": "deepchat adalah agen bawaan yang dilindungi. Konfigurasinya terpisah dari semua agen lainnya.",
+      "rootHint": "SRIBD Office Agent adalah agen bawaan yang dilindungi. Konfigurasinya terpisah dari semua agen lainnya.",
       "extractionModel": "Model alat memori",
       "extractionModelHint": "Model yang digunakan untuk mengekstrak dan menyahduplikasi memori. Jika tidak dipilih, menggunakan model chat.",
       "injectionBudget": "Anggaran injeksi (token)",

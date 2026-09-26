@@ -3263,7 +3263,7 @@
     "tabConfig": "Yapılandırma",
     "tabManage": "Yönet",
     "config": {
-      "rootHint": "deepchat korumalı, yerleşik bir aracıdır. Yapılandırması diğer tüm aracılardan bağımsızdır.",
+      "rootHint": "SRIBD Office Agent korumalı, yerleşik bir aracıdır. Yapılandırması diğer tüm aracılardan bağımsızdır.",
       "extractionModel": "Bellek aracı modeli",
       "extractionModelHint": "Anıları çıkarmak ve yinelenenleri kaldırmak için kullanılan model. Seçilmezse sohbet modeline geri döner.",
       "injectionBudget": "Enjeksiyon bütçesi (token)",

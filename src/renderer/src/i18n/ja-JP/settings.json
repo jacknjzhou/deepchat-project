@@ -3263,7 +3263,7 @@
     "tabConfig": "設定",
     "tabManage": "管理",
     "config": {
-      "rootHint": "deepchat は保護された組み込み Agent です。その設定は他のすべての Agent から独立しています。",
+      "rootHint": "SRIBD Office Agent は保護された組み込み Agent です。その設定は他のすべての Agent から独立しています。",
       "extractionModel": "メモリツールモデル",
       "extractionModelHint": "記憶の抽出と重複排除に使うモデルです。未選択の場合はチャットモデルにフォールバックします。",
       "injectionBudget": "注入バジェット（トークン）",

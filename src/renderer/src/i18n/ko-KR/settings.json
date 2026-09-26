@@ -3263,7 +3263,7 @@
     "tabConfig": "구성",
     "tabManage": "관리",
     "config": {
-      "rootHint": "deepchat는 보호되는 기본 제공 Agent입니다. 해당 구성은 다른 모든 Agent와 독립적입니다.",
+      "rootHint": "SRIBD Office Agent는 보호되는 기본 제공 Agent입니다. 해당 구성은 다른 모든 Agent와 독립적입니다.",
       "extractionModel": "메모리 도구 모델",
       "extractionModelHint": "메모리를 추출하고 중복을 제거하는 데 사용하는 모델입니다. 선택하지 않으면 채팅 모델로 대체됩니다.",
       "injectionBudget": "주입 예산(토큰)",

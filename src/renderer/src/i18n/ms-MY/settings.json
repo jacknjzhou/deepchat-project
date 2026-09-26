@@ -3263,7 +3263,7 @@
     "tabConfig": "Konfigurasi",
     "tabManage": "Urus",
     "config": {
-      "rootHint": "deepchat ialah ejen terbina yang dilindungi. Konfigurasinya bebas daripada semua ejen lain.",
+      "rootHint": "SRIBD Office Agent ialah ejen terbina yang dilindungi. Konfigurasinya bebas daripada semua ejen lain.",
       "extractionModel": "Model alat memori",
       "extractionModelHint": "Model yang digunakan untuk mengekstrak dan menyahduplikasi memori. Jika tidak dipilih, ia kembali kepada model sembang.",
       "injectionBudget": "Bajet suntikan (token)",

@@ -651,7 +651,7 @@
         "description": "Contrôle si ce modèle autorise la saisie vocale avec transcription locale en texte."
       },
       "functionCall": {
-        "description": "Si le modèle prend en charge les appels de fonction nativement (Deepchat simulera automatiquement les appels de fonction après avoir désactivé cette option)",
+        "description": "Si le modèle prend en charge les appels de fonction nativement (SRIBD Office Agent simulera automatiquement les appels de fonction après avoir désactivé cette option)",
         "label": "Appels de fonction"
       },
       "maxTokens": {
@@ -3263,7 +3263,7 @@
     "tabConfig": "Configuration",
     "tabManage": "Gérer",
     "config": {
-      "rootHint": "deepchat est un agent intégré protégé. Sa configuration est indépendante de celle de tous les autres agents.",
+      "rootHint": "SRIBD Office Agent est un agent intégré protégé. Sa configuration est indépendante de celle de tous les autres agents.",
       "extractionModel": "Modèle d’outil de mémoire",
       "extractionModelHint": "Modèle utilisé pour extraire et dédupliquer les souvenirs. À défaut, le modèle de chat est utilisé.",
       "injectionBudget": "Budget d’injection (tokens)",

@@ -3263,7 +3263,7 @@
     "tabConfig": "設定",
     "tabManage": "管理",
     "config": {
-      "rootHint": "deepchat 是受保護的內建 Agent，其設定與其他 Agent 彼此獨立。",
+      "rootHint": "SRIBD办公智能体 是受保護的內建 Agent，其設定與其他 Agent 彼此獨立。",
       "extractionModel": "記憶工具模型",
       "extractionModelHint": "用於擷取與去重記憶的模型。未選擇則回退至對話模型。",
       "injectionBudget": "注入預算（tokens）",

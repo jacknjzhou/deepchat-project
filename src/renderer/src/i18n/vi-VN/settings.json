@@ -3263,7 +3263,7 @@
     "tabConfig": "Cấu hình",
     "tabManage": "Quản lý",
     "config": {
-      "rootHint": "deepchat là Agent tích hợp được bảo vệ. Cấu hình của nó độc lập với mọi Agent khác.",
+      "rootHint": "SRIBD Office Agent là Agent tích hợp được bảo vệ. Cấu hình của nó độc lập với mọi Agent khác.",
       "extractionModel": "Mô hình công cụ bộ nhớ",
       "extractionModelHint": "Mô hình dùng để trích xuất và loại trùng các ký ức. Nếu không chọn, sẽ dùng mô hình trò chuyện.",
       "injectionBudget": "Ngân sách chèn (token)",

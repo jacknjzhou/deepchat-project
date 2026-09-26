@@ -3263,7 +3263,7 @@
     "tabConfig": "Configurazione",
     "tabManage": "Gestisci",
     "config": {
-      "rootHint": "deepchat è un agente integrato protetto. La sua configurazione è indipendente da quella di tutti gli altri agenti.",
+      "rootHint": "SRIBD Office Agent è un agente integrato protetto. La sua configurazione è indipendente da quella di tutti gli altri agenti.",
       "extractionModel": "Modello dello strumento di memoria",
       "extractionModelHint": "Modello usato per estrarre e deduplicare i ricordi. Se non selezionato, viene usato il modello di chat.",
       "injectionBudget": "Budget di iniezione (token)",
