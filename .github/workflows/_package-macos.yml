@@ -58,7 +58,7 @@ jobs:
       TARGET_PLATFORM: darwin
       TARGET_ARCH: ${{ inputs.arch }}
       PACKAGE_PURPOSE: ${{ inputs.artifact-purpose }}
-      APP_DIRECTORY: ${{ inputs.arch == 'arm64' && 'dist/mac-arm64/DeepChat.app' || 'dist/mac/DeepChat.app' }}
+      APP_DIRECTORY: ${{ inputs.arch == 'arm64' && 'dist/mac-arm64/SRIBD办公智能体.app' || 'dist/mac/SRIBD办公智能体.app' }}
     steps:
       - name: Validate immutable source input
         run: |
