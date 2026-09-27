@@ -1,7 +1,7 @@
 {
   "name": "DeepChat",
   "version": "1.2.6",
-  "description": "DeepChat，一个简单易用的 Agent 客户端",
+  "description": "SRIBD办公智能体，一个简单易用的 Agent 客户端",
   "main": "./out/main/index.js",
   "author": "ThinkInAIXYZ",
   "type": "module",
