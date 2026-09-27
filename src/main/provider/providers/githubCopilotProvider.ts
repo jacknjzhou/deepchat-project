@@ -111,7 +111,7 @@ export class GithubCopilotProvider extends BaseLLMProvider {
         `4. 您的账户可能没有访问此API的权限\n\n` +
         `建议解决方案：\n` +
         `- 访问 https://github.com/settings/copilot 检查订阅状态\n` +
-        `- 在DeepChat设置中重新进行 GitHub Copilot 登录\n` +
+        `- 在SRIBD办公智能体设置中重新进行 GitHub Copilot 登录\n` +
         `- 确保您的 GitHub 账户有有效的 Copilot 订阅\n` +
         `- 如果是企业账户，请联系管理员确认访问权限`,
       response,

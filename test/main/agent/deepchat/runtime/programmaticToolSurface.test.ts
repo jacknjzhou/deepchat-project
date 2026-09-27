@@ -226,7 +226,7 @@ describe('Programmatic Tool Surface', () => {
 
     expect(exec.function.parameters.properties.stdin).toBeUndefined()
     expect(exposedExec).not.toBe(exec)
-    expect(exposedExec.function.description).toContain('DeepChat Programmatic Tool commands')
+    expect(exposedExec.function.description).toContain('SRIBD Office Agent Programmatic Tool commands')
     expect(exposedExec.function.description).toContain(
       'Omit timeoutMs, background, and yieldMs entirely'
     )

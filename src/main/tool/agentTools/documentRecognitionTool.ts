@@ -61,7 +61,7 @@ export class DocumentRecognitionToolHandler {
       server: {
         name: DOCUMENT_RECOGNITION_TOOL_SERVER_NAME,
         icons: '📄',
-        description: 'DeepChat document recognition tools'
+        description: 'SRIBD Office Agent document recognition tools'
       }
     }
   }

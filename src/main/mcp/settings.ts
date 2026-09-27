@@ -74,7 +74,7 @@ const PLATFORM_SPECIFIC_SERVERS: Record<string, Omit<MCPServerConfig, 'enabled'>
     ? {
         'deepchat/apple-server': {
           args: [],
-          descriptions: 'DeepChat内置Apple系统集成服务 (仅macOS)',
+          descriptions: 'SRIBD办公智能体内置Apple系统集成服务 (仅macOS)',
           icons: '🍎',
           type: 'inmemory' as MCPServerType,
           command: 'deepchat/apple-server',
@@ -120,7 +120,7 @@ const DEFAULT_INMEMORY_SERVERS: Record<string, Omit<MCPServerConfig, 'enabled'>>
   // buildInFileSystem has been removed - filesystem capabilities are now provided via Agent tools
   Artifacts: {
     args: [],
-    descriptions: 'DeepChat内置 artifacts mcp服务',
+    descriptions: 'SRIBD办公智能体内置 artifacts mcp服务',
     icons: '🎨',
     type: 'inmemory' as MCPServerType,
     command: 'artifacts',
@@ -129,7 +129,7 @@ const DEFAULT_INMEMORY_SERVERS: Record<string, Omit<MCPServerConfig, 'enabled'>>
   },
   bochaSearch: {
     args: [],
-    descriptions: 'DeepChat内置博查搜索服务',
+    descriptions: 'SRIBD办公智能体内置博查搜索服务',
     icons: '🔍',
     type: 'inmemory' as MCPServerType,
     command: 'bochaSearch',
@@ -140,7 +140,7 @@ const DEFAULT_INMEMORY_SERVERS: Record<string, Omit<MCPServerConfig, 'enabled'>>
   },
   braveSearch: {
     args: [],
-    descriptions: 'DeepChat内置Brave搜索服务',
+    descriptions: 'SRIBD办公智能体内置Brave搜索服务',
     icons: '🦁',
     type: 'inmemory' as MCPServerType,
     command: 'braveSearch',
@@ -151,7 +151,7 @@ const DEFAULT_INMEMORY_SERVERS: Record<string, Omit<MCPServerConfig, 'enabled'>>
   },
   baiduSearch: {
     args: [],
-    descriptions: 'DeepChat内置百度搜索服务（千帆 AI Search）',
+    descriptions: 'SRIBD办公智能体内置百度搜索服务（千帆 AI Search）',
     icons: '🔎',
     type: 'inmemory' as MCPServerType,
     command: 'baiduSearch',
@@ -162,7 +162,7 @@ const DEFAULT_INMEMORY_SERVERS: Record<string, Omit<MCPServerConfig, 'enabled'>>
   },
   difyKnowledge: {
     args: [],
-    descriptions: 'DeepChat内置Dify知识库检索服务',
+    descriptions: 'SRIBD办公智能体内置Dify知识库检索服务',
     icons: '📚',
     type: 'inmemory' as MCPServerType,
     command: 'difyKnowledge',
@@ -180,7 +180,7 @@ const DEFAULT_INMEMORY_SERVERS: Record<string, Omit<MCPServerConfig, 'enabled'>>
   },
   ragflowKnowledge: {
     args: [],
-    descriptions: 'DeepChat内置RAGFlow知识库检索服务',
+    descriptions: 'SRIBD办公智能体内置RAGFlow知识库检索服务',
     icons: '📚',
     type: 'inmemory' as MCPServerType,
     command: 'ragflowKnowledge',
@@ -198,7 +198,7 @@ const DEFAULT_INMEMORY_SERVERS: Record<string, Omit<MCPServerConfig, 'enabled'>>
   },
   fastGptKnowledge: {
     args: [],
-    descriptions: 'DeepChat内置FastGPT知识库检索服务',
+    descriptions: 'SRIBD办公智能体内置FastGPT知识库检索服务',
     icons: '📚',
     type: 'inmemory' as MCPServerType,
     command: 'fastGptKnowledge',
@@ -216,7 +216,7 @@ const DEFAULT_INMEMORY_SERVERS: Record<string, Omit<MCPServerConfig, 'enabled'>>
   },
   builtinKnowledge: {
     args: [],
-    descriptions: 'DeepChat内置知识库检索服务',
+    descriptions: 'SRIBD办公智能体内置知识库检索服务',
     icons: '📚',
     type: 'inmemory' as MCPServerType,
     command: 'builtinKnowledge',
@@ -226,7 +226,7 @@ const DEFAULT_INMEMORY_SERVERS: Record<string, Omit<MCPServerConfig, 'enabled'>>
   'deepchat-inmemory/deep-research-server': {
     args: [],
     descriptions:
-      'DeepChat内置深度研究服务，使用博查搜索(注意该服务需要较长的上下文模型，请勿在短上下文的模型中使用)',
+      'SRIBD办公智能体内置深度研究服务，使用博查搜索(注意该服务需要较长的上下文模型，请勿在短上下文的模型中使用)',
     icons: '🔬',
     type: 'inmemory' as MCPServerType,
     command: 'deepchat-inmemory/deep-research-server',
@@ -237,7 +237,7 @@ const DEFAULT_INMEMORY_SERVERS: Record<string, Omit<MCPServerConfig, 'enabled'>>
   },
   'deepchat-inmemory/auto-prompting-server': {
     args: [],
-    descriptions: 'DeepChat内置自动模板提示词服务',
+    descriptions: 'SRIBD办公智能体内置自动模板提示词服务',
     icons: '📜',
     type: 'inmemory' as MCPServerType,
     command: 'deepchat-inmemory/auto-prompting-server',
@@ -246,7 +246,7 @@ const DEFAULT_INMEMORY_SERVERS: Record<string, Omit<MCPServerConfig, 'enabled'>>
   },
   'deepchat-inmemory/conversation-search-server': {
     args: [],
-    descriptions: 'DeepChat built-in conversation history search service',
+    descriptions: 'SRIBD Office Agent built-in conversation history search service',
     icons: '🔍',
     type: 'inmemory' as MCPServerType,
     command: 'deepchat-inmemory/conversation-search-server',

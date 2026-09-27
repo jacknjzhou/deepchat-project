@@ -475,7 +475,7 @@ describe('SessionAssignment', () => {
 
     await expect(
       harness.coordinator.updateOrchestrationPolicy('direct', 'proactive')
-    ).rejects.toThrow('requires a DeepChat session')
+    ).rejects.toThrow('requires a SRIBD Office Agent session')
     await expect(
       harness.coordinator.updateOrchestrationPolicy('child', 'proactive')
     ).rejects.toThrow('requires a regular parent session')
@@ -499,7 +499,7 @@ describe('SessionAssignment', () => {
 
     mutationRelease.resolve(undefined)
     await mutation
-    await expect(policyUpdate).rejects.toThrow('requires a DeepChat session')
+    await expect(policyUpdate).rejects.toThrow('requires a SRIBD Office Agent session')
     expect(harness.sessions.updateOrchestrationPolicy).not.toHaveBeenCalled()
   })
 
@@ -606,7 +606,7 @@ describe('SessionAssignment', () => {
     await deletionStarted.promise
 
     await expect(harness.coordinator.moveSessionToAgent('s1', 'target')).rejects.toThrow(
-      'DeepChat Agent is being deleted: target'
+      'SRIBD Office Agent is being deleted: target'
     )
     expect(harness.deepchat.setSessionAgentContext).not.toHaveBeenCalled()
     expect(harness.sessions.updateAgentId).not.toHaveBeenCalled()

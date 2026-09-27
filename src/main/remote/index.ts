@@ -1844,11 +1844,11 @@ export class RemoteService {
 <html>
   <head>
     <meta charset="utf-8">
-    <title>DeepChat Feishu Authorization</title>
+    <title>SRIBD Office Agent Feishu Authorization</title>
   </head>
   <body style="font-family: system-ui, sans-serif; padding: 32px;">
     <h2>${success ? 'Authorization complete' : 'Authorization failed'}</h2>
-    <p>${success ? 'You can close this window and return to DeepChat.' : 'Return to DeepChat and try again.'}</p>
+    <p>${success ? 'You can close this window and return to SRIBD Office Agent.' : 'Return to SRIBD Office Agent and try again.'}</p>
   </body>
 </html>`)
   }
@@ -2062,7 +2062,7 @@ export class RemoteService {
     void notifications
       .showNotification({
         id: `remote-delivery-error:${channel}`,
-        title: `DeepChat ${channelLabel} Remote`,
+        title: `SRIBD Office Agent ${channelLabel} Remote`,
         body: message
       })
       .then((notificationId) => {

@@ -3617,7 +3617,7 @@ export class AgentToolManager {
                 toolName,
                 serverName: CHAT_SETTINGS_SKILL_NAME,
                 permissionType: 'write',
-                description: 'Opening DeepChat settings requires approval.',
+                description: 'Opening SRIBD Office Agent settings requires approval.',
                 conversationId,
                 rememberable: false
               }
@@ -3633,6 +3633,6 @@ export class AgentToolManager {
       )
       return { content: JSON.stringify(result) }
     }
-    throw new Error(`Unknown DeepChat settings tool: ${toolName}`)
+    throw new Error(`Unknown SRIBD Office Agent settings tool: ${toolName}`)
   }
 }

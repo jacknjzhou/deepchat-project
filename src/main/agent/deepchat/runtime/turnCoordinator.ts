@@ -1557,7 +1557,9 @@ export class TurnCoordinator {
           ({ context: skillContext }) => skillContext.agentId !== activeAgentId
         )
       ) {
-        throw new Error('Recovered materialized Skill context belongs to another DeepChat Agent.')
+        throw new Error(
+          'Recovered materialized Skill context belongs to another SRIBD Office Agent.'
+        )
       }
       const recoveredSessionSkillNames = materializedSkillContexts
         .filter(({ scope }) => scope === 'session')

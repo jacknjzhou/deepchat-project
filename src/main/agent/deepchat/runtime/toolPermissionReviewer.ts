@@ -237,8 +237,8 @@ function buildAutoApproveReviewUserPrompt(params: {
   }
 
   return [
-    'Review the exact action below. Decide whether DeepChat may auto-approve it.',
-    'The action hash is computed by DeepChat and identifies the reviewed action.',
+    'Review the exact action below. Decide whether SRIBD Office Agent may auto-approve it.',
+    'The action hash is computed by SRIBD Office Agent and identifies the reviewed action.',
     JSON.stringify(payload, null, 2)
   ].join('\n\n')
 }
