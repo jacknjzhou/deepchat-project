@@ -21,7 +21,7 @@ const isSettingsWindow = async (page: Page): Promise<boolean> => {
     return false
   }
 
-  return title.includes('Settings')
+  return title === 'SRIBD办公智能体 - 设置'
 }
 
 export async function openSettings(app: ElectronAppInstance): Promise<Page> {
