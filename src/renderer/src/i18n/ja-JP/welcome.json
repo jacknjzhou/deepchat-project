@@ -72,7 +72,7 @@
   },
   "agentPage": {
     "title": "エージェントを選んで作成を始める",
-    "deepchatType": "SRIBD Office Agentエージェント",
+    "deepchatType": "SRIBD Office Agent",
     "acpType": "ACPエージェント",
     "manageAgents": "SRIBD Office Agentエージェントを管理"
   }

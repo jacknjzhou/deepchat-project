@@ -72,7 +72,7 @@
   },
   "agentPage": {
     "title": "Vælg en agent for at begynde at skabe",
-    "deepchatType": "SRIBD Office Agent-agent",
+    "deepchatType": "SRIBD Office Agent",
     "acpType": "ACP-agent",
     "manageAgents": "Administrer SRIBD Office Agent-agenter"
   }

@@ -72,7 +72,7 @@
   },
   "agentPage": {
     "title": "בחרו סוכן כדי להתחיל ליצור",
-    "deepchatType": "סוכן SRIBD Office Agent",
+    "deepchatType": "SRIBD Office Agent",
     "acpType": "סוכן ACP",
     "manageAgents": "ניהול סוכני SRIBD Office Agent"
   }

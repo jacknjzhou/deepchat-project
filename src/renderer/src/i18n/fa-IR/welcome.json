@@ -72,7 +72,7 @@
   },
   "agentPage": {
     "title": "یک ایجنت انتخاب کنید و خلق را شروع کنید",
-    "deepchatType": "ایجنت SRIBD Office Agent",
+    "deepchatType": "SRIBD Office Agent",
     "acpType": "ایجنت ACP",
     "manageAgents": "مدیریت ایجنت‌های SRIBD Office Agent"
   }

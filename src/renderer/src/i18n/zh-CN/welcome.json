@@ -72,7 +72,7 @@
   },
   "agentPage": {
     "title": "选择 Agent 开始创作",
-    "deepchatType": "SRIBD办公智能体 Agent",
+    "deepchatType": "SRIBD办公智能体",
     "acpType": "ACP Agent",
     "manageAgents": "管理 SRIBD办公智能体 Agent"
   }

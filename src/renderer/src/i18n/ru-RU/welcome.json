@@ -72,7 +72,7 @@
   },
   "agentPage": {
     "title": "Выберите агента, чтобы начать работу",
-    "deepchatType": "Агент SRIBD Office Agent",
+    "deepchatType": "SRIBD Office Agent",
     "acpType": "Агент ACP",
     "manageAgents": "Управление агентами SRIBD Office Agent"
   }
