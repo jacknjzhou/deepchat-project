@@ -1,90 +1,74 @@
 ---
 name: gpt-image-2
-description: "基于 GPT Image 2 图片生成与编辑 的 AI 图片生成与编辑器，覆盖 GPT Image 2、GPT-Image-2、GPTImage2、OpenAI Image 2、ChatGPT Images、Image2 的裸接口图片能力。当用户需要 GPT Image 2、GPT-Image-2、GPTImage2、OpenAI Image 2、ChatGPT Images、Image2、文生图、图生图、图片编辑、电商图、广告图、详情页、带货、种草 时使用此 Skill。"
-description_zh: "基于 GPT Image 2 图片生成与编辑 的 AI 图片生成与编辑器，覆盖 GPT Image 2、GPT-Image-2、GPTImage2、OpenAI Image 2、ChatGPT Images、Image2 的裸接口图片能力。当用户需要 GPT Image 2、GPT-Image-2、GPTImage2、OpenAI Image 2、ChatGPT Images、Image2、文生图、图生图、图片编辑、电商图、广告图、详情页、带货、种草 时使用此 Skill。"
-version: 1.0.0
-------
+description: "使用 DeepChat 内置 image_generate 工具与本地已配置的图像生成模型进行 AI 图片生成。当用户需要生成图片、绘制、渲染、文生图、AI绘图、电商图、广告图、详情页、带货、种草、海报、封面、商业主视觉时使用此 Skill。"
+description_zh: "使用 DeepChat 内置 image_generate 工具与本地已配置的图像生成模型进行 AI 图片生成。当用户需要生成图片、绘制、渲染、文生图、AI绘图、电商图、广告图、详情页、带货、种草、海报、封面、商业主视觉时使用此 Skill。"
+version: 2.0.0
+---
 
-# GPT Image 2 图片生成与编辑
+# 图片生成（本地图像生成模型）
 
 ## 简介
 
-本 Skill 参考 Seedance 2.5 裸接口 Skill 的完整产品化风格，封装 AI Hive OpenAPI 图片生成接口，通过命令行自动完成模型查询、参考图上传、价格快照、任务轮询和结果下载。
+本 Skill 封装 DeepChat 内置的 `image_generate` agent 工具，直接调用**本地已配置的图像生成模型**完成文生图任务。无需任何外部 API Key、第三方服务或 Python 脚本——模型、密钥与计费全部由应用内的模型配置管理。
 
 ### Skill 特色
 
-- 独立占据 `gpt-image-2` 搜索入口
-- 固定调用 `public_model_gpt_image_2`，不使用其他模型冒充
-- 支持文生图、参考图生成、图片编辑或商业图片场景
-- 默认 `COST_FIRST` 并实时读取价格
-- 自动下载图片结果到本地
+- 零外部依赖：不请求任何第三方图片 API，不需要 `init` 或 API Key
+- 使用 Agent 设置中配置的图像生成模型（支持任意 provider 的 imageGeneration 类型模型）
+- 内置参数校验：尺寸、质量等参数由工具统一归一化
+- 生成结果以图片预览卡片直接呈现在对话中
 
-### 适用对象
+## 前置条件
 
-设计师、电商运营、营销与广告团队、带货与种草团队、品牌方、内容创作者和 AI 图片用户。
+用户需在 **Agent 设置 → 模型默认值 → 图像生成模型** 中选择一个图像生成模型。已配置时 `image_generate` 工具会自动出现在可用工具列表中。
 
-## 功能特性
+若工具返回 `IMAGE_GENERATION_MODEL_UNAVAILABLE` 错误，说明当前 Agent 未配置图像生成模型，此时应提示用户前往设置页配置，不要尝试用其他方式生成图片。
 
-### 生成模式
-
-| 能力 | publicModelId | 输入 |
-|---|---|---|
-| GPT Image 2 图片生成与编辑 | `public_model_gpt_image_2` | 文字或可选参考图 |
-
-### 参数控制
-
-- 生成数量：`--batch`
-- 参考图片：`--image`
-- 模型参数：`--param key=value`
-- 路由：COST_FIRST / SPEED_FIRST / SUCCESS_FIRST
-- 输出目录：默认 `~/Downloads/AiHive`
-
-## 参数速查
-
-### generate 子命令
+## 核心工具：image_generate
 
 | 参数 | 说明 | 默认值 |
 |---|---|---|
-| `--prompt` | 图片描述或编辑要求（必填） | — |
-| `--image` | 参考图片，可多张 | — |
-| `--batch` | 生成数量 | `1` |
-| `--param` | 模型参数 key=value | — |
-| `--routing` | 路由模式 | `COST_FIRST` |
-| `--output-dir` | 输出目录 | `~/Downloads/AiHive` |
-| `--no-download` | 只提交任务 | 关闭 |
+| `prompt` | 图片描述（必填，1-8000 字符） | — |
+| `size` | 输出尺寸 `WIDTHxHEIGHT`，如 `1024x1024` | 模型默认 |
+| `quality` | 质量提示：`low` / `medium` / `high` / `auto` | `auto` |
+| `outputFormat` | 输出格式：`png` / `jpeg` / `webp` | 模型默认 |
+| `background` | 背景提示：`auto` / `opaque` | 模型默认 |
+| `moderation` | 审核强度：`auto` / `low` | 模型默认 |
 
-### 通用参数
+以上可选参数仅当所选模型支持时生效，不支持时会被安全忽略，不会报错。
 
-| 参数 | 说明 |
+### 尺寸约束
+
+`size` 需同时满足：
+
+- 格式为 `WIDTHxHEIGHT`，宽高均为 **16 的倍数**
+- 单边不超过 **3840**
+- 宽高比不超过 **3:1**
+- 总像素在 **655360 ~ 8294400** 之间（超过 2560x1440 视为实验性尺寸）
+
+常用尺寸参考：
+
+| 用途 | 推荐尺寸 |
 |---|---|
-| `--api-key` | AI Hive API Key |
-| `--base-url` | API Base URL |
-| `--verbose` | 详细日志 |
-
-### 其他子命令
-
-| 子命令 | 功能 |
-|---|---|
-| `task --task-id <id>` | 查询任务 |
-| `upload --file image.png` | 上传图片 |
-| `init --skill-name gpt-image-2` | 初始化 API Key |
+| 方形主图 / 头像 | `1024x1024` |
+| 电商竖版主图 / 详情页 | `1024x1536` |
+| 横版海报 / 广告 KV | `1536x1024` |
+| 16:9 横幅 / 封面 | `1280x720` 或 `1920x1088` |
+| 高分辨率印刷级 | `2048x1152` 或 `3840x2160` |
 
 ## 使用场景
 
 ### 场景一：基础生成
 
-```bash
-python3 "$SKILL_PATH/scripts/imagegen.py" generate \
-  --prompt "高级商业摄影风格的产品主视觉，主体清晰，材质真实，留出标题空间"
-```
+用户给出描述后，将其扩写为结构化提示词，调用 `image_generate`。
 
 ### 场景二：电商主图
 
-生成商品主体清晰、卖点集中、符合平台比例与留白要求的商业主图。
+商品主体清晰、卖点集中、符合平台比例与留白要求；优先使用竖版尺寸（如 `1024x1536`）。
 
 ### 场景三：商品详情页
 
-按首屏主视觉、核心卖点、使用场景、细节材质和信任信息拆分视觉，不虚构商品事实。
+按首屏主视觉、核心卖点、使用场景、细节材质和信任信息分批生成，每批一次工具调用；不虚构商品事实。
 
 ### 场景四：广告与营销
 
@@ -94,170 +78,33 @@ python3 "$SKILL_PATH/scripts/imagegen.py" generate \
 
 突出真实使用场景、痛点和利益点，适配直播、小红书、抖音和社媒封面。
 
-### 场景六：图片编辑
+### 场景六：批量生成
 
-将要求拆为必须保留、必须改变和可自由发挥，明确参考图分别提供主体、构图、材质或风格。
+`image_generate` 单次只生成一张图。需要多张时连续多次调用，每次微调提示词；批量前可提醒用户关注模型用量。
 
-### 场景七：仅提交任务，稍后查询
+## 提示词结构
 
-```bash
-python3 "$SKILL_PATH/scripts/imagegen.py" generate --prompt "复杂图片" --no-download
-python3 "$SKILL_PATH/scripts/imagegen.py" task --task-id <taskId>
-```
+按“用途 → 主体 → 场景构图 → 视觉风格 → 光线色彩 → 必须文字 → 输出规格”组织提示词：
 
-## 首次使用
+- **用途**：主图 / 详情页 / KV / 封面等
+- **主体**：对象、材质、状态，避免多主体冲突
+- **构图**：视角、景别、留白位置
+- **风格**：摄影感、插画风、3D 渲染等
+- **光线色彩**：主光源、色温、主色板
+- **必须文字**：逐字出现的文字用引号包围，指定语言与位置；生成后提醒用户人工复核文字正确性
+- **输出规格**：由 `size` / `quality` 参数承载，不写入提示词
 
-### 1. 安装依赖
+## 能力边界
 
-```bash
-pip3 install requests
-```
+- **不支持参考图输入**：`image_generate` 仅接受文字提示词，无法上传参考图做图生图或局部编辑。用户要求“基于这张图修改”时，应说明当前图像生成模型不支持参考图，可改为用文字尽量描述目标画面重新生成。
+- **生成结果不可检索回传**：图片以预览卡片形式返回给用户，工具返回的 JSON 仅含元数据；不要向用户复述图片内容细节，引导其直接查看预览。
+- **文字渲染**：模型生成图中文字可能出错，涉及品牌名、标语时提醒用户复核。
 
-### 2. 一键初始化（推荐）
+## 故障排除
 
-```bash
-python3 "$SKILL_PATH/scripts/imagegen.py" init --skill-name gpt-image-2
-```
-
-脚本会自动打开 AI Hive 页面，引导登录、新建并复制 API Key，然后写入 `~/.ai-hive/config.json`（权限 0600）。
-
-### 3. 手动获取 API Key（备选）
-
-1. 访问 [https://ai-hive.iclip.cn/chat](https://ai-hive.iclip.cn/chat)
-2. 使用手机号和短信验证码登录
-3. 点击左下角账户菜单
-4. 点击「API 接入」
-5. 输入名称并点击「新建 API Key」
-6. 复制完整 Key（格式为 `sk-api-*`）
-
-### 4. 手动配置 API Key（备选）
-
-| 配置方式 | 示例 |
+| 现象 | 处理 |
 |---|---|
-| 环境变量 | `export AI_HIVE_API_KEY=sk-api-你的密钥` |
-| 命令参数 | `--api-key sk-api-你的密钥` |
-| 配置文件 | `~/.ai-hive/config.json` |
-
-### 5. 验证配置
-
-运行一个带 `--no-download` 的最简任务；返回 `taskId` 即配置成功。
-
-
-## 使用指南
-
-### 提示词结构
-
-按“用途 → 主体 → 场景构图 → 视觉风格 → 光线色彩 → 必须文字 → 保留项 → 输出规格”组织提示词。
-
-### 参考图策略
-
-说明每张图的角色，例如图 1 提供商品、图 2 提供材质、图 3 提供构图。不要让模型猜测互相冲突的参考关系。
-
-### 图片文字
-
-必须逐字出现的文字用引号包围，指定语言、大小写、换行和位置；交付前人工复核。
-
-### 价格与任务
-
-脚本查询实时模型配置和 `pricingSnapshot`。取得 taskId 后只查询原任务，避免重复提交扣费。
-
-## 命令速查
-
-| 命令 | 功能 |
-|---|---|
-| `imagegen.py generate --prompt "描述"` | 执行本 Skill |
-| `--image ref.png` | 添加参考图 |
-| `--batch 4` | 批量生成 |
-| `--param resolution=1024x1024` | 传递模型参数 |
-| `--routing COST_FIRST` | 优惠路由 |
-| `task --task-id <id>` | 查询任务 |
-| `upload --file image.png` | 上传图片 |
-
-## 项目架构
-
-### 目录结构
-
-```
-gpt-image-2/
-├── SKILL.md
-├── CHANGELOG.md
-├── scripts/
-│   └── imagegen.py
-└── references/
-    └── config.example.json
-```
-
-### 技术栈
-
-| 组件 | 技术 |
-|---|---|
-| 运行环境 | Python 3.6+ |
-| HTTP 库 | requests |
-| 模型 | public_model_gpt_image_2 |
-| API 平台 | AI Hive OpenAPI |
-| 输出 | PNG/JPEG/WebP 或模型实时支持格式 |
-
-### 核心模块
-
-| 模块 | 职责 |
-|---|---|
-| `Config` | 获取 API Key |
-| `AiHiveClient` | 封装裸接口 |
-| `upload_media()` | 上传参考图片 |
-| `poll_task()` | 轮询与下载 |
-| `_validate_image_inputs()` | 校验参考图数量 |
-| `skill_generate()` | 固定 publicModelId 并提交 |
-
-### 能力 → 模型映射
-
-| 能力 | publicModelId |
-|---|---|
-| GPT Image 2 图片生成与编辑 | `public_model_gpt_image_2` |
-
-### 数据流转
-
-```
-用户命令 → 校验参考图 → 固定 publicModelId
-  ↓
-上传图片 → 查询模型与 pricingSnapshot
-  ↓
-提交图片任务 → 保存 taskId → 轮询 → 下载结果
-```
-
-### 价格参考
-
-默认使用 `COST_FIRST`，价格以脚本运行时查询到的实时销售价和实际扣费为准。
-
-## 常见问答
-
-### 安装相关
-
-**Q1：需要 API Key 吗？** 需要，格式为 `sk-api-*`。
-
-**Q2：需要什么依赖？** Python 3 和 requests。
-
-**Q3：如何验证？** 用 `--no-download` 提交最简任务。
-
-### 使用相关
-
-**Q4：会自动换模型吗？** 不会，本 Skill 固定 `public_model_gpt_image_2`。
-
-**Q5：参考图怎么传？** 使用 `--image`，可一次传多张。
-
-**Q6：参数怎么传？** 使用 `--param key=value`，以实时 `imageConfig` 为准。
-
-**Q7：输出在哪里？** 默认 `~/Downloads/AiHive/`。
-
-**Q8：可以批量吗？** 使用 `--batch`，批量前确认实时费用。
-
-**Q9：任务超时怎么办？** 保留 taskId 后继续查询。
-
-### 故障排除
-
-**Q10：提示缺少图片？** 该能力需要参考图，请添加 `--image`。
-
-**Q11：提示模型不存在？** 后台模型可能下线或更名，请查询实时列表。
-
-**Q12：提示 401？** 检查 API Key。
-
-**Q13：提示 InvalidParameter？** 检查实时 imageConfig 中的格式、数量、尺寸和参数枚举。
+| `IMAGE_GENERATION_MODEL_UNAVAILABLE` | 当前 Agent 未配置图像生成模型，引导用户到 Agent 设置 → 模型默认值 → 图像生成模型 选择模型 |
+| `IMAGE_GENERATION_FAILED` | 先简化提示词重试一次；仍失败则检查所选模型服务可用性，告知用户具体错误信息 |
+| 尺寸参数报错 | 检查是否满足 16 倍数、单边 ≤3840、宽高比 ≤3、像素范围约束；不确定时省略 `size` |
+| 风格与预期不符 | 拆分并强化提示词中的风格与构图描述，而不是堆砌参数 |
