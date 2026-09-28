@@ -144,6 +144,10 @@ import {
   runsTurnAcceptedEvent,
   runsTurnFailedEvent
 } from './events/runs.events'
+import {
+  resumeScreeningResumeUpdatedEvent,
+  resumeScreeningTaskUpdatedEvent
+} from './events/resumeScreening.events'
 
 export * from './events/browser.events'
 export * from './events/computerUse.events'
@@ -176,6 +180,7 @@ export * from './events/toolchains.events'
 export * from './events/upgrade.events'
 export * from './events/window.events'
 export * from './events/workspace.events'
+export * from './events/resumeScreening.events'
 
 export const DEEPCHAT_EVENT_CATALOG = {
   [approvalRequestedEvent.name]: approvalRequestedEvent,
@@ -291,7 +296,9 @@ export const DEEPCHAT_EVENT_CATALOG = {
   [documentsTaskUpdatedEvent.name]: documentsTaskUpdatedEvent,
   [toolchainsProgressEvent.name]: toolchainsProgressEvent,
   [toolchainsMissingEvent.name]: toolchainsMissingEvent,
-  [toolchainsChangedEvent.name]: toolchainsChangedEvent
+  [toolchainsChangedEvent.name]: toolchainsChangedEvent,
+  [resumeScreeningTaskUpdatedEvent.name]: resumeScreeningTaskUpdatedEvent,
+  [resumeScreeningResumeUpdatedEvent.name]: resumeScreeningResumeUpdatedEvent
 } satisfies Record<string, EventContract>
 
 export type DeepchatEventCatalog = typeof DEEPCHAT_EVENT_CATALOG
