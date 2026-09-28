@@ -64400,8 +64400,8 @@
             ]
           },
           "limit": {
-            "context": 1040000,
-            "output": 384000
+            "context": 1048576,
+            "output": 943718
           },
           "temperature": true,
           "tool_call": true,
@@ -64435,8 +64435,8 @@
             ]
           },
           "limit": {
-            "context": 1048576,
-            "output": 262144
+            "context": 1048575,
+            "output": 943717
           },
           "temperature": true,
           "tool_call": true,
@@ -64792,7 +64792,7 @@
             ]
           },
           "limit": {
-            "context": 163840,
+            "context": 131072,
             "output": 65536
           },
           "temperature": true,
@@ -65543,8 +65543,8 @@
             ]
           },
           "limit": {
-            "context": 1048576,
-            "output": 128000
+            "context": 1048575,
+            "output": 943717
           },
           "temperature": true,
           "tool_call": true,
@@ -65911,8 +65911,8 @@
             ]
           },
           "limit": {
-            "context": 1048575,
-            "output": 943717
+            "context": 1048576,
+            "output": 943718
           },
           "temperature": true,
           "tool_call": true,
@@ -70343,8 +70343,8 @@
             ]
           },
           "limit": {
-            "context": 196608,
-            "output": 176947
+            "context": 204800,
+            "output": 131072
           },
           "temperature": true,
           "tool_call": true,
@@ -70478,8 +70478,8 @@
             ]
           },
           "limit": {
-            "context": 196608,
-            "output": 176947
+            "context": 204800,
+            "output": 131072
           },
           "temperature": true,
           "tool_call": true,
@@ -72260,8 +72260,8 @@
             ]
           },
           "limit": {
-            "context": 256000,
-            "output": 16384
+            "context": 262144,
+            "output": 65536
           },
           "temperature": true,
           "tool_call": true,
@@ -72339,8 +72339,8 @@
             ]
           },
           "limit": {
-            "context": 40960,
-            "output": 16384
+            "context": 131072,
+            "output": 8192
           },
           "temperature": true,
           "tool_call": true,
@@ -72775,8 +72775,8 @@
         },
         {
           "id": "qwen/qwen3-14b",
-          "name": "Qwen: Qwen3 14B",
-          "display_name": "Qwen: Qwen3 14B",
+          "name": "Qwen: Qwen3 14B (retires Oct 9)",
+          "display_name": "Qwen: Qwen3 14B (retires Oct 9)",
           "modalities": {
             "input": [
               "text"
@@ -72786,8 +72786,8 @@
             ]
           },
           "limit": {
-            "context": 40960,
-            "output": 16384
+            "context": 131072,
+            "output": 8192
           },
           "temperature": true,
           "tool_call": true,
@@ -317385,7 +317385,7 @@
             ]
           },
           "limit": {
-            "context": 163840,
+            "context": 131072,
             "output": 65536
           },
           "temperature": true,
@@ -317528,8 +317528,8 @@
             ]
           },
           "limit": {
-            "context": 1048576,
-            "output": 262144
+            "context": 1048575,
+            "output": 943717
           },
           "tool_call": true,
           "reasoning": {
@@ -317659,8 +317659,8 @@
             ]
           },
           "limit": {
-            "context": 1040000,
-            "output": 384000
+            "context": 1048576,
+            "output": 943718
           },
           "tool_call": true,
           "reasoning": {
@@ -320613,8 +320613,8 @@
             ]
           },
           "limit": {
-            "context": 196608,
-            "output": 176947
+            "context": 204800,
+            "output": 131072
           },
           "temperature": true,
           "tool_call": true,
@@ -327236,8 +327236,8 @@
             ]
           },
           "limit": {
-            "context": 256000,
-            "output": 16384
+            "context": 262144,
+            "output": 65536
           },
           "temperature": true,
           "tool_call": true,
@@ -329936,8 +329936,8 @@
             ]
           },
           "limit": {
-            "context": 1048576,
-            "output": 128000
+            "context": 1048575,
+            "output": 943717
           },
           "temperature": true,
           "tool_call": true,
