@@ -39,6 +39,8 @@ import { SettingsActivityTable } from '@/settings/data/tables/settingsActivity'
 import { DocumentTemplatesTable } from '@/documents/data/tables/documentTemplates'
 import { DocumentsTable } from '@/documents/data/tables/documents'
 import { DocumentTasksTable } from '@/documents/data/tables/documentTasks'
+import { ResumeScreeningResumesTable } from '@/resumeScreening/data/tables/resumeScreeningResumes'
+import { ResumeScreeningTasksTable } from '@/resumeScreening/data/tables/resumeScreeningTasks'
 import { CronJobsTable } from '@/scheduler/data/tables/cronJobs'
 import { CronJobRunsTable } from '@/scheduler/data/tables/cronJobRuns'
 import { CronJobDeliveriesTable } from '@/scheduler/data/tables/cronJobDeliveries'
@@ -406,6 +408,14 @@ const CATALOG_DEFINITIONS: CatalogDefinition[] = [
   {
     name: 'document_tasks',
     createTable: (db) => new DocumentTasksTable(db)
+  },
+  {
+    name: 'resume_screening_tasks',
+    createTable: (db) => new ResumeScreeningTasksTable(db)
+  },
+  {
+    name: 'resume_screening_resumes',
+    createTable: (db) => new ResumeScreeningResumesTable(db)
   }
 ]
 
@@ -516,6 +526,8 @@ export function createMainSchemaCatalog(db: Database.Database): MainSchemaCatalo
   const liveDelegations = new LiveDelegationsTable(db)
   const liveDelegationTurns = new LiveDelegationTurnsTable(db)
   const liveDelegationEvents = new LiveDelegationEventsTable(db)
+  const resumeScreeningTasks = new ResumeScreeningTasksTable(db)
+  const resumeScreeningResumes = new ResumeScreeningResumesTable(db)
 
   const createTables: BaseTable[] = [
     acpSessions,
@@ -556,7 +568,9 @@ export function createMainSchemaCatalog(db: Database.Database): MainSchemaCatalo
     cronJobDeliveries,
     liveDelegations,
     liveDelegationTurns,
-    liveDelegationEvents
+    liveDelegationEvents,
+    resumeScreeningTasks,
+    resumeScreeningResumes
   ]
 
   return {
