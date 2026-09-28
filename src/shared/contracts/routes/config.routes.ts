@@ -13,6 +13,7 @@ import {
   SystemPromptSchema,
   ThemeModeSchema
 } from '../domainSchemas'
+import { UserImagePromptTemplateSchema } from '../../imagePromptTemplates'
 
 const AgentInstallStateSchema = z.looseObject({
   status: z.enum(['not_installed', 'installing', 'installed', 'error']),
@@ -121,7 +122,8 @@ export const CONFIG_ENTRY_KEYS = [
   'configuredProviders',
   'providerHealth',
   'sidebar_group_mode',
-  'input_enabledMcpTools'
+  'input_enabledMcpTools',
+  'user_image_prompt_templates'
 ] as const
 
 // Cached verification result for a provider's current connection configuration.
@@ -152,7 +154,8 @@ export const ConfigEntryValuesSchema = z.object({
   configuredProviders: z.array(z.string()),
   providerHealth: z.record(z.string(), ProviderHealthEntrySchema),
   sidebar_group_mode: z.string(),
-  input_enabledMcpTools: z.array(z.string())
+  input_enabledMcpTools: z.array(z.string()),
+  user_image_prompt_templates: z.array(UserImagePromptTemplateSchema)
 })
 
 export const ConfigEntryChangeSchema = z.discriminatedUnion('key', [
@@ -219,6 +222,10 @@ export const ConfigEntryChangeSchema = z.discriminatedUnion('key', [
   z.object({
     key: z.literal('input_enabledMcpTools'),
     value: z.array(z.string())
+  }),
+  z.object({
+    key: z.literal('user_image_prompt_templates'),
+    value: z.array(UserImagePromptTemplateSchema)
   })
 ])
 
