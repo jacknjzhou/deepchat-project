@@ -884,6 +884,63 @@ declare module 'vue-i18n' {
     newThread: {
       title: string
     }
+    imageTemplates: {
+      button: string
+      panelTitle: string
+      tabFeatured: string
+      tabMine: string
+      add: string
+      edit: string
+      delete: string
+      deleteConfirmTitle: string
+      deleteConfirmDescription: string
+      limitReached: string
+      emptyMine: string
+      emptyMineHint: string
+      emptyCardsHint: string
+      cancel: string
+      save: string
+      formTitle: string
+      formTitlePlaceholder: string
+      formPrompt: string
+      formPromptPlaceholder: string
+      formSize: string
+      formQuality: string
+      sizeDefault: string
+      qualityDefault: string
+      titleRequired: string
+      promptRequired: string
+      builtin: {
+        design: {
+          title: string
+          prompt: string
+        }
+        commodity: {
+          title: string
+          prompt: string
+        }
+        poster: {
+          title: string
+          prompt: string
+        }
+        beautify: {
+          title: string
+          prompt: string
+        }
+        portrait: {
+          title: string
+          prompt: string
+        }
+        style: {
+          title: string
+          prompt: string
+        }
+        photorealistic: {
+          title: string
+          prompt: string
+        }
+      }
+    }
     floatingWidget: {
       title: string
       collapse: string
@@ -2207,7 +2264,6 @@ declare module 'vue-i18n' {
         previewFailed: string
         noFiles: string
         save: string
-        saved: string
         saveFailed: string
         confirmAction: string
         confirmFailed: string

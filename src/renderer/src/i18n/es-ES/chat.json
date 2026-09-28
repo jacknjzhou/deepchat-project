@@ -347,6 +347,42 @@
   "newThread": {
     "title": "Construir y explorar"
   },
+  "imageTemplates": {
+    "button": "Plantillas",
+    "panelTitle": "Plantillas de prompt",
+    "tabFeatured": "Destacadas",
+    "tabMine": "Mías",
+    "add": "Nueva plantilla",
+    "edit": "Editar",
+    "delete": "Eliminar",
+    "deleteConfirmTitle": "Eliminar plantilla",
+    "deleteConfirmDescription": "¿Eliminar «{title}»? Esta acción no se puede deshacer.",
+    "limitReached": "Puedes guardar hasta {max} plantillas",
+    "emptyMine": "Aún no hay plantillas propias",
+    "emptyMineHint": "Pulsa «Nueva plantilla» para crear la primera",
+    "emptyCardsHint": "Empieza desde una plantilla",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "formTitle": "Título",
+    "formTitlePlaceholder": "p. ej., avatar cyberpunk",
+    "formPrompt": "Prompt",
+    "formPromptPlaceholder": "Describe la imagen que quieres generar…",
+    "formSize": "Tamaño",
+    "formQuality": "Calidad",
+    "sizeDefault": "Predeterminado",
+    "qualityDefault": "Predeterminado",
+    "titleRequired": "El título es obligatorio",
+    "promptRequired": "El prompt es obligatorio",
+    "builtin": {
+      "design": { "title": "Diseño", "prompt": "Design a minimalist brand logo for a sustainable travel product, earthy color palette with geometric lines, modern and restrained, highly recognizable, white background, vector style" },
+      "commodity": { "title": "Foto de producto", "prompt": "Commercial product photography of a perfume bottle on light marble, soft natural light from the left, blurred background, premium feel, clean composition, 8k detail" },
+      "poster": { "title": "Póster", "prompt": "A music festival promo poster, bold Memphis-style geometric shapes, high-saturation contrasting colors, striking whitespace layout, retro print texture, portrait composition" },
+      "beautify": { "title": "Mejorar foto", "prompt": "Elevate the photo to magazine quality: enhance detail and depth, balance light and shadow, natural transparent colors, keep the original composition, no over-sharpening" },
+      "portrait": { "title": "Retrato", "prompt": "Indoor natural-light portrait of a young woman, side profile close-up, soft window light, shallow depth of field, film grain, warm tones, lifelike texture" },
+      "style": { "title": "Estilo", "prompt": "A futuristic city street scene in hand-painted Ghibli anime style, soft afternoon light, layered clouds, rich detail, healing atmosphere" },
+      "photorealistic": { "title": "Fotorrealista", "prompt": "A mountain lake in morning mist, hyper-realistic landscape photography, shot on Canon EOS R5, 35mm wide angle, f/8, natural colors, razor-sharp detail" }
+    }
+  },
   "floatingWidget": {
     "title": "Resumen de tareas",
     "collapse": "Contraer lista flotante de sesiones",

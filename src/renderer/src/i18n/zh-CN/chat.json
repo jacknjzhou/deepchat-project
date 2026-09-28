@@ -432,6 +432,42 @@
   "newThread": {
     "title": "构建与探索"
   },
+  "imageTemplates": {
+    "button": "范本",
+    "panelTitle": "提示词范本",
+    "tabFeatured": "精选",
+    "tabMine": "我的",
+    "add": "新建范本",
+    "edit": "编辑",
+    "delete": "删除",
+    "deleteConfirmTitle": "删除范本",
+    "deleteConfirmDescription": "确定删除「{title}」？此操作无法撤销。",
+    "limitReached": "最多可保存 {max} 个范本",
+    "emptyMine": "还没有自定义范本",
+    "emptyMineHint": "点击「新建范本」创建你的第一个范本",
+    "emptyCardsHint": "从范本开始你的创作",
+    "cancel": "取消",
+    "save": "保存",
+    "formTitle": "标题",
+    "formTitlePlaceholder": "例如：赛博朋克头像",
+    "formPrompt": "提示词",
+    "formPromptPlaceholder": "描述你想生成的画面…",
+    "formSize": "尺寸",
+    "formQuality": "质量",
+    "sizeDefault": "默认",
+    "qualityDefault": "默认",
+    "titleRequired": "请输入标题",
+    "promptRequired": "请输入提示词",
+    "builtin": {
+      "design": { "title": "设计创作", "prompt": "为一款可持续旅行产品设计极简品牌标志，采用大地色系与几何线条，风格现代、克制且具辨识度，白色背景，矢量风格" },
+      "commodity": { "title": "商品图", "prompt": "一款香水瓶的商业产品摄影，置于浅色大理石台面，柔和自然光从左侧射入，背景虚化，高级质感，画面干净，8k 细节" },
+      "poster": { "title": "海报制作", "prompt": "一张音乐节宣传海报，粗犷的孟菲斯风格几何图形，高饱和撞色，醒目留白版式，复古印刷质感，竖版构图" },
+      "beautify": { "title": "图片美化", "prompt": "将照片提升为杂志级质感：增强细节与层次，平衡光影，色彩自然通透，保持原始构图不变，无过度锐化" },
+      "portrait": { "title": "人像写真", "prompt": "一位年轻女性的室内自然光人像写真，侧脸特写，柔和窗光，浅景深，胶片颗粒感，温暖色调，真实质感" },
+      "style": { "title": "风格创意", "prompt": "一座未来城市街景，吉卜力风格手绘动画质感，柔和的午后光线，云层层次丰富，细节饱满，治愈系氛围" },
+      "photorealistic": { "title": "写实照片", "prompt": "清晨薄雾中的山间湖泊，超写实风景摄影，佳能 EOS R5 拍摄，35mm 广角，f/8 光圈，自然色彩，细节纤毫毕现" }
+    }
+  },
   "floatingWidget": {
     "title": "任务总览",
     "collapse": "收起悬浮会话列表",

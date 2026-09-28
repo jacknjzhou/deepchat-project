@@ -347,6 +347,42 @@
   "newThread": {
     "title": "Xây dựng và khám phá"
   },
+  "imageTemplates": {
+    "button": "Mẫu",
+    "panelTitle": "Mẫu prompt",
+    "tabFeatured": "Nổi bật",
+    "tabMine": "Của tôi",
+    "add": "Tạo mẫu",
+    "edit": "Sửa",
+    "delete": "Xóa",
+    "deleteConfirmTitle": "Xóa mẫu",
+    "deleteConfirmDescription": "Xóa \"{title}\"? Hành động này không thể hoàn tác.",
+    "limitReached": "Bạn có thể lưu tối đa {max} mẫu",
+    "emptyMine": "Chưa có mẫu tùy chỉnh",
+    "emptyMineHint": "Nhấp \"Tạo mẫu\" để tạo mẫu đầu tiên",
+    "emptyCardsHint": "Bắt đầu từ một mẫu",
+    "cancel": "Hủy",
+    "save": "Lưu",
+    "formTitle": "Tiêu đề",
+    "formTitlePlaceholder": "vd. avatar cyberpunk",
+    "formPrompt": "Prompt",
+    "formPromptPlaceholder": "Mô tả hình ảnh bạn muốn tạo…",
+    "formSize": "Kích thước",
+    "formQuality": "Chất lượng",
+    "sizeDefault": "Mặc định",
+    "qualityDefault": "Mặc định",
+    "titleRequired": "Cần nhập tiêu đề",
+    "promptRequired": "Cần nhập prompt",
+    "builtin": {
+      "design": { "title": "Thiết kế", "prompt": "Design a minimalist brand logo for a sustainable travel product, earthy color palette with geometric lines, modern and restrained, highly recognizable, white background, vector style" },
+      "commodity": { "title": "Ảnh sản phẩm", "prompt": "Commercial product photography of a perfume bottle on light marble, soft natural light from the left, blurred background, premium feel, clean composition, 8k detail" },
+      "poster": { "title": "Áp phích", "prompt": "A music festival promo poster, bold Memphis-style geometric shapes, high-saturation contrasting colors, striking whitespace layout, retro print texture, portrait composition" },
+      "beautify": { "title": "Chỉnh ảnh", "prompt": "Elevate the photo to magazine quality: enhance detail and depth, balance light and shadow, natural transparent colors, keep the original composition, no over-sharpening" },
+      "portrait": { "title": "Chân dung", "prompt": "Indoor natural-light portrait of a young woman, side profile close-up, soft window light, shallow depth of field, film grain, warm tones, lifelike texture" },
+      "style": { "title": "Phong cách", "prompt": "A futuristic city street scene in hand-painted Ghibli anime style, soft afternoon light, layered clouds, rich detail, healing atmosphere" },
+      "photorealistic": { "title": "Ảnh thực tế", "prompt": "A mountain lake in morning mist, hyper-realistic landscape photography, shot on Canon EOS R5, 35mm wide angle, f/8, natural colors, razor-sharp detail" }
+    }
+  },
   "floatingWidget": {
     "title": "Tổng quan về nhiệm vụ",
     "collapse": "Thu gọn các phiên nổi",
