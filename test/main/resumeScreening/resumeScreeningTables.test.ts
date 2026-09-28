@@ -25,6 +25,7 @@ if (Database) {
 }
 
 const describeIfSqlite = sqliteAvailable && TasksTableCtor ? describe : describe.skip
+const describeIfSqliteResumes = sqliteAvailable && ResumesTableCtor ? describe : describe.skip
 
 describeIfSqlite('ResumeScreeningTasksTable', () => {
   const makeDb = () => {
@@ -94,6 +95,106 @@ describeIfSqlite('ResumeScreeningTasksTable', () => {
     expect(table.listRecent(10)[0].created_at).toBe(200)
     expect(table.listActive()).toHaveLength(2)
     expect(table.listActive()[0].id).toBe(a.id)
+    db.close()
+  })
+
+  it('clears fields with explicit null and handles missing ids', () => {
+    const db = makeDb()
+    const table = new TasksTableCtor(db)
+    const created = table.insert(makeInput())
+    const withAnalysis = table.update(created.id, {
+      jdAnalysisJson: JSON.stringify({ responsibilities: ['a'], requirements: [], preferred: [] }),
+      avgScore: 88
+    })
+    expect(withAnalysis?.jd_analysis_json).toContain('responsibilities')
+    expect(withAnalysis?.avg_score).toBe(88)
+    const cleared = table.update(created.id, { jdAnalysisJson: null, avgScore: null })
+    expect(cleared?.jd_analysis_json).toBeNull()
+    expect(cleared?.avg_score).toBeNull()
+    expect(cleared?.status).toBe('queued')
+    expect(table.update('nonexistent', { status: 'running' })).toBeUndefined()
+    db.close()
+  })
+})
+
+describeIfSqliteResumes('ResumeScreeningResumesTable', () => {
+  const makeDb = () => {
+    const db = new DatabaseCtor(':memory:')
+    new TasksTableCtor(db).createTable()
+    new ResumesTableCtor(db).createTable()
+    return db
+  }
+
+  const makeResumeInput = (overrides?: Record<string, unknown>) => ({
+    id: 'resume-1',
+    taskId: 'task-1',
+    fileName: '张三.pdf',
+    filePath: 'C:\\tmp\\resume-1.pdf',
+    mimeType: 'application/pdf',
+    size: 1024,
+    now: 1000,
+    ...overrides
+  })
+
+  it('inserts with explicit id and lists by task', () => {
+    const db = makeDb()
+    const table = new ResumesTableCtor(db)
+    const row = table.insert(makeResumeInput())
+    expect(row.id).toBe('resume-1')
+    expect(row.status).toBe('pending')
+    table.insert(makeResumeInput({ id: 'resume-2', now: 200 }))
+    expect(table.listByTask('task-1')).toHaveLength(2)
+    expect(table.listByTask('task-2')).toHaveLength(0)
+    db.close()
+  })
+
+  it('updates report fields and boolean recommended', () => {
+    const db = makeDb()
+    const table = new ResumesTableCtor(db)
+    table.insert(makeResumeInput())
+    const updated = table.update('resume-1', {
+      status: 'done',
+      candidateName: '张三',
+      screeningJson: JSON.stringify({
+        score: 88,
+        recommended: true,
+        conclusion: 'ok',
+        strengths: []
+      }),
+      score: 88,
+      recommended: true,
+      now: 2000
+    })
+    expect(updated?.status).toBe('done')
+    expect(updated?.recommended).toBe(1)
+    expect(updated?.score).toBe(88)
+    const cleared = table.update('resume-1', { candidateName: null, score: null })
+    expect(cleared?.candidate_name).toBeNull()
+    expect(cleared?.score).toBeNull()
+    expect(cleared?.status).toBe('done')
+    expect(table.update('nonexistent', { status: 'done' })).toBeUndefined()
+    db.close()
+  })
+
+  it('computes task stats and marks unfinished as failed', () => {
+    const db = makeDb()
+    const table = new ResumesTableCtor(db)
+    table.insert(makeResumeInput({ id: 'r1' }))
+    table.insert(makeResumeInput({ id: 'r2' }))
+    table.insert(makeResumeInput({ id: 'r3' }))
+    table.update('r1', { status: 'done', score: 80, recommended: true })
+    table.update('r2', { status: 'done', score: 90, recommended: false })
+    // r3 保持 pending
+    const stats = table.getTaskStats('task-1')
+    expect(stats.total).toBe(3)
+    expect(stats.succeeded).toBe(2)
+    expect(stats.failed).toBe(0)
+    expect(stats.avgScore).toBe(85)
+    expect(stats.recommendedCount).toBe(1)
+    const changed = table.markUnfinishedAsFailed('task-1', '已取消', 3000)
+    expect(changed).toBe(1)
+    expect(table.get('r3')?.status).toBe('failed')
+    expect(table.get('r3')?.error).toBe('已取消')
     db.close()
   })
 })

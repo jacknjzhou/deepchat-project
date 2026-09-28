@@ -162,7 +162,7 @@ export class ResumeScreeningTasksTable extends BaseTable {
   listActive(): ResumeScreeningTaskRow[] {
     return this.db
       .prepare(
-        "SELECT * FROM resume_screening_tasks WHERE status IN ('queued', 'running') ORDER BY created_at ASC"
+        "SELECT * FROM resume_screening_tasks WHERE status IN ('queued', 'running') ORDER BY created_at ASC, id ASC"
       )
       .all() as ResumeScreeningTaskRow[]
   }
