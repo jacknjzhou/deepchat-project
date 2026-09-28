@@ -103,9 +103,7 @@ export const useImagePromptTemplatesStore = defineStore('imagePromptTemplates', 
   return { userTemplates, loaded, canAdd, load, add, update, remove }
 })
 
-export const useBuiltinImagePromptTemplates = (): {
-  builtinTemplates: ReturnType<typeof computed<ResolvedImagePromptTemplate[]>>
-} => {
+export const useBuiltinImagePromptTemplates = () => {
   const { t } = useI18n()
   const builtinTemplates = computed<ResolvedImagePromptTemplate[]>(() =>
     BUILTIN_IMAGE_PROMPT_TEMPLATES.map((tpl) => ({

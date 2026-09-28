@@ -13,6 +13,8 @@
         :disabled="isPreparingAttachments"
         @click="$emit('attach')"
       />
+
+      <ImagePromptTemplateButton v-if="showImageTemplates" @apply-template="forwardApplyTemplate" />
     </div>
 
     <div class="flex items-center gap-1">
@@ -192,6 +194,8 @@ import { Spinner } from '@shadcn/components/ui/spinner'
 import { Icon } from '@iconify/vue'
 import { DcButton } from '@dc-ui/components/button'
 import { useI18n } from 'vue-i18n'
+import ImagePromptTemplateButton from '@/components/chat-input/ImagePromptTemplateButton.vue'
+import type { ImagePromptTemplateApplyPayload } from '@shared/imagePromptTemplates'
 
 const props = withDefaults(
   defineProps<{
@@ -208,6 +212,7 @@ const props = withDefaults(
     isPreparingAttachments?: boolean
     showSearch?: boolean
     searchEnabled?: boolean
+    showImageTemplates?: boolean
   }>(),
   {
     isGenerating: false,
@@ -222,7 +227,8 @@ const props = withDefaults(
     isVoiceInputTranscribing: false,
     isPreparingAttachments: false,
     showSearch: false,
-    searchEnabled: false
+    searchEnabled: false,
+    showImageTemplates: false
   }
 )
 
@@ -235,9 +241,13 @@ const emit = defineEmits<{
   'toggle-search': []
   stop: []
   'cancel-preparation': []
+  'apply-template': [payload: ImagePromptTemplateApplyPayload]
 }>()
 
 const { t } = useI18n()
+const forwardApplyTemplate = (payload: ImagePromptTemplateApplyPayload) => {
+  emit('apply-template', payload)
+}
 const hasActiveInput = computed(() => props.hasInput || props.hasText)
 const voiceInputButtonClass = computed(() => {
   if (props.isVoiceInputListening) {

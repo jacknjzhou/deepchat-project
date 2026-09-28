@@ -1,4 +1,4 @@
-import type { ImageGenerationQuality } from '@shared/imagePromptTemplates'
+import type { ImageGenerationQuality } from '@shared/imageGenerationSettings'
 
 interface BuiltinImagePromptTemplate {
   id: string

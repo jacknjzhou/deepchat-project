@@ -18,6 +18,7 @@ const setup = async (
       disabledAgentTools: string[]
     }>
     awaitReady?: boolean
+    skipDeeplink?: boolean
   }
 ) => {
   vi.resetModules()
@@ -37,17 +38,20 @@ const setup = async (
     forceInterleavedThinkingCompat: undefined as boolean | undefined,
     permissionMode: 'full_access',
     disabledAgentTools: [] as string[],
-    pendingStartDeeplink: {
-      token: 1,
-      msg: '帮我总结一下这周的迭代状态',
-      modelId: pendingModelId,
-      systemPrompt: 'You are a concise project assistant.',
-      mentions: ['README.md', 'docs/spec.md']
-    },
+    pendingStartDeeplink: options?.skipDeeplink
+      ? null
+      : {
+          token: 1,
+          msg: '帮我总结一下这周的迭代状态',
+          modelId: pendingModelId,
+          systemPrompt: 'You are a concise project assistant.',
+          mentions: ['README.md', 'docs/spec.md']
+        },
     toGenerationSettings: vi.fn(() => undefined),
     clearPendingStartDeeplink: vi.fn(() => {
       draftStore.pendingStartDeeplink = null
-    })
+    }),
+    updateGenerationSettings: vi.fn()
   })
   const projectStore = reactive({
     selectedProject: {
@@ -98,7 +102,11 @@ const setup = async (
     enabledModels: [
       {
         providerId: 'openai',
-        models: [{ id: 'gpt-4o-mini' }, { id: 'deepseek-chat' }]
+        models: [
+          { id: 'gpt-4o-mini' },
+          { id: 'deepseek-chat' },
+          { id: 'gpt-image-2', type: 'imageGeneration' }
+        ]
       },
       {
         providerId: 'deepseek',
@@ -416,5 +424,42 @@ describe('NewThreadPage start deeplink prefill', () => {
     await flushPromises()
 
     expect(sessionStore.createSession).toHaveBeenCalledTimes(2)
+  }, 20000)
+})
+
+describe('NewThreadPage image template cards', () => {
+  it('选中图像模型且输入为空时展示范本卡片，点击填充并合并图像设置', async () => {
+    const { wrapper, draftStore } = await setup('deepseek-chat', { skipDeeplink: true })
+
+    expect(wrapper.find('[data-testid="image-template-cards"]').exists()).toBe(false)
+
+    draftStore.modelId = 'gpt-image-2'
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="image-template-cards"]').exists()).toBe(true)
+    expect(wrapper.findAll('[data-testid="image-template-card"]')).toHaveLength(7)
+
+    await wrapper.get('[data-testid="image-template-card"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.get('[data-testid="chat-input"]').text()).toContain(
+      'chat.imageTemplates.builtin.design.prompt'
+    )
+    expect(draftStore.updateGenerationSettings).toHaveBeenCalledWith({
+      imageGeneration: { size: '1024x1024', quality: 'high' }
+    })
+    expect(wrapper.find('[data-testid="image-template-cards"]').exists()).toBe(false)
+  }, 20000)
+
+  it('输入文本后隐藏范本卡片', async () => {
+    const { wrapper, draftStore } = await setup('deepseek-chat', { skipDeeplink: true })
+
+    draftStore.modelId = 'gpt-image-2'
+    await flushPromises()
+    expect(wrapper.find('[data-testid="image-template-cards"]').exists()).toBe(true)
+
+    wrapper.findComponent({ name: 'ChatInputBox' }).vm.$emit('update:modelValue', 'hello')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="image-template-cards"]').exists()).toBe(false)
   }, 20000)
 })
