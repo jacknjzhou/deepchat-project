@@ -52,6 +52,7 @@
   "hrFinalSummary": "Итоговое резюме",
   "hrOpinion": "Мнение HR",
   "rawTextSection": "Исходный текст резюме",
+  "detailPreviewUnsupported": "Этот формат не поддерживает встроенный предпросмотр",
   "jdTabResponsibilities": "Обязанности",
   "jdTabRequirements": "Требования",
   "jdTabPreferred": "Желательные качества",

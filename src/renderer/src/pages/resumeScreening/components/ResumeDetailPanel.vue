@@ -127,14 +127,19 @@
         </div>
       </div>
 
-      <div v-if="resume.rawText" class="rounded-lg border p-4">
+      <!-- 简历原文：不展示解析文本，直接内嵌预览源文件（docx 等格式无法在浏览器渲染时提示） -->
+      <div class="rounded-lg border p-4">
         <h4 class="mb-2 text-sm font-medium">{{ t('resumeScreening.rawTextSection') }}</h4>
-        <!-- pre 内容顶格写，避免模板缩进被 whitespace-pre 保留 -->
-        <pre
-          data-testid="detail-rawtext"
-          class="max-h-96 overflow-y-auto whitespace-pre-wrap break-words rounded-md bg-muted p-3 text-xs"
-          >{{ resume.rawText }}</pre
-        >
+        <iframe
+          v-if="previewUrl"
+          :src="previewUrl"
+          data-testid="detail-preview"
+          class="h-96 w-full rounded-md border bg-muted"
+          :title="resume.fileName"
+        ></iframe>
+        <p v-else data-testid="detail-preview-unsupported" class="text-sm text-muted-foreground">
+          {{ t('resumeScreening.detailPreviewUnsupported') }}
+        </p>
       </div>
     </template>
   </div>
@@ -216,6 +221,20 @@ const infoGroups = computed(() => {
 })
 
 const wideEntries = computed(() => infoEntries.value.filter(([, value]) => value.kind !== 'text'))
+
+// 浏览器内核可直接渲染的格式才内嵌预览；docx 等提示不支持
+const PREVIEWABLE_EXTENSIONS = new Set(['.pdf', '.txt', '.md'])
+
+// 源文件地址：resume-preview://<taskId>/<resumeId><ext>，主进程仅服务 resume-screening 存储目录
+const previewUrl = computed(() => {
+  const current = props.resume
+  if (!current) return null
+  const dotIndex = current.fileName.lastIndexOf('.')
+  if (dotIndex < 0) return null
+  const ext = current.fileName.slice(dotIndex).toLowerCase()
+  if (!PREVIEWABLE_EXTENSIONS.has(ext)) return null
+  return `resume-preview://${current.taskId}/${encodeURIComponent(current.id + ext)}`
+})
 
 function describeInfoValue(value: unknown): InfoValue {
   if (Array.isArray(value)) {

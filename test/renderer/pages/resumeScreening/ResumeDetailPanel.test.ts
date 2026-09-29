@@ -104,14 +104,16 @@ describe('ResumeDetailPanel', () => {
     expect(wrapper.find('[data-testid="screening-section"]').exists()).toBe(false)
   })
 
-  it('展示 resumeInfo 键值对与 rawText', async () => {
+  it('展示 resumeInfo 键值对与源文件预览（pdf 内嵌 iframe）', async () => {
     wrapper = await setup(makeResume())
     const info = wrapper.find('[data-testid="detail-info"]')
     expect(info.exists()).toBe(true)
     expect(info.text()).toContain('学历')
     expect(info.text()).toContain('本科')
     expect(info.text()).toContain('Vue、TypeScript')
-    expect(wrapper.find('[data-testid="detail-rawtext"]').text()).toContain('张三的简历原文')
+    const preview = wrapper.find('[data-testid="detail-preview"]')
+    expect(preview.exists()).toBe(true)
+    expect(preview.attributes('src')).toBe('resume-preview://task-1/resume-1.pdf')
   })
 
   it('基本信息按个人基础/其余字段分两栏展示', async () => {
@@ -181,8 +183,14 @@ describe('ResumeDetailPanel', () => {
     expect(info.text()).toContain('—')
   })
 
-  it('rawText 为 null 时不渲染原文节', async () => {
+  it('rawText 为 null 时源文件预览仍渲染（文件已存盘，预览不依赖解析文本）', async () => {
     wrapper = await setup(makeResume({ rawText: null }))
-    expect(wrapper.find('[data-testid="detail-rawtext"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="detail-preview"]').exists()).toBe(true)
+  })
+
+  it('docx 等不可内嵌渲染的格式显示不支持提示', async () => {
+    wrapper = await setup(makeResume({ fileName: '李四.docx' }))
+    expect(wrapper.find('[data-testid="detail-preview"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="detail-preview-unsupported"]').exists()).toBe(true)
   })
 })

@@ -2146,6 +2146,7 @@ declare module 'vue-i18n' {
     hrFinalSummary: string
     hrOpinion: string
     rawTextSection: string
+    detailPreviewUnsupported: string
     jdTabResponsibilities: string
     jdTabRequirements: string
     jdTabPreferred: string

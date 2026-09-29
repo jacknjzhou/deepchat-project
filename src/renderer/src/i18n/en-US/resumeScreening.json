@@ -52,6 +52,7 @@
   "hrFinalSummary": "Final Summary",
   "hrOpinion": "HR Opinion",
   "rawTextSection": "Resume Raw Text",
+  "detailPreviewUnsupported": "This format does not support inline preview",
   "jdTabResponsibilities": "Job Responsibilities",
   "jdTabRequirements": "Requirements",
   "jdTabPreferred": "Preferred Qualifications",
