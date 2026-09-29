@@ -82,6 +82,15 @@ export function startApp(): void {
 
   const gotSingleInstanceLock = app.requestSingleInstanceLock()
   if (!gotSingleInstanceLock) {
+    // 静默退出会让用户误以为安装包损坏：必须给出可见反馈。
+    // 锁可能被 dev 实例、托盘常驻实例或其他共享 %APPDATA%\DeepChat 的版本持有。
+    dialog.showMessageBoxSync({
+      type: 'info',
+      title: APP_NAME,
+      message: '应用已在运行',
+      detail:
+        '无法同时启动多个实例。若未看到应用窗口，请检查系统托盘；若设备上还安装了其他 DeepChat 版本（如官方版），请先退出后再启动。'
+    })
     app.quit()
     return
   }
