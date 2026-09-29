@@ -166,10 +166,9 @@ type InfoValue = { kind: 'text'; text: string } | { kind: 'lines'; lines: string
 
 const infoEntries = computed(() => {
   if (!props.resume?.resumeInfo || typeof props.resume.resumeInfo !== 'object') return []
-  return Object.entries(props.resume.resumeInfo as Record<string, unknown>).map(([key, value]) => [
-    key,
-    describeInfoValue(value)
-  ])
+  return Object.entries(props.resume.resumeInfo as Record<string, unknown>).map(
+    ([key, value]): [string, InfoValue] => [key, describeInfoValue(value)]
+  )
 })
 
 function describeInfoValue(value: unknown): InfoValue {
