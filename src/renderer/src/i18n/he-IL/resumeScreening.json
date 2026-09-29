@@ -1,3 +1,23 @@
 {
-  "title": "סינון קורות חיים"
+  "title": "סינון קורות חיים",
+  "jdSection": "תיאור התפקיד",
+  "jdTextTab": "הדבקת טקסט",
+  "jdFileTab": "העלאת קובץ",
+  "jdTextPlaceholder": "הדביקו את תיאור התפקיד",
+  "jdPickFile": "בחירת קובץ",
+  "jdFileHint": "תמיכה ב-PDF, DOCX, TXT, MD",
+  "jdClearFile": "הסרת קובץ",
+  "resumeSection": "קבצי קורות חיים",
+  "resumeAdd": "הוספת קורות חיים",
+  "resumeCount": "נבחרו {current}/{limit}",
+  "resumeLimitReached": "ניתן להוסיף עד {limit} קורות חיים",
+  "resumeEmpty": "טרם נוספו קורות חיים",
+  "resumeRemove": "הסרה",
+  "configSection": "הגדרות סינון",
+  "configGenerateExplanation": "יצירת הערות סקירה",
+  "configIncludeRawText": "כלול טקסט מקורי של קורות החיים",
+  "configMaxConcurrency": "מקביליות",
+  "reviewStart": "התחלת סינון",
+  "reviewCancel": "ביטול משימה",
+  "modelLabel": "מודל"
 }

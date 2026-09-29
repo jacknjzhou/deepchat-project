@@ -1,3 +1,23 @@
 {
-  "title": "غربالگری رزومه"
+  "title": "غربالگری رزومه",
+  "jdSection": "شرح شغلی",
+  "jdTextTab": "چسباندن متن",
+  "jdFileTab": "بارگذاری فایل",
+  "jdTextPlaceholder": "شرح شغلی را بچسبانید",
+  "jdPickFile": "انتخاب فایل",
+  "jdFileHint": "پشتیبانی از PDF، DOCX، TXT، MD",
+  "jdClearFile": "حذف فایل",
+  "resumeSection": "فایل‌های رزومه",
+  "resumeAdd": "افزودن رزومه",
+  "resumeCount": "{current}/{limit} انتخاب شد",
+  "resumeLimitReached": "حداکثر می‌توانید {limit} رزومه اضافه کنید",
+  "resumeEmpty": "هنوز رزومه‌ای اضافه نشده است",
+  "resumeRemove": "حذف",
+  "configSection": "تنظیمات غربالگری",
+  "configGenerateExplanation": "تولید یادداشت‌های بررسی",
+  "configIncludeRawText": "درج متن اصلی رزومه در نتایج",
+  "configMaxConcurrency": "همزمانی",
+  "reviewStart": "شروع غربالگری",
+  "reviewCancel": "لغو وظیفه",
+  "modelLabel": "مدل"
 }

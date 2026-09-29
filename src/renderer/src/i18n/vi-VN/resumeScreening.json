@@ -1,3 +1,23 @@
 {
-  "title": "Sàng lọc hồ sơ"
+  "title": "Sàng lọc hồ sơ",
+  "jdSection": "Mô tả công việc",
+  "jdTextTab": "Dán văn bản",
+  "jdFileTab": "Tải tệp lên",
+  "jdTextPlaceholder": "Dán nội dung mô tả công việc",
+  "jdPickFile": "Chọn tệp",
+  "jdFileHint": "Hỗ trợ PDF, DOCX, TXT, MD",
+  "jdClearFile": "Gỡ tệp",
+  "resumeSection": "Tệp hồ sơ",
+  "resumeAdd": "Thêm hồ sơ",
+  "resumeCount": "Đã chọn {current}/{limit}",
+  "resumeLimitReached": "Chỉ có thể thêm tối đa {limit} hồ sơ",
+  "resumeEmpty": "Chưa thêm hồ sơ nào",
+  "resumeRemove": "Gỡ bỏ",
+  "configSection": "Cấu hình sàng lọc",
+  "configGenerateExplanation": "Tạo nhận xét đánh giá",
+  "configIncludeRawText": "Kèm văn bản gốc của hồ sơ",
+  "configMaxConcurrency": "Số chạy đồng thời",
+  "reviewStart": "Bắt đầu đánh giá",
+  "reviewCancel": "Hủy tác vụ",
+  "modelLabel": "Mô hình"
 }

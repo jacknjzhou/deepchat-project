@@ -1,3 +1,23 @@
 {
-  "title": "Tri des CV"
+  "title": "Tri des CV",
+  "jdSection": "Description du Poste",
+  "jdTextTab": "Coller le texte",
+  "jdFileTab": "Téléverser un fichier",
+  "jdTextPlaceholder": "Collez la description du poste",
+  "jdPickFile": "Choisir un fichier",
+  "jdFileHint": "Prend en charge PDF, DOCX, TXT, MD",
+  "jdClearFile": "Retirer le fichier",
+  "resumeSection": "Fichiers CV",
+  "resumeAdd": "Ajouter des CV",
+  "resumeCount": "{current}/{limit} sélectionnés",
+  "resumeLimitReached": "Vous pouvez ajouter au maximum {limit} CV",
+  "resumeEmpty": "Aucun CV ajouté pour le moment",
+  "resumeRemove": "Retirer",
+  "configSection": "Paramètres de tri",
+  "configGenerateExplanation": "Générer des commentaires d'évaluation",
+  "configIncludeRawText": "Inclure le texte brut du CV",
+  "configMaxConcurrency": "Concurrence",
+  "reviewStart": "Lancer le tri",
+  "reviewCancel": "Annuler la tâche",
+  "modelLabel": "Modèle"
 }

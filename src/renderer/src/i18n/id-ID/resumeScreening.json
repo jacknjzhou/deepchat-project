@@ -1,3 +1,23 @@
 {
-  "title": "Penyaringan Resume"
+  "title": "Penyaringan Resume",
+  "jdSection": "Deskripsi Posisi",
+  "jdTextTab": "Tempel Teks",
+  "jdFileTab": "Unggah Berkas",
+  "jdTextPlaceholder": "Tempel deskripsi posisi",
+  "jdPickFile": "Pilih Berkas",
+  "jdFileHint": "Mendukung PDF, DOCX, TXT, MD",
+  "jdClearFile": "Hapus Berkas",
+  "resumeSection": "Berkas Resume",
+  "resumeAdd": "Tambah Resume",
+  "resumeCount": "{current}/{limit} dipilih",
+  "resumeLimitReached": "Anda hanya dapat menambah hingga {limit} resume",
+  "resumeEmpty": "Belum ada resume yang ditambahkan",
+  "resumeRemove": "Hapus",
+  "configSection": "Pengaturan Penyaringan",
+  "configGenerateExplanation": "Buat catatan tinjauan",
+  "configIncludeRawText": "Sertakan teks asli resume",
+  "configMaxConcurrency": "Konkurensi",
+  "reviewStart": "Mulai Penyaringan",
+  "reviewCancel": "Batalkan Tugas",
+  "modelLabel": "Model"
 }

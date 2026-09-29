@@ -1,3 +1,23 @@
 {
-  "title": "履歷篩選"
+  "title": "履歷篩選",
+  "jdSection": "職務描述",
+  "jdTextTab": "貼上文字",
+  "jdFileTab": "上傳檔案",
+  "jdTextPlaceholder": "貼上職務描述內容",
+  "jdPickFile": "選擇檔案",
+  "jdFileHint": "支援 PDF、DOCX、TXT、MD",
+  "jdClearFile": "移除檔案",
+  "resumeSection": "履歷檔案",
+  "resumeAdd": "新增履歷",
+  "resumeCount": "已選 {current}/{limit}",
+  "resumeLimitReached": "最多只能新增 {limit} 份履歷",
+  "resumeEmpty": "尚未新增履歷",
+  "resumeRemove": "移除",
+  "configSection": "審閱設定",
+  "configGenerateExplanation": "產生審閱說明",
+  "configIncludeRawText": "結果附帶履歷原文",
+  "configMaxConcurrency": "並行數",
+  "reviewStart": "開始審閱",
+  "reviewCancel": "取消任務",
+  "modelLabel": "模型"
 }

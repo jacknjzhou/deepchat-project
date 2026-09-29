@@ -1,3 +1,23 @@
 {
-  "title": "Özgeçmiş Eleme"
+  "title": "Özgeçmiş Eleme",
+  "jdSection": "İş Tanımı",
+  "jdTextTab": "Metin Yapıştır",
+  "jdFileTab": "Dosya Yükle",
+  "jdTextPlaceholder": "İş tanımını yapıştırın",
+  "jdPickFile": "Dosya Seç",
+  "jdFileHint": "PDF, DOCX, TXT, MD desteklenir",
+  "jdClearFile": "Dosyayı Kaldır",
+  "resumeSection": "Özgeçmiş Dosyaları",
+  "resumeAdd": "Özgeçmiş Ekle",
+  "resumeCount": "{current}/{limit} seçildi",
+  "resumeLimitReached": "En fazla {limit} özgeçmiş ekleyebilirsiniz",
+  "resumeEmpty": "Henüz özgeçmiş eklenmedi",
+  "resumeRemove": "Kaldır",
+  "configSection": "Eleme Ayarları",
+  "configGenerateExplanation": "Değerlendirme notu oluştur",
+  "configIncludeRawText": "Sonuçlara özgeçmiş ham metnini ekle",
+  "configMaxConcurrency": "Eşzamanlılık",
+  "reviewStart": "Elemeyi Başlat",
+  "reviewCancel": "Görevi İptal Et",
+  "modelLabel": "Model"
 }

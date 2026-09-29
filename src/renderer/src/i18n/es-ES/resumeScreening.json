@@ -1,3 +1,23 @@
 {
-  "title": "Filtrado de CV"
+  "title": "Filtrado de CV",
+  "jdSection": "Descripción del Puesto",
+  "jdTextTab": "Pegar Texto",
+  "jdFileTab": "Subir Archivo",
+  "jdTextPlaceholder": "Pega la descripción del puesto",
+  "jdPickFile": "Elegir Archivo",
+  "jdFileHint": "Compatible con PDF, DOCX, TXT, MD",
+  "jdClearFile": "Quitar Archivo",
+  "resumeSection": "Archivos de CV",
+  "resumeAdd": "Añadir CV",
+  "resumeCount": "{current}/{limit} seleccionados",
+  "resumeLimitReached": "Puedes añadir un máximo de {limit} CV",
+  "resumeEmpty": "Aún no se han añadido CV",
+  "resumeRemove": "Quitar",
+  "configSection": "Ajustes de Filtrado",
+  "configGenerateExplanation": "Generar observaciones de revisión",
+  "configIncludeRawText": "Incluir texto original del CV",
+  "configMaxConcurrency": "Concurrencia",
+  "reviewStart": "Iniciar Filtrado",
+  "reviewCancel": "Cancelar Tarea",
+  "modelLabel": "Modelo"
 }

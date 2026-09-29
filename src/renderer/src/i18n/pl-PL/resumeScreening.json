@@ -1,3 +1,23 @@
 {
-  "title": "Selekcja CV"
+  "title": "Selekcja CV",
+  "jdSection": "Opis stanowiska",
+  "jdTextTab": "Wklej tekst",
+  "jdFileTab": "Prześlij plik",
+  "jdTextPlaceholder": "Wklej opis stanowiska",
+  "jdPickFile": "Wybierz plik",
+  "jdFileHint": "Obsługuje PDF, DOCX, TXT, MD",
+  "jdClearFile": "Usuń plik",
+  "resumeSection": "Pliki CV",
+  "resumeAdd": "Dodaj CV",
+  "resumeCount": "Wybrano {current}/{limit}",
+  "resumeLimitReached": "Można dodać maksymalnie {limit} CV",
+  "resumeEmpty": "Nie dodano jeszcze żadnego CV",
+  "resumeRemove": "Usuń",
+  "configSection": "Ustawienia selekcji",
+  "configGenerateExplanation": "Generuj uwagi do oceny",
+  "configIncludeRawText": "Dołącz surowy tekst CV",
+  "configMaxConcurrency": "Współbieżność",
+  "reviewStart": "Rozpocznij selekcję",
+  "reviewCancel": "Anuluj zadanie",
+  "modelLabel": "Model"
 }

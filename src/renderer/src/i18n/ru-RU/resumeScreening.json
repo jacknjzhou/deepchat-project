@@ -1,3 +1,23 @@
 {
-  "title": "Скрининг резюме"
+  "title": "Скрининг резюме",
+  "jdSection": "Описание вакансии",
+  "jdTextTab": "Вставить текст",
+  "jdFileTab": "Загрузить файл",
+  "jdTextPlaceholder": "Вставьте описание вакансии",
+  "jdPickFile": "Выбрать файл",
+  "jdFileHint": "Поддерживаются PDF, DOCX, TXT, MD",
+  "jdClearFile": "Убрать файл",
+  "resumeSection": "Файлы резюме",
+  "resumeAdd": "Добавить резюме",
+  "resumeCount": "Выбрано {current}/{limit}",
+  "resumeLimitReached": "Можно добавить не более {limit} резюме",
+  "resumeEmpty": "Резюме пока не добавлены",
+  "resumeRemove": "Убрать",
+  "configSection": "Настройки скрининга",
+  "configGenerateExplanation": "Создавать комментарии к оценке",
+  "configIncludeRawText": "Включать исходный текст резюме",
+  "configMaxConcurrency": "Параллелизм",
+  "reviewStart": "Начать проверку",
+  "reviewCancel": "Отменить задачу",
+  "modelLabel": "Модель"
 }

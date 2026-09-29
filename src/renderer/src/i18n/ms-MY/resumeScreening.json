@@ -1,3 +1,23 @@
 {
-  "title": "Saringan Resume"
+  "title": "Saringan Resume",
+  "jdSection": "Penerangan Jawatan",
+  "jdTextTab": "Tampal Teks",
+  "jdFileTab": "Muat Naik Fail",
+  "jdTextPlaceholder": "Tampal penerangan jawatan",
+  "jdPickFile": "Pilih Fail",
+  "jdFileHint": "Menyokong PDF, DOCX, TXT, MD",
+  "jdClearFile": "Buang Fail",
+  "resumeSection": "Fail Resume",
+  "resumeAdd": "Tambah Resume",
+  "resumeCount": "{current}/{limit} dipilih",
+  "resumeLimitReached": "Anda hanya boleh menambah sehingga {limit} resume",
+  "resumeEmpty": "Tiada resume ditambah lagi",
+  "resumeRemove": "Buang",
+  "configSection": "Tetapan Penapisan",
+  "configGenerateExplanation": "Jana nota ulasan",
+  "configIncludeRawText": "Sertakan teks asal resume",
+  "configMaxConcurrency": "Serentak",
+  "reviewStart": "Mula Penapisan",
+  "reviewCancel": "Batalkan Tugasan",
+  "modelLabel": "Model"
 }

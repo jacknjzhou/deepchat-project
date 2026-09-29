@@ -1,3 +1,23 @@
 {
-  "title": "Triagem de Currículos"
+  "title": "Triagem de Currículos",
+  "jdSection": "Descrição da Vaga",
+  "jdTextTab": "Colar Texto",
+  "jdFileTab": "Enviar Arquivo",
+  "jdTextPlaceholder": "Cole a descrição da vaga",
+  "jdPickFile": "Escolher Arquivo",
+  "jdFileHint": "Suporta PDF, DOCX, TXT, MD",
+  "jdClearFile": "Remover Arquivo",
+  "resumeSection": "Arquivos de Currículo",
+  "resumeAdd": "Adicionar Currículos",
+  "resumeCount": "{current}/{limit} selecionados",
+  "resumeLimitReached": "É possível adicionar até {limit} currículos",
+  "resumeEmpty": "Nenhum currículo adicionado ainda",
+  "resumeRemove": "Remover",
+  "configSection": "Configurações da Triagem",
+  "configGenerateExplanation": "Gerar observações de avaliação",
+  "configIncludeRawText": "Incluir texto original do currículo",
+  "configMaxConcurrency": "Concorrência",
+  "reviewStart": "Iniciar Triagem",
+  "reviewCancel": "Cancelar Tarefa",
+  "modelLabel": "Modelo"
 }

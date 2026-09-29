@@ -1,3 +1,23 @@
 {
-  "title": "이력서 스크리닝"
+  "title": "이력서 스크리닝",
+  "jdSection": "직무 기술",
+  "jdTextTab": "텍스트 붙여넣기",
+  "jdFileTab": "파일 업로드",
+  "jdTextPlaceholder": "직무 기술을 붙여넣으세요",
+  "jdPickFile": "파일 선택",
+  "jdFileHint": "PDF, DOCX, TXT, MD 지원",
+  "jdClearFile": "파일 제거",
+  "resumeSection": "이력서 파일",
+  "resumeAdd": "이력서 추가",
+  "resumeCount": "{current}/{limit}개 선택됨",
+  "resumeLimitReached": "최대 {limit}개의 이력서를 추가할 수 있습니다",
+  "resumeEmpty": "아직 추가된 이력서가 없습니다",
+  "resumeRemove": "제거",
+  "configSection": "스크리닝 설정",
+  "configGenerateExplanation": "검토 의견 생성",
+  "configIncludeRawText": "결과에 이력서 원문 포함",
+  "configMaxConcurrency": "동시 실행 수",
+  "reviewStart": "스크리닝 시작",
+  "reviewCancel": "작업 취소",
+  "modelLabel": "모델"
 }

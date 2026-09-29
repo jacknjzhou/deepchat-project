@@ -1,3 +1,23 @@
 {
-  "title": "Screening dei CV"
+  "title": "Screening dei CV",
+  "jdSection": "Descrizione della Posizione",
+  "jdTextTab": "Incolla Testo",
+  "jdFileTab": "Carica File",
+  "jdTextPlaceholder": "Incolla la descrizione della posizione",
+  "jdPickFile": "Scegli File",
+  "jdFileHint": "Supporta PDF, DOCX, TXT, MD",
+  "jdClearFile": "Rimuovi File",
+  "resumeSection": "File CV",
+  "resumeAdd": "Aggiungi CV",
+  "resumeCount": "{current}/{limit} selezionati",
+  "resumeLimitReached": "Puoi aggiungere al massimo {limit} CV",
+  "resumeEmpty": "Nessun CV aggiunto",
+  "resumeRemove": "Rimuovi",
+  "configSection": "Impostazioni Screening",
+  "configGenerateExplanation": "Genera note di revisione",
+  "configIncludeRawText": "Includi testo originale del CV",
+  "configMaxConcurrency": "Concorrenza",
+  "reviewStart": "Avvia Screening",
+  "reviewCancel": "Annulla Attività",
+  "modelLabel": "Modello"
 }

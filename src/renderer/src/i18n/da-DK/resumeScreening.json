@@ -1,3 +1,23 @@
 {
-  "title": "CV-screening"
+  "title": "CV-screening",
+  "jdSection": "Stillingbeskrivelse",
+  "jdTextTab": "Indsæt tekst",
+  "jdFileTab": "Upload fil",
+  "jdTextPlaceholder": "Indsæt stillingbeskrivelsen",
+  "jdPickFile": "Vælg fil",
+  "jdFileHint": "Understøtter PDF, DOCX, TXT, MD",
+  "jdClearFile": "Fjern fil",
+  "resumeSection": "CV-filer",
+  "resumeAdd": "Tilføj CV'er",
+  "resumeCount": "{current}/{limit} valgt",
+  "resumeLimitReached": "Du kan højst tilføje {limit} CV'er",
+  "resumeEmpty": "Ingen CV'er tilføjet endnu",
+  "resumeRemove": "Fjern",
+  "configSection": "Screening-indstillinger",
+  "configGenerateExplanation": "Generér vurderingsnoter",
+  "configIncludeRawText": "Medtag CV-tekst i resultater",
+  "configMaxConcurrency": "Samtidighed",
+  "reviewStart": "Start screening",
+  "reviewCancel": "Annuller opgave",
+  "modelLabel": "Model"
 }

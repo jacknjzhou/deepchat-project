@@ -1,3 +1,23 @@
 {
-  "title": "简历筛选"
+  "title": "简历筛选",
+  "jdSection": "职位描述",
+  "jdTextTab": "粘贴文本",
+  "jdFileTab": "上传文件",
+  "jdTextPlaceholder": "粘贴职位描述内容",
+  "jdPickFile": "选择文件",
+  "jdFileHint": "支持 PDF、DOCX、TXT、MD",
+  "jdClearFile": "移除文件",
+  "resumeSection": "简历文件",
+  "resumeAdd": "添加简历",
+  "resumeCount": "已选 {current}/{limit}",
+  "resumeLimitReached": "最多只能添加 {limit} 份简历",
+  "resumeEmpty": "尚未添加简历",
+  "resumeRemove": "移除",
+  "configSection": "审阅配置",
+  "configGenerateExplanation": "生成审阅说明",
+  "configIncludeRawText": "结果携带简历原文",
+  "configMaxConcurrency": "并发数",
+  "reviewStart": "开始审阅",
+  "reviewCancel": "取消任务",
+  "modelLabel": "模型"
 }

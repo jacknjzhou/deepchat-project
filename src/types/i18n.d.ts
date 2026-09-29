@@ -2094,6 +2094,26 @@ declare module 'vue-i18n' {
     resetToDefaultSuccess: string
     resetToDefaultFailed: string
     parameterRequired: string
+    jdSection: string
+    jdTextTab: string
+    jdFileTab: string
+    jdTextPlaceholder: string
+    jdPickFile: string
+    jdFileHint: string
+    jdClearFile: string
+    resumeSection: string
+    resumeAdd: string
+    resumeCount: string
+    resumeLimitReached: string
+    resumeEmpty: string
+    resumeRemove: string
+    configSection: string
+    configGenerateExplanation: string
+    configIncludeRawText: string
+    configMaxConcurrency: string
+    reviewStart: string
+    reviewCancel: string
+    modelLabel: string
     chat: string
     plugins: {
       title: string

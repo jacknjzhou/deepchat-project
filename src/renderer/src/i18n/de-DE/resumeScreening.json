@@ -1,3 +1,23 @@
 {
-  "title": "Lebenslauf-Screening"
+  "title": "Lebenslauf-Screening",
+  "jdSection": "Stellenbeschreibung",
+  "jdTextTab": "Text einfügen",
+  "jdFileTab": "Datei hochladen",
+  "jdTextPlaceholder": "Stellenbeschreibung einfügen",
+  "jdPickFile": "Datei auswählen",
+  "jdFileHint": "Unterstützt PDF, DOCX, TXT, MD",
+  "jdClearFile": "Datei entfernen",
+  "resumeSection": "Lebenslauf-Dateien",
+  "resumeAdd": "Lebensläufe hinzufügen",
+  "resumeCount": "{current}/{limit} ausgewählt",
+  "resumeLimitReached": "Es können maximal {limit} Lebensläufe hinzugefügt werden",
+  "resumeEmpty": "Noch keine Lebensläufe hinzugefügt",
+  "resumeRemove": "Entfernen",
+  "configSection": "Screening-Einstellungen",
+  "configGenerateExplanation": "Prüfnotizen erstellen",
+  "configIncludeRawText": "Lebenslauf-Originaltext in Ergebnisse aufnehmen",
+  "configMaxConcurrency": "Parallelität",
+  "reviewStart": "Screening starten",
+  "reviewCancel": "Aufgabe abbrechen",
+  "modelLabel": "Modell"
 }

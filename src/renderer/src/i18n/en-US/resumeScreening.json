@@ -1,3 +1,23 @@
 {
-  "title": "Resume Screening"
+  "title": "Resume Screening",
+  "jdSection": "Job Description",
+  "jdTextTab": "Paste Text",
+  "jdFileTab": "Upload File",
+  "jdTextPlaceholder": "Paste the job description",
+  "jdPickFile": "Choose File",
+  "jdFileHint": "Supports PDF, DOCX, TXT, MD",
+  "jdClearFile": "Remove File",
+  "resumeSection": "Resume Files",
+  "resumeAdd": "Add Resumes",
+  "resumeCount": "{current}/{limit} selected",
+  "resumeLimitReached": "You can add up to {limit} resumes",
+  "resumeEmpty": "No resumes added yet",
+  "resumeRemove": "Remove",
+  "configSection": "Screening Settings",
+  "configGenerateExplanation": "Generate review notes",
+  "configIncludeRawText": "Include resume raw text in results",
+  "configMaxConcurrency": "Concurrency",
+  "reviewStart": "Start Screening",
+  "reviewCancel": "Cancel Task",
+  "modelLabel": "Model"
 }

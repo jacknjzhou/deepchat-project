@@ -1,3 +1,23 @@
 {
-  "title": "履歴書スクリーニング"
+  "title": "履歴書スクリーニング",
+  "jdSection": "職務内容",
+  "jdTextTab": "テキスト貼り付け",
+  "jdFileTab": "ファイルアップロード",
+  "jdTextPlaceholder": "職務内容を貼り付けてください",
+  "jdPickFile": "ファイルを選択",
+  "jdFileHint": "PDF、DOCX、TXT、MD に対応",
+  "jdClearFile": "ファイルを削除",
+  "resumeSection": "履歴書ファイル",
+  "resumeAdd": "履歴書を追加",
+  "resumeCount": "{current}/{limit} 件選択中",
+  "resumeLimitReached": "追加できる履歴書は最大 {limit} 件です",
+  "resumeEmpty": "履歴書はまだ追加されていません",
+  "resumeRemove": "削除",
+  "configSection": "スクリーニング設定",
+  "configGenerateExplanation": "レビューコメントを生成",
+  "configIncludeRawText": "結果に履歴書原文を含める",
+  "configMaxConcurrency": "同時実行数",
+  "reviewStart": "スクリーニング開始",
+  "reviewCancel": "タスクをキャンセル",
+  "modelLabel": "モデル"
 }
