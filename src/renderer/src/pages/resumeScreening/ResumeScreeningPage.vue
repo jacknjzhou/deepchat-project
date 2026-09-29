@@ -36,10 +36,7 @@
         <p v-if="pickNotice" class="text-sm text-destructive" data-testid="pick-notice">
           {{ pickNotice }}
         </p>
-        <ScreeningConfigCard
-          :config="store.draft.config"
-          @update:config="(config) => (store.draft.config = { ...store.draft.config, ...config })"
-        />
+        <!-- 审阅配置不露出 UI：并发固定 5，审阅说明/携带原文默认开启（store 默认值） -->
         <ModelSelector
           v-if="store.models.length > 0"
           :models="store.models"
@@ -97,11 +94,10 @@ import { resumeScreeningApi } from '@api/resumeScreeningTasks'
 import { RESUME_LIMIT, useResumeScreeningStore } from '@/stores/resumeScreening'
 import JdInputCard from './components/JdInputCard.vue'
 import ResumeUploadCard from './components/ResumeUploadCard.vue'
-import ScreeningConfigCard from './components/ScreeningConfigCard.vue'
+import ModelSelector from './components/ModelSelector.vue'
 import ReviewButton from './components/ReviewButton.vue'
 import UserProfileBadge from './components/UserProfileBadge.vue'
 import UserProfileDialog from './components/UserProfileDialog.vue'
-import ModelSelector from './components/ModelSelector.vue'
 import TaskHistoryList from './components/TaskHistoryList.vue'
 import TaskProgressHeader from './components/TaskProgressHeader.vue'
 import JdContentTabs from './components/JdContentTabs.vue'

@@ -2108,9 +2108,6 @@ declare module 'vue-i18n' {
     resumePickTruncated: string
     resumeEmpty: string
     resumeRemove: string
-    configSection: string
-    configGenerateExplanation: string
-    configIncludeRawText: string
     reviewStart: string
     reviewCancel: string
     modelLabel: string
