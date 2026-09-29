@@ -65,7 +65,7 @@
               :class="infoGroups.length === 1 ? 'md:col-span-2' : ''"
             >
               <template v-for="[key, value] in group" :key="key">
-                <span class="text-muted-foreground">{{ key }}</span>
+                <span class="text-muted-foreground">{{ fieldLabel(key) }}</span>
                 <span class="min-w-0 break-words whitespace-pre-line">{{ value.text }}</span>
               </template>
             </div>
@@ -77,7 +77,7 @@
               data-testid="detail-info-wide"
               class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 self-start md:col-span-2"
             >
-              <span class="text-muted-foreground">{{ key }}</span>
+              <span class="text-muted-foreground">{{ fieldLabel(key) }}</span>
               <span class="min-w-0 break-words whitespace-pre-line">{{
                 value.kind === 'lines' ? value.lines.join('\n') : value.text
               }}</span>
@@ -221,6 +221,40 @@ const infoGroups = computed(() => {
 })
 
 const wideEntries = computed(() => infoEntries.value.filter(([, value]) => value.kind !== 'text'))
+
+// LLM 抽取键多为英文 snake_case，映射为中文标签展示；未匹配键原样展示
+const FIELD_LABELS: Record<string, string> = {
+  name: '姓名',
+  gender: '性别',
+  age: '年龄',
+  birth_date: '出生日期',
+  phone: '电话',
+  email: '邮箱',
+  location: '所在地',
+  highest_degree: '最高学历',
+  university: '毕业院校',
+  major: '专业',
+  graduation_date: '毕业年份',
+  work_years: '工作年限',
+  recent_company: '最近任职公司',
+  recent_position: '最近任职职位',
+  expected_position: '期望职位',
+  expected_city: '期望城市',
+  expected_salary: '期望薪资',
+  political_status: '政治面貌',
+  marital_status: '婚姻状况',
+  languages: '语言能力',
+  certificates: '证书',
+  skills: '技能',
+  work_history: '工作经历',
+  education_history: '教育经历',
+  project_history: '项目经历',
+  self_evaluation: '自我评价'
+}
+
+function fieldLabel(key: string): string {
+  return FIELD_LABELS[key] ?? key
+}
 
 // 浏览器内核可直接渲染的格式才内嵌预览；docx 等提示不支持
 const PREVIEWABLE_EXTENSIONS = new Set(['.pdf', '.txt', '.md'])

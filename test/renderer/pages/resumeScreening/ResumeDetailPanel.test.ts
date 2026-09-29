@@ -164,6 +164,24 @@ describe('ResumeDetailPanel', () => {
     expect(wide[2].text()).toContain('—')
   })
 
+  it('已知字段键展示中文标签，未知键原样保留', async () => {
+    wrapper = await setup(
+      makeResume({
+        resumeInfo: {
+          name: '黄桂茂',
+          work_history: [{ company: '阿里云', title: '项目经理' }],
+          custom_field: '自定义值'
+        }
+      })
+    )
+    const info = wrapper.find('[data-testid="detail-info"]')
+    expect(info.text()).toContain('姓名')
+    expect(info.text()).toContain('工作经历')
+    expect(info.text()).not.toContain('work_history')
+    expect(info.text()).not.toContain('name')
+    expect(info.text()).toContain('custom_field')
+  })
+
   it('对象数组渲染为键值文本而非 [object Object]', async () => {
     wrapper = await setup(
       makeResume({
