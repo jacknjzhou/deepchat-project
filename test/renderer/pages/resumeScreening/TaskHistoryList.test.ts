@@ -99,4 +99,52 @@ describe('TaskHistoryList', () => {
     await wrapper.find('[data-testid="history-item-task-1"]').trigger('click')
     expect(wrapper.emitted('select')?.[0]).toEqual(['task-1'])
   })
+
+  it('单页时不显示翻页控件', async () => {
+    wrapper = await setup({
+      tasks: [makeTask({ id: 'task-1' }), makeTask({ id: 'task-2' })],
+      tasksLoaded: true,
+      selectedId: null
+    })
+    expect(wrapper.find('[data-testid="history-pagination"]').exists()).toBe(false)
+  })
+
+  it('超过每页条数时分页显示，首页禁用上一页', async () => {
+    wrapper = await setup({
+      tasks: Array.from({ length: 6 }, (_, i) => makeTask({ id: `task-${i + 1}` })),
+      tasksLoaded: true,
+      selectedId: null
+    })
+    expect(wrapper.findAll('li')).toHaveLength(4)
+    expect(wrapper.find('[data-testid="history-prev"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('[data-testid="history-next"]').attributes('disabled')).toBeUndefined()
+  })
+
+  it('点击下一页显示剩余条目并禁用下一页，上一页可返回', async () => {
+    wrapper = await setup({
+      tasks: Array.from({ length: 6 }, (_, i) => makeTask({ id: `task-${i + 1}` })),
+      tasksLoaded: true,
+      selectedId: null
+    })
+    await wrapper.find('[data-testid="history-next"]').trigger('click')
+    expect(wrapper.findAll('li')).toHaveLength(2)
+    expect(wrapper.find('[data-testid="history-item-task-5"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="history-next"]').attributes('disabled')).toBeDefined()
+
+    await wrapper.find('[data-testid="history-prev"]').trigger('click')
+    expect(wrapper.findAll('li')).toHaveLength(4)
+    expect(wrapper.find('[data-testid="history-item-task-1"]').exists()).toBe(true)
+  })
+
+  it('列表收缩后页码越界时收敛到最后一页', async () => {
+    wrapper = await setup({
+      tasks: Array.from({ length: 6 }, (_, i) => makeTask({ id: `task-${i + 1}` })),
+      tasksLoaded: true,
+      selectedId: null
+    })
+    await wrapper.find('[data-testid="history-next"]').trigger('click')
+    await wrapper.setProps({ tasks: [makeTask({ id: 'task-1' })] })
+    expect(wrapper.findAll('li')).toHaveLength(1)
+    expect(wrapper.find('[data-testid="history-item-task-1"]').exists()).toBe(true)
+  })
 })

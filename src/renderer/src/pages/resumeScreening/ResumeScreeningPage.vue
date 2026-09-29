@@ -72,17 +72,15 @@
         >
           <p class="text-sm text-muted-foreground">{{ t('resumeScreening.detailPanelEmpty') }}</p>
         </div>
-        <div v-else class="flex flex-col gap-4">
+        <div v-else class="flex min-h-0 flex-1 flex-col gap-4">
           <TaskProgressHeader :task="store.currentTask" />
           <JdContentTabs :jd-analysis="store.currentTask.jdAnalysis" />
-          <div class="grid min-h-0 flex-1 grid-cols-[280px_1fr] gap-4">
-            <ResumeListPanel
-              :resumes="store.currentResumes"
-              :selected-id="store.selectedResumeId"
-              @select="store.selectedResumeId = $event"
-            />
-            <ResumeDetailPanel :resume="store.selectedResume" />
-          </div>
+          <ResumeListPanel
+            :resumes="store.currentResumes"
+            :selected-id="store.selectedResumeId"
+            @select="store.selectedResumeId = $event"
+          />
+          <ResumeDetailPanel :resume="store.selectedResume" class="min-h-0 flex-1" />
         </div>
       </section>
     </div>

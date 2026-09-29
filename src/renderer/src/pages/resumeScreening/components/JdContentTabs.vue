@@ -6,7 +6,7 @@
           v-for="tab in TABS"
           :key="tab.key"
           size="xs"
-          :variant="activeTab === tab.key ? 'default' : 'ghost'"
+          :variant="activeTab === tab.key ? 'secondary' : 'ghost'"
           :active="activeTab === tab.key"
           :data-testid="`jd-content-tab-${tab.key}`"
           @click="activeTab = tab.key"

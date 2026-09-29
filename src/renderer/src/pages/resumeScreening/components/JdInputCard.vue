@@ -5,7 +5,7 @@
       <div class="flex items-center gap-1">
         <DcButton
           size="xs"
-          :variant="jdSource === 'text' ? 'default' : 'ghost'"
+          :variant="jdSource === 'text' ? 'secondary' : 'ghost'"
           :active="jdSource === 'text'"
           data-testid="jd-tab-text"
           @click="emit('update:jdSource', 'text')"
@@ -14,7 +14,7 @@
         </DcButton>
         <DcButton
           size="xs"
-          :variant="jdSource === 'file' ? 'default' : 'ghost'"
+          :variant="jdSource === 'file' ? 'secondary' : 'ghost'"
           :active="jdSource === 'file'"
           data-testid="jd-tab-file"
           @click="emit('update:jdSource', 'file')"

@@ -2117,6 +2117,9 @@ declare module 'vue-i18n' {
     modelLabel: string
     historySection: string
     historyEmpty: string
+    historyPrevPage: string
+    historyNextPage: string
+    historyPageIndicator: string
     statusQueued: string
     statusRunning: string
     statusCompleted: string
