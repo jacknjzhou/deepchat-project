@@ -11,6 +11,7 @@
   "resumeAdd": "Özgeçmiş Ekle",
   "resumeCount": "{current}/{limit} seçildi",
   "resumeLimitReached": "En fazla {limit} özgeçmiş ekleyebilirsiniz",
+  "resumePickTruncated": "{limit} sınırına ulaşıldı, {count} eklenmedi",
   "resumeEmpty": "Henüz özgeçmiş eklenmedi",
   "resumeRemove": "Kaldır",
   "configSection": "Eleme Ayarları",

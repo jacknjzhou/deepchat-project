@@ -1,8 +1,4 @@
 import type { z } from 'zod'
-import type {
-  resumeScreeningResumeDtoSchema,
-  resumeScreeningTaskDtoSchema
-} from '@shared/contracts/routes'
 import {
   resumeScreeningCancelTaskRoute,
   resumeScreeningCreateTaskRoute,
@@ -10,6 +6,8 @@ import {
   resumeScreeningGetTaskRoute,
   resumeScreeningListModelsRoute,
   resumeScreeningListTasksRoute,
+  resumeScreeningResumeDtoSchema,
+  resumeScreeningTaskDtoSchema,
   resumeScreeningUpdateProfileRoute
 } from '@shared/contracts/routes'
 import { createRouteMap, type DeepchatRouteMap } from '@/routes/routeRegistry'
@@ -45,8 +43,17 @@ function parseJsonOrNull<T>(raw: string | null): T | null {
   }
 }
 
-export function toResumeScreeningTaskDto(task: ResumeScreeningTaskRow): ResumeScreeningTaskDto {
-  return {
+/** 取首个校验问题作为简要原因，用于跳过坏数据时的日志定位 */
+function describeFirstIssue(error: z.ZodError): string {
+  const issue = error.issues[0]
+  return issue ? `${issue.path.join('.')}: ${issue.message}` : 'unknown'
+}
+
+/** 单条坏数据（如旧版本写入的记录缺字段）只跳过该条，不让整个任务详情/列表抛错 */
+export function toResumeScreeningTaskDto(
+  task: ResumeScreeningTaskRow
+): ResumeScreeningTaskDto | null {
+  const parsed = resumeScreeningTaskDtoSchema.safeParse({
     id: task.id,
     status: task.status as ResumeScreeningTaskStatus,
     jdSource: task.jd_source as ResumeScreeningTaskDto['jdSource'],
@@ -67,14 +74,23 @@ export function toResumeScreeningTaskDto(task: ResumeScreeningTaskRow): ResumeSc
     finishedAt: task.finished_at,
     createdAt: task.created_at,
     updatedAt: task.updated_at
+  })
+  if (!parsed.success) {
+    console.error(
+      '[ResumeScreeningRoutes] 任务 DTO 校验失败，已跳过:',
+      task.id,
+      describeFirstIssue(parsed.error)
+    )
+    return null
   }
+  return parsed.data
 }
 
 export function toResumeScreeningResumeDto(
   resume: ResumeScreeningResumeRow,
   options: { includeRawText: boolean }
-): ResumeScreeningResumeDto {
-  return {
+): ResumeScreeningResumeDto | null {
+  const parsed = resumeScreeningResumeDtoSchema.safeParse({
     id: resume.id,
     taskId: resume.task_id,
     fileName: resume.file_name,
@@ -93,7 +109,17 @@ export function toResumeScreeningResumeDto(
     error: resume.error,
     createdAt: resume.created_at,
     updatedAt: resume.updated_at
+  })
+  if (!parsed.success) {
+    console.error(
+      '[ResumeScreeningRoutes] 简历 DTO 校验失败，已跳过:',
+      resume.task_id,
+      resume.id,
+      describeFirstIssue(parsed.error)
+    )
+    return null
   }
+  return parsed.data
 }
 
 /** 简历筛选域 7 条路由：契约解析输入 → 调用服务 → 契约校验输出 */
@@ -126,23 +152,30 @@ export function createResumeScreeningRoutes(service: ResumeScreeningService): De
         if (!found) {
           return resumeScreeningGetTaskRoute.output.parse({ task: null, resumes: [] })
         }
-        const config =
-          parseJsonOrNull<ResumeScreeningTaskConfig>(found.task.config_json) ?? FALLBACK_CONFIG
-        return resumeScreeningGetTaskRoute.output.parse({
-          task: toResumeScreeningTaskDto(found.task),
-          resumes: found.resumes.map((resume) =>
-            toResumeScreeningResumeDto(resume, { includeRawText: config.includeRawText })
-          )
+        const taskDto = toResumeScreeningTaskDto(found.task)
+        if (!taskDto) {
+          // 任务行本身损坏：返回空详情，避免整个路由抛错导致详情页永久不可加载
+          return resumeScreeningGetTaskRoute.output.parse({ task: null, resumes: [] })
+        }
+        // config 只在任务 DTO 转换处解析一次（损坏时 FALLBACK_CONFIG 隐私默认），简历门控复用其结果
+        const resumes = found.resumes.flatMap((resume) => {
+          const dto = toResumeScreeningResumeDto(resume, {
+            includeRawText: taskDto.config.includeRawText
+          })
+          return dto ? [dto] : []
         })
+        return resumeScreeningGetTaskRoute.output.parse({ task: taskDto, resumes })
       }
     ],
     [
       resumeScreeningListTasksRoute.name,
       async (rawInput) => {
         const input = resumeScreeningListTasksRoute.input.parse(rawInput)
-        return resumeScreeningListTasksRoute.output.parse({
-          tasks: service.listTasks(input.limit).map(toResumeScreeningTaskDto)
-        })
+        const tasks = service
+          .listTasks(input.limit)
+          .map(toResumeScreeningTaskDto)
+          .filter((task): task is ResumeScreeningTaskDto => task !== null)
+        return resumeScreeningListTasksRoute.output.parse({ tasks })
       }
     ],
     [

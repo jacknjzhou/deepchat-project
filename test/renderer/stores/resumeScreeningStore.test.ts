@@ -277,4 +277,61 @@ describe('resumeScreening store', () => {
     store.currentTask = { ...makeTask(), status: 'running' }
     expect(store.canReview).toBe(false)
   })
+
+  it('loadTask 丢弃迟到的旧响应，保留最新任务数据', async () => {
+    const store = useResumeScreeningStore()
+    let resolveSlow: (value: unknown) => void = () => {}
+    getTask.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveSlow = resolve
+        })
+    )
+    const staleLoad = store.loadTask('task-1')
+
+    getTask.mockResolvedValueOnce({
+      task: { ...makeTask(), id: 'task-2' },
+      resumes: [{ ...makeResume(), id: 'resume-2', taskId: 'task-2' }]
+    })
+    await store.loadTask('task-2')
+
+    resolveSlow({ task: makeTask(), resumes: [makeResume()] })
+    await staleLoad
+
+    expect(store.currentTask?.id).toBe('task-2')
+    expect(store.currentResumes[0]?.id).toBe('resume-2')
+  })
+
+  it('loadTasks 失败时记录日志并置 tasksLoaded 解锁空态', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      const store = useResumeScreeningStore()
+      listTasks.mockRejectedValue(new Error('数据库不可用'))
+
+      await store.loadTasks()
+
+      expect(store.tasksLoaded).toBe(true)
+      expect(store.tasks).toEqual([])
+    } finally {
+      errorSpy.mockRestore()
+    }
+  })
+
+  it('loadTask 失败时记录日志并保留原 currentTask 数据', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      const store = useResumeScreeningStore()
+      getTask.mockResolvedValue({ task: makeTask(), resumes: [makeResume()] })
+      await store.loadTask('task-1')
+
+      getTask.mockRejectedValue(new Error('读取失败'))
+      await store.loadTask('task-2')
+
+      expect(store.currentTask?.id).toBe('task-1')
+      expect(store.currentResumes).toHaveLength(1)
+      expect(store.selectedResumeId).toBe('resume-1')
+    } finally {
+      errorSpy.mockRestore()
+    }
+  })
 })

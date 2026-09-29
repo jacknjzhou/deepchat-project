@@ -11,6 +11,7 @@
   "resumeAdd": "افزودن رزومه",
   "resumeCount": "{current}/{limit} انتخاب شد",
   "resumeLimitReached": "حداکثر می‌توانید {limit} رزومه اضافه کنید",
+  "resumePickTruncated": "به سقف {limit} رسیده است، {count} مورد اضافه نشد",
   "resumeEmpty": "هنوز رزومه‌ای اضافه نشده است",
   "resumeRemove": "حذف",
   "configSection": "تنظیمات غربالگری",

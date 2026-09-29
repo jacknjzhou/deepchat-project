@@ -11,6 +11,7 @@
   "resumeAdd": "Adicionar Currículos",
   "resumeCount": "{current}/{limit} selecionados",
   "resumeLimitReached": "É possível adicionar até {limit} currículos",
+  "resumePickTruncated": "Limite de {limit} atingido, {count} não adicionados",
   "resumeEmpty": "Nenhum currículo adicionado ainda",
   "resumeRemove": "Remover",
   "configSection": "Configurações da Triagem",

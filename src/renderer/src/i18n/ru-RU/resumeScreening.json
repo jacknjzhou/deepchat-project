@@ -11,6 +11,7 @@
   "resumeAdd": "Добавить резюме",
   "resumeCount": "Выбрано {current}/{limit}",
   "resumeLimitReached": "Можно добавить не более {limit} резюме",
+  "resumePickTruncated": "Достигнут лимит {limit}, {count} не добавлено",
   "resumeEmpty": "Резюме пока не добавлены",
   "resumeRemove": "Убрать",
   "configSection": "Настройки скрининга",

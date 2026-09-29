@@ -11,6 +11,7 @@
   "resumeAdd": "Tambah Resume",
   "resumeCount": "{current}/{limit} dipilih",
   "resumeLimitReached": "Anda hanya dapat menambah hingga {limit} resume",
+  "resumePickTruncated": "Batas {limit} tercapai, {count} tidak ditambahkan",
   "resumeEmpty": "Belum ada resume yang ditambahkan",
   "resumeRemove": "Hapus",
   "configSection": "Pengaturan Penyaringan",

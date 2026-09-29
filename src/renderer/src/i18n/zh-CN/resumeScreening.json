@@ -11,6 +11,7 @@
   "resumeAdd": "添加简历",
   "resumeCount": "已选 {current}/{limit}",
   "resumeLimitReached": "最多只能添加 {limit} 份简历",
+  "resumePickTruncated": "已达 {limit} 份上限，{count} 份未添加",
   "resumeEmpty": "尚未添加简历",
   "resumeRemove": "移除",
   "configSection": "审阅配置",

@@ -32,6 +32,9 @@
           @pick-files="onPickResumeFiles"
           @remove="removeResume"
         />
+        <p v-if="pickNotice" class="text-sm text-destructive" data-testid="pick-notice">
+          {{ pickNotice }}
+        </p>
         <ScreeningConfigCard
           :config="store.draft.config"
           @update:config="(config) => (store.draft.config = config)"
@@ -85,7 +88,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { createDeviceClient } from '@api/DeviceClient'
 import { resumeScreeningApi } from '@api/resumeScreeningTasks'
@@ -104,6 +107,9 @@ import ResumeDetailPanel from './components/ResumeDetailPanel.vue'
 const { t } = useI18n()
 const deviceClient = createDeviceClient()
 const store = useResumeScreeningStore()
+
+// 选择简历被上限截断时的可见反馈
+const pickNotice = ref('')
 
 // 与 Task 1 契约的扩展名白名单一致
 const FILE_FILTERS = [{ name: 'Documents', extensions: ['pdf', 'docx', 'txt', 'md'] }]
@@ -132,11 +138,15 @@ function basename(filePath: string) {
 }
 
 async function onPickJdFile() {
-  const result = await deviceClient.selectFiles({ multiple: false, filters: FILE_FILTERS })
-  if (result.canceled || result.filePaths.length === 0) return
-  const filePath = result.filePaths[0]
-  store.draft.jdFilePath = filePath
-  store.draft.jdFileName = basename(filePath)
+  try {
+    const result = await deviceClient.selectFiles({ multiple: false, filters: FILE_FILTERS })
+    if (result.canceled || result.filePaths.length === 0) return
+    const filePath = result.filePaths[0]
+    store.draft.jdFilePath = filePath
+    store.draft.jdFileName = basename(filePath)
+  } catch (error) {
+    console.error('[ResumeScreeningPage] select jd file failed', error)
+  }
 }
 
 function clearJdFile() {
@@ -145,19 +155,33 @@ function clearJdFile() {
 }
 
 async function onPickResumeFiles() {
-  const result = await deviceClient.selectFiles({ multiple: true, filters: FILE_FILTERS })
-  if (result.canceled || result.filePaths.length === 0) return
-  const existing = new Set(store.draft.resumes.map((item) => item.path))
-  for (const filePath of result.filePaths) {
-    if (store.draft.resumes.length >= RESUME_LIMIT || existing.has(filePath)) continue
-    existing.add(filePath)
-    store.draft.resumes.push({ path: filePath, name: basename(filePath) })
+  try {
+    const result = await deviceClient.selectFiles({ multiple: true, filters: FILE_FILTERS })
+    if (result.canceled || result.filePaths.length === 0) return
+    const existing = new Set(store.draft.resumes.map((item) => item.path))
+    let limitSkipped = 0
+    for (const filePath of result.filePaths) {
+      if (store.draft.resumes.length >= RESUME_LIMIT) {
+        limitSkipped++
+        continue
+      }
+      if (existing.has(filePath)) continue
+      existing.add(filePath)
+      store.draft.resumes.push({ path: filePath, name: basename(filePath) })
+    }
+    pickNotice.value =
+      limitSkipped > 0
+        ? t('resumeScreening.resumePickTruncated', { count: limitSkipped, limit: RESUME_LIMIT })
+        : ''
+  } catch (error) {
+    console.error('[ResumeScreeningPage] select resume files failed', error)
   }
 }
 
 function removeResume(path: string) {
   const index = store.draft.resumes.findIndex((item) => item.path === path)
   if (index >= 0) store.draft.resumes.splice(index, 1)
+  pickNotice.value = ''
 }
 
 function onSelectModel(key: string) {

@@ -11,6 +11,7 @@
   "resumeAdd": "Lebensläufe hinzufügen",
   "resumeCount": "{current}/{limit} ausgewählt",
   "resumeLimitReached": "Es können maximal {limit} Lebensläufe hinzugefügt werden",
+  "resumePickTruncated": "Limit von {limit} erreicht, {count} nicht hinzugefügt",
   "resumeEmpty": "Noch keine Lebensläufe hinzugefügt",
   "resumeRemove": "Entfernen",
   "configSection": "Screening-Einstellungen",

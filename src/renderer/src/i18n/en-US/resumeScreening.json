@@ -11,6 +11,7 @@
   "resumeAdd": "Add Resumes",
   "resumeCount": "{current}/{limit} selected",
   "resumeLimitReached": "You can add up to {limit} resumes",
+  "resumePickTruncated": "Limit of {limit} reached, {count} not added",
   "resumeEmpty": "No resumes added yet",
   "resumeRemove": "Remove",
   "configSection": "Screening Settings",

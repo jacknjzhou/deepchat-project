@@ -13,7 +13,7 @@ const textareaStub = defineComponent({
   props: ['modelValue', 'placeholder', 'maxlength'],
   emits: ['update:modelValue'],
   template:
-    '<textarea :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />'
+    '<textarea :value="modelValue" :maxlength="maxlength" @input="$emit(\'update:modelValue\', $event.target.value)" />'
 })
 
 async function setup(props: Record<string, unknown>) {
@@ -38,6 +38,11 @@ describe('JdInputCard', () => {
     expect(wrapper.find('[data-testid="jd-text-input"]').exists()).toBe(true)
     await wrapper.get('textarea').setValue('前端工程师')
     expect(wrapper.emitted('update:jdText')?.[0]).toEqual(['前端工程师'])
+  })
+
+  it('文本输入框绑定 60000 字上限', async () => {
+    const wrapper = await setup(baseProps)
+    expect(wrapper.get('textarea').attributes('maxlength')).toBe('60000')
   })
 
   it('点击文件页签切换 jdSource', async () => {

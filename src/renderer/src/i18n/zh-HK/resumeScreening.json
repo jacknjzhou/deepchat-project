@@ -11,6 +11,7 @@
   "resumeAdd": "新增履歷",
   "resumeCount": "已選 {current}/{limit}",
   "resumeLimitReached": "最多只能新增 {limit} 份履歷",
+  "resumePickTruncated": "已達 {limit} 份上限，{count} 份未加入",
   "resumeEmpty": "尚未新增履歷",
   "resumeRemove": "移除",
   "configSection": "審閱設定",

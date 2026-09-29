@@ -11,6 +11,7 @@
   "resumeAdd": "הוספת קורות חיים",
   "resumeCount": "נבחרו {current}/{limit}",
   "resumeLimitReached": "ניתן להוסיף עד {limit} קורות חיים",
+  "resumePickTruncated": "הגעת למגבלה של {limit}, {count} לא נוספו",
   "resumeEmpty": "טרם נוספו קורות חיים",
   "resumeRemove": "הסרה",
   "configSection": "הגדרות סינון",

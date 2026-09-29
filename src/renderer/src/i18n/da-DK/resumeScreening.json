@@ -11,6 +11,7 @@
   "resumeAdd": "Tilføj CV'er",
   "resumeCount": "{current}/{limit} valgt",
   "resumeLimitReached": "Du kan højst tilføje {limit} CV'er",
+  "resumePickTruncated": "Grænsen på {limit} er nået, {count} blev ikke tilføjet",
   "resumeEmpty": "Ingen CV'er tilføjet endnu",
   "resumeRemove": "Fjern",
   "configSection": "Screening-indstillinger",

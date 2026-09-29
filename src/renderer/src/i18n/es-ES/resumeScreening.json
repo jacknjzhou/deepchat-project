@@ -11,6 +11,7 @@
   "resumeAdd": "Añadir CV",
   "resumeCount": "{current}/{limit} seleccionados",
   "resumeLimitReached": "Puedes añadir un máximo de {limit} CV",
+  "resumePickTruncated": "Límite de {limit} alcanzado, {count} no añadidos",
   "resumeEmpty": "Aún no se han añadido CV",
   "resumeRemove": "Quitar",
   "configSection": "Ajustes de Filtrado",

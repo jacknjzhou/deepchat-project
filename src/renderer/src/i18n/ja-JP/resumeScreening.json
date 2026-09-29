@@ -11,6 +11,7 @@
   "resumeAdd": "履歴書を追加",
   "resumeCount": "{current}/{limit} 件選択中",
   "resumeLimitReached": "追加できる履歴書は最大 {limit} 件です",
+  "resumePickTruncated": "上限 {limit} 件に達したため、{count} 件は追加されませんでした",
   "resumeEmpty": "履歴書はまだ追加されていません",
   "resumeRemove": "削除",
   "configSection": "スクリーニング設定",

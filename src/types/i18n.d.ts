@@ -2105,6 +2105,7 @@ declare module 'vue-i18n' {
     resumeAdd: string
     resumeCount: string
     resumeLimitReached: string
+    resumePickTruncated: string
     resumeEmpty: string
     resumeRemove: string
     configSection: string

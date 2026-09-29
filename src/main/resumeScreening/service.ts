@@ -84,8 +84,6 @@ export interface ResumeScreeningServiceDeps {
   now: () => number
 }
 
-const STAGE_KEYS = ['extracting', 'screening', 'interviewing', 'hr'] as const
-
 /** 五角色简历筛选流水线编排：建任务 → JD 解析 → 并发处理简历 → 终态落库与事件发布 */
 export class ResumeScreeningService {
   private readonly abortControllers = new Map<string, AbortController>()
@@ -496,6 +494,3 @@ export class ResumeScreeningService {
     })
   }
 }
-
-// STAGE_KEYS 供后续 DTO 层复用（阶段枚举与事件 stage 一致）
-void STAGE_KEYS

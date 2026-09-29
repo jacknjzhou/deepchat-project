@@ -109,20 +109,30 @@ export const useResumeScreeningStore = defineStore('resumeScreening', () => {
   }
 
   async function loadTasks(client: ResumeScreeningClient = defaultClient) {
-    const result = await client.listTasks(TASK_LIST_LIMIT)
-    tasks.value = result.tasks
-    tasksLoaded.value = true
+    try {
+      const result = await client.listTasks(TASK_LIST_LIMIT)
+      tasks.value = result.tasks
+    } catch (error) {
+      console.error('[ResumeScreeningStore] loadTasks failed', error)
+    } finally {
+      // 失败时也置位，避免任务历史区因 tasksLoaded=false 永久空白死态
+      tasksLoaded.value = true
+    }
   }
 
-  // seq 防乱序：用户切换历史任务时丢弃迟到的旧响应
+  // seq 防乱序：用户切换历史任务时丢弃迟到的旧响应；失败时保留现有数据避免详情闪空白
   async function loadTask(taskId: string, client: ResumeScreeningClient = defaultClient) {
     const seq = ++loadTaskSeq
-    const result = await client.getTask(taskId)
-    if (seq !== loadTaskSeq) return
-    currentTaskId.value = result.task ? taskId : null
-    currentTask.value = result.task
-    currentResumes.value = result.resumes
-    selectedResumeId.value = result.resumes[0]?.id ?? null
+    try {
+      const result = await client.getTask(taskId)
+      if (seq !== loadTaskSeq) return
+      currentTaskId.value = result.task ? taskId : null
+      currentTask.value = result.task
+      currentResumes.value = result.resumes
+      selectedResumeId.value = result.resumes[0]?.id ?? null
+    } catch (error) {
+      console.error('[ResumeScreeningStore] loadTask failed', error)
+    }
   }
 
   async function createTask(client: ResumeScreeningClient = defaultClient) {
@@ -161,7 +171,11 @@ export const useResumeScreeningStore = defineStore('resumeScreening', () => {
   }
 
   async function loadProfile(client: ResumeScreeningClient = defaultClient) {
-    profile.value = (await client.getProfile()).profile
+    try {
+      profile.value = (await client.getProfile()).profile
+    } catch (error) {
+      console.error('[ResumeScreeningStore] loadProfile failed', error)
+    }
   }
 
   async function saveProfile(
@@ -174,14 +188,18 @@ export const useResumeScreeningStore = defineStore('resumeScreening', () => {
   }
 
   async function loadModels(client: ResumeScreeningClient = defaultClient) {
-    models.value = (await client.listModels()).models
-    // 草稿未选模型时默认选中系统默认模型
-    if (!draft.providerId && !draft.modelId) {
-      const preferred = models.value.find((item) => item.isDefault) ?? models.value[0]
-      if (preferred) {
-        draft.providerId = preferred.providerId
-        draft.modelId = preferred.modelId
+    try {
+      models.value = (await client.listModels()).models
+      // 草稿未选模型时默认选中系统默认模型
+      if (!draft.providerId && !draft.modelId) {
+        const preferred = models.value.find((item) => item.isDefault) ?? models.value[0]
+        if (preferred) {
+          draft.providerId = preferred.providerId
+          draft.modelId = preferred.modelId
+        }
       }
+    } catch (error) {
+      console.error('[ResumeScreeningStore] loadModels failed', error)
     }
   }
 

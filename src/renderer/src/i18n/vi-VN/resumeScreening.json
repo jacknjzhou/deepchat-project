@@ -11,6 +11,7 @@
   "resumeAdd": "Thêm hồ sơ",
   "resumeCount": "Đã chọn {current}/{limit}",
   "resumeLimitReached": "Chỉ có thể thêm tối đa {limit} hồ sơ",
+  "resumePickTruncated": "Đã đạt giới hạn {limit}, {count} không được thêm",
   "resumeEmpty": "Chưa thêm hồ sơ nào",
   "resumeRemove": "Gỡ bỏ",
   "configSection": "Cấu hình sàng lọc",

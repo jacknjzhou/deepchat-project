@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type { z } from 'zod'
 import {
   resumeScreeningCancelTaskRoute,
@@ -177,5 +177,78 @@ describe('resumeScreening routes', () => {
     expect(await handler({ taskId: 'other' }, createRendererRouteContext(1, null))).toEqual({
       ok: false
     })
+  })
+
+  it('config_json 损坏时降级为 FALLBACK_CONFIG 隐私默认且不下发原文', async () => {
+    const routes = createResumeScreeningRoutes(
+      makeServiceStub({
+        getTask: () => ({
+          task: makeTaskRow({ config_json: 'not-json' }),
+          resumes: [makeResumeRow()]
+        })
+      })
+    )
+    const handler = routes.get(resumeScreeningGetTaskRoute.name)!
+    const result = (await handler(
+      { taskId: 'task-1' },
+      createRendererRouteContext(1, null)
+    )) as z.infer<typeof resumeScreeningGetTaskRoute.output>
+    expect(result.task?.config).toEqual({
+      generateExplanation: false,
+      includeRawText: false,
+      maxConcurrency: 1
+    })
+    expect(result.resumes[0]?.rawText).toBeNull()
+  })
+
+  it('单条简历 DTO 校验失败时跳过该条并记录日志，不影响其余简历', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      const routes = createResumeScreeningRoutes(
+        makeServiceStub({
+          getTask: () => ({
+            task: makeTaskRow(),
+            resumes: [
+              makeResumeRow({ id: 'resume-bad', screening_json: '{"score":88}' }),
+              makeResumeRow({ id: 'resume-good' })
+            ]
+          })
+        })
+      )
+      const handler = routes.get(resumeScreeningGetTaskRoute.name)!
+      const result = (await handler(
+        { taskId: 'task-1' },
+        createRendererRouteContext(1, null)
+      )) as z.infer<typeof resumeScreeningGetTaskRoute.output>
+      expect(result.resumes.map((resume) => resume.id)).toEqual(['resume-good'])
+      expect(errorSpy).toHaveBeenCalledTimes(1)
+    } finally {
+      errorSpy.mockRestore()
+    }
+  })
+
+  it('任务行 DTO 校验失败时 getTask 返回空详情而非抛错', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      const routes = createResumeScreeningRoutes(
+        makeServiceStub({
+          getTask: () => ({
+            task: makeTaskRow({
+              config_json: '{"generateExplanation":true,"includeRawText":true,"maxConcurrency":99}'
+            }),
+            resumes: [makeResumeRow()]
+          })
+        })
+      )
+      const handler = routes.get(resumeScreeningGetTaskRoute.name)!
+      const result = (await handler(
+        { taskId: 'task-1' },
+        createRendererRouteContext(1, null)
+      )) as z.infer<typeof resumeScreeningGetTaskRoute.output>
+      expect(result).toEqual({ task: null, resumes: [] })
+      expect(errorSpy).toHaveBeenCalledTimes(1)
+    } finally {
+      errorSpy.mockRestore()
+    }
   })
 })
