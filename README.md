@@ -80,6 +80,7 @@
 - [🚀 Project Introduction](#-project-introduction)
 - [💡 Why Choose DeepChat](#-why-choose-deepchat)
 - [🔥 Main Features](#-main-features)
+- [🏢 SRIBD Enterprise Enhancements](#-sribd-enterprise-enhancements)
 - [📼 Tape & Trace](#-tape--trace)
 - [🧠 Skills Support](#-skills-support)
 - [🧩 ACP Integration (Agent Client Protocol)](#-acp-integration-agent-client-protocol)
@@ -185,6 +186,34 @@ Compared to other AI tools, DeepChat offers the following unique advantages:
   - Reasonable architecture, data interaction and UI behavior separation, fully utilizing Electron's capabilities, rejecting simple web wrappers, excellent performance
 
 For more details on how to use these features, see the [documentation index](./docs/README.md).
+
+## 🏢 SRIBD Enterprise Enhancements
+
+This fork ships as **SRIBD Office Agent** and extends upstream DeepChat with the following enterprise-oriented features:
+
+- 📄 **Document Recognition & Archive**
+  - Extraction templates with a visual editor: preset invoice templates plus custom fields, prompts, and a test-extraction panel
+  - Batch recognition tasks with a concurrent queue, live progress, and in-place retry for failed tasks
+  - Smart routing per file: native PDF text extraction, vision-model recognition for scanned pages, and OCR fallback
+  - Field validation with amount cross-checks and invoice-aware extraction prompts
+  - Archive browser with date filters, pagination, detail editing, tabbed source-file preview, and CSV export
+  - Document recognition callable from chat via a built-in agent tool
+- 🧑‍💼 **Resume Screening Assistant**
+  - Create screening tasks from resume files; text extraction and an LLM pipeline produce structured candidate profiles and interview points
+  - Task detail view with tabbed result sections and inline resume source preview
+- 🖼️ **Image Prompt Templates**
+  - Built-in prompt templates for image generation, applied from starter cards and a popover panel in chat
+- 📊 **PPT Master Skill**
+  - Built-in Skill for generating PowerPoint presentations
+- 🏢 **Office Automation Plugin & Baidu Search**
+  - Bundled office automation MCP plugin with Baidu web search integration
+- 🔌 **Model Access Enhancements**
+  - Optional fixed offline provider database via `DEEPCHAT_PROVIDER_DB_OFFLINE`
+  - Multiple instances of the same provider and extra model selection in conversations
+- 🌏 **Localized Built-in Skills**
+  - Chinese-localized GPT-Image-2, PDF image-text extraction, and web-scraper skills
+- ℹ️ **Windows System Information Panel**
+  - The About page shows the current Windows login account's basic identity — username, domain, hostname, home directory, and SID — in a read-only card. Data is read locally only and never uploaded; on macOS/Linux the panel stays hidden.
 
 ## 📼 Tape & Trace
 
