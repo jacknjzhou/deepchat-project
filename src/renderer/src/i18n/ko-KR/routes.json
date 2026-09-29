@@ -29,5 +29,6 @@
   "settings-memory": "메모리",
   "plugins": "Plugins",
   "settings-debug": "디버그",
-  "settings-toolchains": "Toolchains"
+  "settings-toolchains": "Toolchains",
+  "resumeScreening": "이력서 스크리닝"
 }

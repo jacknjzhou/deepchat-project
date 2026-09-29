@@ -29,5 +29,6 @@
   "settings-memory": "Память",
   "plugins": "Plugins",
   "settings-debug": "Debug",
-  "settings-toolchains": "Toolchains"
+  "settings-toolchains": "Toolchains",
+  "resumeScreening": "Скрининг резюме"
 }

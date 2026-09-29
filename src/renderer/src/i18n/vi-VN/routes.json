@@ -29,5 +29,6 @@
   "settings-memory": "Bộ nhớ",
   "plugins": "Plugins",
   "settings-debug": "Debug",
-  "settings-toolchains": "Toolchains"
+  "settings-toolchains": "Toolchains",
+  "resumeScreening": "Sàng lọc hồ sơ"
 }

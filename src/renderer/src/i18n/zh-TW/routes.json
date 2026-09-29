@@ -29,5 +29,6 @@
   "settings-memory": "記憶",
   "plugins": "插件",
   "settings-debug": "偵錯",
-  "settings-toolchains": "工具鏈"
+  "settings-toolchains": "工具鏈",
+  "resumeScreening": "履歷篩選"
 }

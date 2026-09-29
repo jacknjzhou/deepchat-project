@@ -29,5 +29,6 @@
   "settings-overview": "Settings Overview",
   "settings-memory": "Memory",
   "settings-debug": "Debug",
-  "settings-toolchains": "Toolchains"
+  "settings-toolchains": "Toolchains",
+  "resumeScreening": "Resume Screening"
 }

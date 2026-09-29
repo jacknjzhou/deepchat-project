@@ -29,5 +29,6 @@
   "settings-memory": "Memori",
   "plugins": "Plugins",
   "settings-debug": "Debug",
-  "settings-toolchains": "Toolchains"
+  "settings-toolchains": "Toolchains",
+  "resumeScreening": "Penyaringan Resume"
 }

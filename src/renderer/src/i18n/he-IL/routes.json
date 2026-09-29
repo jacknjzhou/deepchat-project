@@ -29,5 +29,6 @@
   "settings-memory": "זיכרון",
   "plugins": "Plugins",
   "settings-debug": "Debug",
-  "settings-toolchains": "Toolchains"
+  "settings-toolchains": "Toolchains",
+  "resumeScreening": "סינון קורות חיים"
 }

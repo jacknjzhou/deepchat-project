@@ -29,5 +29,6 @@
   "settings-memory": "メモリ",
   "plugins": "Plugins",
   "settings-debug": "デバッグ",
-  "settings-toolchains": "Toolchains"
+  "settings-toolchains": "Toolchains",
+  "resumeScreening": "履歴書スクリーニング"
 }

@@ -2335,6 +2335,7 @@ declare module 'vue-i18n' {
     'settings-memory': string
     'settings-debug': string
     'settings-toolchains': string
+    resumeScreening: string
     common: {
       commandShell: {
         title: string
