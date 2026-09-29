@@ -1,6 +1,6 @@
 {
   "input": {
-    "placeholder": "DeepChat에 무엇이든 물어보세요. {'@'}로 파일을 언급하고 /로 명령을 사용할 수 있습니다",
+    "placeholder": "SRIBD Office Agent에 무엇이든 물어보세요. {'@'}로 파일을 언급하고 /로 명령을 사용할 수 있습니다",
     "fileArea": "파일 영역",
     "inputArea": "입력 영역",
     "functionSwitch": "기능 전환",
@@ -33,7 +33,7 @@
     "voiceRecognitionUnsupportedTitle": "현재 환경은 음성 인식을 지원하지 않습니다",
     "voiceRecognitionUnsupportedDescription": "음성 인식을 지원하는 브라우저 또는 데스크톱 환경에서 이 기능을 사용하세요.",
     "voiceRecognitionPermissionDeniedTitle": "마이크에 접근할 수 없습니다",
-    "voiceRecognitionPermissionDeniedDescription": "DeepChat이 마이크를 사용할 수 있도록 허용한 뒤 다시 시도하세요.",
+    "voiceRecognitionPermissionDeniedDescription": "SRIBD Office Agent이 마이크를 사용할 수 있도록 허용한 뒤 다시 시도하세요.",
     "voiceRecognitionErrorTitle": "음성 인식 실패",
     "voiceRecognitionErrorDescription": "음성 인식을 완료하지 못했습니다. 잠시 후 다시 시도하세요.",
     "send": "보내기",
@@ -59,7 +59,7 @@
         "agentCore": "Agent Core",
         "agentImageGeneration": "이미지 생성",
         "agentSkills": "Agent Skills",
-        "deepchatSettings": "DeepChat Settings",
+        "deepchatSettings": "SRIBD Office Agent Settings",
         "yobrowser": "YoBrowser"
       }
     },
@@ -391,6 +391,63 @@
     "addWorkspaceFailed": "작업 공간을 추가하지 못했습니다",
     "searchLoadedRangeDescription": "불러온 대화의 일치 항목을 표시하고 있습니다. 스크롤하여 이전 기록을 더 불러오세요."
   },
+  "imageTemplates": {
+    "button": "템플릿",
+    "panelTitle": "프롬프트 템플릿",
+    "tabFeatured": "추천",
+    "tabMine": "내 템플릿",
+    "add": "새 템플릿",
+    "edit": "편집",
+    "delete": "삭제",
+    "deleteConfirmTitle": "템플릿 삭제",
+    "deleteConfirmDescription": "\"{title}\"을(를) 삭제할까요? 이 작업은 되돌릴 수 없습니다.",
+    "limitReached": "최대 {max}개까지 저장할 수 있어요",
+    "emptyMine": "아직 사용자 지정 템플릿이 없어요",
+    "emptyMineHint": "\"새 템플릿\"을 눌러 첫 템플릿을 만들어 보세요",
+    "emptyCardsHint": "템플릿으로 시작해 보세요",
+    "cancel": "취소",
+    "save": "저장",
+    "formTitle": "제목",
+    "formTitlePlaceholder": "예：사이버펑크 아바타",
+    "formPrompt": "프롬프트",
+    "formPromptPlaceholder": "생성하고 싶은 이미지를 설명하세요…",
+    "formSize": "크기",
+    "formQuality": "품질",
+    "sizeDefault": "기본값",
+    "qualityDefault": "기본값",
+    "titleRequired": "제목을 입력하세요",
+    "promptRequired": "프롬프트를 입력하세요",
+    "builtin": {
+      "design": {
+        "title": "디자인",
+        "prompt": "Design a minimalist brand logo for a sustainable travel product, earthy color palette with geometric lines, modern and restrained, highly recognizable, white background, vector style"
+      },
+      "commodity": {
+        "title": "상품 사진",
+        "prompt": "Commercial product photography of a perfume bottle on light marble, soft natural light from the left, blurred background, premium feel, clean composition, 8k detail"
+      },
+      "poster": {
+        "title": "포스터",
+        "prompt": "A music festival promo poster, bold Memphis-style geometric shapes, high-saturation contrasting colors, striking whitespace layout, retro print texture, portrait composition"
+      },
+      "beautify": {
+        "title": "사진 보정",
+        "prompt": "Elevate the photo to magazine quality: enhance detail and depth, balance light and shadow, natural transparent colors, keep the original composition, no over-sharpening"
+      },
+      "portrait": {
+        "title": "인물 사진",
+        "prompt": "Indoor natural-light portrait of a young woman, side profile close-up, soft window light, shallow depth of field, film grain, warm tones, lifelike texture"
+      },
+      "style": {
+        "title": "스타일",
+        "prompt": "A futuristic city street scene in hand-painted Ghibli anime style, soft afternoon light, layered clouds, rich detail, healing atmosphere"
+      },
+      "photorealistic": {
+        "title": "실사 사진",
+        "prompt": "A mountain lake in morning mist, hyper-realistic landscape photography, shot on Canon EOS R5, 35mm wide angle, f/8, natural colors, razor-sharp detail"
+      }
+    }
+  },
   "floatingWidget": {
     "title": "작업 개요",
     "collapse": "플로팅 세션 접기",
@@ -430,12 +487,12 @@
   },
   "onboarding": {
     "agentSwitch": {
-      "title": "DeepChat 에이전트로 전환",
-      "description": "채팅을 시작하기 전에 ACP에서 전환하여 내장된 DeepChat 흐름으로 돌아가세요.",
+      "title": "SRIBD Office Agent 에이전트로 전환",
+      "description": "채팅을 시작하기 전에 ACP에서 전환하여 내장된 SRIBD Office Agent 흐름으로 돌아가세요.",
       "caption": "계속하려면 사이드바에서 강조된 에이전트 버튼을 클릭하세요."
     },
     "switchModel": {
-      "description": "첫 번째 DeepChat 대화에 사용할 모델을 선택하세요.",
+      "description": "첫 번째 SRIBD Office Agent 대화에 사용할 모델을 선택하세요.",
       "caption": "강조된 모델 전환기를 사용해 사용 가능한 모델을 선택하세요."
     },
     "firstChat": {
@@ -612,7 +669,7 @@
       "reasons": {
         "session_unavailable": "이 세션은 더 이상 사용할 수 없습니다.",
         "agent_unavailable": "선택한 Agent를 사용할 수 없습니다.",
-        "deepchat_agent_required": "능동형 협업에는 DeepChat Agent가 필요합니다.",
+        "deepchat_agent_required": "능동형 협업에는 SRIBD Office Agent가 필요합니다.",
         "regular_parent_required": "하위 세션에서는 능동형 협업을 사용할 수 없습니다.",
         "agent_policy_unavailable": "협업 정책을 불러오지 못했습니다.",
         "subagents_disabled": "능동형 협업을 사용하려면 이 Agent의 Subagent를 활성화하세요."

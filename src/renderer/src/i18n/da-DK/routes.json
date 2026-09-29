@@ -10,6 +10,9 @@
   "settings-about": "Om",
   "settings-shortcut": "Genveje",
   "settings-display": "Skærm",
+  "settings-documents": "Dokumentgenkendelse",
+  "settings-documents-template": "Skabeloneditor",
+  "documents": "Dokumentarkiv",
   "settings-knowledge-base": "Vidensbase",
   "settings-prompt": "Prompter",
   "settings-mcp-market": "MCP-marked",
@@ -20,11 +23,12 @@
   "settings-dashboard": "Dashboard",
   "settings-environments": "Miljøer",
   "settings-remote": "Fjernstyring",
-  "settings-deepchat-agents": "DeepChat-agenter",
+  "settings-deepchat-agents": "SRIBD Office Agent-agenter",
   "settings-plugins": "Plugins",
   "settings-overview": "Indstillingsoversigt",
   "settings-memory": "Hukommelse",
   "plugins": "Plugins",
   "settings-debug": "Debug",
-  "settings-toolchains": "Toolchains"
+  "settings-toolchains": "Toolchains",
+  "resumeScreening": "CV-screening"
 }

@@ -16,6 +16,7 @@ import {
   providersImportApplyRoute,
   providersImportScanRoute,
   providersListDefaultsRoute,
+  providersListGroupsRoute,
   providersListModelsRoute,
   providersListOllamaModelsRoute,
   providersListOllamaRunningModelsRoute,
@@ -42,6 +43,7 @@ import type {
   ModelScopeMcpSyncResult
 } from '@shared/types/provider'
 import type { AcpDebugEventEntry, AcpDebugRequest, AcpDebugRunResult } from '@shared/types/acp'
+import type { ProviderGroupMeta } from '@shared/types/provider'
 import { getDeepchatBridge } from './core'
 
 type ProviderModelScopeMcpSyncOptions = ModelScopeMcpSyncOptions & {
@@ -63,6 +65,11 @@ export function createProviderClient(bridge: DeepchatBridge = getDeepchatBridge(
   async function getDefaultProviders() {
     const result = await bridge.invoke(providersListDefaultsRoute.name, {})
     return result.providers
+  }
+
+  async function getProviderGroups(): Promise<ProviderGroupMeta[]> {
+    const result = await bridge.invoke(providersListGroupsRoute.name, {})
+    return result.groups
   }
 
   async function setProviderById(providerId: string, provider: LLM_PROVIDER) {
@@ -298,6 +305,7 @@ export function createProviderClient(bridge: DeepchatBridge = getDeepchatBridge(
     getProviders,
     getProviderSummaries,
     getDefaultProviders,
+    getProviderGroups,
     setProviderById,
     updateProviderAtomic,
     addProviderAtomic,

@@ -1,4 +1,64 @@
-import type { LLM_PROVIDER_BASE } from '@shared/types/provider'
+import type { LLM_PROVIDER_BASE, ProviderGroupMeta } from '@shared/types/provider'
+
+/**
+ * Static metadata for provider *groups* (the logical families users see in
+ * the sidebar). A group is the bucket that holds multiple `LLM_PROVIDER`
+ * instances of the same underlying service (e.g. two OpenAI accounts).
+ *
+ * - `id` matches `LLM_PROVIDER.capabilityProviderId` for built-in families.
+ * - `icon` is a lucide icon name used by the sidebar group header.
+ * - `order` controls sidebar group ordering; gaps are reserved for future
+ *   additions so new groups slot in without renumbering.
+ * - `description` is shown next to the group name on hover.
+ *
+ * Groups are *display-only* metadata. They never gate IPC, persistence,
+ * or model selection. If a provider family has no entry here, the UI falls
+ * back to the provider's own `name` and `capabilityProviderId ?? id`.
+ */
+export const PROVIDER_GROUPS: ProviderGroupMeta[] = [
+  {
+    id: 'openai',
+    displayName: 'OpenAI',
+    icon: 'lucide:brain',
+    order: 10,
+    description: 'OpenAI / Azure OpenAI / OpenAI-compatible'
+  },
+  {
+    id: 'anthropic',
+    displayName: 'Anthropic',
+    icon: 'lucide:sparkles',
+    order: 20,
+    description: 'Anthropic Claude'
+  },
+  {
+    id: 'google',
+    displayName: 'Google',
+    icon: 'lucide:globe',
+    order: 30,
+    description: 'Google Gemini / Vertex AI'
+  },
+  {
+    id: 'deepseek',
+    displayName: 'DeepSeek',
+    icon: 'lucide:layers',
+    order: 40,
+    description: 'DeepSeek'
+  },
+  {
+    id: 'ollama',
+    displayName: 'Ollama',
+    icon: 'lucide:server',
+    order: 50,
+    description: 'Local Ollama runtime'
+  },
+  {
+    id: 'openai-completions',
+    displayName: 'OpenAI-compatible',
+    icon: 'lucide:plug',
+    order: 60,
+    description: 'Generic OpenAI-compatible endpoints'
+  }
+]
 
 export const DEFAULT_PROVIDERS: LLM_PROVIDER_BASE[] = [
   {
@@ -31,96 +91,96 @@ export const DEFAULT_PROVIDERS: LLM_PROVIDER_BASE[] = [
       defaultBaseUrl: 'https://api.deepseek.com/v1'
     }
   },
-  {
-    id: 'runinfra',
-    name: 'RunInfra',
-    apiType: 'openai-completions',
-    apiKey: '',
-    baseUrl: 'https://api.runinfra.ai/v1',
-    enable: false,
-    websites: {
-      official: 'https://runinfra.ai/',
-      apiKey: 'https://runinfra.ai/settings/api-keys',
-      docs: 'https://runinfra.ai/docs/api-reference/model-apis-quickstart',
-      models: 'https://runinfra.ai/inference-api',
-      defaultBaseUrl: 'https://api.runinfra.ai/v1'
-    }
-  },
-  {
-    id: 'greenpt',
-    name: 'GreenPT',
-    apiType: 'openai-completions',
-    apiKey: '',
-    baseUrl: 'https://api.greenpt.ai/v1',
-    enable: false,
-    websites: {
-      official: 'https://greenpt.com/',
-      apiKey: 'https://account.greenpt.ai/api/keys',
-      docs: 'https://docs.greenpt.ai/get-started',
-      models: 'https://api.greenpt.ai/v1/models',
-      defaultBaseUrl: 'https://api.greenpt.ai/v1'
-    }
-  },
-  {
-    id: 'amd-developer',
-    name: 'AMD GPU Cloud',
-    apiType: 'openai-completions',
-    apiKey: '',
-    baseUrl: 'https://developer.amd.com.cn/radeon/api/v1',
-    enable: false,
-    websites: {
-      official: 'https://developer.amd.com.cn/radeon/',
-      apiKey: 'https://developer.amd.com.cn/radeon/tokenfactory?source=deepchat',
-      docs: 'https://developer.amd.com.cn/radeon/',
-      models: 'https://developer.amd.com.cn/radeon/tokenfactory?source=deepchat',
-      defaultBaseUrl: 'https://developer.amd.com.cn/radeon/api/v1'
-    }
-  },
-  {
-    id: 'apimart',
-    name: 'APIMart',
-    apiType: 'apimart',
-    apiKey: '',
-    baseUrl: 'https://api.apimart.ai/v1',
-    enable: false,
-    websites: {
-      official: 'https://apimart.ai/zh',
-      apiKey: 'https://apimart.ai/zh/keys',
-      docs: 'https://docs.apimart.ai/cn',
-      models: 'https://docs.apimart.ai/cn/api-reference/texts/models/list',
-      defaultBaseUrl: 'https://api.apimart.ai/v1'
-    }
-  },
-  {
-    id: 'qiniu',
-    name: 'Qiniu',
-    apiType: 'openai-completions',
-    apiKey: '',
-    baseUrl: 'https://api.qnaigc.com/v1',
-    enable: false,
-    websites: {
-      official: 'https://www.qiniu.com',
-      apiKey: 'https://developer.qiniu.com/aitokenapi/12884/how-to-get-api-key',
-      docs: 'https://developer.qiniu.com/aitokenapi',
-      models: 'https://developer.qiniu.com/aitokenapi/12883/model-list',
-      defaultBaseUrl: 'https://api.qnaigc.com/v1'
-    }
-  },
-  {
-    id: 'silicon',
-    name: 'SiliconFlow',
-    apiType: 'silicon',
-    apiKey: '',
-    baseUrl: 'https://api.siliconflow.cn/v1',
-    enable: false,
-    websites: {
-      official: 'https://www.siliconflow.cn/',
-      apiKey: 'https://cloud.siliconflow.cn/account/ak',
-      docs: 'https://docs.siliconflow.cn/',
-      models: 'https://docs.siliconflow.cn/docs/model-names',
-      defaultBaseUrl: 'https://api.siliconflow.cn/v1'
-    }
-  },
+  // {
+  //   id: 'runinfra',
+  //   name: 'RunInfra',
+  //   apiType: 'openai-completions',
+  //   apiKey: '',
+  //   baseUrl: 'https://api.runinfra.ai/v1',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://runinfra.ai/',
+  //     apiKey: 'https://runinfra.ai/settings/api-keys',
+  //     docs: 'https://runinfra.ai/docs/api-reference/model-apis-quickstart',
+  //     models: 'https://runinfra.ai/inference-api',
+  //     defaultBaseUrl: 'https://api.runinfra.ai/v1'
+  //   }
+  // },
+  // {
+  //   id: 'greenpt',
+  //   name: 'GreenPT',
+  //   apiType: 'openai-completions',
+  //   apiKey: '',
+  //   baseUrl: 'https://api.greenpt.ai/v1',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://greenpt.com/',
+  //     apiKey: 'https://account.greenpt.ai/api/keys',
+  //     docs: 'https://docs.greenpt.ai/get-started',
+  //     models: 'https://api.greenpt.ai/v1/models',
+  //     defaultBaseUrl: 'https://api.greenpt.ai/v1'
+  //   }
+  // },
+  // {
+  //   id: 'amd-developer',
+  //   name: 'AMD GPU Cloud',
+  //   apiType: 'openai-completions',
+  //   apiKey: '',
+  //   baseUrl: 'https://developer.amd.com.cn/radeon/api/v1',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://developer.amd.com.cn/radeon/',
+  //     apiKey: 'https://developer.amd.com.cn/radeon/tokenfactory?source=deepchat',
+  //     docs: 'https://developer.amd.com.cn/radeon/',
+  //     models: 'https://developer.amd.com.cn/radeon/tokenfactory?source=deepchat',
+  //     defaultBaseUrl: 'https://developer.amd.com.cn/radeon/api/v1'
+  //   }
+  // },
+  // {
+  //   id: 'apimart',
+  //   name: 'APIMart',
+  //   apiType: 'apimart',
+  //   apiKey: '',
+  //   baseUrl: 'https://api.apimart.ai/v1',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://apimart.ai/zh',
+  //     apiKey: 'https://apimart.ai/zh/keys',
+  //     docs: 'https://docs.apimart.ai/cn',
+  //     models: 'https://docs.apimart.ai/cn/api-reference/texts/models/list',
+  //     defaultBaseUrl: 'https://api.apimart.ai/v1'
+  //   }
+  // },
+  // {
+  //   id: 'qiniu',
+  //   name: 'Qiniu',
+  //   apiType: 'openai-completions',
+  //   apiKey: '',
+  //   baseUrl: 'https://api.qnaigc.com/v1',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://www.qiniu.com',
+  //     apiKey: 'https://developer.qiniu.com/aitokenapi/12884/how-to-get-api-key',
+  //     docs: 'https://developer.qiniu.com/aitokenapi',
+  //     models: 'https://developer.qiniu.com/aitokenapi/12883/model-list',
+  //     defaultBaseUrl: 'https://api.qnaigc.com/v1'
+  //   }
+  // },
+  // {
+  //   id: 'silicon',
+  //   name: 'SiliconFlow',
+  //   apiType: 'silicon',
+  //   apiKey: '',
+  //   baseUrl: 'https://api.siliconflow.cn/v1',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://www.siliconflow.cn/',
+  //     apiKey: 'https://cloud.siliconflow.cn/account/ak',
+  //     docs: 'https://docs.siliconflow.cn/',
+  //     models: 'https://docs.siliconflow.cn/docs/model-names',
+  //     defaultBaseUrl: 'https://api.siliconflow.cn/v1'
+  //   }
+  // },
   // {
   //   id: 'qwenlm',
   //   name: 'QwenLM',
@@ -137,117 +197,117 @@ export const DEFAULT_PROVIDERS: LLM_PROVIDER_BASE[] = [
   //   }
   // },
 
-  {
-    id: 'ppio',
-    name: 'PPIO',
-    apiType: 'openai-completions',
-    apiKey: '',
-    baseUrl: 'https://api.ppinfra.com/v3/openai',
-    enable: false,
-    websites: {
-      official: 'https://ppinfra.com/',
-      apiKey: 'https://ppinfra.com/settings/key-management',
-      docs: 'https://ppinfra.com/docs/get-started/quickstart.html',
-      models: 'https://ppinfra.com/model-api/console',
-      defaultBaseUrl: 'https://api.ppinfra.com/v3/openai'
-    }
-  },
+  // {
+  //   id: 'ppio',
+  //   name: 'PPIO',
+  //   apiType: 'openai-completions',
+  //   apiKey: '',
+  //   baseUrl: 'https://api.ppinfra.com/v3/openai',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://ppinfra.com/',
+  //     apiKey: 'https://ppinfra.com/settings/key-management',
+  //     docs: 'https://ppinfra.com/docs/get-started/quickstart.html',
+  //     models: 'https://ppinfra.com/model-api/console',
+  //     defaultBaseUrl: 'https://api.ppinfra.com/v3/openai'
+  //   }
+  // },
 
-  {
-    id: 'jiekou',
-    name: 'JieKou.AI',
-    apiType: 'jiekou',
-    apiKey: '',
-    baseUrl: 'https://api.jiekou.ai/openai',
-    enable: false,
-    websites: {
-      official: 'https://jiekou.ai?utm_source=github_deepchat',
-      apiKey: 'https://jiekou.ai/settings/key-management?utm_source=github_deepchat',
-      docs: 'https://docs.jiekou.ai/docs/support/quickstart?utm_source=github_deepchat',
-      models: 'https://jiekou.ai/?utm_source=github_deepchat',
-      defaultBaseUrl: 'https://api.jiekou.ai/openai'
-    }
-  },
+  // {
+  //   id: 'jiekou',
+  //   name: 'JieKou.AI',
+  //   apiType: 'jiekou',
+  //   apiKey: '',
+  //   baseUrl: 'https://api.jiekou.ai/openai',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://jiekou.ai?utm_source=github_deepchat',
+  //     apiKey: 'https://jiekou.ai/settings/key-management?utm_source=github_deepchat',
+  //     docs: 'https://docs.jiekou.ai/docs/support/quickstart?utm_source=github_deepchat',
+  //     models: 'https://jiekou.ai/?utm_source=github_deepchat',
+  //     defaultBaseUrl: 'https://api.jiekou.ai/openai'
+  //   }
+  // },
 
-  {
-    id: 'zenmux',
-    name: 'ZenMux',
-    apiType: 'zenmux',
-    apiKey: '',
-    baseUrl: 'https://zenmux.ai/api/v1/',
-    enable: false,
-    websites: {
-      official: 'https://zenmux.ai/',
-      apiKey: 'https://zenmux.ai/settings/keys',
-      docs: 'https://docs.zenmux.ai/api/openai/create-chat-completion.html',
-      models: 'https://docs.zenmux.ai/api/openai/create-chat-completion.html',
-      defaultBaseUrl: 'https://zenmux.ai/api/v1/'
-    }
-  },
+  // {
+  //   id: 'zenmux',
+  //   name: 'ZenMux',
+  //   apiType: 'zenmux',
+  //   apiKey: '',
+  //   baseUrl: 'https://zenmux.ai/api/v1/',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://zenmux.ai/',
+  //     apiKey: 'https://zenmux.ai/settings/keys',
+  //     docs: 'https://docs.zenmux.ai/api/openai/create-chat-completion.html',
+  //     models: 'https://docs.zenmux.ai/api/openai/create-chat-completion.html',
+  //     defaultBaseUrl: 'https://zenmux.ai/api/v1/'
+  //   }
+  // },
 
-  {
-    id: 'tokenflux',
-    name: 'TokenFlux',
-    apiType: 'openai-completions',
-    apiKey: '',
-    baseUrl: 'https://tokenflux.ai/v1',
-    enable: false,
-    websites: {
-      official: 'https://tokenflux.ai/',
-      apiKey: 'https://tokenflux.ai/dashboard/api-keys',
-      docs: 'https://docs.tokenflux.ai/',
-      models: 'https://docs.tokenflux.ai/api-reference',
-      defaultBaseUrl: 'https://tokenflux.ai/v1'
-    }
-  },
+  // {
+  //   id: 'tokenflux',
+  //   name: 'TokenFlux',
+  //   apiType: 'openai-completions',
+  //   apiKey: '',
+  //   baseUrl: 'https://tokenflux.ai/v1',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://tokenflux.ai/',
+  //     apiKey: 'https://tokenflux.ai/dashboard/api-keys',
+  //     docs: 'https://docs.tokenflux.ai/',
+  //     models: 'https://docs.tokenflux.ai/api-reference',
+  //     defaultBaseUrl: 'https://tokenflux.ai/v1'
+  //   }
+  // },
 
-  {
-    id: 'tokenlab',
-    name: 'TokenLab',
-    apiType: 'openai-completions',
-    apiKey: '',
-    baseUrl: 'https://api.tokenlab.sh/v1',
-    enable: false,
-    websites: {
-      official: 'https://tokenlab.sh/',
-      apiKey: 'https://tokenlab.sh/dashboard',
-      docs: 'https://docs.tokenlab.sh/',
-      models: 'https://api.tokenlab.sh/v1/models',
-      defaultBaseUrl: 'https://api.tokenlab.sh/v1'
-    }
-  },
+  // {
+  //   id: 'tokenlab',
+  //   name: 'TokenLab',
+  //   apiType: 'openai-completions',
+  //   apiKey: '',
+  //   baseUrl: 'https://api.tokenlab.sh/v1',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://tokenlab.sh/',
+  //     apiKey: 'https://tokenlab.sh/dashboard',
+  //     docs: 'https://docs.tokenlab.sh/',
+  //     models: 'https://api.tokenlab.sh/v1/models',
+  //     defaultBaseUrl: 'https://api.tokenlab.sh/v1'
+  //   }
+  // },
 
-  {
-    id: 'daoxe',
-    name: 'DaoXE',
-    apiType: 'openai-completions',
-    apiKey: '',
-    baseUrl: 'https://daoxe.com/v1',
-    enable: false,
-    websites: {
-      official: 'https://daoxe.com/',
-      apiKey: 'https://daoxe.com/token',
-      docs: 'https://github.com/seven7763/DaoXE-AI',
-      models: 'https://daoxe.com/pricing',
-      defaultBaseUrl: 'https://daoxe.com/v1'
-    }
-  },
+  // {
+  //   id: 'daoxe',
+  //   name: 'DaoXE',
+  //   apiType: 'openai-completions',
+  //   apiKey: '',
+  //   baseUrl: 'https://daoxe.com/v1',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://daoxe.com/',
+  //     apiKey: 'https://daoxe.com/token',
+  //     docs: 'https://github.com/seven7763/DaoXE-AI',
+  //     models: 'https://daoxe.com/pricing',
+  //     defaultBaseUrl: 'https://daoxe.com/v1'
+  //   }
+  // },
 
-  {
-    id: 'burncloud',
-    name: 'BurnCloud',
-    apiType: 'openai-completions',
-    apiKey: '',
-    baseUrl: 'https://ai.burncloud.com',
-    enable: false,
-    websites: {
-      official: 'https://www.burncloud.com/',
-      apiKey: 'https://ai.burncloud.com/api/usage/token/',
-      docs: 'https://docs.burncloud.com',
-      models: 'https://ai.burncloud.com/v1/models',
-      defaultBaseUrl: 'https://ai.burncloud.com'
-    }
-  },
+  // {
+  //   id: 'burncloud',
+  //   name: 'BurnCloud',
+  //   apiType: 'openai-completions',
+  //   apiKey: '',
+  //   baseUrl: 'https://ai.burncloud.com',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://www.burncloud.com/',
+  //     apiKey: 'https://ai.burncloud.com/api/usage/token/',
+  //     docs: 'https://docs.burncloud.com',
+  //     models: 'https://ai.burncloud.com/v1/models',
+  //     defaultBaseUrl: 'https://ai.burncloud.com'
+  //   }
+  // },
 
   {
     id: 'openai-responses',
@@ -264,51 +324,51 @@ export const DEFAULT_PROVIDERS: LLM_PROVIDER_BASE[] = [
       defaultBaseUrl: 'https://api.openai.com/v1'
     }
   },
-  {
-    id: 'openai-codex',
-    name: 'OpenAI Codex',
-    apiType: 'openai-codex',
-    apiKey: '',
-    baseUrl: 'https://chatgpt.com/backend-api/codex',
-    enable: false,
-    websites: {
-      official: 'https://developers.openai.com/codex',
-      apiKey: 'https://chatgpt.com/codex',
-      docs: 'https://developers.openai.com/codex/auth',
-      models: 'https://developers.openai.com/codex/models',
-      defaultBaseUrl: 'https://chatgpt.com/backend-api/codex'
-    }
-  },
-  {
-    id: 'acp',
-    name: 'ACP',
-    apiType: 'acp',
-    apiKey: '',
-    baseUrl: '',
-    enable: false,
-    websites: {
-      official: 'https://agentclientprotocol.com',
-      apiKey: '',
-      docs: 'https://agentclientprotocol.com',
-      models: 'https://agentclientprotocol.com',
-      defaultBaseUrl: ''
-    }
-  },
-  {
-    id: 'cherryin',
-    name: 'CherryIn',
-    apiType: 'cherryin',
-    apiKey: '',
-    baseUrl: 'https://open.cherryin.ai/v1',
-    enable: false,
-    websites: {
-      official: 'https://open.cherryin.ai/console',
-      apiKey: 'https://open.cherryin.ai/console',
-      docs: 'https://docs.newapi.pro/api/openai-responses/',
-      models: 'https://docs.newapi.pro/api/openai-responses/',
-      defaultBaseUrl: 'https://open.cherryin.ai/v1'
-    }
-  },
+  // {
+  //   id: 'openai-codex',
+  //   name: 'OpenAI Codex',
+  //   apiType: 'openai-codex',
+  //   apiKey: '',
+  //   baseUrl: 'https://chatgpt.com/backend-api/codex',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://developers.openai.com/codex',
+  //     apiKey: 'https://chatgpt.com/codex',
+  //     docs: 'https://developers.openai.com/codex/auth',
+  //     models: 'https://developers.openai.com/codex/models',
+  //     defaultBaseUrl: 'https://chatgpt.com/backend-api/codex'
+  //   }
+  // },
+  // {
+  //   id: 'acp',
+  //   name: 'ACP',
+  //   apiType: 'acp',
+  //   apiKey: '',
+  //   baseUrl: '',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://agentclientprotocol.com',
+  //     apiKey: '',
+  //     docs: 'https://agentclientprotocol.com',
+  //     models: 'https://agentclientprotocol.com',
+  //     defaultBaseUrl: ''
+  //   }
+  // },
+  // {
+  //   id: 'cherryin',
+  //   name: 'CherryIn',
+  //   apiType: 'cherryin',
+  //   apiKey: '',
+  //   baseUrl: 'https://open.cherryin.ai/v1',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://open.cherryin.ai/console',
+  //     apiKey: 'https://open.cherryin.ai/console',
+  //     docs: 'https://docs.newapi.pro/api/openai-responses/',
+  //     models: 'https://docs.newapi.pro/api/openai-responses/',
+  //     defaultBaseUrl: 'https://open.cherryin.ai/v1'
+  //   }
+  // },
   {
     id: 'new-api',
     name: 'New API',
@@ -339,21 +399,21 @@ export const DEFAULT_PROVIDERS: LLM_PROVIDER_BASE[] = [
       defaultBaseUrl: 'https://api.openai.com/v1'
     }
   },
-  {
-    id: 'voiceai',
-    name: 'Voice.ai',
-    apiType: 'voiceai',
-    apiKey: '',
-    baseUrl: 'https://dev.voice.ai',
-    enable: false,
-    websites: {
-      official: 'https://voice.ai/',
-      apiKey: 'https://voice.ai/app/dashboard/developers',
-      docs: 'https://voice.ai/docs/introduction',
-      models: 'https://voice.ai/docs/api-reference/text-to-speech/list-voices',
-      defaultBaseUrl: 'https://dev.voice.ai'
-    }
-  },
+  // {
+  //   id: 'voiceai',
+  //   name: 'Voice.ai',
+  //   apiType: 'voiceai',
+  //   apiKey: '',
+  //   baseUrl: 'https://dev.voice.ai',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://voice.ai/',
+  //     apiKey: 'https://voice.ai/app/dashboard/developers',
+  //     docs: 'https://voice.ai/docs/introduction',
+  //     models: 'https://voice.ai/docs/api-reference/text-to-speech/list-voices',
+  //     defaultBaseUrl: 'https://dev.voice.ai'
+  //   }
+  // },
   {
     id: 'gemini',
     name: 'Gemini',
@@ -399,186 +459,186 @@ export const DEFAULT_PROVIDERS: LLM_PROVIDER_BASE[] = [
       defaultBaseUrl: 'https://api.anthropic.com'
     }
   },
-  {
-    id: 'openrouter',
-    name: 'OpenRouter',
-    apiType: 'openai-completions',
-    apiKey: '',
-    baseUrl: 'https://openrouter.ai/api/v1/',
-    enable: false,
-    websites: {
-      official: 'https://openrouter.ai/',
-      apiKey: 'https://openrouter.ai/settings/keys',
-      docs: 'https://openrouter.ai/docs/quick-start',
-      models: 'https://openrouter.ai/docs/models',
-      defaultBaseUrl: 'https://openrouter.ai/api/v1/'
-    }
-  },
-  {
-    id: 'orcarouter',
-    name: 'OrcaRouter',
-    apiType: 'openai-completions',
-    apiKey: '',
-    baseUrl: 'https://api.orcarouter.ai/v1',
-    enable: false,
-    websites: {
-      official: 'https://www.orcarouter.ai/',
-      apiKey: 'https://www.orcarouter.ai/console/token',
-      docs: 'https://docs.orcarouter.ai',
-      models: 'https://www.orcarouter.ai/models',
-      defaultBaseUrl: 'https://api.orcarouter.ai/v1'
-    }
-  },
-  {
-    id: 'synthorai',
-    name: 'Synthorai',
-    apiType: 'openai-completions',
-    apiKey: '',
-    baseUrl: 'https://synthorai.io/v1',
-    enable: false,
-    websites: {
-      official: 'https://synthorai.io/',
-      apiKey: 'https://synthorai.io/console/api-keys',
-      docs: 'https://synthorai.io/docs/',
-      models: 'https://synthorai.io/models/',
-      defaultBaseUrl: 'https://synthorai.io/v1'
-    }
-  },
-  {
-    id: 'opencode-go',
-    name: 'OpenCode Go',
-    apiType: 'openai-completions',
-    apiKey: '',
-    baseUrl: 'https://opencode.ai/zen/go/v1',
-    enable: false,
-    websites: {
-      official: 'https://opencode.ai/auth',
-      apiKey: 'https://opencode.ai/auth',
-      docs: 'https://opencode.ai/docs/zh-cn/go/',
-      models: 'https://opencode.ai/zen/go/v1/models',
-      defaultBaseUrl: 'https://opencode.ai/zen/go/v1'
-    }
-  },
-  {
-    id: 'routerra',
-    name: 'Routerra',
-    apiType: 'openai-completions',
-    apiKey: '',
-    baseUrl: 'https://routerra.ai/v1',
-    enable: false,
-    websites: {
-      official: 'https://routerra.ai/',
-      apiKey: 'https://routerra.ai/',
-      docs: '',
-      models: 'https://routerra.ai/v1/models',
-      defaultBaseUrl: 'https://routerra.ai/v1'
-    }
-  },
-  {
-    id: 'modelsell',
-    name: 'Modelsell',
-    apiType: 'openai-completions',
-    apiKey: '',
-    baseUrl: 'https://modelsell.com/v1',
-    enable: false,
-    websites: {
-      official: 'https://modelsell.com/',
-      apiKey: 'https://modelsell.com/console/token',
-      docs: 'https://modelsell.com/docs/api-reference',
-      models: 'https://modelsell.com/v1/models',
-      defaultBaseUrl: 'https://modelsell.com/v1'
-    }
-  },
-  {
-    id: 'straico',
-    name: 'Straico',
-    apiType: 'openai-completions',
-    apiKey: '',
-    baseUrl: 'https://api.straico.com/v2',
-    enable: false,
-    websites: {
-      official: 'https://www.straico.com/',
-      apiKey: 'https://platform.straico.com/settings-api',
-      docs: 'https://documenter.getpostman.com/view/5900072/2s9YyzddrR',
-      models: 'https://api.straico.com/v2/models',
-      defaultBaseUrl: 'https://api.straico.com/v2'
-    }
-  },
-  {
-    id: 'poe',
-    name: 'Poe',
-    apiType: 'poe',
-    apiKey: '',
-    baseUrl: 'https://api.poe.com/v1',
-    enable: false,
-    websites: {
-      official: 'https://poe.com/',
-      apiKey: 'https://poe.com/api_key',
-      docs: 'https://creator.poe.com/docs/external-applications/openai-compatible-api',
-      models: 'https://api.poe.com/v1/models',
-      defaultBaseUrl: 'https://api.poe.com/v1'
-    }
-  },
-  {
-    id: '302ai',
-    name: '302.AI',
-    apiType: 'openai-completions',
-    apiKey: '',
-    baseUrl: 'https://api.302.ai/v1',
-    enable: false,
-    websites: {
-      official: 'https://302ai.cn/',
-      apiKey: 'https://dash.302.ai/apis/list',
-      docs: 'https://302ai.apifox.cn/doc-3704971',
-      models: 'https://302ai.cn/pricing/',
-      defaultBaseUrl: 'https://api.302.ai/v1'
-    }
-  },
-  {
-    id: 'nvidia',
-    name: 'NVIDIA',
-    apiType: 'openai-completions',
-    apiKey: '',
-    baseUrl: 'https://integrate.api.nvidia.com/v1',
-    enable: false,
-    websites: {
-      official: 'https://build.nvidia.com/',
-      apiKey: 'https://build.nvidia.com/settings/api-keys',
-      docs: 'https://docs.api.nvidia.com/nim/',
-      models: 'https://build.nvidia.com/explore/discover',
-      defaultBaseUrl: 'https://integrate.api.nvidia.com/v1'
-    }
-  },
-  {
-    id: 'huggingface',
-    name: 'Hugging Face',
-    apiType: 'openai-completions',
-    apiKey: '',
-    baseUrl: 'https://router.huggingface.co/v1',
-    enable: false,
-    websites: {
-      official: 'https://huggingface.co/',
-      apiKey: 'https://huggingface.co/settings/tokens',
-      docs: 'https://huggingface.co/docs/inference-providers',
-      models: 'https://huggingface.co/inference/models',
-      defaultBaseUrl: 'https://router.huggingface.co/v1'
-    }
-  },
-  {
-    id: 'vercel-ai-gateway',
-    name: 'Vercel AI Gateway',
-    apiType: 'vercel-ai-gateway',
-    apiKey: '',
-    baseUrl: 'https://ai-gateway.vercel.sh/v1',
-    enable: false,
-    websites: {
-      official: 'https://vercel.com/ai',
-      apiKey: 'https://vercel.com/dashboard',
-      docs: 'https://vercel.com/docs/ai-gateway',
-      models: 'https://vercel.com/docs/ai-gateway/models-and-providers',
-      defaultBaseUrl: 'https://ai-gateway.vercel.sh/v1'
-    }
-  },
+  // {
+  //   id: 'openrouter',
+  //   name: 'OpenRouter',
+  //   apiType: 'openai-completions',
+  //   apiKey: '',
+  //   baseUrl: 'https://openrouter.ai/api/v1/',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://openrouter.ai/',
+  //     apiKey: 'https://openrouter.ai/settings/keys',
+  //     docs: 'https://openrouter.ai/docs/quick-start',
+  //     models: 'https://openrouter.ai/docs/models',
+  //     defaultBaseUrl: 'https://openrouter.ai/api/v1/'
+  //   }
+  // },
+  // {
+  //   id: 'orcarouter',
+  //   name: 'OrcaRouter',
+  //   apiType: 'openai-completions',
+  //   apiKey: '',
+  //   baseUrl: 'https://api.orcarouter.ai/v1',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://www.orcarouter.ai/',
+  //     apiKey: 'https://www.orcarouter.ai/console/token',
+  //     docs: 'https://docs.orcarouter.ai',
+  //     models: 'https://www.orcarouter.ai/models',
+  //     defaultBaseUrl: 'https://api.orcarouter.ai/v1'
+  //   }
+  // },
+  // {
+  //   id: 'synthorai',
+  //   name: 'Synthorai',
+  //   apiType: 'openai-completions',
+  //   apiKey: '',
+  //   baseUrl: 'https://synthorai.io/v1',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://synthorai.io/',
+  //     apiKey: 'https://synthorai.io/console/api-keys',
+  //     docs: 'https://synthorai.io/docs/',
+  //     models: 'https://synthorai.io/models/',
+  //     defaultBaseUrl: 'https://synthorai.io/v1'
+  //   }
+  // },
+  // {
+  //   id: 'opencode-go',
+  //   name: 'OpenCode Go',
+  //   apiType: 'openai-completions',
+  //   apiKey: '',
+  //   baseUrl: 'https://opencode.ai/zen/go/v1',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://opencode.ai/auth',
+  //     apiKey: 'https://opencode.ai/auth',
+  //     docs: 'https://opencode.ai/docs/zh-cn/go/',
+  //     models: 'https://opencode.ai/zen/go/v1/models',
+  //     defaultBaseUrl: 'https://opencode.ai/zen/go/v1'
+  //   }
+  // },
+  // {
+  //   id: 'routerra',
+  //   name: 'Routerra',
+  //   apiType: 'openai-completions',
+  //   apiKey: '',
+  //   baseUrl: 'https://routerra.ai/v1',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://routerra.ai/',
+  //     apiKey: 'https://routerra.ai/',
+  //     docs: '',
+  //     models: 'https://routerra.ai/v1/models',
+  //     defaultBaseUrl: 'https://routerra.ai/v1'
+  //   }
+  // },
+  // {
+  //   id: 'modelsell',
+  //   name: 'Modelsell',
+  //   apiType: 'openai-completions',
+  //   apiKey: '',
+  //   baseUrl: 'https://modelsell.com/v1',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://modelsell.com/',
+  //     apiKey: 'https://modelsell.com/console/token',
+  //     docs: 'https://modelsell.com/docs/api-reference',
+  //     models: 'https://modelsell.com/v1/models',
+  //     defaultBaseUrl: 'https://modelsell.com/v1'
+  //   }
+  // },
+  // {
+  //   id: 'straico',
+  //   name: 'Straico',
+  //   apiType: 'openai-completions',
+  //   apiKey: '',
+  //   baseUrl: 'https://api.straico.com/v2',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://www.straico.com/',
+  //     apiKey: 'https://platform.straico.com/settings-api',
+  //     docs: 'https://documenter.getpostman.com/view/5900072/2s9YyzddrR',
+  //     models: 'https://api.straico.com/v2/models',
+  //     defaultBaseUrl: 'https://api.straico.com/v2'
+  //   }
+  // },
+  // {
+  //   id: 'poe',
+  //   name: 'Poe',
+  //   apiType: 'poe',
+  //   apiKey: '',
+  //   baseUrl: 'https://api.poe.com/v1',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://poe.com/',
+  //     apiKey: 'https://poe.com/api_key',
+  //     docs: 'https://creator.poe.com/docs/external-applications/openai-compatible-api',
+  //     models: 'https://api.poe.com/v1/models',
+  //     defaultBaseUrl: 'https://api.poe.com/v1'
+  //   }
+  // },
+  // {
+  //   id: '302ai',
+  //   name: '302.AI',
+  //   apiType: 'openai-completions',
+  //   apiKey: '',
+  //   baseUrl: 'https://api.302.ai/v1',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://302ai.cn/',
+  //     apiKey: 'https://dash.302.ai/apis/list',
+  //     docs: 'https://302ai.apifox.cn/doc-3704971',
+  //     models: 'https://302ai.cn/pricing/',
+  //     defaultBaseUrl: 'https://api.302.ai/v1'
+  //   }
+  // },
+  // {
+  //   id: 'nvidia',
+  //   name: 'NVIDIA',
+  //   apiType: 'openai-completions',
+  //   apiKey: '',
+  //   baseUrl: 'https://integrate.api.nvidia.com/v1',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://build.nvidia.com/',
+  //     apiKey: 'https://build.nvidia.com/settings/api-keys',
+  //     docs: 'https://docs.api.nvidia.com/nim/',
+  //     models: 'https://build.nvidia.com/explore/discover',
+  //     defaultBaseUrl: 'https://integrate.api.nvidia.com/v1'
+  //   }
+  // },
+  // {
+  //   id: 'huggingface',
+  //   name: 'Hugging Face',
+  //   apiType: 'openai-completions',
+  //   apiKey: '',
+  //   baseUrl: 'https://router.huggingface.co/v1',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://huggingface.co/',
+  //     apiKey: 'https://huggingface.co/settings/tokens',
+  //     docs: 'https://huggingface.co/docs/inference-providers',
+  //     models: 'https://huggingface.co/inference/models',
+  //     defaultBaseUrl: 'https://router.huggingface.co/v1'
+  //   }
+  // },
+  // {
+  //   id: 'vercel-ai-gateway',
+  //   name: 'Vercel AI Gateway',
+  //   apiType: 'vercel-ai-gateway',
+  //   apiKey: '',
+  //   baseUrl: 'https://ai-gateway.vercel.sh/v1',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://vercel.com/ai',
+  //     apiKey: 'https://vercel.com/dashboard',
+  //     docs: 'https://vercel.com/docs/ai-gateway',
+  //     models: 'https://vercel.com/docs/ai-gateway/models-and-providers',
+  //     defaultBaseUrl: 'https://ai-gateway.vercel.sh/v1'
+  //   }
+  // },
   // {
   //   id: 'ocoolai',
   //   name: 'OCoolAI',
@@ -594,52 +654,52 @@ export const DEFAULT_PROVIDERS: LLM_PROVIDER_BASE[] = [
   //     defaultBaseUrl: 'https://api.ocoolai.com'
   //   }
   // },
-  {
-    id: 'together',
-    name: 'Together',
-    apiType: 'together',
-    apiKey: '',
-    baseUrl: 'https://api.together.xyz/v1',
-    enable: false,
-    websites: {
-      official: 'https://www.together.ai/',
-      apiKey: 'https://api.together.ai/settings/api-keys',
-      docs: 'https://docs.together.ai/docs/introduction',
-      models: 'https://docs.together.ai/docs/chat-models',
-      defaultBaseUrl: 'https://api.together.xyz/v1'
-    }
-  },
-  {
-    id: 'github',
-    name: 'GitHub Models',
-    apiType: 'openai-completions',
-    apiKey: '',
-    baseUrl: 'https://models.inference.ai.azure.com',
-    enable: false,
-    websites: {
-      official: 'https://github.com/marketplace/models',
-      apiKey: 'https://github.com/settings/tokens',
-      docs: 'https://docs.github.com/en/github-models',
-      models: 'https://github.com/marketplace/models',
-      defaultBaseUrl: 'https://models.inference.ai.azure.com'
-    }
-  },
-  {
-    id: 'github-copilot',
-    name: 'GitHub Copilot',
-    apiType: 'github-copilot',
-    apiKey: '',
-    baseUrl: 'https://api.githubcopilot.com',
-    enable: false,
-    websites: {
-      official: 'https://github.com/features/copilot',
-      apiKey: 'https://github.com/settings/tokens',
-      docs: 'https://docs.github.com/en/copilot',
-      models:
-        'https://docs.github.com/en/copilot/using-github-copilot/using-github-copilot-chat-in-your-ide',
-      defaultBaseUrl: 'https://api.githubcopilot.com'
-    }
-  },
+  // {
+  //   id: 'together',
+  //   name: 'Together',
+  //   apiType: 'together',
+  //   apiKey: '',
+  //   baseUrl: 'https://api.together.xyz/v1',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://www.together.ai/',
+  //     apiKey: 'https://api.together.ai/settings/api-keys',
+  //     docs: 'https://docs.together.ai/docs/introduction',
+  //     models: 'https://docs.together.ai/docs/chat-models',
+  //     defaultBaseUrl: 'https://api.together.xyz/v1'
+  //   }
+  // },
+  // {
+  //   id: 'github',
+  //   name: 'GitHub Models',
+  //   apiType: 'openai-completions',
+  //   apiKey: '',
+  //   baseUrl: 'https://models.inference.ai.azure.com',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://github.com/marketplace/models',
+  //     apiKey: 'https://github.com/settings/tokens',
+  //     docs: 'https://docs.github.com/en/github-models',
+  //     models: 'https://github.com/marketplace/models',
+  //     defaultBaseUrl: 'https://models.inference.ai.azure.com'
+  //   }
+  // },
+  // {
+  //   id: 'github-copilot',
+  //   name: 'GitHub Copilot',
+  //   apiType: 'github-copilot',
+  //   apiKey: '',
+  //   baseUrl: 'https://api.githubcopilot.com',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://github.com/features/copilot',
+  //     apiKey: 'https://github.com/settings/tokens',
+  //     docs: 'https://docs.github.com/en/copilot',
+  //     models:
+  //       'https://docs.github.com/en/copilot/using-github-copilot/using-github-copilot-chat-in-your-ide',
+  //     defaultBaseUrl: 'https://api.githubcopilot.com'
+  //   }
+  // },
   // {
   //   id: 'yi',
   //   name: 'Yi',
@@ -685,36 +745,36 @@ export const DEFAULT_PROVIDERS: LLM_PROVIDER_BASE[] = [
       defaultBaseUrl: 'https://api.minimax.io/anthropic'
     }
   },
-  {
-    id: 'minimax-global',
-    name: 'MiniMax Global',
-    apiType: 'anthropic',
-    apiKey: '',
-    baseUrl: 'https://api.minimax.io/anthropic/v1',
-    enable: false,
-    websites: {
-      official: 'https://www.minimax.io/',
-      apiKey: 'https://platform.minimax.io/user-center/basic-information/interface-key',
-      docs: 'https://platform.minimax.io/docs/api-reference/text-anthropic-api',
-      models: 'https://platform.minimax.io/docs/api-reference/models/anthropic/list-models',
-      defaultBaseUrl: 'https://api.minimax.io/anthropic/v1'
-    }
-  },
-  {
-    id: 'fireworks',
-    name: 'Fireworks',
-    apiType: 'fireworks',
-    apiKey: '',
-    baseUrl: 'https://api.fireworks.ai/inference',
-    enable: false,
-    websites: {
-      official: 'https://fireworks.ai/',
-      apiKey: 'https://fireworks.ai/account/api-keys',
-      docs: 'https://docs.fireworks.ai/getting-started/introduction',
-      models: 'https://fireworks.ai/dashboard/models',
-      defaultBaseUrl: 'https://api.fireworks.ai/inference'
-    }
-  },
+  // {
+  //   id: 'minimax-global',
+  //   name: 'MiniMax Global',
+  //   apiType: 'anthropic',
+  //   apiKey: '',
+  //   baseUrl: 'https://api.minimax.io/anthropic/v1',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://www.minimax.io/',
+  //     apiKey: 'https://platform.minimax.io/user-center/basic-information/interface-key',
+  //     docs: 'https://platform.minimax.io/docs/api-reference/text-anthropic-api',
+  //     models: 'https://platform.minimax.io/docs/api-reference/models/anthropic/list-models',
+  //     defaultBaseUrl: 'https://api.minimax.io/anthropic/v1'
+  //   }
+  // },
+  // {
+  //   id: 'fireworks',
+  //   name: 'Fireworks',
+  //   apiType: 'fireworks',
+  //   apiKey: '',
+  //   baseUrl: 'https://api.fireworks.ai/inference',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://fireworks.ai/',
+  //     apiKey: 'https://fireworks.ai/account/api-keys',
+  //     docs: 'https://docs.fireworks.ai/getting-started/introduction',
+  //     models: 'https://fireworks.ai/dashboard/models',
+  //     defaultBaseUrl: 'https://api.fireworks.ai/inference'
+  //   }
+  // },
   {
     id: 'zhipu',
     name: 'Zhipu',
@@ -730,51 +790,51 @@ export const DEFAULT_PROVIDERS: LLM_PROVIDER_BASE[] = [
       defaultBaseUrl: 'https://open.bigmodel.cn/api/paas/v4/'
     }
   },
-  {
-    id: 'moonshot',
-    name: 'Moonshot',
-    apiType: 'openai-completions',
-    apiKey: '',
-    baseUrl: 'https://api.moonshot.cn/v1',
-    enable: false,
-    websites: {
-      official: 'https://moonshot.ai/',
-      apiKey: 'https://platform.moonshot.cn/console/api-keys',
-      docs: 'https://platform.moonshot.cn/docs/',
-      models: 'https://platform.moonshot.cn/docs/intro#%E6%A8%A1%E5%9E%8B%E5%88%97%E8%A1%A8',
-      defaultBaseUrl: 'https://api.moonshot.cn/v1'
-    }
-  },
-  {
-    id: 'moonshot-ai',
-    name: 'Moonshot AI',
-    apiType: 'openai-completions',
-    apiKey: '',
-    baseUrl: 'https://api.moonshot.ai/v1',
-    enable: false,
-    websites: {
-      official: 'https://www.moonshot.ai/',
-      apiKey: 'https://platform.kimi.ai/console/api-keys',
-      docs: 'https://platform.moonshot.ai/docs/api/chat',
-      models: 'https://platform.moonshot.ai/docs/models',
-      defaultBaseUrl: 'https://api.moonshot.ai/v1'
-    }
-  },
-  {
-    id: 'kimi-for-coding',
-    name: 'Kimi For Coding',
-    apiType: 'anthropic',
-    apiKey: '',
-    baseUrl: 'https://api.kimi.com/coding/',
-    enable: false,
-    websites: {
-      official: 'https://www.kimi.com/code',
-      apiKey: 'https://www.kimi.com/code/console',
-      docs: 'https://www.kimi.com/code/docs/en/third-party-tools/other-coding-agents.html',
-      models: 'https://www.kimi.com/code/docs/en/third-party-tools/other-coding-agents.html',
-      defaultBaseUrl: 'https://api.kimi.com/coding/'
-    }
-  },
+  // {
+  //   id: 'moonshot',
+  //   name: 'Moonshot',
+  //   apiType: 'openai-completions',
+  //   apiKey: '',
+  //   baseUrl: 'https://api.moonshot.cn/v1',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://moonshot.ai/',
+  //     apiKey: 'https://platform.moonshot.cn/console/api-keys',
+  //     docs: 'https://platform.moonshot.cn/docs/',
+  //     models: 'https://platform.moonshot.cn/docs/intro#%E6%A8%A1%E5%9E%8B%E5%88%97%E8%A1%A8',
+  //     defaultBaseUrl: 'https://api.moonshot.cn/v1'
+  //   }
+  // },
+  // {
+  //   id: 'moonshot-ai',
+  //   name: 'Moonshot AI',
+  //   apiType: 'openai-completions',
+  //   apiKey: '',
+  //   baseUrl: 'https://api.moonshot.ai/v1',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://www.moonshot.ai/',
+  //     apiKey: 'https://platform.kimi.ai/console/api-keys',
+  //     docs: 'https://platform.moonshot.ai/docs/api/chat',
+  //     models: 'https://platform.moonshot.ai/docs/models',
+  //     defaultBaseUrl: 'https://api.moonshot.ai/v1'
+  //   }
+  // },
+  // {
+  //   id: 'kimi-for-coding',
+  //   name: 'Kimi For Coding',
+  //   apiType: 'anthropic',
+  //   apiKey: '',
+  //   baseUrl: 'https://api.kimi.com/coding/',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://www.kimi.com/code',
+  //     apiKey: 'https://www.kimi.com/code/console',
+  //     docs: 'https://www.kimi.com/code/docs/en/third-party-tools/other-coding-agents.html',
+  //     models: 'https://www.kimi.com/code/docs/en/third-party-tools/other-coding-agents.html',
+  //     defaultBaseUrl: 'https://api.kimi.com/coding/'
+  //   }
+  // },
   // {
   //   id: 'baichuan',
   //   name: 'Baichuan',
@@ -790,159 +850,159 @@ export const DEFAULT_PROVIDERS: LLM_PROVIDER_BASE[] = [
   //     defaultBaseUrl: 'https://api.baichuan-ai.com'
   //   }
   // },
-  {
-    id: 'dashscope',
-    name: 'DashScope',
-    apiType: 'dashscope',
-    apiKey: '',
-    baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1/',
-    enable: false,
-    websites: {
-      official: 'https://www.aliyun.com/product/bailian',
-      apiKey: 'https://bailian.console.aliyun.com/?apiKey=1#/api-key',
-      docs: 'https://help.aliyun.com/zh/model-studio/getting-started/',
-      models: 'https://bailian.console.aliyun.com/model-market#/model-market',
-      defaultBaseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1/'
-    }
-  },
-  {
-    id: 'alibaba-token-plan',
-    name: 'Alibaba Token Plan',
-    apiType: 'openai-completions',
-    apiKey: '',
-    baseUrl: 'https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1',
-    enable: false,
-    websites: {
-      official: 'https://www.alibabacloud.com/product/modelstudio',
-      apiKey: 'https://modelstudio.console.alibabacloud.com/',
-      docs: 'https://www.alibabacloud.com/help/en/model-studio/token-plan-overview',
-      models: 'https://www.alibabacloud.com/help/en/model-studio/token-plan-overview',
-      defaultBaseUrl: 'https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1'
-    }
-  },
-  {
-    id: 'alibaba-token-plan-cn',
-    name: 'Alibaba Token Plan (China)',
-    apiType: 'openai-completions',
-    apiKey: '',
-    baseUrl: 'https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1',
-    enable: false,
-    websites: {
-      official: 'https://www.aliyun.com/product/bailian',
-      apiKey: 'https://bailian.console.aliyun.com/?apiKey=1#/api-key',
-      docs: 'https://www.alibabacloud.com/help/zh/model-studio/token-plan-overview',
-      models: 'https://www.alibabacloud.com/help/zh/model-studio/token-plan-overview',
-      defaultBaseUrl: 'https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1'
-    }
-  },
-  {
-    id: 'lmstudio',
-    name: 'LM Studio',
-    apiType: 'lmstudio',
-    apiKey: '',
-    baseUrl: 'http://127.0.0.1:1234/v1',
-    enable: false,
-    websites: {
-      official: 'https://lmstudio.ai/docs/app',
-      apiKey: 'https://lmstudio.ai/docs/app',
-      docs: 'https://lmstudio.ai/docs/app',
-      models: 'https://lmstudio.ai/models',
-      defaultBaseUrl: 'http://127.0.0.1:1234/v1'
-    }
-  },
-  {
-    id: 'stepfun',
-    name: 'StepFun',
-    apiType: 'openai-completions',
-    apiKey: '',
-    baseUrl: 'https://api.stepfun.com/v1',
-    enable: false,
-    websites: {
-      official: 'https://platform.stepfun.com/',
-      apiKey: 'https://platform.stepfun.com/interface-key',
-      docs: 'https://platform.stepfun.com/docs/zh/overview/concept',
-      models: 'https://platform.stepfun.com/docs/zh/llm/text',
-      defaultBaseUrl: 'https://api.stepfun.com/v1'
-    }
-  },
-  {
-    id: 'stepfun-step-plan',
-    name: 'StepFun Token Plan',
-    apiType: 'openai-completions',
-    apiKey: '',
-    baseUrl: 'https://api.stepfun.com/step_plan/v1',
-    enable: false,
-    websites: {
-      official: 'https://platform.stepfun.com/step-plan',
-      apiKey: 'https://platform.stepfun.com/interface-key',
-      docs: 'https://platform.stepfun.com/docs/zh/step-plan/quick-start',
-      models: 'https://platform.stepfun.com/docs/zh/step-plan/integrations/reasoning-api',
-      defaultBaseUrl: 'https://api.stepfun.com/step_plan/v1'
-    }
-  },
+  // {
+  //   id: 'dashscope',
+  //   name: 'DashScope',
+  //   apiType: 'dashscope',
+  //   apiKey: '',
+  //   baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1/',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://www.aliyun.com/product/bailian',
+  //     apiKey: 'https://bailian.console.aliyun.com/?apiKey=1#/api-key',
+  //     docs: 'https://help.aliyun.com/zh/model-studio/getting-started/',
+  //     models: 'https://bailian.console.aliyun.com/model-market#/model-market',
+  //     defaultBaseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1/'
+  //   }
+  // },
+  // {
+  //   id: 'alibaba-token-plan',
+  //   name: 'Alibaba Token Plan',
+  //   apiType: 'openai-completions',
+  //   apiKey: '',
+  //   baseUrl: 'https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://www.alibabacloud.com/product/modelstudio',
+  //     apiKey: 'https://modelstudio.console.alibabacloud.com/',
+  //     docs: 'https://www.alibabacloud.com/help/en/model-studio/token-plan-overview',
+  //     models: 'https://www.alibabacloud.com/help/en/model-studio/token-plan-overview',
+  //     defaultBaseUrl: 'https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1'
+  //   }
+  // },
+  // {
+  //   id: 'alibaba-token-plan-cn',
+  //   name: 'Alibaba Token Plan (China)',
+  //   apiType: 'openai-completions',
+  //   apiKey: '',
+  //   baseUrl: 'https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://www.aliyun.com/product/bailian',
+  //     apiKey: 'https://bailian.console.aliyun.com/?apiKey=1#/api-key',
+  //     docs: 'https://www.alibabacloud.com/help/zh/model-studio/token-plan-overview',
+  //     models: 'https://www.alibabacloud.com/help/zh/model-studio/token-plan-overview',
+  //     defaultBaseUrl: 'https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1'
+  //   }
+  // },
+  // {
+  //   id: 'lmstudio',
+  //   name: 'LM Studio',
+  //   apiType: 'lmstudio',
+  //   apiKey: '',
+  //   baseUrl: 'http://127.0.0.1:1234/v1',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://lmstudio.ai/docs/app',
+  //     apiKey: 'https://lmstudio.ai/docs/app',
+  //     docs: 'https://lmstudio.ai/docs/app',
+  //     models: 'https://lmstudio.ai/models',
+  //     defaultBaseUrl: 'http://127.0.0.1:1234/v1'
+  //   }
+  // },
+  // {
+  //   id: 'stepfun',
+  //   name: 'StepFun',
+  //   apiType: 'openai-completions',
+  //   apiKey: '',
+  //   baseUrl: 'https://api.stepfun.com/v1',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://platform.stepfun.com/',
+  //     apiKey: 'https://platform.stepfun.com/interface-key',
+  //     docs: 'https://platform.stepfun.com/docs/zh/overview/concept',
+  //     models: 'https://platform.stepfun.com/docs/zh/llm/text',
+  //     defaultBaseUrl: 'https://api.stepfun.com/v1'
+  //   }
+  // },
+  // {
+  //   id: 'stepfun-step-plan',
+  //   name: 'StepFun Token Plan',
+  //   apiType: 'openai-completions',
+  //   apiKey: '',
+  //   baseUrl: 'https://api.stepfun.com/step_plan/v1',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://platform.stepfun.com/step-plan',
+  //     apiKey: 'https://platform.stepfun.com/interface-key',
+  //     docs: 'https://platform.stepfun.com/docs/zh/step-plan/quick-start',
+  //     models: 'https://platform.stepfun.com/docs/zh/step-plan/integrations/reasoning-api',
+  //     defaultBaseUrl: 'https://api.stepfun.com/step_plan/v1'
+  //   }
+  // },
 
-  {
-    id: 'groq',
-    name: 'Groq',
-    apiType: 'groq',
-    apiKey: '',
-    baseUrl: 'https://api.groq.com/openai/v1',
-    enable: false,
-    websites: {
-      official: 'https://groq.com/',
-      apiKey: 'https://console.groq.com/keys',
-      docs: 'https://console.groq.com/docs/quickstart',
-      models: 'https://console.groq.com/docs/models',
-      defaultBaseUrl: 'https://api.groq.com/openai/v1'
-    }
-  },
+  // {
+  //   id: 'groq',
+  //   name: 'Groq',
+  //   apiType: 'groq',
+  //   apiKey: '',
+  //   baseUrl: 'https://api.groq.com/openai/v1',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://groq.com/',
+  //     apiKey: 'https://console.groq.com/keys',
+  //     docs: 'https://console.groq.com/docs/quickstart',
+  //     models: 'https://console.groq.com/docs/models',
+  //     defaultBaseUrl: 'https://api.groq.com/openai/v1'
+  //   }
+  // },
 
-  {
-    id: 'mistral',
-    name: 'Mistral',
-    apiType: 'mistral',
-    apiKey: '',
-    baseUrl: 'https://api.mistral.ai/v1',
-    enable: false,
-    websites: {
-      official: 'https://mistral.ai',
-      apiKey: 'https://console.mistral.ai/api-keys/',
-      docs: 'https://docs.mistral.ai/',
-      models: 'https://docs.mistral.ai/getting-started/models/',
-      defaultBaseUrl: 'https://api.mistral.ai/v1'
-    }
-  },
+  // {
+  //   id: 'mistral',
+  //   name: 'Mistral',
+  //   apiType: 'mistral',
+  //   apiKey: '',
+  //   baseUrl: 'https://api.mistral.ai/v1',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://mistral.ai',
+  //     apiKey: 'https://console.mistral.ai/api-keys/',
+  //     docs: 'https://docs.mistral.ai/',
+  //     models: 'https://docs.mistral.ai/getting-started/models/',
+  //     defaultBaseUrl: 'https://api.mistral.ai/v1'
+  //   }
+  // },
 
-  {
-    id: 'grok',
-    name: 'Grok',
-    apiType: 'grok',
-    apiKey: '',
-    baseUrl: 'https://api.x.ai/v1',
-    enable: false,
-    websites: {
-      official: 'https://x.ai/',
-      apiKey: 'https://console.x.ai',
-      docs: 'https://docs.x.ai/',
-      models: 'https://docs.x.ai/docs#getting-started',
-      defaultBaseUrl: 'https://api.x.ai/v1'
-    }
-  },
-  {
-    id: 'upstage',
-    name: 'Upstage',
-    apiType: 'openai-completions',
-    apiKey: '',
-    baseUrl: 'https://api.upstage.ai/v1/solar',
-    enable: false,
-    websites: {
-      official: 'https://www.upstage.ai/',
-      apiKey: 'https://console.upstage.ai/api-keys?api=chat',
-      docs: 'https://developers.upstage.ai/docs/apis/chat',
-      models: 'https://developers.upstage.ai/docs/getting-started/models',
-      defaultBaseUrl: 'https://api.upstage.ai/v1/solar'
-    }
-  },
+  // {
+  //   id: 'grok',
+  //   name: 'Grok',
+  //   apiType: 'grok',
+  //   apiKey: '',
+  //   baseUrl: 'https://api.x.ai/v1',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://x.ai/',
+  //     apiKey: 'https://console.x.ai',
+  //     docs: 'https://docs.x.ai/',
+  //     models: 'https://docs.x.ai/docs#getting-started',
+  //     defaultBaseUrl: 'https://api.x.ai/v1'
+  //   }
+  // },
+  // {
+  //   id: 'upstage',
+  //   name: 'Upstage',
+  //   apiType: 'openai-completions',
+  //   apiKey: '',
+  //   baseUrl: 'https://api.upstage.ai/v1/solar',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://www.upstage.ai/',
+  //     apiKey: 'https://console.upstage.ai/api-keys?api=chat',
+  //     docs: 'https://developers.upstage.ai/docs/apis/chat',
+  //     models: 'https://developers.upstage.ai/docs/getting-started/models',
+  //     defaultBaseUrl: 'https://api.upstage.ai/v1/solar'
+  //   }
+  // },
   // {
   //   id: 'hyperbolic',
   //   name: 'Hyperbolic',
@@ -973,21 +1033,21 @@ export const DEFAULT_PROVIDERS: LLM_PROVIDER_BASE[] = [
   //     defaultBaseUrl: 'https://api.jina.ai'
   //   }
   // },
-  {
-    id: 'aihubmix',
-    name: 'AIHubMix',
-    apiType: 'openai-completions',
-    apiKey: '',
-    baseUrl: 'https://aihubmix.com/v1',
-    enable: false,
-    websites: {
-      official: 'https://aihubmix.com',
-      apiKey: 'https://aihubmix.com/token',
-      docs: 'https://doc.aihubmix.com/',
-      models: 'https://docs.aihubmix.com/cn/api/Model-Information',
-      defaultBaseUrl: 'https://aihubmix.com/v1'
-    }
-  },
+  // {
+  //   id: 'aihubmix',
+  //   name: 'AIHubMix',
+  //   apiType: 'openai-completions',
+  //   apiKey: '',
+  //   baseUrl: 'https://aihubmix.com/v1',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://aihubmix.com',
+  //     apiKey: 'https://aihubmix.com/token',
+  //     docs: 'https://doc.aihubmix.com/',
+  //     models: 'https://docs.aihubmix.com/cn/api/Model-Information',
+  //     defaultBaseUrl: 'https://aihubmix.com/v1'
+  //   }
+  // },
   // {
   //   id: 'fireworks',
   //   name: 'Fireworks',
@@ -1049,155 +1109,155 @@ export const DEFAULT_PROVIDERS: LLM_PROVIDER_BASE[] = [
       defaultBaseUrl:
         'https://your-resource-name.openai.azure.com/openai/deployments/your-deployment-name'
     }
-  },
-  {
-    id: 'modelscope',
-    name: 'ModelScope',
-    apiType: 'openai-completions',
-    apiKey: '',
-    baseUrl: 'https://api-inference.modelscope.cn/v1/',
-    enable: false,
-    websites: {
-      official: 'https://modelscope.cn/',
-      apiKey: 'https://modelscope.cn/my/myaccesstoken',
-      docs: 'https://modelscope.cn/docs/modelscope_agent/api_service',
-      models: 'https://modelscope.cn/models',
-      defaultBaseUrl: 'https://api-inference.modelscope.cn/v1/'
-    }
-  },
-  {
-    id: 'aws-bedrock',
-    name: 'AWS Bedrock',
-    apiType: 'aws-bedrock',
-    apiKey: '',
-    baseUrl: '',
-    enable: false,
-    websites: {
-      official: 'https://aws.amazon.com/bedrock/',
-      apiKey: 'https://console.aws.amazon.com/iam/',
-      docs: 'https://docs.aws.amazon.com/bedrock/latest/userguide/what-is-bedrock.html',
-      models: 'https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html',
-      defaultBaseUrl: ''
-    }
-  },
-  {
-    id: 'xiaomi',
-    name: 'Xiaomi',
-    apiType: 'openai-completions',
-    apiKey: '',
-    baseUrl: 'https://api.xiaomimimo.com/v1',
-    enable: false,
-    websites: {
-      official: 'https://platform.xiaomimimo.com/#/docs/quick-start/first-api-call',
-      apiKey: 'https://platform.xiaomimimo.com/#/console/api-keys',
-      docs: 'https://platform.xiaomimimo.com/#/docs',
-      models: 'https://platform.xiaomimimo.com/#/docs',
-      defaultBaseUrl: 'https://api.xiaomimimo.com/v1'
-    }
-  },
-  {
-    id: 'xiaomi-token-plan-cn',
-    name: 'Xiaomi Token Plan (China)',
-    apiType: 'openai-completions',
-    apiKey: '',
-    baseUrl: 'https://token-plan-cn.xiaomimimo.com/v1',
-    enable: false,
-    websites: {
-      official: 'https://platform.xiaomimimo.com/',
-      apiKey: 'https://platform.xiaomimimo.com/#/console/plan-manage',
-      docs: 'https://platform.xiaomimimo.com/#/docs',
-      models: 'https://platform.xiaomimimo.com/#/docs',
-      defaultBaseUrl: 'https://token-plan-cn.xiaomimimo.com/v1'
-    }
-  },
-  {
-    id: 'xiaomi-token-plan-sgp',
-    name: 'Xiaomi Token Plan (Singapore)',
-    apiType: 'openai-completions',
-    apiKey: '',
-    baseUrl: 'https://token-plan-sgp.xiaomimimo.com/v1',
-    enable: false,
-    websites: {
-      official: 'https://platform.xiaomimimo.com/',
-      apiKey: 'https://platform.xiaomimimo.com/#/console/plan-manage',
-      docs: 'https://platform.xiaomimimo.com/#/docs',
-      models: 'https://platform.xiaomimimo.com/#/docs',
-      defaultBaseUrl: 'https://token-plan-sgp.xiaomimimo.com/v1'
-    }
-  },
-  {
-    id: 'xiaomi-token-plan-ams',
-    name: 'Xiaomi Token Plan (Europe)',
-    apiType: 'openai-completions',
-    apiKey: '',
-    baseUrl: 'https://token-plan-ams.xiaomimimo.com/v1',
-    enable: false,
-    websites: {
-      official: 'https://platform.xiaomimimo.com/',
-      apiKey: 'https://platform.xiaomimimo.com/#/console/plan-manage',
-      docs: 'https://platform.xiaomimimo.com/#/docs',
-      models: 'https://platform.xiaomimimo.com/#/docs',
-      defaultBaseUrl: 'https://token-plan-ams.xiaomimimo.com/v1'
-    }
-  },
-  {
-    id: 'o3fan',
-    name: 'o3.fan',
-    apiType: 'o3fan',
-    apiKey: '',
-    baseUrl: 'https://api.o3.fan/v1',
-    enable: false,
-    websites: {
-      official: 'https://o3.fan',
-      apiKey: 'https://o3.fan/token',
-      docs: 'https://o3.fan',
-      models: 'https://o3.fan/info/models',
-      defaultBaseUrl: 'https://api.o3.fan/v1'
-    }
-  },
-  {
-    id: 'novita',
-    name: 'Novita AI',
-    apiType: 'openai-completions',
-    apiKey: '',
-    baseUrl: 'https://api.novita.ai/openai',
-    enable: false,
-    websites: {
-      official: 'https://novita.ai/',
-      apiKey: 'https://novita.ai/',
-      docs: 'https://novita.ai/docs',
-      models: 'https://novita.ai/models',
-      defaultBaseUrl: 'https://api.novita.ai/openai'
-    }
-  },
-  {
-    id: 'astraflow',
-    name: 'Astraflow (Global)',
-    apiType: 'openai-completions',
-    apiKey: '',
-    baseUrl: 'https://api-us-ca.umodelverse.ai/v1',
-    enable: false,
-    websites: {
-      official: 'https://astraflow.ucloud.cn/',
-      apiKey: 'https://astraflow.ucloud.cn/modelverse/api-keys',
-      docs: 'https://astraflow.ucloud.cn/docs',
-      models: 'https://astraflow.ucloud.cn/modelverse/playground',
-      defaultBaseUrl: 'https://api-us-ca.umodelverse.ai/v1'
-    }
-  },
-  {
-    id: 'astraflow-cn',
-    name: 'Astraflow CN',
-    apiType: 'openai-completions',
-    apiKey: '',
-    baseUrl: 'https://api.modelverse.cn/v1',
-    enable: false,
-    websites: {
-      official: 'https://astraflow.ucloud.cn/',
-      apiKey: 'https://astraflow.ucloud.cn/modelverse/api-keys',
-      docs: 'https://astraflow.ucloud.cn/docs',
-      models: 'https://astraflow.ucloud.cn/modelverse/playground',
-      defaultBaseUrl: 'https://api.modelverse.cn/v1'
-    }
   }
+  // {
+  //   id: 'modelscope',
+  //   name: 'ModelScope',
+  //   apiType: 'openai-completions',
+  //   apiKey: '',
+  //   baseUrl: 'https://api-inference.modelscope.cn/v1/',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://modelscope.cn/',
+  //     apiKey: 'https://modelscope.cn/my/myaccesstoken',
+  //     docs: 'https://modelscope.cn/docs/modelscope_agent/api_service',
+  //     models: 'https://modelscope.cn/models',
+  //     defaultBaseUrl: 'https://api-inference.modelscope.cn/v1/'
+  //   }
+  // },
+  // {
+  //   id: 'aws-bedrock',
+  //   name: 'AWS Bedrock',
+  //   apiType: 'aws-bedrock',
+  //   apiKey: '',
+  //   baseUrl: '',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://aws.amazon.com/bedrock/',
+  //     apiKey: 'https://console.aws.amazon.com/iam/',
+  //     docs: 'https://docs.aws.amazon.com/bedrock/latest/userguide/what-is-bedrock.html',
+  //     models: 'https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html',
+  //     defaultBaseUrl: ''
+  //   }
+  // },
+  // {
+  //   id: 'xiaomi',
+  //   name: 'Xiaomi',
+  //   apiType: 'openai-completions',
+  //   apiKey: '',
+  //   baseUrl: 'https://api.xiaomimimo.com/v1',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://platform.xiaomimimo.com/#/docs/quick-start/first-api-call',
+  //     apiKey: 'https://platform.xiaomimimo.com/#/console/api-keys',
+  //     docs: 'https://platform.xiaomimimo.com/#/docs',
+  //     models: 'https://platform.xiaomimimo.com/#/docs',
+  //     defaultBaseUrl: 'https://api.xiaomimimo.com/v1'
+  //   }
+  // },
+  // {
+  //   id: 'xiaomi-token-plan-cn',
+  //   name: 'Xiaomi Token Plan (China)',
+  //   apiType: 'openai-completions',
+  //   apiKey: '',
+  //   baseUrl: 'https://token-plan-cn.xiaomimimo.com/v1',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://platform.xiaomimimo.com/',
+  //     apiKey: 'https://platform.xiaomimimo.com/#/console/plan-manage',
+  //     docs: 'https://platform.xiaomimimo.com/#/docs',
+  //     models: 'https://platform.xiaomimimo.com/#/docs',
+  //     defaultBaseUrl: 'https://token-plan-cn.xiaomimimo.com/v1'
+  //   }
+  // },
+  // {
+  //   id: 'xiaomi-token-plan-sgp',
+  //   name: 'Xiaomi Token Plan (Singapore)',
+  //   apiType: 'openai-completions',
+  //   apiKey: '',
+  //   baseUrl: 'https://token-plan-sgp.xiaomimimo.com/v1',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://platform.xiaomimimo.com/',
+  //     apiKey: 'https://platform.xiaomimimo.com/#/console/plan-manage',
+  //     docs: 'https://platform.xiaomimimo.com/#/docs',
+  //     models: 'https://platform.xiaomimimo.com/#/docs',
+  //     defaultBaseUrl: 'https://token-plan-sgp.xiaomimimo.com/v1'
+  //   }
+  // },
+  // {
+  //   id: 'xiaomi-token-plan-ams',
+  //   name: 'Xiaomi Token Plan (Europe)',
+  //   apiType: 'openai-completions',
+  //   apiKey: '',
+  //   baseUrl: 'https://token-plan-ams.xiaomimimo.com/v1',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://platform.xiaomimimo.com/',
+  //     apiKey: 'https://platform.xiaomimimo.com/#/console/plan-manage',
+  //     docs: 'https://platform.xiaomimimo.com/#/docs',
+  //     models: 'https://platform.xiaomimimo.com/#/docs',
+  //     defaultBaseUrl: 'https://token-plan-ams.xiaomimimo.com/v1'
+  //   }
+  // },
+  // {
+  //   id: 'o3fan',
+  //   name: 'o3.fan',
+  //   apiType: 'o3fan',
+  //   apiKey: '',
+  //   baseUrl: 'https://api.o3.fan/v1',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://o3.fan',
+  //     apiKey: 'https://o3.fan/token',
+  //     docs: 'https://o3.fan',
+  //     models: 'https://o3.fan/info/models',
+  //     defaultBaseUrl: 'https://api.o3.fan/v1'
+  //   }
+  // },
+  // {
+  //   id: 'novita',
+  //   name: 'Novita AI',
+  //   apiType: 'openai-completions',
+  //   apiKey: '',
+  //   baseUrl: 'https://api.novita.ai/openai',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://novita.ai/',
+  //     apiKey: 'https://novita.ai/',
+  //     docs: 'https://novita.ai/docs',
+  //     models: 'https://novita.ai/models',
+  //     defaultBaseUrl: 'https://api.novita.ai/openai'
+  //   }
+  // },
+  // {
+  //   id: 'astraflow',
+  //   name: 'Astraflow (Global)',
+  //   apiType: 'openai-completions',
+  //   apiKey: '',
+  //   baseUrl: 'https://api-us-ca.umodelverse.ai/v1',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://astraflow.ucloud.cn/',
+  //     apiKey: 'https://astraflow.ucloud.cn/modelverse/api-keys',
+  //     docs: 'https://astraflow.ucloud.cn/docs',
+  //     models: 'https://astraflow.ucloud.cn/modelverse/playground',
+  //     defaultBaseUrl: 'https://api-us-ca.umodelverse.ai/v1'
+  //   }
+  // },
+  // {
+  //   id: 'astraflow-cn',
+  //   name: 'Astraflow CN',
+  //   apiType: 'openai-completions',
+  //   apiKey: '',
+  //   baseUrl: 'https://api.modelverse.cn/v1',
+  //   enable: false,
+  //   websites: {
+  //     official: 'https://astraflow.ucloud.cn/',
+  //     apiKey: 'https://astraflow.ucloud.cn/modelverse/api-keys',
+  //     docs: 'https://astraflow.ucloud.cn/docs',
+  //     models: 'https://astraflow.ucloud.cn/modelverse/playground',
+  //     defaultBaseUrl: 'https://api.modelverse.cn/v1'
+  //   }
+  // }
 ]

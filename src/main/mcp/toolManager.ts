@@ -1002,7 +1002,7 @@ export class ToolManager {
         return this.createPreDispatchErrorResponse(
           toolCall.id,
           'tool_not_allowed',
-          `MCP server '${toolServerName}' is not allowed for DeepChat agent '${accessContext.agentId ?? 'unknown'}'. Configure MCP access in DeepChat agent settings.`,
+          `MCP server '${toolServerName}' is not allowed for SRIBD Office Agent '${accessContext.agentId ?? 'unknown'}'. Configure MCP access in SRIBD Office Agent settings.`,
           access?.throwPreDispatchErrors
         )
       }

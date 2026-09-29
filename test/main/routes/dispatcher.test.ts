@@ -687,14 +687,14 @@ function createRuntime() {
   const remoteService = {
     listRemoteChannels: vi.fn().mockResolvedValue([
       {
-        id: 'telegram',
-        titleKey: 'settings.remote.telegram.title',
-        descriptionKey: 'settings.remote.telegram.description',
+        id: 'feishu',
+        titleKey: 'settings.remote.feishu.title',
+        descriptionKey: 'settings.remote.feishu.description',
         supportsCronDelivery: true
       }
     ]),
     getChannelSettings: vi.fn().mockResolvedValue({
-      botToken: 'telegram-token',
+      botToken: 'feishu-token',
       remoteEnabled: true,
       defaultAgentId: 'deepchat',
       defaultWorkdir: ''
@@ -703,7 +703,7 @@ function createRuntime() {
       .fn()
       .mockImplementation(async (_channel: string, settings: unknown) => settings),
     getChannelStatus: vi.fn().mockResolvedValue({
-      channel: 'telegram',
+      channel: 'feishu',
       enabled: true,
       state: 'running',
       pollOffset: 1,
@@ -725,16 +725,6 @@ function createRuntime() {
       expiresAt: 123456
     }),
     clearChannelPairCode: vi.fn().mockResolvedValue(undefined),
-    getTelegramStatus: vi.fn().mockResolvedValue({
-      channel: 'telegram',
-      enabled: true,
-      state: 'running',
-      pollOffset: 1,
-      bindingCount: 0,
-      allowedUserCount: 1,
-      lastError: null,
-      botUser: null
-    }),
     getWeixinIlinkStatus: vi.fn().mockResolvedValue({
       channel: 'weixin-ilink',
       enabled: false,
@@ -1450,8 +1440,8 @@ function createRuntime() {
     targetType: 'remote' as const,
     target: {
       type: 'remote' as const,
-      remoteId: 'telegram',
-      channelId: 'telegram:-100:0',
+      remoteId: 'feishu',
+      channelId: 'feishu:oc_1:root',
       mode: 'summary' as const
     },
     status: 'success' as const,
@@ -3970,7 +3960,7 @@ describe('dispatchDeepchatRoute', () => {
       runtime,
       'remoteControl.getChannelSettings',
       {
-        channel: 'telegram'
+        channel: 'feishu'
       },
       context
     )
@@ -3978,9 +3968,9 @@ describe('dispatchDeepchatRoute', () => {
       runtime,
       'remoteControl.saveChannelSettings',
       {
-        channel: 'telegram',
+        channel: 'feishu',
         settings: {
-          botToken: 'telegram-token',
+          botToken: 'feishu-token',
           remoteEnabled: true,
           defaultAgentId: 'deepchat',
           defaultWorkdir: ''
@@ -3992,7 +3982,7 @@ describe('dispatchDeepchatRoute', () => {
       runtime,
       'remoteControl.getChannelStatus',
       {
-        channel: 'telegram'
+        channel: 'feishu'
       },
       context
     )
@@ -4000,7 +3990,7 @@ describe('dispatchDeepchatRoute', () => {
       runtime,
       'remoteControl.getChannelBindings',
       {
-        channel: 'telegram'
+        channel: 'feishu'
       },
       context
     )
@@ -4008,8 +3998,8 @@ describe('dispatchDeepchatRoute', () => {
       runtime,
       'remoteControl.removeChannelBinding',
       {
-        channel: 'telegram',
-        endpointKey: 'telegram:100:0'
+        channel: 'feishu',
+        endpointKey: 'feishu:100:0'
       },
       context
     )
@@ -4017,7 +4007,7 @@ describe('dispatchDeepchatRoute', () => {
       runtime,
       'remoteControl.removeChannelPrincipal',
       {
-        channel: 'telegram',
+        channel: 'feishu',
         principalId: '123'
       },
       context
@@ -4026,7 +4016,7 @@ describe('dispatchDeepchatRoute', () => {
       runtime,
       'remoteControl.getChannelPairingSnapshot',
       {
-        channel: 'telegram'
+        channel: 'feishu'
       },
       context
     )
@@ -4034,7 +4024,7 @@ describe('dispatchDeepchatRoute', () => {
       runtime,
       'remoteControl.createChannelPairCode',
       {
-        channel: 'telegram'
+        channel: 'feishu'
       },
       context
     )
@@ -4042,11 +4032,10 @@ describe('dispatchDeepchatRoute', () => {
       runtime,
       'remoteControl.clearChannelPairCode',
       {
-        channel: 'telegram'
+        channel: 'feishu'
       },
       context
     )
-    await dispatchDeepchatRoute(runtime, 'remoteControl.getTelegramStatus', {}, context)
     await dispatchDeepchatRoute(runtime, 'remoteControl.getWeixinIlinkStatus', {}, context)
     await dispatchDeepchatRoute(
       runtime,
@@ -4083,21 +4072,20 @@ describe('dispatchDeepchatRoute', () => {
     )
 
     expect(remoteService.listRemoteChannels).toHaveBeenCalledTimes(1)
-    expect(remoteService.getChannelSettings).toHaveBeenCalledWith('telegram')
+    expect(remoteService.getChannelSettings).toHaveBeenCalledWith('feishu')
     expect(remoteService.saveChannelSettings).toHaveBeenCalledWith(
-      'telegram',
+      'feishu',
       expect.objectContaining({
         remoteEnabled: true
       })
     )
-    expect(remoteService.getChannelStatus).toHaveBeenCalledWith('telegram')
-    expect(remoteService.getChannelBindings).toHaveBeenCalledWith('telegram')
-    expect(remoteService.removeChannelBinding).toHaveBeenCalledWith('telegram', 'telegram:100:0')
-    expect(remoteService.removeChannelPrincipal).toHaveBeenCalledWith('telegram', '123')
-    expect(remoteService.getChannelPairingSnapshot).toHaveBeenCalledWith('telegram')
-    expect(remoteService.createChannelPairCode).toHaveBeenCalledWith('telegram')
-    expect(remoteService.clearChannelPairCode).toHaveBeenCalledWith('telegram')
-    expect(remoteService.getTelegramStatus).toHaveBeenCalledTimes(1)
+    expect(remoteService.getChannelStatus).toHaveBeenCalledWith('feishu')
+    expect(remoteService.getChannelBindings).toHaveBeenCalledWith('feishu')
+    expect(remoteService.removeChannelBinding).toHaveBeenCalledWith('feishu', 'feishu:100:0')
+    expect(remoteService.removeChannelPrincipal).toHaveBeenCalledWith('feishu', '123')
+    expect(remoteService.getChannelPairingSnapshot).toHaveBeenCalledWith('feishu')
+    expect(remoteService.createChannelPairCode).toHaveBeenCalledWith('feishu')
+    expect(remoteService.clearChannelPairCode).toHaveBeenCalledWith('feishu')
     expect(remoteService.getWeixinIlinkStatus).toHaveBeenCalledTimes(1)
     expect(remoteService.startWeixinIlinkLogin).toHaveBeenCalledWith({ force: true })
     expect(remoteService.waitForWeixinIlinkLogin).toHaveBeenCalledWith({

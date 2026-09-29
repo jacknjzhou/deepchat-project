@@ -90,6 +90,24 @@ const router = createRouter({
       ]
     },
     {
+      path: '/documents',
+      name: 'documents',
+      component: () => import('@/pages/documents/DocumentsArchivePage.vue'),
+      meta: {
+        titleKey: 'routes.documents',
+        icon: 'lucide:inbox'
+      }
+    },
+    {
+      path: '/resume-screening',
+      name: 'resume-screening',
+      component: () => import('@/pages/resumeScreening/ResumeScreeningPage.vue'),
+      meta: {
+        titleKey: 'routes.resumeScreening',
+        icon: 'lucide:file-search'
+      }
+    },
+    {
       path: '/welcome',
       name: 'welcome',
       component: () => import('@/pages/WelcomePage.vue'),

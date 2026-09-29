@@ -73,8 +73,8 @@ const delivery = {
   targetType: 'remote' as const,
   target: {
     type: 'remote' as const,
-    remoteId: 'telegram',
-    channelId: 'telegram:-100:0',
+    remoteId: 'feishu',
+    channelId: 'feishu:oc_1:root',
     mode: 'summary' as const
   },
   status: 'success' as const,

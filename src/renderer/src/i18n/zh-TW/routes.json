@@ -10,6 +10,9 @@
   "settings-about": "關於",
   "settings-shortcut": "快捷鍵",
   "settings-display": "顯示設置",
+  "settings-documents": "單據識別",
+  "settings-documents-template": "範本編輯器",
+  "documents": "單據檔案",
   "settings-knowledge-base": "知識庫",
   "settings-prompt": "Prompt管理",
   "settings-mcp-market": "MCP市場",
@@ -20,11 +23,12 @@
   "settings-dashboard": "資料看板",
   "settings-environments": "目錄環境",
   "settings-remote": "遠端",
-  "settings-deepchat-agents": "DeepChat 智能體",
+  "settings-deepchat-agents": "SRIBD办公智能体 智能體",
   "settings-plugins": "插件",
   "settings-overview": "設定概覽",
   "settings-memory": "記憶",
   "plugins": "插件",
   "settings-debug": "偵錯",
-  "settings-toolchains": "工具鏈"
+  "settings-toolchains": "工具鏈",
+  "resumeScreening": "履歷篩選"
 }

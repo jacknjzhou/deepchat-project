@@ -164,9 +164,9 @@ describe('RemoteConversationRunner', () => {
       bindingStore as any
     )
 
-    await expect(runner.stop('telegram:100:0')).resolves.toBe(true)
+    await expect(runner.stop('feishu:100:0')).resolves.toBe(true)
     expect(cancelGeneration).toHaveBeenCalledWith('session-1')
-    expect(bindingStore.clearActiveEvent).toHaveBeenCalledWith('telegram:100:0')
+    expect(bindingStore.clearActiveEvent).toHaveBeenCalledWith('feishu:100:0')
   })
 
   it('creates new sessions with the current default deepchat agent', async () => {
@@ -189,10 +189,10 @@ describe('RemoteConversationRunner', () => {
       bindingStore as any
     )
 
-    const session = await runner.createNewSession('telegram:100:0', 'Remote Session')
+    const session = await runner.createNewSession('feishu:100:0', 'Remote Session')
 
     expect(session.agentId).toBe('deepchat-alt')
-    expect(bindingStore.setBinding).toHaveBeenCalledWith('telegram:100:0', session.id)
+    expect(bindingStore.setBinding).toHaveBeenCalledWith('feishu:100:0', session.id)
   })
 
   it('creates a new bound session after the default agent changes', async () => {
@@ -241,7 +241,7 @@ describe('RemoteConversationRunner', () => {
       bindingStore as any
     )
 
-    const execution = await runner.sendText('telegram:100:0', 'hello')
+    const execution = await runner.sendText('feishu:100:0', 'hello')
 
     expect(execution.sessionId).toBe('session-new')
     expect(sessionPorts.turn.sendMessage).toHaveBeenCalledWith('session-new', 'hello')
@@ -249,14 +249,14 @@ describe('RemoteConversationRunner', () => {
       title: 'New Chat',
       agentId: 'deepchat-new'
     })
-    expect(bindingStore.setBinding).toHaveBeenCalledWith('telegram:100:0', 'session-new')
+    expect(bindingStore.setBinding).toHaveBeenCalledWith('feishu:100:0', 'session-new')
   })
 
   it('downloads inbound remote files into the session workspace before sending', async () => {
     const workspace = await fs.mkdtemp(path.join(os.tmpdir(), 'deepchat-remote-runner-'))
     const preparedFile = {
       name: 'note.txt',
-      path: path.join(workspace, '.deepchat/remote-assets/telegram/hash/message/note.txt'),
+      path: path.join(workspace, '.deepchat/remote-assets/feishu/hash/message/note.txt'),
       mimeType: 'text/plain',
       content: 'hello file',
       metadata: {
@@ -300,9 +300,9 @@ describe('RemoteConversationRunner', () => {
       } as any
     )
 
-    await runner.sendInput('telegram:100:0', {
+    await runner.sendInput('feishu:100:0', {
       text: 'read this',
-      sourceMessageId: 'telegram-message-1',
+      sourceMessageId: 'feishu-message-1',
       attachments: [
         {
           id: 'file-1',
@@ -315,8 +315,8 @@ describe('RemoteConversationRunner', () => {
     })
 
     const preparedPath = fileService.prepareFile.mock.calls[0][0] as string
-    expect(preparedPath).toContain(path.join('.deepchat', 'remote-assets', 'telegram'))
-    expect(preparedPath).toContain('telegram-message-1')
+    expect(preparedPath).toContain(path.join('.deepchat', 'remote-assets', 'feishu'))
+    expect(preparedPath).toContain('feishu-message-1')
     expect(path.basename(preparedPath)).toBe('note-1.txt')
     await expect(fs.readFile(preparedPath, 'utf8')).resolves.toBe('hello file')
     expect(sessionPorts.turn.sendMessage).toHaveBeenCalledWith('session-bound', {
@@ -380,9 +380,9 @@ describe('RemoteConversationRunner', () => {
 
     try {
       await expect(
-        runner.sendInput('telegram:100:0', {
+        runner.sendInput('feishu:100:0', {
           text: '   ',
-          sourceMessageId: 'telegram-image-only',
+          sourceMessageId: 'feishu-image-only',
           attachments: [
             {
               id: 'image-1',
@@ -446,9 +446,9 @@ describe('RemoteConversationRunner', () => {
       } as any
     )
 
-    await runner.sendInput('telegram:100:0', {
+    await runner.sendInput('feishu:100:0', {
       text: 'read these',
-      sourceMessageId: 'telegram-message-duplicates',
+      sourceMessageId: 'feishu-message-duplicates',
       attachments: [
         {
           id: 'file-1',
@@ -498,7 +498,7 @@ describe('RemoteConversationRunner', () => {
     const workspace = await fs.mkdtemp(path.join(os.tmpdir(), 'deepchat-remote-runner-'))
     const preparedFile = {
       name: 'note.txt',
-      path: path.join(workspace, '.deepchat/remote-assets/telegram/hash/message/note.txt'),
+      path: path.join(workspace, '.deepchat/remote-assets/feishu/hash/message/note.txt'),
       mimeType: 'text/plain',
       content: 'hello file',
       metadata: {
@@ -543,9 +543,9 @@ describe('RemoteConversationRunner', () => {
     )
 
     try {
-      await runner.sendInput('telegram:100:0', {
+      await runner.sendInput('feishu:100:0', {
         text: 'read this',
-        sourceMessageId: 'telegram-message-2',
+        sourceMessageId: 'feishu-message-2',
         attachments: [
           {
             id: 'failed-file',
@@ -569,7 +569,7 @@ describe('RemoteConversationRunner', () => {
 
       expect(fileService.prepareFile).toHaveBeenCalledTimes(1)
       const preparedPath = fileService.prepareFile.mock.calls[0][0] as string
-      expect(preparedPath).toContain('telegram-message-2')
+      expect(preparedPath).toContain('feishu-message-2')
       expect(path.basename(preparedPath)).toBe('note-1.txt')
       await expect(fs.readFile(preparedPath, 'utf8')).resolves.toBe('hello file')
       expect(sessionPorts.turn.sendMessage).toHaveBeenCalledWith('session-bound', {
@@ -624,9 +624,9 @@ describe('RemoteConversationRunner', () => {
 
     try {
       await expect(
-        runner.sendInput('telegram:100:0', {
+        runner.sendInput('feishu:100:0', {
           text: '   ',
-          sourceMessageId: 'telegram-message-empty-attachments',
+          sourceMessageId: 'feishu-message-empty-attachments',
           attachments: [
             {
               id: 'failed-file',
@@ -1034,13 +1034,13 @@ describe('RemoteConversationRunner', () => {
       bindingStore as any
     )
 
-    const sessions = await runner.listSessions('telegram:100:0')
+    const sessions = await runner.listSessions('feishu:100:0')
 
     expect(sessionPorts.projection.listSessions).toHaveBeenCalledWith({
       agentId: 'deepchat-bound'
     })
     expect(sessions.map((session) => session.id)).toEqual(['session-b', 'session-a'])
-    expect(bindingStore.rememberSessionSnapshot).toHaveBeenCalledWith('telegram:100:0', [
+    expect(bindingStore.rememberSessionSnapshot).toHaveBeenCalledWith('feishu:100:0', [
       'session-b',
       'session-a'
     ])
@@ -1082,7 +1082,7 @@ describe('RemoteConversationRunner', () => {
       } as any
     )
 
-    const updated = await runner.setSessionModel('telegram:100:0', 'anthropic', 'claude-3-5-sonnet')
+    const updated = await runner.setSessionModel('feishu:100:0', 'anthropic', 'claude-3-5-sonnet')
 
     expect(sessionPorts.assignment.setSessionModel).toHaveBeenCalledWith(
       'session-bound',
@@ -1106,7 +1106,7 @@ describe('RemoteConversationRunner', () => {
       } as any
     )
 
-    await expect(runner.open('telegram:100:0')).resolves.toEqual({
+    await expect(runner.open('feishu:100:0')).resolves.toEqual({
       status: 'noSession'
     })
   })
@@ -1136,7 +1136,7 @@ describe('RemoteConversationRunner', () => {
       } as any
     )
 
-    await expect(runner.open('telegram:100:0')).resolves.toEqual({
+    await expect(runner.open('feishu:100:0')).resolves.toEqual({
       status: 'windowNotFound'
     })
     expect(openSession).toHaveBeenCalledWith('session-1')
@@ -1168,7 +1168,7 @@ describe('RemoteConversationRunner', () => {
       } as any
     )
 
-    await expect(runner.open('telegram:100:0')).resolves.toEqual({
+    await expect(runner.open('feishu:100:0')).resolves.toEqual({
       status: 'ok',
       session
     })
@@ -1198,13 +1198,13 @@ describe('RemoteConversationRunner', () => {
       } as any
     )
 
-    await expect(runner.getStatus('telegram:100:0')).resolves.toEqual({
+    await expect(runner.getStatus('feishu:100:0')).resolves.toEqual({
       session: null,
       activeEventId: null,
       isGenerating: false,
       pendingInteraction: null
     })
-    await expect(runner.getStatus('telegram:100:0')).resolves.toEqual({
+    await expect(runner.getStatus('feishu:100:0')).resolves.toEqual({
       session,
       activeEventId: 'bound-event',
       isGenerating: true,
@@ -1225,7 +1225,7 @@ describe('RemoteConversationRunner', () => {
     )
 
     await expect(
-      (runner as any).getConversationSnapshot('telegram:100:0', 'deleted-session', {
+      (runner as any).getConversationSnapshot('feishu:100:0', 'deleted-session', {
         afterOrderSeq: 0,
         preferredMessageId: null,
         ignoreMessageId: null
@@ -1243,7 +1243,7 @@ describe('RemoteConversationRunner', () => {
       completed: true,
       pendingInteraction: null
     })
-    expect(clearBinding).toHaveBeenCalledWith('telegram:100:0')
+    expect(clearBinding).toHaveBeenCalledWith('feishu:100:0')
   })
 
   it('does not fall back to the previous active assistant event while waiting for a new reply', async () => {
@@ -1300,12 +1300,12 @@ describe('RemoteConversationRunner', () => {
       bindingStore as any
     )
 
-    const executionPromise = runner.sendText('telegram:100:0', 'hello again')
+    const executionPromise = runner.sendText('feishu:100:0', 'hello again')
     await vi.advanceTimersByTimeAsync(1000)
     const execution = await executionPromise
 
     expect(execution.eventId).toBeNull()
-    expect(bindingStore.rememberActiveEvent).not.toHaveBeenCalledWith('telegram:100:0', 'msg-old')
+    expect(bindingStore.rememberActiveEvent).not.toHaveBeenCalledWith('feishu:100:0', 'msg-old')
 
     const snapshot = await execution.getSnapshot()
 
@@ -1407,10 +1407,8 @@ describe('RemoteConversationRunner', () => {
       }
     }
 
-    await expect(runner.getPendingInteraction('telegram:100:0')).resolves.toEqual(
-      pendingInteraction
-    )
-    await expect(runner.getStatus('telegram:100:0')).resolves.toEqual({
+    await expect(runner.getPendingInteraction('feishu:100:0')).resolves.toEqual(pendingInteraction)
+    await expect(runner.getStatus('feishu:100:0')).resolves.toEqual({
       session: createSession(),
       activeEventId: null,
       isGenerating: false,
@@ -1471,7 +1469,7 @@ describe('RemoteConversationRunner', () => {
       } as any
     )
 
-    const snapshot = await (runner as any).getConversationSnapshot('telegram:100:0', 'session-1', {
+    const snapshot = await (runner as any).getConversationSnapshot('feishu:100:0', 'session-1', {
       afterOrderSeq: 0,
       preferredMessageId: null,
       ignoreMessageId: null
@@ -1520,7 +1518,7 @@ describe('RemoteConversationRunner', () => {
       } as any
     )
 
-    const snapshot = await (runner as any).getConversationSnapshot('telegram:100:0', 'session-1', {
+    const snapshot = await (runner as any).getConversationSnapshot('feishu:100:0', 'session-1', {
       afterOrderSeq: 0,
       preferredMessageId: 'assistant-search',
       ignoreMessageId: null
@@ -1634,7 +1632,7 @@ describe('RemoteConversationRunner', () => {
       bindingStore as any
     )
 
-    const response = await runner.respondToPendingInteraction('telegram:100:0', {
+    const response = await runner.respondToPendingInteraction('feishu:100:0', {
       kind: 'permission',
       granted: true
     })
@@ -1678,36 +1676,36 @@ describe('RemoteConversationRunner', () => {
     })
   })
 
-  it('creates ACP sessions with provider, model, and the global default workdir', async () => {
+  it('creates ACP sessions with provider, model, and the channel default workdir', async () => {
     const createDetachedSession = vi.fn().mockResolvedValue(
       createSession({
         agentId: 'acp-agent',
         providerId: 'acp',
         modelId: 'acp-agent',
-        projectDir: '/workspaces/remote'
+        projectDir: '/workspaces/feishu'
       })
     )
     const runner = createRunner(
       {
         catalog: createCatalog(),
-        workspace: createWorkspace('/workspaces/remote'),
+        workspace: createWorkspace('/workspaces/global'),
         ...createRemoteSessionPorts({ lifecycle: { createDetachedSession } }),
         resolveDefaultAgentId: vi.fn().mockResolvedValue('acp-agent')
       },
       {
-        getTelegramDefaultWorkdir: vi.fn().mockReturnValue('/workspaces/remote'),
+        getFeishuDefaultWorkdir: vi.fn().mockReturnValue('/workspaces/feishu'),
         setBinding: vi.fn()
       } as any
     )
 
-    await runner.createNewSession('telegram:100:0', 'Remote ACP')
+    await runner.createNewSession('feishu:100:0', 'Remote ACP')
 
     expect(createDetachedSession).toHaveBeenCalledWith({
       title: 'Remote ACP',
       agentId: 'acp-agent',
       providerId: 'acp',
       modelId: 'acp-agent',
-      projectDir: '/workspaces/remote'
+      projectDir: '/workspaces/feishu'
     })
   })
 
@@ -1720,14 +1718,14 @@ describe('RemoteConversationRunner', () => {
         resolveDefaultAgentId: vi.fn().mockResolvedValue('acp-agent')
       },
       {
-        getTelegramDefaultWorkdir: vi.fn().mockReturnValue('')
+        getFeishuDefaultWorkdir: vi.fn().mockReturnValue('')
       } as any
     )
 
-    await expect(runner.getDefaultWorkdir('telegram:100:0')).resolves.toBeNull()
+    await expect(runner.getDefaultWorkdir('feishu:100:0')).resolves.toBeNull()
   })
 
-  it('prefers the discord channel default workdir for ACP sessions', async () => {
+  it('prefers the qqbot channel default workdir for ACP sessions', async () => {
     const runner = createRunner(
       {
         catalog: createCatalog(),
@@ -1736,11 +1734,11 @@ describe('RemoteConversationRunner', () => {
         resolveDefaultAgentId: vi.fn().mockResolvedValue('acp-agent')
       },
       {
-        getDiscordDefaultWorkdir: vi.fn().mockReturnValue('/workspaces/discord')
+        getQQBotDefaultWorkdir: vi.fn().mockReturnValue('/workspaces/qqbot')
       } as any
     )
 
-    await expect(runner.getDefaultWorkdir('discord:dm:123')).resolves.toBe('/workspaces/discord')
+    await expect(runner.getDefaultWorkdir('qqbot:dm:123')).resolves.toBe('/workspaces/qqbot')
   })
 
   it('rejects ACP session creation when no channel workdir is configured', async () => {
@@ -1752,11 +1750,11 @@ describe('RemoteConversationRunner', () => {
         resolveDefaultAgentId: vi.fn().mockResolvedValue('acp-agent')
       },
       {
-        getTelegramDefaultWorkdir: vi.fn().mockReturnValue('')
+        getFeishuDefaultWorkdir: vi.fn().mockReturnValue('')
       } as any
     )
 
-    await expect(runner.createNewSession('telegram:100:0')).rejects.toThrow(
+    await expect(runner.createNewSession('feishu:100:0')).rejects.toThrow(
       'ACP remote agent requires a channel default directory.'
     )
   })
@@ -1812,13 +1810,13 @@ describe('RemoteConversationRunner', () => {
       {
         setBinding: vi.fn(),
         setChannelDefaultAgentId,
-        getTelegramDefaultWorkdir: vi.fn().mockReturnValue('')
+        getFeishuDefaultWorkdir: vi.fn().mockReturnValue('')
       } as any
     )
 
-    const result = await runner.setChannelDefaultAgent('telegram:100:0', 'codex')
+    const result = await runner.setChannelDefaultAgent('feishu:100:0', 'codex')
 
-    expect(setChannelDefaultAgentId).toHaveBeenCalledWith('telegram:100:0', 'codex')
+    expect(setChannelDefaultAgentId).toHaveBeenCalledWith('feishu:100:0', 'codex')
     expect(createDetachedSession).toHaveBeenCalled()
     expect(result.session.agentId).toBe('codex')
     expect(result.agent.agentId).toBe('codex')
@@ -1840,7 +1838,7 @@ describe('RemoteConversationRunner', () => {
       { setChannelDefaultAgentId: vi.fn() } as any
     )
 
-    await expect(runner.setChannelDefaultAgent('telegram:100:0', 'missing')).rejects.toThrow(
+    await expect(runner.setChannelDefaultAgent('feishu:100:0', 'missing')).rejects.toThrow(
       'Agent "missing" is not available'
     )
   })
@@ -1863,11 +1861,11 @@ describe('RemoteConversationRunner', () => {
       },
       {
         setChannelDefaultAgentId,
-        getTelegramDefaultWorkdir: vi.fn().mockReturnValue('')
+        getFeishuDefaultWorkdir: vi.fn().mockReturnValue('')
       } as any
     )
 
-    await expect(runner.setChannelDefaultAgent('telegram:100:0', 'codex')).rejects.toThrow(
+    await expect(runner.setChannelDefaultAgent('feishu:100:0', 'codex')).rejects.toThrow(
       /no default workdir/
     )
     expect(setChannelDefaultAgentId).not.toHaveBeenCalled()

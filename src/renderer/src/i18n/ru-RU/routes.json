@@ -10,6 +10,9 @@
   "settings-shortcut": "Горячие клавиши",
   "settings-mcp": "Настройки MCP",
   "settings-display": "Настройки отображения",
+  "settings-documents": "Распознавание документов",
+  "settings-documents-template": "Редактор шаблонов",
+  "documents": "Архив документов",
   "settings-knowledge-base": "База знаний",
   "settings-prompt": "Управление промптами",
   "settings-mcp-market": "MCP Market",
@@ -20,11 +23,12 @@
   "settings-dashboard": "Панель",
   "settings-environments": "Окружения",
   "settings-remote": "Удалённое управление",
-  "settings-deepchat-agents": "Агенты DeepChat",
+  "settings-deepchat-agents": "Агенты SRIBD Office Agent",
   "settings-plugins": "Plugins",
   "settings-overview": "Обзор настроек",
   "settings-memory": "Память",
   "plugins": "Plugins",
   "settings-debug": "Debug",
-  "settings-toolchains": "Toolchains"
+  "settings-toolchains": "Toolchains",
+  "resumeScreening": "Скрининг резюме"
 }

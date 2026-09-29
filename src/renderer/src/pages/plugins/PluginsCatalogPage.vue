@@ -143,18 +143,14 @@ type ExtensionCatalogItem = OfficialCatalogItem | RemoteCatalogItem
 type CatalogItem = BuiltinCatalogItem | ExtensionCatalogItem
 
 const remoteIconByChannel: Record<RemoteChannel, string> = {
-  telegram: 'lucide:send',
   feishu: 'lucide:message-circle',
   qqbot: 'lucide:bot',
-  discord: 'lucide:radio-tower',
   'weixin-ilink': 'lucide:messages-square'
 }
 
 const remoteIconClassByChannel: Record<RemoteChannel, string> = {
-  telegram: 'text-sky-500',
   feishu: 'text-blue-500',
   qqbot: 'text-emerald-500',
-  discord: 'text-indigo-500',
   'weixin-ilink': 'text-green-500'
 }
 const FEISHU_PLUGIN_ID = 'com.deepchat.plugins.feishu'

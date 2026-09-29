@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Office Automation Settings</title>
+    <link rel="stylesheet" href="assets/index.css" />
+  </head>
+  <body>
+    <main>
+      <h1>Office Automation</h1>
+
+      <section class="status-bar">
+        <div>Plugin status: <span id="plugin-state" class="state">Unknown</span></div>
+        <div>
+          Reimbursement MCP: <span id="mcp-reimbursement-state" class="state">Unknown</span>
+        </div>
+        <div>Workflow MCP: <span id="mcp-workflow-state" class="state">Unknown</span></div>
+      </section>
+
+      <section class="form">
+        <label for="brand">Brand</label>
+        <select id="brand">
+          <option value="feishu">Feishu (飞书)</option>
+          <option value="lark">Lark (国际版)</option>
+        </select>
+
+        <label for="app-id">App ID</label>
+        <input id="app-id" type="text" placeholder="Feishu App ID (cli_xxx)" autocomplete="off" />
+
+        <label for="app-secret">App Secret</label>
+        <input id="app-secret" type="password" placeholder="Feishu App Secret" autocomplete="off" />
+
+        <label for="preset">Feishu Tools Preset (optional, for feishu plugin)</label>
+        <input id="preset" type="text" placeholder="preset.default" autocomplete="off" />
+
+        <p class="hint">
+          飞书应用需开通「审批」权限域（approval:approval:readonly、approval:instance:create 等）。
+        </p>
+        <p class="hint">
+          百度搜索为 DeepChat 内置服务：在 MCP 服务器设置中启用「百度搜索服务」，并填入与百度千帆
+          provider 相同的 API Key。
+        </p>
+      </section>
+
+      <p id="message" class="message" role="status"></p>
+
+      <div class="actions">
+        <button id="save">Save</button>
+        <button id="refresh" class="secondary">Refresh Status</button>
+      </div>
+    </main>
+    <script src="assets/index.js"></script>
+  </body>
+</html>

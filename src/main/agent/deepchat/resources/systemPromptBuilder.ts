@@ -507,7 +507,7 @@ function buildVerificationPolicyPrompt(workdir: string | null): string {
 
   if (isDeepChatWorkspace) {
     lines.push(
-      'In the DeepChat repository, prioritize `pnpm run format`, `pnpm run i18n`, and `pnpm run lint` after feature work.'
+      'In the SRIBD Office Agent repository, prioritize `pnpm run format`, `pnpm run i18n`, and `pnpm run lint` after feature work.'
     )
   } else if (verificationScripts.length > 0) {
     const suggestedScripts = verificationScripts

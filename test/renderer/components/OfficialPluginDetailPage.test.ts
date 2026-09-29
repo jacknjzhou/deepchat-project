@@ -61,8 +61,8 @@ const translations: Record<string, string> = {
   'settings.plugins.version': 'Version',
   'settings.remote.feishu.description': 'Feishu localized description',
   'settings.remote.feishu.title': 'Feishu localized title',
-  'settings.remote.telegram.description': 'Telegram localized description',
-  'settings.remote.telegram.title': 'Telegram localized title'
+  'settings.remote.qqbot.description': 'QQBot localized description',
+  'settings.remote.qqbot.title': 'QQBot localized title'
 }
 
 const defaultFeishuSettings = (remoteEnabled: boolean) => ({
@@ -77,12 +77,13 @@ const defaultFeishuSettings = (remoteEnabled: boolean) => ({
   pairedUserOpenIds: []
 })
 
-const defaultTelegramSettings = (remoteEnabled: boolean) => ({
-  botToken: 'token',
+const defaultQQBotSettings = (remoteEnabled: boolean) => ({
+  appId: 'qq-app-id',
+  clientSecret: 'secret',
   remoteEnabled,
-  defaultAgentId: 'telegram-bot',
+  defaultAgentId: 'qqbot',
   defaultWorkdir: '',
-  allowedUserIds: []
+  pairedUserIds: []
 })
 
 const findIcon = (wrapper: ReturnType<typeof shallowMount>, icon: string) =>
@@ -159,8 +160,8 @@ async function mountDetail(
   }
   const remoteControlClient = {
     getChannelSettings: vi.fn(async () =>
-      remoteChannel === 'telegram'
-        ? defaultTelegramSettings(remoteEnabled)
+      remoteChannel === 'qqbot'
+        ? defaultQQBotSettings(remoteEnabled)
         : defaultFeishuSettings(remoteEnabled)
     ),
     getChannelStatus: vi.fn(async () => ({
@@ -260,12 +261,12 @@ describe('OfficialPluginDetailPage', () => {
   })
 
   it('uses the remote channel icon color on remote virtual plugin details', async () => {
-    const { wrapper } = await mountDetail({ pluginId: 'remote:telegram' })
+    const { wrapper } = await mountDetail({ pluginId: 'remote:qqbot' })
 
-    const icon = findIcon(wrapper, 'lucide:send')
+    const icon = findIcon(wrapper, 'lucide:bot')
 
     expect(icon.exists()).toBe(true)
-    expect(icon.classes()).toContain('text-sky-500')
+    expect(icon.classes()).toContain('text-emerald-500')
   })
 
   it('uses the CUA laptop icon on the official plugin detail header', async () => {
@@ -451,12 +452,12 @@ describe('OfficialPluginDetailPage', () => {
 
   it('uses the top detail button to start remote virtual plugins', async () => {
     const { wrapper, pluginClient, remoteControlClient } = await mountDetail({
-      pluginId: 'remote:telegram'
+      pluginId: 'remote:qqbot'
     })
 
     expect(pluginClient.getPlugin).not.toHaveBeenCalled()
     expect(wrapper.find('[data-testid="remote-settings"]').attributes()).toMatchObject({
-      'data-channel': 'telegram',
+      'data-channel': 'qqbot',
       'data-hide-toggle': 'true',
       'data-hide-header': 'true'
     })
@@ -468,7 +469,7 @@ describe('OfficialPluginDetailPage', () => {
     await flushPromises()
 
     expect(remoteControlClient.saveChannelSettings).toHaveBeenCalledWith(
-      'telegram',
+      'qqbot',
       expect.objectContaining({ remoteEnabled: true })
     )
     expect(wrapper.findAll('button').some((button) => button.text() === 'Disable')).toBe(true)
@@ -476,7 +477,7 @@ describe('OfficialPluginDetailPage', () => {
 
   it('uses the top detail button to stop remote virtual plugins', async () => {
     const { wrapper, remoteControlClient } = await mountDetail({
-      pluginId: 'remote:telegram',
+      pluginId: 'remote:qqbot',
       remoteEnabled: true
     })
 
@@ -487,7 +488,7 @@ describe('OfficialPluginDetailPage', () => {
     await flushPromises()
 
     expect(remoteControlClient.saveChannelSettings).toHaveBeenCalledWith(
-      'telegram',
+      'qqbot',
       expect.objectContaining({ remoteEnabled: false })
     )
   })

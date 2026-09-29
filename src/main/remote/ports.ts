@@ -1,9 +1,7 @@
 import type {
-  DiscordRemoteSettings,
   FeishuRemoteSettings,
   RemoteServicePort,
   QQBotRemoteSettings,
-  TelegramRemoteSettings,
   WeixinIlinkRemoteSettings
 } from '@shared/types/remote'
 import type {
@@ -96,9 +94,7 @@ export interface RemoteServiceLike extends RemoteServicePort, RemoteRuntimeLifec
     run: CronJobRun
     target: Extract<CronJobDeliveryTarget, { type: 'remote' }>
   }): Promise<{ remoteMessageId?: string | null }>
-  buildTelegramSettingsSnapshot(): TelegramRemoteSettings
   buildFeishuSettingsSnapshot(): FeishuRemoteSettings
   buildQQBotSettingsSnapshot(): QQBotRemoteSettings
-  buildDiscordSettingsSnapshot(): DiscordRemoteSettings
   buildWeixinIlinkSettingsSnapshot(): WeixinIlinkRemoteSettings
 }

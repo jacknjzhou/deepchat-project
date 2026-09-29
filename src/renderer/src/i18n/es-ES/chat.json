@@ -1,6 +1,6 @@
 {
   "input": {
-    "placeholder": "Envía un mensaje a DeepChat, {'@'} para mencionar archivos, / para comandos",
+    "placeholder": "Envía un mensaje a SRIBD Office Agent, {'@'} para mencionar archivos, / para comandos",
     "fileArea": "Área de archivos",
     "inputArea": "Área de entrada",
     "functionSwitch": "Selector de funciones",
@@ -10,7 +10,7 @@
     "voiceRecognitionUnsupportedTitle": "La grabación local no está disponible aquí",
     "voiceRecognitionUnsupportedDescription": "Usa esta función en un navegador o entorno de escritorio que admita grabación con micrófono.",
     "voiceRecognitionPermissionDeniedTitle": "No se puede acceder al micrófono",
-    "voiceRecognitionPermissionDeniedDescription": "Permite que DeepChat use el micrófono e inténtalo de nuevo.",
+    "voiceRecognitionPermissionDeniedDescription": "Permite que SRIBD Office Agent use el micrófono e inténtalo de nuevo.",
     "voiceRecognitionErrorTitle": "La transcripción de audio ha fallado",
     "voiceRecognitionErrorDescription": "No se ha podido completar la transcripción de audio. Inténtalo de nuevo más tarde.",
     "send": "Enviar",
@@ -59,7 +59,7 @@
         "agentCore": "Núcleo del Agent",
         "agentImageGeneration": "Generación de imágenes",
         "agentSkills": "Agent Skills",
-        "deepchatSettings": "Ajustes de DeepChat",
+        "deepchatSettings": "Ajustes de SRIBD Office Agent",
         "yobrowser": "YoBrowser"
       }
     },
@@ -347,6 +347,63 @@
   "newThread": {
     "title": "Construir y explorar"
   },
+  "imageTemplates": {
+    "button": "Plantillas",
+    "panelTitle": "Plantillas de prompt",
+    "tabFeatured": "Destacadas",
+    "tabMine": "Mías",
+    "add": "Nueva plantilla",
+    "edit": "Editar",
+    "delete": "Eliminar",
+    "deleteConfirmTitle": "Eliminar plantilla",
+    "deleteConfirmDescription": "¿Eliminar «{title}»? Esta acción no se puede deshacer.",
+    "limitReached": "Puedes guardar hasta {max} plantillas",
+    "emptyMine": "Aún no hay plantillas propias",
+    "emptyMineHint": "Pulsa «Nueva plantilla» para crear la primera",
+    "emptyCardsHint": "Empieza desde una plantilla",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "formTitle": "Título",
+    "formTitlePlaceholder": "p. ej., avatar cyberpunk",
+    "formPrompt": "Prompt",
+    "formPromptPlaceholder": "Describe la imagen que quieres generar…",
+    "formSize": "Tamaño",
+    "formQuality": "Calidad",
+    "sizeDefault": "Predeterminado",
+    "qualityDefault": "Predeterminado",
+    "titleRequired": "El título es obligatorio",
+    "promptRequired": "El prompt es obligatorio",
+    "builtin": {
+      "design": {
+        "title": "Diseño",
+        "prompt": "Design a minimalist brand logo for a sustainable travel product, earthy color palette with geometric lines, modern and restrained, highly recognizable, white background, vector style"
+      },
+      "commodity": {
+        "title": "Foto de producto",
+        "prompt": "Commercial product photography of a perfume bottle on light marble, soft natural light from the left, blurred background, premium feel, clean composition, 8k detail"
+      },
+      "poster": {
+        "title": "Póster",
+        "prompt": "A music festival promo poster, bold Memphis-style geometric shapes, high-saturation contrasting colors, striking whitespace layout, retro print texture, portrait composition"
+      },
+      "beautify": {
+        "title": "Mejorar foto",
+        "prompt": "Elevate the photo to magazine quality: enhance detail and depth, balance light and shadow, natural transparent colors, keep the original composition, no over-sharpening"
+      },
+      "portrait": {
+        "title": "Retrato",
+        "prompt": "Indoor natural-light portrait of a young woman, side profile close-up, soft window light, shallow depth of field, film grain, warm tones, lifelike texture"
+      },
+      "style": {
+        "title": "Estilo",
+        "prompt": "A futuristic city street scene in hand-painted Ghibli anime style, soft afternoon light, layered clouds, rich detail, healing atmosphere"
+      },
+      "photorealistic": {
+        "title": "Fotorrealista",
+        "prompt": "A mountain lake in morning mist, hyper-realistic landscape photography, shot on Canon EOS R5, 35mm wide angle, f/8, natural colors, razor-sharp detail"
+      }
+    }
+  },
   "floatingWidget": {
     "title": "Resumen de tareas",
     "collapse": "Contraer lista flotante de sesiones",
@@ -430,12 +487,12 @@
   },
   "onboarding": {
     "agentSwitch": {
-      "title": "Cambiar a DeepChat Agent",
-      "description": "Antes de chatear, vuelve de ACP Agent al flujo de conversación de DeepChat.",
+      "title": "Cambiar a SRIBD Office Agent",
+      "description": "Antes de chatear, vuelve de ACP Agent al flujo de conversación de SRIBD Office Agent.",
       "caption": "Haz clic en el botón de Agent resaltado en la barra lateral para continuar."
     },
     "switchModel": {
-      "description": "Elige el modelo que quieres usar para tu primera conversación en DeepChat.",
+      "description": "Elige el modelo que quieres usar para tu primera conversación en SRIBD Office Agent.",
       "caption": "Usa el selector de modelo resaltado y elige cualquier modelo disponible."
     },
     "firstChat": {
@@ -612,7 +669,7 @@
       "reasons": {
         "session_unavailable": "Esta sesión ya no está disponible.",
         "agent_unavailable": "El Agent seleccionado no está disponible.",
-        "deepchat_agent_required": "La colaboración proactiva requiere un DeepChat Agent.",
+        "deepchat_agent_required": "La colaboración proactiva requiere un SRIBD Office Agent.",
         "regular_parent_required": "La colaboración proactiva no está disponible en una sesión secundaria.",
         "agent_policy_unavailable": "No se pudo cargar la política de colaboración.",
         "subagents_disabled": "Activa Subagents para este Agent antes de usar la colaboración proactiva."

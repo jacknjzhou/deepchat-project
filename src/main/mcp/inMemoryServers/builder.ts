@@ -1,6 +1,7 @@
 import { ArtifactsServer } from './artifactsServer'
 // FileSystemServer has been removed - filesystem capabilities are now provided via Agent tools
 import { BochaSearchServer } from './bochaSearchServer'
+import { BaiduSearchServer } from './baiduSearchServer'
 import { BraveSearchServer } from './braveSearchServer'
 import { DifyKnowledgeServer } from './difyKnowledgeServer'
 import { RagflowKnowledgeServer } from './ragflowKnowledgeServer'
@@ -48,6 +49,8 @@ function buildInMemoryServer(
       return new ArtifactsServer()
     case 'bochaSearch':
       return new BochaSearchServer(env)
+    case 'baiduSearch':
+      return new BaiduSearchServer(env)
     case 'braveSearch':
       return new BraveSearchServer(env)
     case 'deepResearch':

@@ -69,7 +69,7 @@
     "moveAndDeleteAgent": "Verschieben und Agent löschen",
     "moveConversation": "Unterhaltung verschieben",
     "agentType": {
-      "deepchat": "DeepChat",
+      "deepchat": "SRIBD Office Agent",
       "acp": "ACP"
     },
     "blockReason": {
@@ -84,7 +84,7 @@
       "draft": "Entwurf",
       "subagent": "Unteragent"
     },
-    "deepChatTargetOnly": "Nur DeepChat-Agents können als Verschiebeziele ausgewählt werden. ACP-Unterhaltungen können zu DeepChat verschoben werden, aber nicht in ACP."
+    "deepChatTargetOnly": "Nur SRIBD Office Agent-Agents können als Verschiebeziele ausgewählt werden. ACP-Unterhaltungen können zu SRIBD Office Agent verschoben werden, aber nicht in ACP."
   },
   "deleteMessage": {
     "title": "Diese Nachricht löschen?",

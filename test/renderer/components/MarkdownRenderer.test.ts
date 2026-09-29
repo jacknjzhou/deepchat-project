@@ -335,15 +335,22 @@ describe('MarkdownRenderer', () => {
     expect(renderer.attributes('data-code-block-themes')).toBe('vitesse-dark,vitesse-light')
   })
 
-  it('uses the built-in strict Mermaid renderer without a global custom registry', async () => {
+  it('uses the built-in strict Mermaid renderer and registers only the global image override', async () => {
     const { wrapper, getCustomComponents, setCustomComponentsMock, removeCustomComponentsMock } =
       await setup()
 
     expect(wrapper.get('[data-testid="node-renderer"]').attributes('data-mermaid-strict')).toBe(
       'true'
     )
-    expect(getCustomComponents()).toEqual({})
-    expect(setCustomComponentsMock).not.toHaveBeenCalled()
+    // The renderer registers a module-level global mapping that only overrides
+    // the image node (to let imgcache:// sources render); everything else stays
+    // on Markstream's built-in components.
+    const components = getCustomComponents()
+    expect(Object.keys(components)).toEqual(['image'])
+    expect(components.image).toBeDefined()
+    expect(setCustomComponentsMock).toHaveBeenCalledTimes(1)
+    // Global registration: single argument, no customId scoping.
+    expect(setCustomComponentsMock.mock.calls[0]).toHaveLength(1)
 
     wrapper.unmount()
     expect(removeCustomComponentsMock).not.toHaveBeenCalled()

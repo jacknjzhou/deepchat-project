@@ -94,6 +94,13 @@
           </DropdownMenuContent>
         </DropdownMenu>
 
+        <div v-if="showImageTemplateCards" class="w-full max-w-4xl">
+          <ImagePromptTemplateCards
+            :templates="builtinTemplates"
+            @apply-template="onApplyImageTemplate"
+          />
+        </div>
+
         <!-- Input area -->
         <div ref="firstChatGuideHostRef" :class="['w-full max-w-4xl flex justify-center']">
           <ChatInputBox
@@ -131,11 +138,13 @@
                   !hasDraftInput
                 "
                 :is-preparing-attachments="isPreparingAttachments"
+                :show-image-templates="composerSupportsImageGeneration"
                 @attach="onAttach"
                 @toggle-search="toggleSearch"
                 @voice-input="onToggleVoiceInput"
                 @send="onSubmit"
                 @cancel-preparation="cancelSubmissionPreparation"
+                @apply-template="onApplyImageTemplate"
               />
             </template>
           </ChatInputBox>
@@ -214,6 +223,7 @@ import { Icon } from '@iconify/vue'
 import ChatInputBox from '@/components/chat/ChatInputBox.vue'
 import ChatInputToolbar from '@/components/chat/ChatInputToolbar.vue'
 import ChatStatusBar from '@/components/chat/ChatStatusBar.vue'
+import ImagePromptTemplateCards from '@/components/chat-input/ImagePromptTemplateCards.vue'
 import AcpAuthDialog from '@/components/acp/AcpAuthDialog.vue'
 import {
   openChatStatusBarModelPicker,
@@ -226,6 +236,7 @@ import { useSessionStore } from '@/stores/ui/session'
 import { useAgentStore } from '@/stores/ui/agent'
 import { useModelStore } from '@/stores/modelStore'
 import { useDraftStore, type StartDeeplinkPayload } from '@/stores/ui/draft'
+import { useBuiltinImagePromptTemplates } from '@/stores/imagePromptTemplates'
 import { createConfigClient } from '@api/ConfigClient'
 import { createFileClient } from '@api/FileClient'
 import { createModelClient } from '@api/ModelClient'
@@ -244,6 +255,7 @@ import type {
   SessionGenerationSettings
 } from '@shared/types/agent-interface'
 import type { AcpAuthChallenge } from '@shared/types/acp'
+import type { ImagePromptTemplateApplyPayload } from '@shared/imagePromptTemplates'
 import { normalizeDeepChatSubagentConfig } from '@shared/lib/deepchatSubagents'
 import {
   resolveChatModelByQuery,
@@ -272,6 +284,7 @@ const providerClient = createProviderClient()
 const sessionClient = createSessionClient()
 const chatClient = createChatClient()
 const { t } = useI18n()
+const { builtinTemplates } = useBuiltinImagePromptTemplates()
 const switchAgentGuide = useGuidedOnboardingStep('switch-agent')
 const switchModelGuide = useGuidedOnboardingStep('switch-model')
 const firstChatGuide = useGuidedOnboardingStep('first-chat')
@@ -436,6 +449,40 @@ const composerSupportsVision = computed<boolean | null>(() => {
     null
   )
 })
+const composerSupportsImageGeneration = computed(() => {
+  if (
+    isAcpSelectedAgent.value ||
+    !modelStore.initialized ||
+    !draftStore.providerId ||
+    !draftStore.modelId
+  ) {
+    return false
+  }
+  return (
+    modelStore.findChatSelectableModel(draftStore.providerId, draftStore.modelId)?.model.type ===
+    'imageGeneration'
+  )
+})
+const showImageTemplateCards = computed(
+  () =>
+    composerSupportsImageGeneration.value &&
+    message.value.length === 0 &&
+    attachedFiles.value.length === 0
+)
+const onApplyImageTemplate = (payload: ImagePromptTemplateApplyPayload) => {
+  message.value = payload.prompt
+  if (payload.size !== undefined || payload.quality !== undefined) {
+    const current = draftStore.imageGeneration ?? {}
+    draftStore.updateGenerationSettings({
+      imageGeneration: {
+        ...current,
+        ...(payload.size !== undefined ? { size: payload.size } : {}),
+        ...(payload.quality !== undefined ? { quality: payload.quality } : {})
+      }
+    })
+  }
+  chatInputRef.value?.focusInput?.()
+}
 const normalizeProjectPath = (value: string | null | undefined) => {
   const normalized = value?.trim()
   return normalized ? normalized : null

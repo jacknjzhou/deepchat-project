@@ -482,14 +482,14 @@ describe('SplashWindow display gating', () => {
 
       debugModeListener?.('loading')
       expect(subtitle.textContent).toBe('Unlocking local database')
-      expect(hint.textContent).toBe('DeepChat is starting.')
+      expect(hint.textContent).toBe('SRIBD Office Agent is starting.')
       expect(password.hidden).toBe(true)
       expect(actions.hidden).toBe(true)
 
       debugModeListener?.('system-unlock')
       expect(subtitle.textContent).toBe('Unlocking local database')
       expect(hint.textContent).toBe(
-        'DeepChat is reading the saved password from the system credential store.'
+        'SRIBD Office Agent is reading the saved password from the system credential store.'
       )
       expect(password.hidden).toBe(true)
       expect(actions.hidden).toBe(true)

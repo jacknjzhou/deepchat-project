@@ -131,14 +131,14 @@ export function resolveOpenAICodexCallbackUrl(
     return {
       kind: 'failure',
       error: callback.error,
-      message: 'Authentication complete. You can return to DeepChat.'
+      message: 'Authentication complete. You can return to SRIBD Office Agent.'
     }
   }
 
   return {
     kind: 'success',
     code: callback.code,
-    message: 'Authentication complete. You can return to DeepChat.'
+    message: 'Authentication complete. You can return to SRIBD Office Agent.'
   }
 }
 

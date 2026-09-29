@@ -22,6 +22,8 @@ export interface SettingsNavigationItem {
     | 'settings-shortcut'
     | 'settings-about'
     | 'settings-debug'
+    | 'settings-documents'
+    | 'settings-documents-template'
   path: string
   titleKey: string
   icon: string
@@ -198,7 +200,7 @@ export const SETTINGS_NAVIGATION_ITEMS: SettingsNavigationItem[] = [
     icon: 'lucide:smartphone',
     position: 5.25,
     groupKey: 'system',
-    keywords: ['remote', 'telegram', 'feishu', 'control', '远程', '控制'],
+    keywords: ['remote', 'feishu', 'control', '远程', '控制'],
     hiddenInSidebar: true
   },
   {
@@ -306,6 +308,33 @@ export const SETTINGS_NAVIGATION_ITEMS: SettingsNavigationItem[] = [
     groupKey: 'system',
     developmentOnly: true,
     keywords: ['debug', 'mock', 'development', '调试', '模拟']
+  },
+  {
+    routeName: 'settings-documents',
+    path: '/documents',
+    titleKey: 'routes.settings-documents',
+    icon: 'lucide:scan-text',
+    position: 5.05,
+    groupKey: 'tools',
+    keywords: [
+      'documents',
+      'template',
+      'extraction',
+      'document recognition',
+      '单据',
+      '识别',
+      '模板'
+    ]
+  },
+  {
+    routeName: 'settings-documents-template',
+    path: '/documents/template/:id',
+    titleKey: 'routes.settings-documents-template',
+    icon: 'lucide:file-pen',
+    position: 5.06,
+    groupKey: 'tools',
+    keywords: ['documents', 'template', 'editor', '单据', '模板', '编辑'],
+    hiddenInSidebar: true
   }
 ]
 

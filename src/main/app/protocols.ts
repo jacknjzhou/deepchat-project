@@ -13,6 +13,10 @@ import {
   resolveWorkspacePreviewRequest,
   WORKSPACE_PREVIEW_PROTOCOL
 } from '@/workspace/workspacePreviewProtocol'
+import {
+  RESUME_PREVIEW_PROTOCOL,
+  resolveResumePreviewRequest
+} from '@/resumeScreening/resumePreviewProtocol'
 import { registerMcpAppProtocol } from '@/mcp/apps/sandboxProtocol'
 import type { McpAppSandboxRegistry } from '@/mcp/apps/sandboxRegistry'
 
@@ -36,6 +40,9 @@ const getMimeTypeForPath = (filePath: string): string => {
       return 'application/json'
     case '.pdf':
       return 'application/pdf'
+    case '.txt':
+    case '.md':
+      return 'text/plain; charset=utf-8'
     case '.svg':
       return 'image/svg+xml'
     case '.png':
@@ -239,6 +246,57 @@ export async function registerProtocols(
       }
 
       console.error('registerProtocols: Error handling imgcache request:', error)
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      return new Response(`Server error: ${errorMessage}`, {
+        status: 500,
+        headers: { 'Content-Type': 'text/plain' }
+      })
+    }
+  })
+
+  // Register 'resume-preview' protocol: 简历筛选源文件预览（仅服务 userData/resume-screening 目录）
+  protocol.handle(RESUME_PREVIEW_PROTOCOL, async (request) => {
+    const fullPath = resolveResumePreviewRequest(
+      request.url,
+      path.join(app.getPath('userData'), 'resume-screening')
+    )
+    if (!fullPath) {
+      return new Response('Forbidden', {
+        status: 403,
+        headers: { 'Content-Type': 'text/plain' }
+      })
+    }
+
+    try {
+      const stat = await fsp.stat(fullPath)
+      if (stat.isDirectory()) {
+        console.warn(
+          `registerProtocols: ${RESUME_PREVIEW_PROTOCOL} handler: File not found: ${fullPath}`
+        )
+        return new Response(`File not found: ${fullPath}`, {
+          status: 404,
+          headers: { 'Content-Type': 'text/plain' }
+        })
+      }
+
+      return await createStreamingResponse(fullPath, stat, {
+        headers: {
+          'Content-Type': getMimeTypeForPath(fullPath),
+          'X-Content-Type-Options': 'nosniff'
+        }
+      })
+    } catch (error: unknown) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        console.warn(
+          `registerProtocols: ${RESUME_PREVIEW_PROTOCOL} handler: File not found: ${fullPath}`
+        )
+        return new Response(`File not found: ${fullPath}`, {
+          status: 404,
+          headers: { 'Content-Type': 'text/plain' }
+        })
+      }
+
+      console.error('registerProtocols: Error handling resume-preview request:', error)
       const errorMessage = error instanceof Error ? error.message : String(error)
       return new Response(`Server error: ${errorMessage}`, {
         status: 500,

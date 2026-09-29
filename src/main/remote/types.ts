@@ -1,10 +1,6 @@
 import { z } from 'zod'
 import type { QuestionOption } from '@shared/types/agent-interface'
 import type {
-  DiscordPairingSnapshot,
-  DiscordRemoteBindingSummary,
-  DiscordRemoteSettings,
-  DiscordRemoteStatus,
   FeishuBrand,
   FeishuPairingSnapshot,
   FeishuRemoteSettings,
@@ -17,94 +13,27 @@ import type {
   RemoteBindingSummary,
   RemoteChannel,
   RemoteRuntimeState,
-  TelegramPairingSnapshot,
-  TelegramRemoteBindingSummary,
-  TelegramRemoteSettings,
-  TelegramRemoteStatus,
-  TelegramStreamMode,
   WeixinIlinkAccountSummary,
   WeixinIlinkRemoteSettings
 } from '@shared/types/remote'
 
 export const REMOTE_CONTROL_SETTING_KEY = 'remoteControl'
-export const TELEGRAM_REMOTE_POLL_LIMIT = 20
-export const TELEGRAM_REMOTE_POLL_TIMEOUT_SEC = 30
-export const TELEGRAM_OUTBOUND_TEXT_LIMIT = 4096
 export const TELEGRAM_PAIR_CODE_TTL_MS = 10 * 60 * 1000
 export const FEISHU_PAIR_CODE_TTL_MS = TELEGRAM_PAIR_CODE_TTL_MS
 export const QQBOT_PAIR_CODE_TTL_MS = TELEGRAM_PAIR_CODE_TTL_MS
-export const DISCORD_PAIR_CODE_TTL_MS = TELEGRAM_PAIR_CODE_TTL_MS
 export const REMOTE_PAIR_CODE_MAX_FAILURES = 5
 export const FEISHU_INBOUND_DEDUP_TTL_MS = 30 * 60 * 1000
 export const FEISHU_INBOUND_DEDUP_LIMIT = 2048
 export const FEISHU_CONVERSATION_POLL_TIMEOUT_MS = 5 * 60 * 1000
 export const FEISHU_OUTBOUND_TEXT_LIMIT = 8_000
-export const TELEGRAM_TYPING_DELAY_MS = 800
 export const TELEGRAM_STREAM_POLL_INTERVAL_MS = 450
-export const TELEGRAM_STREAM_START_TIMEOUT_MS = 8_000
-export const TELEGRAM_PRIVATE_THREAD_DEFAULT = 0
 export const TELEGRAM_RECENT_SESSION_LIMIT = 10
-export const TELEGRAM_MODEL_MENU_TTL_MS = 10 * 60 * 1000
-export const TELEGRAM_AGENT_MENU_TTL_MS = 10 * 60 * 1000
-export const TELEGRAM_INTERACTION_CALLBACK_TTL_MS = 10 * 60 * 1000
 export const TELEGRAM_REMOTE_DEFAULT_AGENT_ID = 'deepchat'
 export const FEISHU_REMOTE_DEFAULT_AGENT_ID = TELEGRAM_REMOTE_DEFAULT_AGENT_ID
 export const QQBOT_REMOTE_DEFAULT_AGENT_ID = TELEGRAM_REMOTE_DEFAULT_AGENT_ID
-export const DISCORD_REMOTE_DEFAULT_AGENT_ID = TELEGRAM_REMOTE_DEFAULT_AGENT_ID
 export const WEIXIN_ILINK_REMOTE_DEFAULT_AGENT_ID = TELEGRAM_REMOTE_DEFAULT_AGENT_ID
-export const TELEGRAM_REMOTE_REACTION_EMOJI = '🤯'
 export const FEISHU_REMOTE_REACTION_EMOJI = 'THINKING'
 export const QQBOT_GROUP_AND_C2C_INTENT = 1 << 25
-export const TELEGRAM_REMOTE_COMMANDS = [
-  {
-    command: 'start',
-    description: 'Show remote control status'
-  },
-  {
-    command: 'help',
-    description: 'Show available commands'
-  },
-  {
-    command: 'pair',
-    description: 'Authorize this Telegram account'
-  },
-  {
-    command: 'new',
-    description: 'Start a new session'
-  },
-  {
-    command: 'sessions',
-    description: 'List recent sessions'
-  },
-  {
-    command: 'use',
-    description: 'Bind a listed session'
-  },
-  {
-    command: 'stop',
-    description: 'Stop the active generation'
-  },
-  {
-    command: 'open',
-    description: 'Open the current session on desktop'
-  },
-  {
-    command: 'pending',
-    description: 'Show the current pending interaction'
-  },
-  {
-    command: 'model',
-    description: 'Switch provider and model'
-  },
-  {
-    command: 'agent',
-    description: 'View or switch the current agent'
-  },
-  {
-    command: 'status',
-    description: 'Show runtime and session status'
-  }
-] as const
 
 export const FEISHU_REMOTE_COMMANDS = [
   {
@@ -208,57 +137,6 @@ export const QQBOT_REMOTE_COMMANDS = [
   }
 ] as const
 
-export const DISCORD_REMOTE_COMMANDS = [
-  {
-    command: 'start',
-    description: 'Show remote control status'
-  },
-  {
-    command: 'help',
-    description: 'Show available commands'
-  },
-  {
-    command: 'pair',
-    description: 'Authorize this Discord channel'
-  },
-  {
-    command: 'new',
-    description: 'Start a new session'
-  },
-  {
-    command: 'sessions',
-    description: 'List recent sessions'
-  },
-  {
-    command: 'use',
-    description: 'Bind a listed session'
-  },
-  {
-    command: 'stop',
-    description: 'Stop the active generation'
-  },
-  {
-    command: 'open',
-    description: 'Open the current session on desktop'
-  },
-  {
-    command: 'pending',
-    description: 'Show the current pending interaction'
-  },
-  {
-    command: 'model',
-    description: 'View or switch the current model'
-  },
-  {
-    command: 'agent',
-    description: 'View or switch the current agent'
-  },
-  {
-    command: 'status',
-    description: 'Show runtime and session status'
-  }
-] as const
-
 export interface RemoteEndpointBindingMeta {
   channel: RemoteChannel
   kind: RemoteBindingKind
@@ -272,8 +150,6 @@ export type RemoteEndpointBinding = {
   meta?: RemoteEndpointBindingMeta
 }
 
-export type TelegramEndpointBinding = RemoteEndpointBinding
-
 export type TelegramPairingState = {
   code: string | null
   expiresAt: number | null
@@ -282,24 +158,10 @@ export type TelegramPairingState = {
 
 export type FeishuPairingState = TelegramPairingState
 export type QQBotPairingState = TelegramPairingState
-export type DiscordPairingState = TelegramPairingState
 
 export type TelegramCommandPayload = {
   name: string
   args: string
-}
-
-export interface TelegramRemoteRuntimeConfig {
-  botToken: string
-  enabled: boolean
-  allowlist: number[]
-  streamMode: TelegramStreamMode
-  defaultAgentId: string
-  defaultWorkdir: string
-  pollOffset: number
-  lastFatalError: string | null
-  pairing: TelegramPairingState
-  bindings: Record<string, TelegramEndpointBinding>
 }
 
 export interface FeishuRemoteRuntimeConfig {
@@ -331,17 +193,6 @@ export interface QQBotRemoteRuntimeConfig {
   bindings: Record<string, RemoteEndpointBinding>
 }
 
-export interface DiscordRemoteRuntimeConfig {
-  botToken: string
-  enabled: boolean
-  defaultAgentId: string
-  defaultWorkdir: string
-  pairedChannelIds: string[]
-  lastFatalError: string | null
-  pairing: DiscordPairingState
-  bindings: Record<string, RemoteEndpointBinding>
-}
-
 export interface WeixinIlinkAccountRuntimeConfig {
   accountId: string
   ownerUserId: string
@@ -361,36 +212,10 @@ export interface WeixinIlinkRemoteRuntimeConfig {
 }
 
 export interface RemoteControlConfig {
-  telegram: TelegramRemoteRuntimeConfig
   feishu: FeishuRemoteRuntimeConfig
   qqbot: QQBotRemoteRuntimeConfig
-  discord: DiscordRemoteRuntimeConfig
   weixinIlink: WeixinIlinkRemoteRuntimeConfig
 }
-
-interface TelegramInboundBase {
-  updateId: number
-  chatId: number
-  messageThreadId: number
-  messageId: number
-  chatType: string
-  fromId: number | null
-}
-
-export interface TelegramInboundMessage extends TelegramInboundBase {
-  kind: 'message'
-  text: string
-  command: TelegramCommandPayload | null
-  attachments: RemoteInputAttachment[]
-}
-
-export interface TelegramInboundCallbackQuery extends TelegramInboundBase {
-  kind: 'callback_query'
-  callbackQueryId: string
-  data: string
-}
-
-export type TelegramInboundEvent = TelegramInboundMessage | TelegramInboundCallbackQuery
 
 export interface FeishuRawMention {
   key: string
@@ -431,14 +256,6 @@ export interface QQBotInboundMessage {
   attachments: RemoteInputAttachment[]
 }
 
-export interface DiscordInboundAttachment {
-  id: string
-  filename: string
-  contentType: string | null
-  size: number | null
-  url: string
-}
-
 export interface RemoteInputAttachment {
   id?: string
   filename: string
@@ -462,23 +279,6 @@ export interface RemoteInputEncryptedMedia {
   cdnBaseUrl?: string
 }
 
-export interface DiscordInboundMessage {
-  kind: 'message' | 'interaction'
-  eventId: string
-  chatId: string
-  chatType: 'dm' | 'channel'
-  messageId: string
-  senderUserId: string | null
-  senderUserName: string
-  text: string
-  command: TelegramCommandPayload | null
-  mentionedBot: boolean
-  interactionId?: string
-  interactionToken?: string
-  applicationId?: string
-  attachments: DiscordInboundAttachment[]
-}
-
 export interface WeixinIlinkInboundMessage {
   kind: 'message'
   accountId: string
@@ -489,15 +289,6 @@ export interface WeixinIlinkInboundMessage {
   command: TelegramCommandPayload | null
   createdAt: number | null
   attachments: RemoteInputAttachment[]
-}
-
-export interface TelegramInlineKeyboardButton {
-  text: string
-  callback_data: string
-}
-
-export interface TelegramInlineKeyboardMarkup {
-  inline_keyboard: TelegramInlineKeyboardButton[][]
 }
 
 export interface RemotePermissionCommandInfo {
@@ -568,24 +359,6 @@ export interface RemoteGeneratedImageAsset {
   sourceMessageId: string
 }
 
-export type TelegramOutboundAction =
-  | {
-      type: 'sendMessage'
-      text: string
-      replyMarkup?: TelegramInlineKeyboardMarkup
-    }
-  | {
-      type: 'editMessageText'
-      messageId: number
-      text: string
-      replyMarkup?: TelegramInlineKeyboardMarkup | null
-    }
-
-export interface TelegramCallbackAnswer {
-  text?: string
-  showAlert?: boolean
-}
-
 export interface TelegramModelOption {
   modelId: string
   modelName: string
@@ -597,72 +370,12 @@ export interface TelegramModelProviderOption {
   models: TelegramModelOption[]
 }
 
-export interface TelegramModelMenuState {
-  endpointKey: string
-  sessionId: string
-  createdAt: number
-  providers: TelegramModelProviderOption[]
-}
-
-export interface TelegramPendingInteractionState {
-  endpointKey: string
-  createdAt: number
-  messageId: string
-  toolCallId: string
-}
-
-export type TelegramModelMenuCallback =
-  | {
-      action: 'provider'
-      token: string
-      providerIndex: number
-    }
-  | {
-      action: 'model'
-      token: string
-      providerIndex: number
-      modelIndex: number
-    }
-  | {
-      action: 'back' | 'cancel'
-      token: string
-    }
-
 export interface TelegramAgentOption {
   agentId: string
   agentName: string
   agentType: 'deepchat' | 'acp'
   source?: 'builtin' | 'manual' | 'registry'
 }
-
-export interface TelegramAgentMenuState {
-  endpointKey: string
-  sessionId: string
-  createdAt: number
-  agents: TelegramAgentOption[]
-}
-
-export type TelegramAgentMenuCallback =
-  | {
-      action: 'choice'
-      token: string
-      agentIndex: number
-    }
-  | {
-      action: 'cancel'
-      token: string
-    }
-
-export type TelegramPendingInteractionCallback =
-  | {
-      action: 'allow' | 'deny' | 'other'
-      token: string
-    }
-  | {
-      action: 'option'
-      token: string
-      optionIndex: number
-    }
 
 export interface FeishuCardConfig {
   enable_forward?: boolean
@@ -689,172 +402,9 @@ export type FeishuOutboundAction =
       fallbackText: string
     }
 
-const TELEGRAM_MODEL_MENU_CALLBACK_PREFIX = 'model'
-const TELEGRAM_AGENT_MENU_CALLBACK_PREFIX = 'agent'
-const TELEGRAM_INTERACTION_CALLBACK_PREFIX = 'pending'
-const TELEGRAM_ENDPOINT_KEY_REGEX = /^telegram:(-?\d+):(-?\d+)$/
 const FEISHU_ENDPOINT_KEY_REGEX = /^feishu:([^:]+):([^:]+)$/
 const QQBOT_ENDPOINT_KEY_REGEX = /^qqbot:(c2c|group):([^:]+)$/
-const DISCORD_ENDPOINT_KEY_REGEX = /^discord:(dm|channel):([^:]+)$/
 const WEIXIN_ILINK_ENDPOINT_KEY_REGEX = /^weixin-ilink:([^:]+):([^:]+)$/
-
-export const createTelegramCallbackToken = (): string =>
-  `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`
-
-export const buildModelMenuProviderCallbackData = (token: string, providerIndex: number): string =>
-  `${TELEGRAM_MODEL_MENU_CALLBACK_PREFIX}:${token}:p:${providerIndex}`
-
-export const buildModelMenuChoiceCallbackData = (
-  token: string,
-  providerIndex: number,
-  modelIndex: number
-): string => `${TELEGRAM_MODEL_MENU_CALLBACK_PREFIX}:${token}:m:${providerIndex}:${modelIndex}`
-
-export const buildModelMenuBackCallbackData = (token: string): string =>
-  `${TELEGRAM_MODEL_MENU_CALLBACK_PREFIX}:${token}:b`
-
-export const buildModelMenuCancelCallbackData = (token: string): string =>
-  `${TELEGRAM_MODEL_MENU_CALLBACK_PREFIX}:${token}:c`
-
-export const buildAgentMenuChoiceCallbackData = (token: string, agentIndex: number): string =>
-  `${TELEGRAM_AGENT_MENU_CALLBACK_PREFIX}:${token}:a:${agentIndex}`
-
-export const buildAgentMenuCancelCallbackData = (token: string): string =>
-  `${TELEGRAM_AGENT_MENU_CALLBACK_PREFIX}:${token}:c`
-
-export const parseAgentMenuCallbackData = (data: string): TelegramAgentMenuCallback | null => {
-  const parts = data.trim().split(':')
-  if (parts[0] !== TELEGRAM_AGENT_MENU_CALLBACK_PREFIX || !parts[1]) {
-    return null
-  }
-
-  const token = parts[1]
-  const action = parts[2]
-  if (action === 'a' && parts[3] !== undefined) {
-    const agentIndex = Number.parseInt(parts[3], 10)
-    if (Number.isInteger(agentIndex) && agentIndex >= 0) {
-      return {
-        action: 'choice',
-        token,
-        agentIndex
-      }
-    }
-  }
-
-  if (action === 'c') {
-    return {
-      action: 'cancel',
-      token
-    }
-  }
-
-  return null
-}
-
-export const parseModelMenuCallbackData = (data: string): TelegramModelMenuCallback | null => {
-  const parts = data.trim().split(':')
-  if (parts[0] !== TELEGRAM_MODEL_MENU_CALLBACK_PREFIX || !parts[1]) {
-    return null
-  }
-
-  const token = parts[1]
-  const action = parts[2]
-  if (action === 'p' && parts[3] !== undefined) {
-    const providerIndex = Number.parseInt(parts[3], 10)
-    if (Number.isInteger(providerIndex) && providerIndex >= 0) {
-      return {
-        action: 'provider',
-        token,
-        providerIndex
-      }
-    }
-  }
-
-  if (action === 'm' && parts[3] !== undefined && parts[4] !== undefined) {
-    const providerIndex = Number.parseInt(parts[3], 10)
-    const modelIndex = Number.parseInt(parts[4], 10)
-    if (
-      Number.isInteger(providerIndex) &&
-      providerIndex >= 0 &&
-      Number.isInteger(modelIndex) &&
-      modelIndex >= 0
-    ) {
-      return {
-        action: 'model',
-        token,
-        providerIndex,
-        modelIndex
-      }
-    }
-  }
-
-  if (action === 'b') {
-    return {
-      action: 'back',
-      token
-    }
-  }
-
-  if (action === 'c') {
-    return {
-      action: 'cancel',
-      token
-    }
-  }
-
-  return null
-}
-
-export const buildPendingInteractionAllowCallbackData = (token: string): string =>
-  `${TELEGRAM_INTERACTION_CALLBACK_PREFIX}:${token}:allow`
-
-export const buildPendingInteractionDenyCallbackData = (token: string): string =>
-  `${TELEGRAM_INTERACTION_CALLBACK_PREFIX}:${token}:deny`
-
-export const buildPendingInteractionOtherCallbackData = (token: string): string =>
-  `${TELEGRAM_INTERACTION_CALLBACK_PREFIX}:${token}:other`
-
-export const buildPendingInteractionOptionCallbackData = (
-  token: string,
-  optionIndex: number
-): string => `${TELEGRAM_INTERACTION_CALLBACK_PREFIX}:${token}:o:${optionIndex}`
-
-export const parsePendingInteractionCallbackData = (
-  data: string
-): TelegramPendingInteractionCallback | null => {
-  const parts = data.trim().split(':')
-  if (parts[0] !== TELEGRAM_INTERACTION_CALLBACK_PREFIX || !parts[1]) {
-    return null
-  }
-
-  const token = parts[1]
-  const action = parts[2]
-  if (action === 'allow' || action === 'deny' || action === 'other') {
-    return {
-      action,
-      token
-    }
-  }
-
-  if (action === 'o' && parts[3] !== undefined) {
-    const optionIndex = Number.parseInt(parts[3], 10)
-    if (Number.isInteger(optionIndex) && optionIndex >= 0) {
-      return {
-        action: 'option',
-        token,
-        optionIndex
-      }
-    }
-  }
-
-  return null
-}
-
-export interface TelegramPollerStatusSnapshot {
-  state: RemoteRuntimeState
-  lastError: string | null
-  botUser: TelegramRemoteStatus['botUser']
-}
 
 export interface FeishuRuntimeStatusSnapshot {
   state: RemoteRuntimeState
@@ -868,12 +418,6 @@ export interface QQBotRuntimeStatusSnapshot {
   botUser: QQBotRemoteStatus['botUser']
 }
 
-export interface DiscordRuntimeStatusSnapshot {
-  state: RemoteRuntimeState
-  lastError: string | null
-  botUser: DiscordRemoteStatus['botUser']
-}
-
 export interface WeixinIlinkRuntimeStatusSnapshot {
   state: RemoteRuntimeState
   lastError: string | null
@@ -882,11 +426,6 @@ export interface WeixinIlinkRuntimeStatusSnapshot {
     ownerUserId: string
     baseUrl: string
   } | null
-}
-
-export interface TelegramTransportTarget {
-  chatId: number
-  messageThreadId: number
 }
 
 export interface FeishuTransportTarget {
@@ -901,33 +440,12 @@ export interface QQBotTransportTarget {
   msgId: string
 }
 
-export interface DiscordTransportTarget {
-  chatType: 'dm' | 'channel'
-  channelId: string
-}
-
 export interface WeixinIlinkTransportTarget {
   userId: string
   contextToken?: string
 }
 
 export const createDefaultRemoteControlConfig = (): RemoteControlConfig => ({
-  telegram: {
-    botToken: '',
-    enabled: false,
-    allowlist: [],
-    streamMode: 'draft',
-    defaultAgentId: TELEGRAM_REMOTE_DEFAULT_AGENT_ID,
-    defaultWorkdir: '',
-    pollOffset: 0,
-    lastFatalError: null,
-    pairing: {
-      code: null,
-      expiresAt: null,
-      failedAttempts: 0
-    },
-    bindings: {}
-  },
   feishu: {
     brand: 'feishu',
     appId: '',
@@ -963,20 +481,6 @@ export const createDefaultRemoteControlConfig = (): RemoteControlConfig => ({
     },
     bindings: {}
   },
-  discord: {
-    botToken: '',
-    enabled: false,
-    defaultAgentId: DISCORD_REMOTE_DEFAULT_AGENT_ID,
-    defaultWorkdir: '',
-    pairedChannelIds: [],
-    lastFatalError: null,
-    pairing: {
-      code: null,
-      expiresAt: null,
-      failedAttempts: 0
-    },
-    bindings: {}
-  },
   weixinIlink: {
     enabled: false,
     defaultAgentId: WEIXIN_ILINK_REMOTE_DEFAULT_AGENT_ID,
@@ -986,7 +490,7 @@ export const createDefaultRemoteControlConfig = (): RemoteControlConfig => ({
 })
 
 const RemoteEndpointBindingMetaSchema = z.object({
-  channel: z.enum(['telegram', 'feishu', 'qqbot', 'discord', 'weixin-ilink']).optional(),
+  channel: z.enum(['feishu', 'qqbot', 'weixin-ilink']).optional(),
   kind: z.enum(['dm', 'group', 'topic']).optional(),
   chatId: z.string().optional(),
   threadId: z.string().nullable().optional()
@@ -1002,19 +506,6 @@ const PairingStateSchema = z.object({
   code: z.string().nullable().optional(),
   expiresAt: z.number().int().nonnegative().nullable().optional(),
   failedAttempts: z.number().int().nonnegative().optional()
-})
-
-const TelegramRemoteRuntimeConfigSchema = z.object({
-  botToken: z.string().optional(),
-  enabled: z.boolean().optional(),
-  allowlist: z.array(z.union([z.number(), z.string()])).optional(),
-  defaultAgentId: z.string().optional(),
-  defaultWorkdir: z.string().optional(),
-  streamMode: z.enum(['draft', 'final']).optional(),
-  pollOffset: z.number().int().nonnegative().optional(),
-  lastFatalError: z.string().nullable().optional(),
-  pairing: PairingStateSchema.optional(),
-  bindings: z.record(z.string(), z.unknown()).optional()
 })
 
 const FeishuRemoteRuntimeConfigSchema = z.object({
@@ -1046,17 +537,6 @@ const QQBotRemoteRuntimeConfigSchema = z.object({
   bindings: z.record(z.string(), z.unknown()).optional()
 })
 
-const DiscordRemoteRuntimeConfigSchema = z.object({
-  botToken: z.string().optional(),
-  enabled: z.boolean().optional(),
-  defaultAgentId: z.string().optional(),
-  defaultWorkdir: z.string().optional(),
-  pairedChannelIds: z.array(z.union([z.string(), z.number()])).optional(),
-  lastFatalError: z.string().nullable().optional(),
-  pairing: PairingStateSchema.optional(),
-  bindings: z.record(z.string(), z.unknown()).optional()
-})
-
 const WeixinIlinkAccountRuntimeConfigSchema = z.object({
   accountId: z.string().optional(),
   ownerUserId: z.string().optional(),
@@ -1076,17 +556,13 @@ const WeixinIlinkRemoteRuntimeConfigSchema = z.object({
 })
 
 const RemoteControlConfigSchema = z.object({
-  telegram: TelegramRemoteRuntimeConfigSchema.optional(),
   feishu: FeishuRemoteRuntimeConfigSchema.optional(),
   qqbot: QQBotRemoteRuntimeConfigSchema.optional(),
-  discord: DiscordRemoteRuntimeConfigSchema.optional(),
   weixinIlink: WeixinIlinkRemoteRuntimeConfigSchema.optional()
 })
 
-type LegacyTelegramRemoteConfig = z.infer<typeof TelegramRemoteRuntimeConfigSchema>
 type LegacyFeishuRemoteConfig = z.infer<typeof FeishuRemoteRuntimeConfigSchema>
 type LegacyQQBotRemoteConfig = z.infer<typeof QQBotRemoteRuntimeConfigSchema>
-type LegacyDiscordRemoteConfig = z.infer<typeof DiscordRemoteRuntimeConfigSchema>
 type LegacyWeixinIlinkRemoteConfig = z.infer<typeof WeixinIlinkRemoteRuntimeConfigSchema>
 
 const hasOwn = (value: Record<string, unknown>, key: string): boolean =>
@@ -1102,23 +578,6 @@ const hasBindingPrefix = (value: Record<string, unknown>, prefix: string): boole
   }
 
   return Object.keys(bindings as Record<string, unknown>).some((key) => key.startsWith(prefix))
-}
-
-const extractLegacyTelegramConfig = (input: unknown): LegacyTelegramRemoteConfig | null => {
-  if (!input || typeof input !== 'object' || Array.isArray(input)) {
-    return null
-  }
-
-  const record = input as Record<string, unknown>
-  if (
-    !hasAnyOwn(record, ['botToken', 'allowlist', 'streamMode', 'pollOffset', 'lastFatalError']) &&
-    !hasBindingPrefix(record, 'telegram:')
-  ) {
-    return null
-  }
-
-  const parsed = TelegramRemoteRuntimeConfigSchema.safeParse(record)
-  return parsed.success ? parsed.data : null
 }
 
 const extractLegacyFeishuConfig = (input: unknown): LegacyFeishuRemoteConfig | null => {
@@ -1163,23 +622,6 @@ const extractLegacyQQBotConfig = (input: unknown): LegacyQQBotRemoteConfig | nul
   return parsed.success ? parsed.data : null
 }
 
-const extractLegacyDiscordConfig = (input: unknown): LegacyDiscordRemoteConfig | null => {
-  if (!input || typeof input !== 'object' || Array.isArray(input)) {
-    return null
-  }
-
-  const record = input as Record<string, unknown>
-  if (
-    !hasAnyOwn(record, ['botToken', 'pairedChannelIds', 'lastFatalError']) &&
-    !hasBindingPrefix(record, 'discord:')
-  ) {
-    return null
-  }
-
-  const parsed = DiscordRemoteRuntimeConfigSchema.safeParse(record)
-  return parsed.success ? parsed.data : null
-}
-
 const extractLegacyWeixinIlinkConfig = (input: unknown): LegacyWeixinIlinkRemoteConfig | null => {
   if (!input || typeof input !== 'object' || Array.isArray(input)) {
     return null
@@ -1202,22 +644,6 @@ const normalizeStringList = (input: Array<string | number> | undefined): string[
     new Set((input ?? []).map((value) => String(value ?? '').trim()).filter(Boolean))
   ).sort((left, right) => left.localeCompare(right))
 
-export const normalizeTelegramUserIds = (input: Array<number | string> | undefined): number[] => {
-  const normalized = new Set<number>()
-  for (const value of input ?? []) {
-    const parsed =
-      typeof value === 'number'
-        ? value
-        : typeof value === 'string' && value.trim()
-          ? Number.parseInt(value.trim(), 10)
-          : Number.NaN
-    if (Number.isInteger(parsed) && parsed > 0) {
-      normalized.add(parsed)
-    }
-  }
-  return Array.from(normalized).sort((left, right) => left - right)
-}
-
 export const normalizeFeishuOpenIds = (input: Array<string | number> | undefined): string[] =>
   normalizeStringList(input)
 
@@ -1225,9 +651,6 @@ export const normalizeQQBotUserIds = (input: Array<string | number> | undefined)
   normalizeStringList(input)
 
 export const normalizeQQBotGroupIds = (input: Array<string | number> | undefined): string[] =>
-  normalizeStringList(input)
-
-export const normalizeDiscordChannelIds = (input: Array<string | number> | undefined): string[] =>
   normalizeStringList(input)
 
 export const normalizeWeixinIlinkAccounts = (
@@ -1308,16 +731,8 @@ const normalizeBindingMeta = (
     }
   }
 
-  if (fallbackChannel === 'telegram') {
-    return deriveTelegramBindingMeta(endpointKey) ?? undefined
-  }
-
   if (fallbackChannel === 'qqbot') {
     return deriveQQBotBindingMeta(endpointKey) ?? undefined
-  }
-
-  if (fallbackChannel === 'discord') {
-    return deriveDiscordBindingMeta(endpointKey) ?? undefined
   }
 
   if (fallbackChannel === 'weixin-ilink') {
@@ -1362,38 +777,12 @@ export const normalizeRemoteControlConfig = (input: unknown): RemoteControlConfi
     return defaults
   }
 
-  const telegram = parsed.data.telegram ?? extractLegacyTelegramConfig(input) ?? {}
   const feishu = parsed.data.feishu ?? extractLegacyFeishuConfig(input) ?? {}
   const qqbot = parsed.data.qqbot ?? extractLegacyQQBotConfig(input) ?? {}
-  const discord = parsed.data.discord ?? extractLegacyDiscordConfig(input) ?? {}
   const weixinIlink = parsed.data.weixinIlink ?? extractLegacyWeixinIlinkConfig(input) ?? {}
   const weixinIlinkAccounts = normalizeWeixinIlinkRuntimeAccounts(weixinIlink.accounts)
 
   return {
-    telegram: {
-      botToken: telegram.botToken?.trim() || '',
-      enabled: resolveRemoteEnabled(telegram.enabled, Boolean(telegram.botToken?.trim())),
-      allowlist: normalizeTelegramUserIds(telegram.allowlist),
-      streamMode: telegram.streamMode === 'final' ? 'final' : defaults.telegram.streamMode,
-      defaultAgentId: telegram.defaultAgentId?.trim() || defaults.telegram.defaultAgentId,
-      defaultWorkdir: telegram.defaultWorkdir?.trim() || '',
-      pollOffset:
-        typeof telegram.pollOffset === 'number' && telegram.pollOffset >= 0
-          ? telegram.pollOffset
-          : defaults.telegram.pollOffset,
-      lastFatalError: telegram.lastFatalError?.trim() || null,
-      pairing: {
-        code: telegram.pairing?.code?.trim() || null,
-        expiresAt:
-          typeof telegram.pairing?.expiresAt === 'number' ? telegram.pairing.expiresAt : null,
-        failedAttempts:
-          typeof telegram.pairing?.failedAttempts === 'number' &&
-          telegram.pairing.failedAttempts >= 0
-            ? Math.trunc(telegram.pairing.failedAttempts)
-            : 0
-      },
-      bindings: normalizeBindings(telegram.bindings, 'telegram')
-    },
     feishu: {
       brand: feishu.brand === 'lark' ? 'lark' : 'feishu',
       appId: feishu.appId?.trim() || '',
@@ -1441,24 +830,6 @@ export const normalizeRemoteControlConfig = (input: unknown): RemoteControlConfi
       },
       bindings: normalizeBindings(qqbot.bindings, 'qqbot')
     },
-    discord: {
-      botToken: discord.botToken?.trim() || '',
-      enabled: resolveRemoteEnabled(discord.enabled, Boolean(discord.botToken?.trim())),
-      defaultAgentId: discord.defaultAgentId?.trim() || defaults.discord.defaultAgentId,
-      defaultWorkdir: discord.defaultWorkdir?.trim() || '',
-      pairedChannelIds: normalizeDiscordChannelIds(discord.pairedChannelIds),
-      lastFatalError: discord.lastFatalError?.trim() || null,
-      pairing: {
-        code: discord.pairing?.code?.trim() || null,
-        expiresAt:
-          typeof discord.pairing?.expiresAt === 'number' ? discord.pairing.expiresAt : null,
-        failedAttempts:
-          typeof discord.pairing?.failedAttempts === 'number' && discord.pairing.failedAttempts >= 0
-            ? Math.trunc(discord.pairing.failedAttempts)
-            : 0
-      },
-      bindings: normalizeBindings(discord.bindings, 'discord')
-    },
     weixinIlink: {
       enabled: resolveRemoteEnabled(weixinIlink.enabled, weixinIlinkAccounts.length > 0),
       defaultAgentId: weixinIlink.defaultAgentId?.trim() || defaults.weixinIlink.defaultAgentId,
@@ -1466,49 +837,6 @@ export const normalizeRemoteControlConfig = (input: unknown): RemoteControlConfi
       accounts: weixinIlinkAccounts
     }
   }
-}
-
-export const buildTelegramEndpointKey = (chatId: number, messageThreadId: number): string =>
-  `telegram:${chatId}:${messageThreadId || TELEGRAM_PRIVATE_THREAD_DEFAULT}`
-
-export const parseTelegramEndpointKey = (
-  endpointKey: string
-): Pick<TelegramRemoteBindingSummary, 'chatId' | 'messageThreadId'> | null => {
-  const match = TELEGRAM_ENDPOINT_KEY_REGEX.exec(endpointKey.trim())
-  if (!match) {
-    return null
-  }
-
-  return {
-    chatId: Number.parseInt(match[1], 10),
-    messageThreadId: Number.parseInt(match[2], 10)
-  }
-}
-
-export const buildTelegramBindingMeta = (
-  chatId: number,
-  messageThreadId: number
-): RemoteEndpointBindingMeta => {
-  const normalizedThreadId = messageThreadId || TELEGRAM_PRIVATE_THREAD_DEFAULT
-  const isTopic = normalizedThreadId > 0
-  const isGroup = chatId < 0
-  return {
-    channel: 'telegram',
-    kind: isTopic ? 'topic' : isGroup ? 'group' : 'dm',
-    chatId: String(chatId),
-    threadId: isTopic ? String(normalizedThreadId) : null
-  }
-}
-
-export const deriveTelegramBindingMeta = (
-  endpointKey: string
-): RemoteEndpointBindingMeta | null => {
-  const endpoint = parseTelegramEndpointKey(endpointKey)
-  if (!endpoint) {
-    return null
-  }
-
-  return buildTelegramBindingMeta(endpoint.chatId, endpoint.messageThreadId)
 }
 
 export const buildFeishuEndpointKey = (chatId: string, threadId?: string | null): string =>
@@ -1589,42 +917,6 @@ export const deriveQQBotBindingMeta = (endpointKey: string): RemoteEndpointBindi
   return buildQQBotBindingMeta(endpoint)
 }
 
-export const buildDiscordEndpointKey = (chatType: 'dm' | 'channel', chatId: string): string =>
-  `discord:${chatType}:${chatId.trim()}`
-
-export const parseDiscordEndpointKey = (
-  endpointKey: string
-): (Pick<DiscordRemoteBindingSummary, 'chatId'> & { chatType: 'dm' | 'channel' }) | null => {
-  const match = DISCORD_ENDPOINT_KEY_REGEX.exec(endpointKey.trim())
-  if (!match) {
-    return null
-  }
-
-  return {
-    chatType: match[1] === 'channel' ? 'channel' : 'dm',
-    chatId: match[2]
-  }
-}
-
-export const buildDiscordBindingMeta = (params: {
-  chatId: string
-  chatType: 'dm' | 'channel'
-}): RemoteEndpointBindingMeta => ({
-  channel: 'discord',
-  kind: params.chatType === 'channel' ? 'group' : 'dm',
-  chatId: params.chatId.trim(),
-  threadId: null
-})
-
-export const deriveDiscordBindingMeta = (endpointKey: string): RemoteEndpointBindingMeta | null => {
-  const endpoint = parseDiscordEndpointKey(endpointKey)
-  if (!endpoint) {
-    return null
-  }
-
-  return buildDiscordBindingMeta(endpoint)
-}
-
 export const buildWeixinIlinkEndpointKey = (accountId: string, userId: string): string =>
   `weixin-ilink:${accountId.trim()}:${userId.trim()}`
 
@@ -1670,10 +962,8 @@ export const buildBindingSummary = (
 ): RemoteBindingSummary | null => {
   const meta =
     binding.meta ??
-    deriveTelegramBindingMeta(endpointKey) ??
     deriveFeishuBindingMeta(endpointKey) ??
     deriveQQBotBindingMeta(endpointKey) ??
-    deriveDiscordBindingMeta(endpointKey) ??
     deriveWeixinIlinkBindingMeta(endpointKey)
 
   if (!meta) {
@@ -1699,15 +989,6 @@ export const createPairCode = (ttlMs: number = TELEGRAM_PAIR_CODE_TTL_MS): Teleg
   }
 }
 
-export const normalizeTelegramSettingsInput = (
-  input: TelegramRemoteSettings
-): TelegramRemoteSettings => ({
-  botToken: input.botToken?.trim() ?? '',
-  remoteEnabled: Boolean(input.remoteEnabled),
-  defaultAgentId: input.defaultAgentId?.trim() || TELEGRAM_REMOTE_DEFAULT_AGENT_ID,
-  defaultWorkdir: input.defaultWorkdir?.trim() ?? ''
-})
-
 export const normalizeFeishuSettingsInput = (
   input: FeishuRemoteSettings
 ): FeishuRemoteSettings => ({
@@ -1732,16 +1013,6 @@ export const normalizeQQBotSettingsInput = (input: QQBotRemoteSettings): QQBotRe
   pairedUserIds: normalizeQQBotUserIds(input.pairedUserIds)
 })
 
-export const normalizeDiscordSettingsInput = (
-  input: DiscordRemoteSettings
-): DiscordRemoteSettings => ({
-  botToken: input.botToken?.trim() ?? '',
-  remoteEnabled: Boolean(input.remoteEnabled),
-  defaultAgentId: input.defaultAgentId?.trim() || DISCORD_REMOTE_DEFAULT_AGENT_ID,
-  defaultWorkdir: input.defaultWorkdir?.trim() ?? '',
-  pairedChannelIds: normalizeDiscordChannelIds(input.pairedChannelIds)
-})
-
 export const normalizeWeixinIlinkSettingsInput = (
   input: WeixinIlinkRemoteSettings
 ): WeixinIlinkRemoteSettings => ({
@@ -1749,14 +1020,6 @@ export const normalizeWeixinIlinkSettingsInput = (
   defaultAgentId: input.defaultAgentId?.trim() || WEIXIN_ILINK_REMOTE_DEFAULT_AGENT_ID,
   defaultWorkdir: input.defaultWorkdir?.trim() ?? '',
   accounts: normalizeWeixinIlinkAccounts(input.accounts)
-})
-
-export const buildTelegramPairingSnapshot = (
-  settings: TelegramRemoteRuntimeConfig
-): TelegramPairingSnapshot => ({
-  pairCode: settings.pairing.code,
-  pairCodeExpiresAt: settings.pairing.expiresAt,
-  allowedUserIds: [...settings.allowlist]
 })
 
 export const buildFeishuPairingSnapshot = (
@@ -1774,12 +1037,4 @@ export const buildQQBotPairingSnapshot = (
   pairCodeExpiresAt: settings.pairing.expiresAt,
   pairedUserIds: [...settings.pairedUserIds],
   pairedGroupIds: [...settings.pairedGroupIds]
-})
-
-export const buildDiscordPairingSnapshot = (
-  settings: DiscordRemoteRuntimeConfig
-): DiscordPairingSnapshot => ({
-  pairCode: settings.pairing.code,
-  pairCodeExpiresAt: settings.pairing.expiresAt,
-  pairedChannelIds: [...settings.pairedChannelIds]
 })

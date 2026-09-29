@@ -72,6 +72,14 @@ vi.mock('@shadcn/components/ui/tooltip', () => ({
   })
 }))
 
+vi.mock('@/components/chat-input/ImagePromptTemplateButton.vue', () => ({
+  default: {
+    name: 'ImagePromptTemplateButton',
+    emits: ['apply-template'],
+    template: '<div data-testid="image-template-button-stub" />'
+  }
+}))
+
 describe('ChatInputToolbar', () => {
   it('switches from stop to queue when draft input appears during generation', async () => {
     const ChatInputToolbar = (await import('@/components/chat/ChatInputToolbar.vue')).default
@@ -246,5 +254,24 @@ describe('ChatInputToolbar', () => {
     const wrapper = mount(ChatInputToolbar, { props: { showSearch: false } })
 
     expect(wrapper.find('[data-testid="chat-search-toggle"]').exists()).toBe(false)
+  })
+
+  it('hides the image template button by default', async () => {
+    const ChatInputToolbar = (await import('@/components/chat/ChatInputToolbar.vue')).default
+    const wrapper = mount(ChatInputToolbar)
+
+    expect(wrapper.find('[data-testid="image-template-button-stub"]').exists()).toBe(false)
+  })
+
+  it('renders the image template button when enabled and forwards apply-template', async () => {
+    const ChatInputToolbar = (await import('@/components/chat/ChatInputToolbar.vue')).default
+    const wrapper = mount(ChatInputToolbar, { props: { showImageTemplates: true } })
+
+    expect(wrapper.find('[data-testid="image-template-button-stub"]').exists()).toBe(true)
+
+    wrapper
+      .findComponent({ name: 'ImagePromptTemplateButton' })
+      .vm.$emit('apply-template', { prompt: 'p' })
+    expect(wrapper.emitted('apply-template')).toEqual([[{ prompt: 'p' }]])
   })
 })

@@ -6,11 +6,14 @@
   "settings-ocr": "OCR (Metin Tanıma)",
   "settings-provider": "Sağlayıcılar",
   "settings-mcp": "MCP Ayarlar",
-  "settings-deepchat-agents": "DeepChat Agent",
+  "settings-deepchat-agents": "SRIBD Office Agent",
   "settings-database": "Veri",
   "settings-about": "Hakkında",
   "settings-shortcut": "Kısayollar",
   "settings-display": "Görüntülemek",
+  "settings-documents": "Belge tanıma",
+  "settings-documents-template": "Şablon düzenleyici",
+  "documents": "Belge Arşivi",
   "settings-knowledge-base": "Bilgi Bankası",
   "settings-prompt": "prompt",
   "settings-mcp-market": "MCP Pazar",
@@ -26,5 +29,6 @@
   "settings-memory": "Bellek",
   "plugins": "Plugins",
   "settings-debug": "Debug",
-  "settings-toolchains": "Toolchains"
+  "settings-toolchains": "Toolchains",
+  "resumeScreening": "Özgeçmiş Eleme"
 }

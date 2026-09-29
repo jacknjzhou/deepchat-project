@@ -1,4 +1,4 @@
-import { mkdir } from 'node:fs/promises'
+import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 
 import type { ToolchainKind } from '@shared/types/toolchains'
@@ -52,6 +52,45 @@ export class OcrRuntimeBusyError extends Error {
     super('OCR cache cannot be cleared while extraction is active')
     this.name = 'OcrRuntimeBusyError'
   }
+}
+
+const HELPER_BUNDLE_COPY_NAME = 'bundle-copy'
+const HELPER_BUNDLE_ID_MARKER = '.bundle-id'
+
+/**
+ * The native OCR helper (std::filesystem) cannot open files under paths
+ * longer than MAX_PATH. Deep bundle-internal paths (e.g. CoreML weights
+ * inside the model bundle under a pnpm store) exceed MAX_PATH on Windows
+ * even when the bundle directory itself does not. Path aliases do not help
+ * because the helper canonicalizes paths back to the long original, so the
+ * bundle is copied to a short, stable location instead. The copy is cached
+ * per bundleId and refreshed when the marker mismatches.
+ * No-op on non-Windows platforms.
+ */
+export async function resolveHelperAccessibleBundlePath(
+  bundlePath: string,
+  anchorDir: string,
+  bundleId: string
+): Promise<string> {
+  if (process.platform !== 'win32') {
+    return bundlePath
+  }
+  const copyPath = path.join(anchorDir, HELPER_BUNDLE_COPY_NAME)
+  // Keep the marker outside the copy: the helper rejects bundles containing
+  // files that are not listed in SHA256SUMS.
+  const markerPath = path.join(anchorDir, `${HELPER_BUNDLE_COPY_NAME}${HELPER_BUNDLE_ID_MARKER}`)
+  let valid = false
+  try {
+    valid = (await readFile(markerPath, 'utf8')).trim() === bundleId
+  } catch {
+    valid = false
+  }
+  if (!valid) {
+    await rm(copyPath, { force: true, recursive: true })
+    await cp(bundlePath, copyPath, { recursive: true })
+    await writeFile(markerPath, bundleId, 'utf8')
+  }
+  return copyPath
 }
 
 /** Lazily owns the offline OCR helper, engine, and derived cache for the application lifetime. */
@@ -137,6 +176,11 @@ export class OcrRuntimeService {
     }
   }
 
+  /** Starts the helper process and loads the model ahead of the first extraction. */
+  async warmup(): Promise<void> {
+    await this.getResources()
+  }
+
   async clearCache(): Promise<void> {
     const resources = await this.getResources()
     if (this.isResourcesBusy(resources)) {
@@ -199,7 +243,11 @@ export class OcrRuntimeService {
       host = new LightOcrProcessHost({
         nodeExecutable: availability.assets.nodeExecutable,
         helperEntryPath: availability.assets.helperEntryPath,
-        bundlePath: availability.assets.bundlePath,
+        bundlePath: await resolveHelperAccessibleBundlePath(
+          availability.assets.bundlePath,
+          cacheDir,
+          availability.assets.bundleId
+        ),
         expectedBundleId: availability.assets.bundleId,
         expectedNodeVersion: availability.assets.nodeVersion,
         nativePackageDir: availability.assets.nativePackageDir,

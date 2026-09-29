@@ -6,11 +6,14 @@
   "settings-ocr": "OCR (rozpoznawanie tekstu)",
   "settings-provider": "Dostawcy",
   "settings-mcp": "Ustawienia MCP",
-  "settings-deepchat-agents": "DeepChat Agent",
+  "settings-deepchat-agents": "SRIBD Office Agent",
   "settings-database": "Dane",
   "settings-about": "O",
   "settings-shortcut": "Skróty",
   "settings-display": "Wyświetlacz",
+  "settings-documents": "Rozpoznawanie dokumentów",
+  "settings-documents-template": "Edytor szablonów",
+  "documents": "Archiwum dokumentów",
   "settings-knowledge-base": "Baza wiedzy",
   "settings-prompt": "Prompt",
   "settings-mcp-market": "Rynek MCP",
@@ -26,5 +29,6 @@
   "settings-memory": "Pamięć",
   "plugins": "Plugins",
   "settings-debug": "Debug",
-  "settings-toolchains": "Toolchains"
+  "settings-toolchains": "Toolchains",
+  "resumeScreening": "Selekcja CV"
 }

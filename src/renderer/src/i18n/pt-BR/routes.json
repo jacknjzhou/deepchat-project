@@ -10,6 +10,9 @@
   "settings-about": "Sobre",
   "settings-shortcut": "Atalhos",
   "settings-display": "Exibição",
+  "settings-documents": "Reconhecimento de documentos",
+  "settings-documents-template": "Editor de modelo",
+  "documents": "Arquivo de documentos",
   "settings-knowledge-base": "Base de Conhecimento",
   "settings-prompt": "Prompts",
   "settings-mcp-market": "Mercado MCP",
@@ -20,11 +23,12 @@
   "settings-dashboard": "Dashboard",
   "settings-environments": "Ambientes",
   "settings-remote": "Remoto",
-  "settings-deepchat-agents": "Agentes do DeepChat",
+  "settings-deepchat-agents": "Agentes do SRIBD Office Agent",
   "settings-plugins": "Plugins",
   "settings-overview": "Visão geral das configurações",
   "settings-memory": "Memória",
   "plugins": "Plugins",
   "settings-debug": "Debug",
-  "settings-toolchains": "Toolchains"
+  "settings-toolchains": "Toolchains",
+  "resumeScreening": "Triagem de Currículos"
 }

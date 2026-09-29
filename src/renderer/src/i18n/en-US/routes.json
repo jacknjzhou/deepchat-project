@@ -7,11 +7,14 @@
   "settings-ocr": "OCR (Text Recognition)",
   "settings-provider": "Providers",
   "settings-mcp": "MCP Settings",
-  "settings-deepchat-agents": "DeepChat Agents",
+  "settings-deepchat-agents": "SRIBD Office Agents",
   "settings-database": "Data",
   "settings-about": "About",
   "settings-shortcut": "Shortcuts",
   "settings-display": "Display",
+  "settings-documents": "Document Recognition",
+  "settings-documents-template": "Template Editor",
+  "documents": "Document Archive",
   "settings-knowledge-base": "Knowledge Base",
   "settings-prompt": "Prompts",
   "settings-mcp-market": "MCP Market",
@@ -26,5 +29,6 @@
   "settings-overview": "Settings Overview",
   "settings-memory": "Memory",
   "settings-debug": "Debug",
-  "settings-toolchains": "Toolchains"
+  "settings-toolchains": "Toolchains",
+  "resumeScreening": "Resume Screening"
 }

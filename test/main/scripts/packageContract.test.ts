@@ -401,13 +401,13 @@ describe('CI package contract', () => {
     const runCommand = vi.fn(async (command: string, args: string[]) => {
       if (command === '/usr/bin/unzip') {
         return {
-          stdout: 'DeepChat.app/\nDeepChat.app/Contents/Info.plist\n',
+          stdout: 'SRIBD办公智能体.app/\nSRIBD办公智能体.app/Contents/Info.plist\n',
           stderr: ''
         }
       }
       expect(command).toBe('/usr/bin/ditto')
       extractionRoot = args.at(-1)!
-      await mkdir(path.join(extractionRoot, 'DeepChat.app'))
+      await mkdir(path.join(extractionRoot, 'SRIBD办公智能体.app'))
       return { stdout: '', stderr: '' }
     })
     const verifyCuaMacHelper = vi.fn(async () => {})
@@ -427,7 +427,7 @@ describe('CI package contract', () => {
       expect.any(Object)
     )
     expect(extractionRoot).not.toBe('')
-    const extractedAppPath = path.join(extractionRoot, 'DeepChat.app')
+    const extractedAppPath = path.join(extractionRoot, 'SRIBD办公智能体.app')
     expect(verifyCuaMacHelper).toHaveBeenCalledWith(extractedAppPath, {
       teamId: 'Y7P5QLKLYG',
       runCommand
@@ -450,13 +450,13 @@ describe('CI package contract', () => {
         runCommand: async (command: string, args: string[]) => {
           if (command === '/usr/bin/unzip') {
             return {
-              stdout: 'DeepChat.app/\nDeepChat.app/Contents/Info.plist\n',
+              stdout: 'SRIBD办公智能体.app/\nSRIBD办公智能体.app/Contents/Info.plist\n',
               stderr: ''
             }
           }
           extractionRoot = args.at(-1)!
           await Promise.all([
-            mkdir(path.join(extractionRoot, 'DeepChat.app')),
+            mkdir(path.join(extractionRoot, 'SRIBD办公智能体.app')),
             writeFile(path.join(extractionRoot, 'unexpected.txt'), 'unexpected')
           ])
           return { stdout: '', stderr: '' }
@@ -464,7 +464,7 @@ describe('CI package contract', () => {
         verifyCuaMacHelper,
         verifyMacApp
       })
-    ).rejects.toThrow(/exactly one root DeepChat.app/)
+    ).rejects.toThrow(/exactly one root SRIBD办公智能体.app/)
     expect(verifyCuaMacHelper).not.toHaveBeenCalled()
     expect(verifyMacApp).not.toHaveBeenCalled()
     expect(extractionRoot).not.toBe('')
@@ -473,16 +473,16 @@ describe('CI package contract', () => {
 
   it('rejects unsafe or ambiguous updater ZIP entry paths before extraction', () => {
     expect(
-      validateMacZipEntries('DeepChat.app/\nDeepChat.app/Contents/Info.plist\n')
-    ).toEqual(['DeepChat.app/', 'DeepChat.app/Contents/Info.plist'])
+      validateMacZipEntries('SRIBD办公智能体.app/\nSRIBD办公智能体.app/Contents/Info.plist\n')
+    ).toEqual(['SRIBD办公智能体.app/', 'SRIBD办公智能体.app/Contents/Info.plist'])
 
     for (const unsafeEntries of [
-      '../DeepChat.app/Contents/Info.plist\n',
-      '/DeepChat.app/Contents/Info.plist\n',
-      'DeepChat.app\\Contents\\Info.plist\n',
+      '../SRIBD办公智能体.app/Contents/Info.plist\n',
+      '/SRIBD办公智能体.app/Contents/Info.plist\n',
+      'SRIBD办公智能体.app\\Contents\\Info.plist\n',
       'Other.app/Contents/Info.plist\n',
-      'DeepChat.app/Contents/../escape\n',
-      'DeepChat.app/Contents/Info.plist\nDeepChat.app/Contents/Info.plist\n'
+      'SRIBD办公智能体.app/Contents/../escape\n',
+      'SRIBD办公智能体.app/Contents/Info.plist\nSRIBD办公智能体.app/Contents/Info.plist\n'
     ]) {
       expect(() => validateMacZipEntries(unsafeEntries)).toThrow(/unsafe entry|duplicate entry/)
     }

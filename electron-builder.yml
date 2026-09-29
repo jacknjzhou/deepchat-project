@@ -1,5 +1,5 @@
 appId: com.wefonk.deepchat
-productName: DeepChat
+productName: SRIBD办公智能体
 directories:
   buildResources: build
 files:
@@ -32,16 +32,20 @@ files:
 asarUnpack:
   - '**/node_modules/sharp/**/*'
   - '**/node_modules/@img/**/*'
+  - '**/node_modules/@napi-rs/**/*'
   - '**/node_modules/@ff-labs/fff-node/**/*'
   - '**/node_modules/@ff-labs/fff-bin-*/**/*'
   - '**/node_modules/opendal/**/*'
   - '**/node_modules/@opendal/**/*'
   - '**/node_modules/ffi-rs/**/*'
   - '**/node_modules/@yuuang/ffi-rs-*/**/*'
-  - '**/node_modules/@parcel/watcher/**/*'
-  - '**/node_modules/@parcel/watcher-*/**/*'
   - '**/node_modules/@arcships/light-ocr*/**/*'
   - '**/node_modules/@zerob13/nativekit/prebuilds/**/*'
+  # PDF.js lazily fetches these resource dirs via fs; they must live on the
+  # real filesystem or CMap/standard-font loads fail (garbled CJK PDF text).
+  - '**/node_modules/pdfjs-dist/cmaps/**/*'
+  - '**/node_modules/pdfjs-dist/standard_fonts/**/*'
+  - '**/node_modules/pdfjs-dist/wasm/**/*'
 extraResources:
   - from: ./out/cli/
     to: app.asar.unpacked/cli

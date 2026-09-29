@@ -6,11 +6,14 @@
   "settings-ocr": "OCR (Pengecaman Teks)",
   "settings-provider": "Tetapan pembekal perkhidmatan",
   "settings-mcp": "Tetapan MCP",
-  "settings-deepchat-agents": "DeepChat Agent",
+  "settings-deepchat-agents": "SRIBD Office Agent",
   "settings-database": "Tetapan data",
   "settings-about": "kira-kira",
   "settings-shortcut": "kekunci pintasan",
   "settings-display": "tetapan paparan",
+  "settings-documents": "Pengecaman Dokumen",
+  "settings-documents-template": "Penyunting Templat",
+  "documents": "Arkib Dokumen",
   "settings-knowledge-base": "asas pengetahuan",
   "settings-prompt": "Pengurusan Prompt",
   "settings-mcp-market": "Pasaran MCP",
@@ -26,5 +29,6 @@
   "settings-memory": "Memori",
   "plugins": "Plugins",
   "settings-debug": "Debug",
-  "settings-toolchains": "Toolchains"
+  "settings-toolchains": "Toolchains",
+  "resumeScreening": "Saringan Resume"
 }

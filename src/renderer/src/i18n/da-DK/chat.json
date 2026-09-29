@@ -19,7 +19,7 @@
     "historyPlaceholder": "(Udfyld med Tab)",
     "inputArea": "Indtastningsområde",
     "pasteFiles": "Understøtter kopiering og indsættelse af filer",
-    "placeholder": "Spørg DeepChat om hvad som helst, {'@'} for at nævne filer, / for kommandoer",
+    "placeholder": "Spørg SRIBD Office Agent om hvad som helst, {'@'} for at nævne filer, / for kommandoer",
     "promptFilesAdded": "Prompt-filen er blevet tilføjet",
     "promptFilesAddedDesc": "{count} filer er blevet tilføjet successfully",
     "promptFilesError": "Filbehandlingsfejl",
@@ -40,7 +40,7 @@
     "voiceRecognitionUnsupportedTitle": "Det aktuelle miljø understøtter ikke stemmegenkendelse",
     "voiceRecognitionUnsupportedDescription": "Brug denne funktion i en browser eller skrivebordsmiljø, der understøtter stemmegenkendelse.",
     "voiceRecognitionPermissionDeniedTitle": "Kan ikke få adgang til mikrofonen",
-    "voiceRecognitionPermissionDeniedDescription": "Giv DeepChat adgang til mikrofonen, og prøv igen.",
+    "voiceRecognitionPermissionDeniedDescription": "Giv SRIBD Office Agent adgang til mikrofonen, og prøv igen.",
     "voiceRecognitionErrorTitle": "Stemmegenkendelse mislykkedes",
     "voiceRecognitionErrorDescription": "Stemmegenkendelsen kunne ikke fuldføres. Prøv igen senere.",
     "send": "Send",
@@ -66,7 +66,7 @@
         "agentCore": "Agent Core",
         "agentImageGeneration": "Billedgenerering",
         "agentSkills": "Agent Skills",
-        "deepchatSettings": "DeepChat Settings",
+        "deepchatSettings": "SRIBD Office Agent Settings",
         "yobrowser": "YoBrowser"
       }
     },
@@ -391,6 +391,63 @@
     "addWorkspaceFailed": "Arbejdsområdet kunne ikke tilføjes",
     "searchLoadedRangeDescription": "Viser resultater fra indlæste samtaler. Rul for at indlæse mere historik."
   },
+  "imageTemplates": {
+    "button": "Skabeloner",
+    "panelTitle": "Promptskabeloner",
+    "tabFeatured": "Anbefalede",
+    "tabMine": "Mine",
+    "add": "Ny skabelon",
+    "edit": "Redigér",
+    "delete": "Slet",
+    "deleteConfirmTitle": "Slet skabelon",
+    "deleteConfirmDescription": "Slet \"{title}\"? Dette kan ikke fortrydes.",
+    "limitReached": "Du kan gemme op til {max} skabeloner",
+    "emptyMine": "Ingen egne skabeloner endnu",
+    "emptyMineHint": "Klik på \"Ny skabelon\" for at oprette din første",
+    "emptyCardsHint": "Kom i gang med en skabelon",
+    "cancel": "Annullér",
+    "save": "Gem",
+    "formTitle": "Titel",
+    "formTitlePlaceholder": "f.eks. cyberpunk-avatar",
+    "formPrompt": "Prompt",
+    "formPromptPlaceholder": "Beskriv det billede, du vil generere…",
+    "formSize": "Størrelse",
+    "formQuality": "Kvalitet",
+    "sizeDefault": "Standard",
+    "qualityDefault": "Standard",
+    "titleRequired": "Titel er påkrævet",
+    "promptRequired": "Prompt er påkrævet",
+    "builtin": {
+      "design": {
+        "title": "Design",
+        "prompt": "Design a minimalist brand logo for a sustainable travel product, earthy color palette with geometric lines, modern and restrained, highly recognizable, white background, vector style"
+      },
+      "commodity": {
+        "title": "Produktfoto",
+        "prompt": "Commercial product photography of a perfume bottle on light marble, soft natural light from the left, blurred background, premium feel, clean composition, 8k detail"
+      },
+      "poster": {
+        "title": "Plakat",
+        "prompt": "A music festival promo poster, bold Memphis-style geometric shapes, high-saturation contrasting colors, striking whitespace layout, retro print texture, portrait composition"
+      },
+      "beautify": {
+        "title": "Fotoforbedring",
+        "prompt": "Elevate the photo to magazine quality: enhance detail and depth, balance light and shadow, natural transparent colors, keep the original composition, no over-sharpening"
+      },
+      "portrait": {
+        "title": "Portræt",
+        "prompt": "Indoor natural-light portrait of a young woman, side profile close-up, soft window light, shallow depth of field, film grain, warm tones, lifelike texture"
+      },
+      "style": {
+        "title": "Stil",
+        "prompt": "A futuristic city street scene in hand-painted Ghibli anime style, soft afternoon light, layered clouds, rich detail, healing atmosphere"
+      },
+      "photorealistic": {
+        "title": "Fotorealistisk",
+        "prompt": "A mountain lake in morning mist, hyper-realistic landscape photography, shot on Canon EOS R5, 35mm wide angle, f/8, natural colors, razor-sharp detail"
+      }
+    }
+  },
   "floatingWidget": {
     "title": "Opgaveoversigt",
     "collapse": "Skjul flydende sessioner",
@@ -430,12 +487,12 @@
   },
   "onboarding": {
     "agentSwitch": {
-      "title": "Switch to DeepChat Agent",
-      "description": "Before chatting, switch away from ACP and return to the built-in DeepChat flow.",
+      "title": "Switch to SRIBD Office Agent",
+      "description": "Before chatting, switch away from ACP and return to the built-in SRIBD Office Agent flow.",
       "caption": "Click the highlighted agent button in the sidebar to continue."
     },
     "switchModel": {
-      "description": "Pick the model you want to use for your first DeepChat conversation.",
+      "description": "Pick the model you want to use for your first SRIBD Office Agent conversation.",
       "caption": "Use the highlighted model switcher and choose any available model."
     },
     "firstChat": {
@@ -612,7 +669,7 @@
       "reasons": {
         "session_unavailable": "Denne samtale er ikke længere tilgængelig.",
         "agent_unavailable": "Den valgte Agent er ikke tilgængelig.",
-        "deepchat_agent_required": "Proaktivt samarbejde kræver en DeepChat Agent.",
+        "deepchat_agent_required": "Proaktivt samarbejde kræver en SRIBD Office Agent.",
         "regular_parent_required": "Proaktivt samarbejde er ikke tilgængeligt i en undersamtale.",
         "agent_policy_unavailable": "Samarbejdspolitikken kunne ikke indlæses.",
         "subagents_disabled": "Aktivér Subagents for denne Agent for at bruge proaktivt samarbejde."

@@ -12440,7 +12440,7 @@ describe('DeepChatAgentHarness', () => {
         {
           type: 'error',
           error_message:
-            'The provider reported a context overflow after response output began. DeepChat preserved the partial output and did not retry.',
+            'The provider reported a context overflow after response output began. SRIBD Office Agent preserved the partial output and did not retry.',
           failure: { code: 'context_overflow_after_output', retryable: false }
         }
       ])
@@ -13001,7 +13001,9 @@ describe('DeepChatAgentHarness', () => {
       ])
 
       expect(providerCoreStream).toHaveBeenCalledTimes(2)
-      expect(errorMessage).toContain('provider still reported a context overflow after DeepChat')
+      expect(errorMessage).toContain(
+        'provider still reported a context overflow after SRIBD Office Agent'
+      )
       expect(errorMessage).toContain('Approximate context ledger for this request')
       expect(errorMessage).toContain('System prompt (attribution unavailable)')
       expect(errorMessage).not.toContain('Request was not sent because it cannot fit')
@@ -13046,7 +13048,9 @@ describe('DeepChatAgentHarness', () => {
       )
 
       expect(providerCoreStream).toHaveBeenCalledTimes(2)
-      expect(errorMessage).toContain('provider still reported a context overflow after DeepChat')
+      expect(errorMessage).toContain(
+        'provider still reported a context overflow after SRIBD Office Agent'
+      )
       expect(errorMessage).not.toContain('Request was not sent because it cannot fit')
       expect(errorMessage).not.toContain('provider raw red marker')
       expect(llmProvider.generateText).toHaveBeenCalled()
@@ -13085,7 +13089,9 @@ describe('DeepChatAgentHarness', () => {
       const errorMessage = await collectProviderErrorMessage(callArgs, requestMessages)
 
       expect(providerCoreStream).toHaveBeenCalledTimes(2)
-      expect(errorMessage).toContain('provider still reported a context overflow after DeepChat')
+      expect(errorMessage).toContain(
+        'provider still reported a context overflow after SRIBD Office Agent'
+      )
       expect(errorMessage).not.toContain('provider raw red marker')
       expect(llmProvider.generateText).toHaveBeenCalledTimes(1)
       expect(getContextOverflowAnchorCalls()).toHaveLength(1)
@@ -13133,7 +13139,7 @@ describe('DeepChatAgentHarness', () => {
       expect(errorUpdate).toBeTruthy()
       expect(serializedBlocks).not.toContain('provider raw red marker')
       expect(serializedBlocks).toContain(
-        'provider still reported a context overflow after DeepChat'
+        'provider still reported a context overflow after SRIBD Office Agent'
       )
     })
 
@@ -13848,7 +13854,7 @@ describe('DeepChatAgentHarness', () => {
       })
 
       await expect(agent.compactSession('s1')).rejects.toThrow(
-        'Manual compaction is only available for DeepChat agent sessions.'
+        'Manual compaction is only available for SRIBD Office Agent sessions.'
       )
       expect(prepareSpy).not.toHaveBeenCalled()
     })
@@ -14612,7 +14618,7 @@ describe('DeepChatAgentHarness', () => {
         runId: '019feecb-8e55-7757-b555-4f53e8b602a7'
       })
 
-      await expect(answerPendingQuestion()).rejects.toThrow('another DeepChat Agent')
+      await expect(answerPendingQuestion()).rejects.toThrow('another SRIBD Office Agent')
       expect(processStream).not.toHaveBeenCalled()
     })
 

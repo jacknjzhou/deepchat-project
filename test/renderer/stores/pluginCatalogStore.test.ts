@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+﻿import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
-import type { RemoteChannelDescriptor, TelegramRemoteStatus } from '@shared/types/remote'
+import type { RemoteChannelDescriptor, FeishuRemoteStatus } from '@shared/types/remote'
 import type { PluginListItem } from '@shared/types/plugin'
 import type { OcrRuntimeStatus } from '@shared/contracts/routes/ocr.routes'
 import { usePluginCatalogStore } from '@/stores/pluginCatalog'
@@ -20,20 +20,19 @@ const plugin = (enabled = false): PluginListItem => ({
   capabilities: []
 })
 
-const telegramDescriptor: RemoteChannelDescriptor = {
-  id: 'telegram',
-  titleKey: 'settings.remote.telegram.title',
-  descriptionKey: 'settings.remote.telegram.description',
+const feishuDescriptor: RemoteChannelDescriptor = {
+  id: 'feishu',
+  titleKey: 'settings.remote.feishu.title',
+  descriptionKey: 'settings.remote.feishu.description',
   supportsCronDelivery: true
 }
 
-const telegramStatus = (enabled = false): TelegramRemoteStatus => ({
-  channel: 'telegram',
+const feishuStatus = (enabled = false): FeishuRemoteStatus => ({
+  channel: 'feishu',
   enabled,
   state: enabled ? 'running' : 'disabled',
-  pollOffset: 0,
   bindingCount: 0,
-  allowedUserCount: 0,
+  pairedUserCount: 0,
   lastError: null,
   botUser: null
 })

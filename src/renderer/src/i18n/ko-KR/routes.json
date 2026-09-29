@@ -10,6 +10,9 @@
   "settings-mcp": "MCP 설정",
   "settings-shortcut": "단축키",
   "settings-display": "디스플레이 설정",
+  "settings-documents": "문서 인식",
+  "settings-documents-template": "템플릿 편집기",
+  "documents": "문서 아카이브",
   "settings-knowledge-base": "지식 기반",
   "settings-prompt": "프롬프트 관리",
   "settings-mcp-market": "MCP 시장",
@@ -20,11 +23,12 @@
   "settings-dashboard": "Dashboard",
   "settings-environments": "환경",
   "settings-remote": "원격 제어",
-  "settings-deepchat-agents": "DeepChat 에이전트",
+  "settings-deepchat-agents": "SRIBD Office Agent 에이전트",
   "settings-plugins": "Plugins",
   "settings-overview": "설정 개요",
   "settings-memory": "메모리",
   "plugins": "Plugins",
   "settings-debug": "디버그",
-  "settings-toolchains": "Toolchains"
+  "settings-toolchains": "Toolchains",
+  "resumeScreening": "이력서 스크리닝"
 }

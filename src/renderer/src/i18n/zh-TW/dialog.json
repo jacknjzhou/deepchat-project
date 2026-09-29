@@ -69,7 +69,7 @@
     "moveAndDeleteAgent": "移動並刪除 Agent",
     "moveConversation": "移動會話",
     "agentType": {
-      "deepchat": "DeepChat",
+      "deepchat": "SRIBD办公智能体",
       "acp": "ACP"
     },
     "blockReason": {
@@ -84,7 +84,7 @@
       "draft": "草稿",
       "subagent": "子會話"
     },
-    "deepChatTargetOnly": "只能選擇 DeepChat Agent 作為遷移目標。ACP 會話可以遷移到 DeepChat，但不能遷移到 ACP。"
+    "deepChatTargetOnly": "只能選擇 SRIBD办公智能体 Agent 作為遷移目標。ACP 會話可以遷移到 SRIBD办公智能体，但不能遷移到 ACP。"
   },
   "deleteMessage": {
     "title": "刪除這條訊息？",

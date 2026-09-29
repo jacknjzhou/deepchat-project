@@ -585,14 +585,14 @@ function buildProviderContextOverflowAfterRecoveryErrorMessage(
     : ''
   const summary =
     disposition === 'retry_projection_unchanged'
-      ? 'The provider reported a context overflow. DeepChat skipped a second provider call because recovery would not remove or rewrite any provider messages; lowering only the requested output limit is not a reliable recovery for an input overflow.'
+      ? 'The provider reported a context overflow. SRIBD Office Agent skipped a second provider call because recovery would not remove or rewrite any provider messages; lowering only the requested output limit is not a reliable recovery for an input overflow.'
       : disposition === 'retry_projection_cannot_fit'
-        ? 'The provider reported a context overflow. After applying the available context ceiling, the protected request still cannot fit, so DeepChat did not send a doomed retry.'
-        : 'The provider still reported a context overflow after DeepChat compacted or trimmed the request.'
+        ? 'The provider reported a context overflow. After applying the available context ceiling, the protected request still cannot fit, so SRIBD Office Agent did not send a doomed retry.'
+        : 'The provider still reported a context overflow after SRIBD Office Agent compacted or trimmed the request.'
 
   return [
     summary,
-    `DeepChat local estimate: usable context ${formatTokenCount(diagnostics.usableContextLength)} tokens, estimated input ${formatTokenCount(diagnostics.inputTokens)} tokens, tool schemas ${formatTokenCount(diagnostics.toolReserveTokens)} tokens, requested output ${formatTokenCount(diagnostics.requestedMaxTokens)} tokens, effective output ${formatTokenCount(diagnostics.effectiveMaxTokens)} tokens, remaining output room ${formatTokenCount(diagnostics.remainingOutputTokens)} tokens.`,
+    `SRIBD Office Agent local estimate: usable context ${formatTokenCount(diagnostics.usableContextLength)} tokens, estimated input ${formatTokenCount(diagnostics.inputTokens)} tokens, tool schemas ${formatTokenCount(diagnostics.toolReserveTokens)} tokens, requested output ${formatTokenCount(diagnostics.requestedMaxTokens)} tokens, effective output ${formatTokenCount(diagnostics.effectiveMaxTokens)} tokens, remaining output room ${formatTokenCount(diagnostics.remainingOutputTokens)} tokens.`,
     `${providerFacts} Configured context length: ${formatTokenCount(configuredContextLength)} tokens.${sessionCeilingMessage}${metadataGuidance}`,
     formatRequestContextLedger(ledger),
     'The provider may count tokens, system prompts, or tool schemas differently. Try shortening the latest input or attachments, reducing active tools, skills, or system prompt content, lowering max output tokens, or increasing context length.'
@@ -912,7 +912,7 @@ export class DeepChatLoopRunner {
       'deepchat'
     for (const projection of materializedSkillContexts) {
       if (projection.context.agentId !== activeAgentId) {
-        throw new Error('Materialized Skill context belongs to another DeepChat Agent.')
+        throw new Error('Materialized Skill context belongs to another SRIBD Office Agent.')
       }
       if (
         projection.ref.sessionId !== sessionId ||
@@ -925,7 +925,7 @@ export class DeepChatLoopRunner {
     }
     for (const recovered of recoveredRuntimeSkillContexts) {
       if (recovered.identity.agentId !== activeAgentId) {
-        throw new Error('Recovered runtime Skill context belongs to another DeepChat Agent.')
+        throw new Error('Recovered runtime Skill context belongs to another SRIBD Office Agent.')
       }
       resourceInstance.activateRuntimeSkill(recovered.identity.skillName)
     }

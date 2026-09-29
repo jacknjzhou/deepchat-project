@@ -19,8 +19,8 @@ test('main renderer IPC boundary rejects legacy presenter transport @smoke', asy
     let legacyInvokeError = ''
     let appVersion = ''
     let remoteChannelCount = -1
-    let telegramStatusChannel = ''
-    let telegramStatusStateType = ''
+    let feishuStatusChannel = ''
+    let feishuStatusStateType = ''
     try {
       const result = (await runtime.deepchat?.invoke?.('device.getAppVersion', {})) as
         | { version?: unknown }
@@ -36,16 +36,16 @@ test('main renderer IPC boundary rejects legacy presenter transport @smoke', asy
         | undefined
       remoteChannelCount = channels?.channels?.length ?? -1
 
-      const telegramStatus = (await runtime.deepchat?.invoke?.('remoteControl.getChannelStatus', {
-        channel: 'telegram'
+      const feishuStatus = (await runtime.deepchat?.invoke?.('remoteControl.getChannelStatus', {
+        channel: 'feishu'
       })) as { status?: { channel?: unknown; state?: unknown } } | undefined
-      telegramStatusChannel =
-        typeof telegramStatus?.status?.channel === 'string' ? telegramStatus.status.channel : ''
-      telegramStatusStateType = typeof telegramStatus?.status?.state
+      feishuStatusChannel =
+        typeof feishuStatus?.status?.channel === 'string' ? feishuStatus.status.channel : ''
+      feishuStatusStateType = typeof feishuStatus?.status?.state
     } catch {
       remoteChannelCount = -1
-      telegramStatusChannel = ''
-      telegramStatusStateType = ''
+      feishuStatusChannel = ''
+      feishuStatusStateType = ''
     }
 
     try {
@@ -64,8 +64,8 @@ test('main renderer IPC boundary rejects legacy presenter transport @smoke', asy
       hasWindowElectron: Boolean(runtime.electron),
       legacyInvokeError,
       remoteChannelCount,
-      telegramStatusChannel,
-      telegramStatusStateType
+      feishuStatusChannel,
+      feishuStatusStateType
     }
   })
 
@@ -76,8 +76,8 @@ test('main renderer IPC boundary rejects legacy presenter transport @smoke', asy
   expect(boundary.hasApiIpcRenderer).toBe(false)
   expect(boundary.hasLegacyPresenterGlobal).toBe(false)
   expect(boundary.apiKeys).not.toContain('ipcRenderer')
-  expect(boundary.remoteChannelCount).toBeGreaterThanOrEqual(5)
-  expect(boundary.telegramStatusChannel).toBe('telegram')
-  expect(boundary.telegramStatusStateType).toBe('string')
+  expect(boundary.remoteChannelCount).toBeGreaterThanOrEqual(3)
+  expect(boundary.feishuStatusChannel).toBe('feishu')
+  expect(boundary.feishuStatusStateType).toBe('string')
   expect(boundary.legacyInvokeError).toContain('Unknown deepchat route: presenter:call')
 })

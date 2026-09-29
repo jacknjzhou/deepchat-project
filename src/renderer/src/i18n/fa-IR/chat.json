@@ -1,6 +1,6 @@
 {
   "input": {
-    "placeholder": "هر چیزی از DeepChat بپرسید، با {'@'} به فایل‌ها اشاره کنید و با / از دستورها استفاده کنید",
+    "placeholder": "هر چیزی از SRIBD Office Agent بپرسید، با {'@'} به فایل‌ها اشاره کنید و با / از دستورها استفاده کنید",
     "fileArea": "ناحیه پرونده",
     "inputArea": "ناحیه ورودی",
     "functionSwitch": "کلید کارکرد",
@@ -33,7 +33,7 @@
     "voiceRecognitionUnsupportedTitle": "محیط فعلی از تشخیص گفتار پشتیبانی نمی‌کند",
     "voiceRecognitionUnsupportedDescription": "از این قابلیت در مرورگر یا محیط دسکتاپی که از تشخیص گفتار پشتیبانی می‌کند استفاده کنید.",
     "voiceRecognitionPermissionDeniedTitle": "امکان دسترسی به میکروفون وجود ندارد",
-    "voiceRecognitionPermissionDeniedDescription": "اجازه استفاده از میکروفون را به DeepChat بدهید و دوباره تلاش کنید.",
+    "voiceRecognitionPermissionDeniedDescription": "اجازه استفاده از میکروفون را به SRIBD Office Agent بدهید و دوباره تلاش کنید.",
     "voiceRecognitionErrorTitle": "تشخیص گفتار ناموفق بود",
     "voiceRecognitionErrorDescription": "تشخیص گفتار کامل نشد. لطفاً بعداً دوباره تلاش کنید.",
     "send": "ارسال",
@@ -59,7 +59,7 @@
         "agentCore": "Agent Core",
         "agentImageGeneration": "تولید تصویر",
         "agentSkills": "Agent Skills",
-        "deepchatSettings": "DeepChat Settings",
+        "deepchatSettings": "SRIBD Office Agent Settings",
         "yobrowser": "YoBrowser"
       }
     },
@@ -391,6 +391,63 @@
     "addWorkspaceFailed": "افزودن فضای کاری ناموفق بود",
     "searchLoadedRangeDescription": "نتایج گفت‌وگوهای بارگذاری‌شده نمایش داده می‌شوند. برای بارگذاری تاریخچه بیشتر پیمایش کنید."
   },
+  "imageTemplates": {
+    "button": "قالب‌ها",
+    "panelTitle": "قالب‌های پرامپت",
+    "tabFeatured": "برگزیده",
+    "tabMine": "من",
+    "add": "قالب جدید",
+    "edit": "ویرایش",
+    "delete": "حذف",
+    "deleteConfirmTitle": "حذف قالب",
+    "deleteConfirmDescription": "«{title}» حذف شود؟ این عمل قابل بازگشت نیست.",
+    "limitReached": "حداکثر می‌توانید {max} قالب ذخیره کنید",
+    "emptyMine": "هنوز قالب سفارشی ندارید",
+    "emptyMineHint": "برای ساخت اولین قالب روی «قالب جدید» بزنید",
+    "emptyCardsHint": "کار را با یک قالب شروع کنید",
+    "cancel": "لغو",
+    "save": "ذخیره",
+    "formTitle": "عنوان",
+    "formTitlePlaceholder": "مثلاً آواتار سایبرپانک",
+    "formPrompt": "پرامپت",
+    "formPromptPlaceholder": "تصویری که می‌خواهید بسازید را توصیف کنید…",
+    "formSize": "اندازه",
+    "formQuality": "کیفیت",
+    "sizeDefault": "پیش‌فرض",
+    "qualityDefault": "پیش‌فرض",
+    "titleRequired": "عنوان الزامی است",
+    "promptRequired": "پرامپت الزامی است",
+    "builtin": {
+      "design": {
+        "title": "طراحی",
+        "prompt": "Design a minimalist brand logo for a sustainable travel product, earthy color palette with geometric lines, modern and restrained, highly recognizable, white background, vector style"
+      },
+      "commodity": {
+        "title": "عکس محصول",
+        "prompt": "Commercial product photography of a perfume bottle on light marble, soft natural light from the left, blurred background, premium feel, clean composition, 8k detail"
+      },
+      "poster": {
+        "title": "پوستر",
+        "prompt": "A music festival promo poster, bold Memphis-style geometric shapes, high-saturation contrasting colors, striking whitespace layout, retro print texture, portrait composition"
+      },
+      "beautify": {
+        "title": "بهبود عکس",
+        "prompt": "Elevate the photo to magazine quality: enhance detail and depth, balance light and shadow, natural transparent colors, keep the original composition, no over-sharpening"
+      },
+      "portrait": {
+        "title": "پرتره",
+        "prompt": "Indoor natural-light portrait of a young woman, side profile close-up, soft window light, shallow depth of field, film grain, warm tones, lifelike texture"
+      },
+      "style": {
+        "title": "سبک",
+        "prompt": "A futuristic city street scene in hand-painted Ghibli anime style, soft afternoon light, layered clouds, rich detail, healing atmosphere"
+      },
+      "photorealistic": {
+        "title": "فوق‌واقع‌گرایانه",
+        "prompt": "A mountain lake in morning mist, hyper-realistic landscape photography, shot on Canon EOS R5, 35mm wide angle, f/8, natural colors, razor-sharp detail"
+      }
+    }
+  },
   "floatingWidget": {
     "title": "نمای کلی کارها",
     "collapse": "جمع کردن نشست‌های شناور",
@@ -430,12 +487,12 @@
   },
   "onboarding": {
     "agentSwitch": {
-      "title": "به عامل DeepChat بروید",
-      "description": "قبل از شروع گفتگو، از ACP خارج شوید و به جریان داخلی DeepChat برگردید.",
+      "title": "به عامل SRIBD Office Agent بروید",
+      "description": "قبل از شروع گفتگو، از ACP خارج شوید و به جریان داخلی SRIBD Office Agent برگردید.",
       "caption": "برای ادامه، روی دکمه عاملِ هایلایت‌شده در نوار کناری کلیک کنید."
     },
     "switchModel": {
-      "description": "مدلی را که می‌خواهید برای اولین گفتگوی DeepChat استفاده کنید انتخاب کنید.",
+      "description": "مدلی را که می‌خواهید برای اولین گفتگوی SRIBD Office Agent استفاده کنید انتخاب کنید.",
       "caption": "از انتخاب‌گر مدلِ هایلایت‌شده استفاده کنید و هر مدل در دسترس را برگزینید."
     },
     "firstChat": {
@@ -612,7 +669,7 @@
       "reasons": {
         "session_unavailable": "این نشست دیگر در دسترس نیست.",
         "agent_unavailable": "Agent انتخاب‌شده در دسترس نیست.",
-        "deepchat_agent_required": "همکاری فعال به یک DeepChat Agent نیاز دارد.",
+        "deepchat_agent_required": "همکاری فعال به یک SRIBD Office Agent نیاز دارد.",
         "regular_parent_required": "همکاری فعال در نشست فرزند در دسترس نیست.",
         "agent_policy_unavailable": "خط‌مشی همکاری بارگیری نشد.",
         "subagents_disabled": "برای استفاده از همکاری فعال، Subagentها را برای این Agent فعال کنید."

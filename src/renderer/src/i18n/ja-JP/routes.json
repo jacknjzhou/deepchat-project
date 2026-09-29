@@ -10,6 +10,9 @@
   "settings-mcp": "MCP設定",
   "settings-shortcut": "ショートカット",
   "settings-display": "表示設定",
+  "settings-documents": "帳票認識",
+  "settings-documents-template": "テンプレートエディター",
+  "documents": "ドキュメントアーカイブ",
   "settings-knowledge-base": "ナレッジベース",
   "settings-prompt": "プロンプト管理",
   "settings-mcp-market": "MCP市場",
@@ -20,11 +23,12 @@
   "settings-dashboard": "Dashboard",
   "settings-environments": "環境",
   "settings-remote": "リモート",
-  "settings-deepchat-agents": "DeepChatエージェント",
+  "settings-deepchat-agents": "SRIBD Office Agentエージェント",
   "settings-plugins": "プラグイン",
   "settings-overview": "設定の概要",
   "settings-memory": "メモリ",
   "plugins": "Plugins",
   "settings-debug": "デバッグ",
-  "settings-toolchains": "Toolchains"
+  "settings-toolchains": "Toolchains",
+  "resumeScreening": "履歴書スクリーニング"
 }

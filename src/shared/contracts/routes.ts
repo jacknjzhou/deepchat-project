@@ -309,7 +309,8 @@ import {
   ocrClearCacheRoute,
   ocrExtractArtifactRoute,
   ocrExtractUploadRoute,
-  ocrGetRuntimeStatusRoute
+  ocrGetRuntimeStatusRoute,
+  ocrWarmupRoute
 } from './routes/ocr.routes'
 import {
   onboardingCompleteRoute,
@@ -345,7 +346,6 @@ import {
   remoteControlGetChannelPairingSnapshotRoute,
   remoteControlGetChannelSettingsRoute,
   remoteControlGetChannelStatusRoute,
-  remoteControlGetTelegramStatusRoute,
   remoteControlGetWeixinIlinkStatusRoute,
   remoteControlListChannelsRoute,
   remoteControlRemoveChannelBindingRoute,
@@ -376,6 +376,26 @@ import {
   cronJobsUpsertRoute
 } from './routes/cronJobs.routes'
 import {
+  documentTemplatesDeleteRoute,
+  documentTemplatesForkRoute,
+  documentTemplatesGetRoute,
+  documentTemplatesListRoute,
+  documentTemplatesTestExtractRoute,
+  documentTemplatesUpsertRoute,
+  documentsDeleteRoute,
+  documentsExportCsvRoute,
+  documentsExtractAndDraftRoute,
+  documentsGetRoute,
+  documentsListRoute,
+  documentsPreviewFileRoute,
+  documentsStatsRoute,
+  documentsTasksCreateRoute,
+  documentsTasksListRoute,
+  documentsTasksRetryRoute,
+  documentsTasksClearFailedRoute,
+  documentsUpsertRoute
+} from './routes/documents.routes'
+import {
   providersAddPublicRoute,
   providersAddRoute,
   providersGetAcpProcessConfigOptionsRoute,
@@ -385,6 +405,7 @@ import {
   providersImportApplyRoute,
   providersImportScanRoute,
   providersListDefaultsRoute,
+  providersListGroupsRoute,
   providersListModelsRoute,
   providersListOllamaModelsRoute,
   providersListOllamaRunningModelsRoute,
@@ -635,6 +656,15 @@ import {
   orchestrationListLiveDelegationsRoute,
   orchestrationSetPolicyRoute
 } from './routes/orchestration.routes'
+import {
+  resumeScreeningCancelTaskRoute,
+  resumeScreeningCreateTaskRoute,
+  resumeScreeningGetProfileRoute,
+  resumeScreeningGetTaskRoute,
+  resumeScreeningListModelsRoute,
+  resumeScreeningListTasksRoute,
+  resumeScreeningUpdateProfileRoute
+} from './routes/resumeScreening.routes'
 
 export * from './routes/browser.routes'
 export * from './routes/approvals.routes'
@@ -667,6 +697,7 @@ export * from './routes/project.routes'
 export * from './routes/runs.routes'
 export * from './routes/remote-control.routes'
 export * from './routes/cronJobs.routes'
+export * from './routes/documents.routes'
 export * from './routes/settings.routes'
 export * from './routes/shortcut.routes'
 export * from './routes/startup.routes'
@@ -682,6 +713,7 @@ export * from './routes/upgrade.routes'
 export * from './routes/window.routes'
 export * from './routes/workspace.routes'
 export * from './routes/orchestration.routes'
+export * from './routes/resumeScreening.routes'
 
 // 路由目录按块拆分并各自导出：单个巨型对象的 `typeof` 在声明输出(.d.ts)时会超过
 // TS 的类型序列化上限触发 TS7056。拆成多块后每块单独序列化，合并类型只保存引用，
@@ -761,7 +793,6 @@ const DEEPCHAT_ROUTE_CATALOG_PART_1 = {
   [remoteControlGetChannelPairingSnapshotRoute.name]: remoteControlGetChannelPairingSnapshotRoute,
   [remoteControlCreateChannelPairCodeRoute.name]: remoteControlCreateChannelPairCodeRoute,
   [remoteControlClearChannelPairCodeRoute.name]: remoteControlClearChannelPairCodeRoute,
-  [remoteControlGetTelegramStatusRoute.name]: remoteControlGetTelegramStatusRoute,
   [remoteControlStartFeishuAuthRoute.name]: remoteControlStartFeishuAuthRoute,
   [remoteControlWaitForFeishuAuthRoute.name]: remoteControlWaitForFeishuAuthRoute,
   [remoteControlCancelFeishuAuthRoute.name]: remoteControlCancelFeishuAuthRoute,
@@ -786,6 +817,24 @@ const DEEPCHAT_ROUTE_CATALOG_PART_1 = {
   [cronJobsRestartSchedulerRoute.name]: cronJobsRestartSchedulerRoute,
   [cronJobsValidateScheduleRoute.name]: cronJobsValidateScheduleRoute,
   [cronJobsPreviewScheduleRoute.name]: cronJobsPreviewScheduleRoute,
+  [documentTemplatesListRoute.name]: documentTemplatesListRoute,
+  [documentTemplatesGetRoute.name]: documentTemplatesGetRoute,
+  [documentTemplatesUpsertRoute.name]: documentTemplatesUpsertRoute,
+  [documentTemplatesDeleteRoute.name]: documentTemplatesDeleteRoute,
+  [documentTemplatesForkRoute.name]: documentTemplatesForkRoute,
+  [documentsListRoute.name]: documentsListRoute,
+  [documentsGetRoute.name]: documentsGetRoute,
+  [documentsUpsertRoute.name]: documentsUpsertRoute,
+  [documentsDeleteRoute.name]: documentsDeleteRoute,
+  [documentTemplatesTestExtractRoute.name]: documentTemplatesTestExtractRoute,
+  [documentsExtractAndDraftRoute.name]: documentsExtractAndDraftRoute,
+  [documentsExportCsvRoute.name]: documentsExportCsvRoute,
+  [documentsPreviewFileRoute.name]: documentsPreviewFileRoute,
+  [documentsStatsRoute.name]: documentsStatsRoute,
+  [documentsTasksCreateRoute.name]: documentsTasksCreateRoute,
+  [documentsTasksListRoute.name]: documentsTasksListRoute,
+  [documentsTasksRetryRoute.name]: documentsTasksRetryRoute,
+  [documentsTasksClearFailedRoute.name]: documentsTasksClearFailedRoute,
   [pluginsListRoute.name]: pluginsListRoute,
   [pluginsGetRoute.name]: pluginsGetRoute,
   [pluginsEnableRoute.name]: pluginsEnableRoute,
@@ -1005,6 +1054,7 @@ const DEEPCHAT_ROUTE_CATALOG_PART_4 = {
   [sessionsUpdateGenerationSettingsRoute.name]: sessionsUpdateGenerationSettingsRoute,
   [providersListRoute.name]: providersListRoute,
   [providersListSummariesRoute.name]: providersListSummariesRoute,
+  [providersListGroupsRoute.name]: providersListGroupsRoute,
   [providersListPublicRoute.name]: providersListPublicRoute,
   [providersAddPublicRoute.name]: providersAddPublicRoute,
   [providersUpdatePublicRoute.name]: providersUpdatePublicRoute,
@@ -1116,6 +1166,7 @@ const DEEPCHAT_ROUTE_CATALOG_PART_5 = {
   [memoryDeleteDirectiveRoute.name]: memoryDeleteDirectiveRoute,
   [ocrGetRuntimeStatusRoute.name]: ocrGetRuntimeStatusRoute,
   [ocrClearCacheRoute.name]: ocrClearCacheRoute,
+  [ocrWarmupRoute.name]: ocrWarmupRoute,
   [ocrExtractUploadRoute.name]: ocrExtractUploadRoute,
   [ocrExtractArtifactRoute.name]: ocrExtractArtifactRoute,
   [skillsListMetadataRoute.name]: skillsListMetadataRoute,
@@ -1263,7 +1314,14 @@ const DEEPCHAT_ROUTE_CATALOG_PART_5 = {
   [toolchainsCancelInstallRoute.name]: toolchainsCancelInstallRoute,
   [toolchainsRepairRoute.name]: toolchainsRepairRoute,
   [toolchainsRevertRoute.name]: toolchainsRevertRoute,
-  [toolchainsPickCustomRoute.name]: toolchainsPickCustomRoute
+  [toolchainsPickCustomRoute.name]: toolchainsPickCustomRoute,
+  [resumeScreeningCreateTaskRoute.name]: resumeScreeningCreateTaskRoute,
+  [resumeScreeningGetTaskRoute.name]: resumeScreeningGetTaskRoute,
+  [resumeScreeningListTasksRoute.name]: resumeScreeningListTasksRoute,
+  [resumeScreeningCancelTaskRoute.name]: resumeScreeningCancelTaskRoute,
+  [resumeScreeningGetProfileRoute.name]: resumeScreeningGetProfileRoute,
+  [resumeScreeningUpdateProfileRoute.name]: resumeScreeningUpdateProfileRoute,
+  [resumeScreeningListModelsRoute.name]: resumeScreeningListModelsRoute
 } satisfies Record<string, RouteContract>
 
 export type DeepchatRouteCatalog = typeof DEEPCHAT_ROUTE_CATALOG_PART_1 &

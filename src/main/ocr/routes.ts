@@ -1,11 +1,15 @@
-import { ocrClearCacheRoute, ocrGetRuntimeStatusRoute } from '@shared/contracts/routes'
+import {
+  ocrClearCacheRoute,
+  ocrGetRuntimeStatusRoute,
+  ocrWarmupRoute
+} from '@shared/contracts/routes'
 import type { OcrEngine, OcrRuntimeStatus } from '@shared/contracts/routes/ocr.routes'
 import { createRouteMap, type DeepchatRouteMap } from '@/routes/routeRegistry'
 import type { LightOcrEngineStatus } from './lightOcrProtocol'
 import type { OcrRuntimeService, OcrRuntimeServiceStatus } from './ocrRuntimeService'
 
 export function createOcrRoutes(deps: {
-  runtime: Pick<OcrRuntimeService, 'clearCache' | 'getStatus'>
+  runtime: Pick<OcrRuntimeService, 'clearCache' | 'getStatus' | 'warmup'>
   platform?: string
   arch?: string
 }): DeepchatRouteMap {
@@ -32,6 +36,14 @@ export function createOcrRoutes(deps: {
         const status = await getStatus()
         if (!status.cache) throw new Error('OCR cache status is unavailable after clearing')
         return ocrClearCacheRoute.output.parse({ cache: status.cache })
+      }
+    ],
+    [
+      ocrWarmupRoute.name,
+      async (rawInput) => {
+        ocrWarmupRoute.input.parse(rawInput)
+        await deps.runtime.warmup()
+        return ocrWarmupRoute.output.parse({})
       }
     ]
   ])

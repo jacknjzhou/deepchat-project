@@ -199,6 +199,30 @@
               <Icon icon="lucide:blocks" class="size-4 shrink-0 text-muted-foreground" />
               <span class="min-w-0 flex-1 truncate">{{ t('routes.plugins') }}</span>
             </button>
+
+            <button
+              data-testid="app-documents-button"
+              type="button"
+              class="flex h-9 w-full items-center gap-3 rounded-lg px-2 text-left text-sm transition-colors hover:bg-accent/60"
+              :class="documentsRouteActive ? 'bg-accent/70 text-foreground' : 'text-foreground'"
+              @click="openDocuments"
+            >
+              <Icon icon="lucide:inbox" class="size-4 shrink-0 text-muted-foreground" />
+              <span class="min-w-0 flex-1 truncate">{{ t('routes.documents') }}</span>
+            </button>
+
+            <button
+              data-testid="app-resume-screening-button"
+              type="button"
+              class="flex h-9 w-full items-center gap-3 rounded-lg px-2 text-left text-sm transition-colors hover:bg-accent/60"
+              :class="
+                resumeScreeningRouteActive ? 'bg-accent/70 text-foreground' : 'text-foreground'
+              "
+              @click="openResumeScreening"
+            >
+              <Icon icon="lucide:file-search" class="size-4 shrink-0 text-muted-foreground" />
+              <span class="min-w-0 flex-1 truncate">{{ t('routes.resumeScreening') }}</span>
+            </button>
           </div>
         </div>
 
@@ -804,6 +828,10 @@ const sessionSearchQuery = ref('')
 const pluginsRouteActive = computed(() =>
   String(router?.currentRoute?.value?.name ?? '').startsWith('plugins')
 )
+const documentsRouteActive = computed(() => router?.currentRoute?.value?.name === 'documents')
+const resumeScreeningRouteActive = computed(
+  () => router?.currentRoute?.value?.name === 'resume-screening'
+)
 let agentSwitchSeq = 0
 let agentSwitchQueue: Promise<void> = Promise.resolve()
 
@@ -1015,6 +1043,14 @@ const openWorkspaceSettings = () => {
 
 const openPlugins = () => {
   void router?.push({ name: 'plugins' })
+}
+
+const openDocuments = () => {
+  void router?.push({ name: 'documents' })
+}
+
+const openResumeScreening = () => {
+  void router?.push({ name: 'resume-screening' })
 }
 
 const navigateToChat = async () => {

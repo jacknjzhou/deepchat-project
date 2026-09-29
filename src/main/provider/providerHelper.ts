@@ -4,7 +4,7 @@ import {
   ProviderBatchUpdate,
   ProviderChange
 } from '@shared/provider-operations'
-import type { LLM_PROVIDER } from '@shared/types/provider'
+import type { LLM_PROVIDER, ProviderGroupMeta } from '@shared/types/provider'
 import type { StoreLike } from '@/config/storeLike'
 import type { DeepchatEventPublisher } from '@shared/contracts/events'
 import {
@@ -22,6 +22,7 @@ interface ProviderHelperOptions {
   setSetting: SetSetting
   defaultProviders: LLM_PROVIDER[]
   publishEvent: DeepchatEventPublisher
+  providerGroups: ProviderGroupMeta[]
 }
 
 interface ProviderCleanupHooks {
@@ -33,6 +34,7 @@ export class ProviderHelper {
   private store: StoreLike<any>
   private readonly setSetting: SetSetting
   private readonly defaultProviders: LLM_PROVIDER[]
+  private readonly providerGroups: ProviderGroupMeta[]
   private readonly publishEvent: DeepchatEventPublisher
   private cleanupHooks: ProviderCleanupHooks = {}
 
@@ -40,6 +42,7 @@ export class ProviderHelper {
     this.store = options.store
     this.setSetting = options.setSetting
     this.defaultProviders = options.defaultProviders
+    this.providerGroups = options.providerGroups
     this.publishEvent = options.publishEvent
   }
 
@@ -247,6 +250,10 @@ export class ProviderHelper {
 
   getDefaultProviders(): LLM_PROVIDER[] {
     return this.defaultProviders
+  }
+
+  getDefaultProviderGroups(): ProviderGroupMeta[] {
+    return this.providerGroups
   }
 
   getEnabledProviders(): LLM_PROVIDER[] {

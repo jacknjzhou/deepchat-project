@@ -87,6 +87,22 @@ export type LLM_PROVIDER = {
   disabledModels?: string[]
   custom?: boolean
   oauthToken?: string
+  /**
+   * Identifier of the *logical* provider family this instance belongs to.
+   * Two LLM_PROVIDER rows with the same `baseProviderId` are duplicates of
+   * the same underlying service (e.g. two OpenAI accounts, two DeepSeek
+   * tenants) sharing `apiType` but holding independent credentials and
+   * model selections. Falls back to `id` for legacy rows that pre-date
+   the multi-instance feature; the UI uses `baseProviderId ?? id` as the
+   group key.
+   */
+  baseProviderId?: string
+  /**
+   * Per-instance user-friendly label. When set, surfaced in the sidebar
+   * to disambiguate siblings in the same group ("Work OpenAI" /
+   * "Personal OpenAI"). Falls back to `name` when undefined.
+   */
+  instanceLabel?: string
   websites?: {
     official: string
     apiKey: string
@@ -128,6 +144,23 @@ export type LLM_PROVIDER_BASE = Omit<
 export type LLM_EMBEDDING_ATTRS = {
   dimensions: number
   normalized: boolean
+}
+
+/**
+ * Display-only metadata for a provider *group*. A group is the logical
+ * family under which multiple `LLM_PROVIDER` instances can live (e.g.
+ * two OpenAI accounts sharing `apiType === 'openai-completions'`). Group
+ * metadata is shown in the sidebar and never affects IPC, persistence,
+ * or model selection. Providers whose `capabilityProviderId` has no
+ * matching group fall back to a synthetic entry built from the provider
+ * record itself.
+ */
+export type ProviderGroupMeta = {
+  id: string
+  displayName: string
+  icon: string
+  order: number
+  description?: string
 }
 
 export type StandaloneImageGenerationResult = {

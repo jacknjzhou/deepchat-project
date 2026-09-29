@@ -10,6 +10,7 @@ import {
   LlmProviderSummarySchema,
   ModelScopeMcpSyncResultSchema,
   OllamaModelSchema,
+  ProviderGroupMetaSchema,
   ProviderRateLimitStatusSchema
 } from '../domainSchemas'
 import { PROVIDER_IMPORT_CUSTOM_API_TYPES, PROVIDER_IMPORT_SOURCE_IDS } from '../../providerImport'
@@ -218,6 +219,14 @@ export const providersListDefaultsRoute = defineRouteContract({
   input: z.object({}).default({}),
   output: z.object({
     providers: z.array(LlmProviderSchema)
+  })
+})
+
+export const providersListGroupsRoute = defineRouteContract({
+  name: 'providers.listGroups',
+  input: z.object({}).default({}),
+  output: z.object({
+    groups: z.array(ProviderGroupMetaSchema)
   })
 })
 

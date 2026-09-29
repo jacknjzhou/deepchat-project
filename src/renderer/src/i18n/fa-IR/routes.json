@@ -10,6 +10,9 @@
   "settings-about": "درباره",
   "settings-shortcut": "میان‌برها",
   "settings-display": "تنظیمات نمایش",
+  "settings-documents": "شناسایی اسناد",
+  "settings-documents-template": "ویرایشگر قالب",
+  "documents": "آرشیو اسناد",
   "settings-knowledge-base": "پایگاه دانش",
   "settings-prompt": "مدیریت پرامپت‌ها",
   "settings-mcp-market": "بازار MCP",
@@ -20,11 +23,12 @@
   "settings-dashboard": "داشبورد",
   "settings-environments": "محیط‌ها",
   "settings-remote": "کنترل از راه دور",
-  "settings-deepchat-agents": "ایجنت‌های DeepChat",
+  "settings-deepchat-agents": "ایجنت‌های SRIBD Office Agent",
   "settings-plugins": "افزونه‌ها",
   "settings-overview": "نمای کلی تنظیمات",
   "settings-memory": "حافظه",
   "plugins": "Plugins",
   "settings-debug": "Debug",
-  "settings-toolchains": "Toolchains"
+  "settings-toolchains": "Toolchains",
+  "resumeScreening": "غربالگری رزومه"
 }

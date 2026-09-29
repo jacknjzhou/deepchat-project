@@ -1981,7 +1981,7 @@ export class LiveDelegationService {
 function buildTurnHandoff(delegation: LiveDelegation, turn: LiveDelegationTurn): string {
   const [handoffSection, ...remainingSections] = LIVE_DELEGATION_REQUIRED_HANDOFF_SECTIONS
   return [
-    '# DeepChat Live Delegation',
+    '# SRIBD Office Agent Live Delegation',
     '',
     `Delegation: ${delegation.id}`,
     `Turn: ${turn.seq}`,

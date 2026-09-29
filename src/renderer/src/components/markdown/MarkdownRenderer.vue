@@ -41,6 +41,13 @@
   </div>
 </template>
 
+<script lang="ts">
+// Register once at module level: the custom image node lets DeepChat-only
+// protocols (imgcache://) render in markdown, while other sources still go
+// through the built-in ImageNode. Applies to every NodeRenderer instance.
+setCustomComponents({ image: MarkdownImageNode })
+</script>
+
 <script setup lang="ts">
 import { createSessionClient } from '@api/SessionClient'
 import { useArtifactStore } from '@/stores/artifact'
@@ -49,6 +56,7 @@ import { nanoid } from 'nanoid'
 import { useDebounceFn } from '@vueuse/core'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import NodeRenderer, {
+  setCustomComponents,
   type CodeBlockPreviewPayload,
   type ParsedNode,
   type ParseOptions
@@ -59,6 +67,7 @@ import { useMarkdownLinkNavigation } from './useMarkdownLinkNavigation'
 import type { MarkdownLinkContext } from './linkTypes'
 import { ensureMarkdownWorkers } from '@/lib/markdownWorkerLifecycle'
 import { normalizeMarkstreamCodeFenceLanguages } from '@/lib/markstreamLanguage'
+import MarkdownImageNode from './MarkdownImageNode.vue'
 
 const props = withDefaults(
   defineProps<{

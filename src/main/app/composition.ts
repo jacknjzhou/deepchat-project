@@ -23,6 +23,7 @@ import {
   sessionsUpdatedEvent
 } from '@shared/contracts/events'
 import path from 'path'
+import { promises as fsp } from 'node:fs'
 import { DialogService } from '../desktop/dialog'
 import { app, ipcMain, webContents as electronWebContents } from 'electron'
 import { DEEPCHAT_EVENT_CHANNEL } from '@shared/contracts/channels'
@@ -116,6 +117,7 @@ import { createKnowledgeRoutes } from '../knowledge/routes'
 import { KnowledgeSettings } from '@/knowledge/settings'
 import { PromptSettings } from '@/agent/promptSettings'
 import { AgentSettings } from '@/agent/settings'
+import { BUILTIN_DEEPCHAT_AGENT_ID } from '@/agent/repository'
 import { AgentLifecycleGate } from '@/agent/lifecycleGate'
 import { SessionDeletionGate } from '@/session/deletionGate'
 import { emitAcpAgentModelsChanged, emitAgentCatalogChanged } from '@/app/agentEvents'
@@ -185,6 +187,21 @@ import { ProjectService } from '../project'
 import { ProjectDatabase } from '@/project/data/database'
 import { SettingsDatabase } from '@/settings/data/database'
 import { SchedulerDatabase } from '@/scheduler/data/database'
+import { DocumentsDatabase } from '@/documents/data/database'
+import { DocumentExtractor } from '@/documents/extractor/documentExtractor'
+import { pickVisionTarget } from '@/documents/extractor/visionTarget'
+import { DocumentsRepository } from '@/documents/repository'
+import { createDocumentsRoutes } from '@/documents/routes'
+import { RecognitionTaskManager } from '@/documents/taskManager'
+import { seedPresetTemplates } from '@/documents/seed'
+import { ResumeScreeningDatabase } from '@/resumeScreening/data/database'
+import { ResumeLlmInvoker } from '@/resumeScreening/llmInvoker'
+import { createResumeScreeningRoutes } from '@/resumeScreening/routes'
+import { ResumeScreeningService, type ResumeScreeningProfile } from '@/resumeScreening/service'
+import { ResumeTextExtractor } from '@/resumeScreening/textExtractor'
+import { ImageFileAdapter } from '@/file/adapters/ImageFileAdapter'
+import { PdfFileAdapter } from '@/file/adapters/PdfFileAdapter'
+import { renderPdfPagesToDataUrls } from '@/file/adapters/pdfPageRenderer'
 import { AppDatabase } from '@/app/data/database'
 import { createOrchestrationRoutes } from '@/orchestration/routes'
 import { OrchestrationCapabilityResolver } from '@/orchestration/capability'
@@ -570,6 +587,7 @@ export async function createMainProcessControl(dependencies: {
   let agentSessionExportService: AgentSessionExportService
   let sessionTranslation: SessionTranslation
   let liveDelegationService: LiveDelegationService
+  let documentExtractor: DocumentExtractor
   let acpAsLlmProviderSessionControl: AcpAsLlmProviderSessionControlPort
   let acpAsLlmProviderPermission: AcpAsLlmProviderPermissionPort
   let routeDispatcher: RouteDispatcher | undefined
@@ -887,6 +905,10 @@ export async function createMainProcessControl(dependencies: {
   const settingsDatabase = dependencies.settingsDatabase
   const providerDatabase = dependencies.providerDatabase
   const schedulerDatabase = new SchedulerDatabase(mainDatabase)
+  const documentsDatabase = new DocumentsDatabase(mainDatabase)
+  seedPresetTemplates(documentsDatabase)
+  const documentsRepository = new DocumentsRepository(documentsDatabase)
+  const resumeScreeningDatabase = new ResumeScreeningDatabase(mainDatabase)
   const appDatabase = new AppDatabase(mainDatabase)
   const agentRepository = new AgentRepository(agentDatabase, sessionData.database, memoryDatabase)
   const agentLifecycle = new AgentLifecycleGate()
@@ -1651,6 +1673,61 @@ export async function createMainProcessControl(dependencies: {
       runCronJobNow: async (id, beforeMutation) => (await cronJobs.runNow(id, beforeMutation)).run,
       listCronJobRuns: async (jobId, limit) => cronJobs.listRuns(jobId, limit),
       previewCronSchedule: async (input) => cronJobs.previewSchedule(input)
+    },
+    documents: {
+      listTemplates: async () =>
+        documentsRepository.listTemplates().map((template) => ({
+          id: template.id,
+          typeKey: template.typeKey,
+          name: template.name,
+          fields: [...template.fields]
+            .sort((a, b) => a.order - b.order)
+            .map((field) => ({
+              key: field.key,
+              label: field.label,
+              valueType: field.valueType,
+              required: field.required,
+              order: field.order
+            }))
+        })),
+      extractAndDraft: async (input) => {
+        const result = await documentExtractor.extract({
+          templateId: input.templateId,
+          file: input.file
+        })
+        const document = documentsRepository.insertDocument({
+          templateId: result.template.id,
+          typeKey: result.template.typeKey,
+          templateSnapshot: result.template,
+          fields: result.fields,
+          fileUris: [input.file.path],
+          source: input.source ?? 'chat',
+          sessionId: input.sessionId ?? null,
+          status: 'draft',
+          now: Date.now()
+        })
+        return {
+          document: {
+            id: document.id,
+            typeKey: document.typeKey,
+            status: document.status,
+            fields: document.fields,
+            fileUris: document.fileUris
+          },
+          meta: {
+            route: result.route,
+            durationMs: result.durationMs,
+            issues: result.issues
+          }
+        }
+      },
+      confirmDocument: async (input) => {
+        const updated = await documentsRepository.updateDocument(input.id, {
+          fields: input.fields,
+          status: 'confirmed'
+        })
+        return updated ? { id: updated.id, status: updated.status } : null
+      }
     },
     subagents: {
       createSubagentSession: async (input) => {
@@ -2800,6 +2877,183 @@ export async function createMainProcessControl(dependencies: {
     })
     const remoteRoutes = createRemoteRoutes(remoteService)
     const schedulerRoutes = createSchedulerRoutes(cronJobs)
+    const documentsMaxFileSize = () =>
+      dependencies.settingsStore.get<number>('maxFileSize') ?? 30 * 1024 * 1024
+    documentExtractor = new DocumentExtractor({
+      repository: documentsRepository,
+      generateCompletion: ({ providerId, modelId, messages, temperature, maxTokens }) =>
+        providerRuntime.generateCompletionStandalone(
+          providerId,
+          messages,
+          modelId,
+          temperature,
+          maxTokens,
+          { swallowErrors: false }
+        ),
+      resolveVisionTarget: async () => {
+        const selection = providerSettings.getSetting<{ providerId: string; modelId: string }>(
+          'defaultVisionModel'
+        )
+        const agentConfig = await agentSettings.getDeepChatAgentConfig(BUILTIN_DEEPCHAT_AGENT_ID)
+        const visionModel = agentConfig?.visionModel
+        const textSelection = providerSettings.getSetting<{ providerId: string; modelId: string }>(
+          'defaultModel'
+        )
+        const mainModel = agentConfig?.defaultModelPreset
+        const textTarget =
+          textSelection?.providerId && textSelection?.modelId
+            ? { providerId: textSelection.providerId, modelId: textSelection.modelId }
+            : mainModel?.providerId && mainModel?.modelId
+              ? { providerId: mainModel.providerId, modelId: mainModel.modelId }
+              : null
+        return pickVisionTarget({
+          explicitVision:
+            selection?.providerId && selection?.modelId
+              ? { providerId: selection.providerId, modelId: selection.modelId }
+              : null,
+          agentVision:
+            visionModel?.providerId && visionModel?.modelId
+              ? { providerId: visionModel.providerId, modelId: visionModel.modelId }
+              : null,
+          textTarget,
+          isVisionCapable: async ({ providerId, modelId }) => {
+            try {
+              const model = providerSettings
+                .getProviderModels(providerId)
+                .find((m) => m.id === modelId)
+              return model?.vision === true
+            } catch {
+              return false
+            }
+          }
+        })
+      },
+      resolveTextTarget: async () => {
+        const selection = providerSettings.getSetting<{ providerId: string; modelId: string }>(
+          'defaultModel'
+        )
+        if (selection?.providerId && selection?.modelId) {
+          return selection
+        }
+        const agentConfig = await agentSettings.getDeepChatAgentConfig(BUILTIN_DEEPCHAT_AGENT_ID)
+        const mainModel = agentConfig?.defaultModelPreset
+        return mainModel?.providerId && mainModel?.modelId
+          ? { providerId: mainModel.providerId, modelId: mainModel.modelId }
+          : null
+      },
+      readImageAsDataUrl: async (filePath) => {
+        const adapter = new ImageFileAdapter(filePath, documentsMaxFileSize())
+        const dataUrl = await adapter.getLLMContent({ maxDimension: 2048, jpegQuality: 85 })
+        if (!dataUrl) {
+          throw new Error(`failed to read image for vision extraction: ${filePath}`)
+        }
+        return dataUrl
+      },
+      extractPdfText: async (filePath) => {
+        const adapter = new PdfFileAdapter(filePath, documentsMaxFileSize())
+        const pages = await adapter.getAllPagesMarkdown()
+        const text = (pages ?? []).join('\n\n')
+        return {
+          text,
+          hasTextLayer: text.replace(/\s/g, '').length >= 200,
+          pageCount: pages?.length ?? 0
+        }
+      },
+      renderPdfPages: async (filePath, options) => {
+        try {
+          return await renderPdfPagesToDataUrls(filePath, options)
+        } catch (error) {
+          const reason = error instanceof Error ? error.message : String(error)
+          throw new Error(`failed to render pdf pages for vision: ${filePath} (${reason})`, {
+            cause: error
+          })
+        }
+      },
+      extractOcrText: async (filePath) => {
+        const result = await ocrRuntimeService.extractDocument({
+          filePath,
+          maxFileSize: documentsMaxFileSize(),
+          backend: 'auto',
+          priority: 'interactive'
+        })
+        return result.text
+      }
+    })
+    const recognitionTaskManager = new RecognitionTaskManager({
+      repository: documentsRepository,
+      extractor: documentExtractor,
+      publishTaskUpdated: ({ task, doneCount, totalCount }) =>
+        publishDeepchatEvent('documents.task.updated', {
+          ...task,
+          doneCount,
+          totalCount,
+          version: Date.now()
+        })
+    })
+    const documentsRoutes = createDocumentsRoutes(
+      documentsRepository,
+      documentExtractor,
+      recognitionTaskManager
+    )
+    // Resume interrupted recognition tasks from the previous run.
+    void recognitionTaskManager.resumePending()
+    const resumeScreeningService = new ResumeScreeningService({
+      database: resumeScreeningDatabase,
+      invoker: new ResumeLlmInvoker({
+        executeWithRateLimit: (providerId, options) =>
+          providerRuntime.executeWithRateLimit(providerId, { signal: options?.signal }),
+        generateCompletion: (providerId, messages, modelId, temperature, maxTokens, options) =>
+          providerRuntime.generateCompletionStandalone(
+            providerId,
+            messages,
+            modelId,
+            temperature,
+            maxTokens,
+            { signal: options?.signal, swallowErrors: false }
+          )
+      }),
+      textExtractor: new ResumeTextExtractor({
+        getMaxFileSize: () =>
+          dependencies.settingsStore.get<number>('maxFileSize') ?? 30 * 1024 * 1024
+      }),
+      storageDir: path.join(app.getPath('userData'), 'resume-screening'),
+      copyFile: (src, dest) => fsp.copyFile(src, dest),
+      getProfile: () =>
+        dependencies.settingsStore.get<ResumeScreeningProfile>('resumeScreening.profile'),
+      saveProfile: (profile) => dependencies.settingsStore.set('resumeScreening.profile', profile),
+      getDefaultModel: () => agentSettings.getDefaultModel(),
+      listModels: () => {
+        const defaultModel = agentSettings.getDefaultModel()
+        return providerSettings
+          .getProviders()
+          .filter((provider) => provider.enable)
+          .flatMap((provider) => {
+            const models = providerSettings.getProviderModels(provider.id)
+            const statuses = providerSettings.getBatchModelStatus(
+              provider.id,
+              models.map((model) => model.id)
+            )
+            return models
+              .filter((model) => statuses[model.id])
+              .map((model) => ({
+                providerId: provider.id,
+                providerName: provider.name,
+                modelId: model.id,
+                modelName: model.name,
+                isDefault:
+                  defaultModel?.providerId === provider.id && defaultModel?.modelId === model.id
+              }))
+          })
+      },
+      publishTaskUpdated: (payload) =>
+        publishDeepchatEvent('resumeScreening.task.updated', payload),
+      publishResumeUpdated: (payload) =>
+        publishDeepchatEvent('resumeScreening.resume.updated', payload),
+      now: () => Date.now()
+    })
+    const resumeScreeningRoutes = createResumeScreeningRoutes(resumeScreeningService)
+    // 应用启动时把上次未跑完的简历筛选任务统一标记为失败
+    resumeScreeningService.recoverInterruptedTasks()
     const memoryRoutes = createMemoryRoutes({
       memoryService,
       getAgentType: (agentId) => agentSettings.getAgentType(agentId),
@@ -3055,6 +3309,8 @@ export async function createMainProcessControl(dependencies: {
         mcpRoutes,
         remoteRoutes,
         schedulerRoutes,
+        documentsRoutes,
+        resumeScreeningRoutes,
         memoryRoutes,
         desktopRoutes,
         fileRoutes,

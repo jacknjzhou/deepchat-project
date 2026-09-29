@@ -1,5 +1,9 @@
 import type { DeepchatBridge } from '@shared/contracts/bridge'
-import { ocrClearCacheRoute, ocrGetRuntimeStatusRoute } from '@shared/contracts/routes'
+import {
+  ocrClearCacheRoute,
+  ocrGetRuntimeStatusRoute,
+  ocrWarmupRoute
+} from '@shared/contracts/routes'
 import { getDeepchatBridge } from './core'
 
 export function createOcrClient(bridge: DeepchatBridge = getDeepchatBridge()) {
@@ -11,7 +15,11 @@ export function createOcrClient(bridge: DeepchatBridge = getDeepchatBridge()) {
     return await bridge.invoke(ocrClearCacheRoute.name, {})
   }
 
-  return { getRuntimeStatus, clearCache }
+  async function warmup() {
+    return await bridge.invoke(ocrWarmupRoute.name, {})
+  }
+
+  return { getRuntimeStatus, clearCache, warmup }
 }
 
 export type OcrClient = ReturnType<typeof createOcrClient>

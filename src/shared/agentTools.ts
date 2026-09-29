@@ -1,4 +1,6 @@
 export const CRON_JOB_AGENT_TOOL_NAME = 'cronjob'
+export const DOCUMENT_RECOGNITION_AGENT_TOOL_NAME = 'document_recognition'
+export const DOCUMENT_RECOGNITION_TOOL_SERVER_NAME = 'documents'
 export const SUBAGENT_ORCHESTRATOR_TOOL_NAME = 'subagent_orchestrator'
 export const LIVE_DELEGATION_AGENT_TOOL_NAME = 'deepchat_subagents'
 export const LIVE_DELEGATION_AGENT_TOOL_SERVER_NAME = 'agent-live-delegation'

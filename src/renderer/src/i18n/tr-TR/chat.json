@@ -1,6 +1,6 @@
 {
   "input": {
-    "placeholder": "DeepChat'ye herhangi bir şey sor, {'@'}'a dosyalardan bahsetmesini ve / komutlarını sor",
+    "placeholder": "SRIBD Office Agent'ye herhangi bir şey sor, {'@'}'a dosyalardan bahsetmesini ve / komutlarını sor",
     "fileArea": "Dosya Alanı",
     "inputArea": "Giriş Alanı",
     "functionSwitch": "Fonksiyon Anahtarı",
@@ -10,7 +10,7 @@
     "voiceRecognitionUnsupportedTitle": "Yerel kayıt burada mevcut değil",
     "voiceRecognitionUnsupportedDescription": "Bu özelliği, mikrofon kaydını destekleyen bir tarayıcı veya masaüstü ortamında kullanın.",
     "voiceRecognitionPermissionDeniedTitle": "Mikrofon erişimi kullanılamıyor",
-    "voiceRecognitionPermissionDeniedDescription": "DeepChat'nin mikrofonu kullanmasına izin verin ve tekrar deneyin.",
+    "voiceRecognitionPermissionDeniedDescription": "SRIBD Office Agent'nin mikrofonu kullanmasına izin verin ve tekrar deneyin.",
     "voiceRecognitionErrorTitle": "Sesin transkripsiyonu başarısız oldu",
     "voiceRecognitionErrorDescription": "Ses transkripsiyonu tamamlanamadı. Lütfen daha sonra tekrar deneyin.",
     "send": "Göndermek",
@@ -59,7 +59,7 @@
         "agentCore": "Agent Çekirdek",
         "agentImageGeneration": "Görüntü Üretimi",
         "agentSkills": "Agent Skills",
-        "deepchatSettings": "DeepChat Ayarlar",
+        "deepchatSettings": "SRIBD Office Agent Ayarlar",
         "yobrowser": "YoBrowser"
       }
     },
@@ -347,6 +347,63 @@
   "newThread": {
     "title": "İnşa edin ve keşfedin"
   },
+  "imageTemplates": {
+    "button": "Şablonlar",
+    "panelTitle": "Prompt Şablonları",
+    "tabFeatured": "Öne Çıkanlar",
+    "tabMine": "Benim",
+    "add": "Yeni Şablon",
+    "edit": "Düzenle",
+    "delete": "Sil",
+    "deleteConfirmTitle": "Şablonu sil",
+    "deleteConfirmDescription": "\"{title}\" silinsin mi? Bu işlem geri alınamaz.",
+    "limitReached": "En fazla {max} şablon kaydedebilirsin",
+    "emptyMine": "Henüz özel şablon yok",
+    "emptyMineHint": "İlk şablonunuzu oluşturmak için \"Yeni Şablon\" öğesine tıklayın",
+    "emptyCardsHint": "Bir şablonla başlayın",
+    "cancel": "İptal",
+    "save": "Kaydet",
+    "formTitle": "Başlık",
+    "formTitlePlaceholder": "örn. Siberpunk avatar",
+    "formPrompt": "Prompt",
+    "formPromptPlaceholder": "Oluşturmak istediğiniz görseli tanımlayın…",
+    "formSize": "Boyut",
+    "formQuality": "Kalite",
+    "sizeDefault": "Varsayılan",
+    "qualityDefault": "Varsayılan",
+    "titleRequired": "Başlık gerekli",
+    "promptRequired": "Prompt gerekli",
+    "builtin": {
+      "design": {
+        "title": "Tasarım",
+        "prompt": "Design a minimalist brand logo for a sustainable travel product, earthy color palette with geometric lines, modern and restrained, highly recognizable, white background, vector style"
+      },
+      "commodity": {
+        "title": "Ürün Çekimi",
+        "prompt": "Commercial product photography of a perfume bottle on light marble, soft natural light from the left, blurred background, premium feel, clean composition, 8k detail"
+      },
+      "poster": {
+        "title": "Afiş",
+        "prompt": "A music festival promo poster, bold Memphis-style geometric shapes, high-saturation contrasting colors, striking whitespace layout, retro print texture, portrait composition"
+      },
+      "beautify": {
+        "title": "Foto Geliştirme",
+        "prompt": "Elevate the photo to magazine quality: enhance detail and depth, balance light and shadow, natural transparent colors, keep the original composition, no over-sharpening"
+      },
+      "portrait": {
+        "title": "Portre",
+        "prompt": "Indoor natural-light portrait of a young woman, side profile close-up, soft window light, shallow depth of field, film grain, warm tones, lifelike texture"
+      },
+      "style": {
+        "title": "Stil",
+        "prompt": "A futuristic city street scene in hand-painted Ghibli anime style, soft afternoon light, layered clouds, rich detail, healing atmosphere"
+      },
+      "photorealistic": {
+        "title": "Fotogerçekçi",
+        "prompt": "A mountain lake in morning mist, hyper-realistic landscape photography, shot on Canon EOS R5, 35mm wide angle, f/8, natural colors, razor-sharp detail"
+      }
+    }
+  },
   "floatingWidget": {
     "title": "Göreve Genel Bakış",
     "collapse": "Kayan oturumları daralt",
@@ -430,12 +487,12 @@
   },
   "onboarding": {
     "agentSwitch": {
-      "title": "DeepChat Agent'a geç",
-      "description": "Sohbet etmeden önce ACP'den uzaklaşın ve yerleşik DeepChat akışına dönün.",
+      "title": "SRIBD Office Agent'a geç",
+      "description": "Sohbet etmeden önce ACP'den uzaklaşın ve yerleşik SRIBD Office Agent akışına dönün.",
       "caption": "Devam etmek için kenar çubuğunda vurgulanan agent düğmesini tıklayın."
     },
     "switchModel": {
-      "description": "İlk DeepChat görüşmeniz için kullanmak istediğiniz modeli seçin.",
+      "description": "İlk SRIBD Office Agent görüşmeniz için kullanmak istediğiniz modeli seçin.",
       "caption": "Vurgulanan model değiştiriciyi kullanın ve mevcut herhangi bir modeli seçin."
     },
     "firstChat": {
@@ -612,7 +669,7 @@
       "reasons": {
         "session_unavailable": "Bu oturum artık kullanılamıyor.",
         "agent_unavailable": "Seçilen Agent kullanılamıyor.",
-        "deepchat_agent_required": "Proaktif iş birliği bir DeepChat Agent gerektirir.",
+        "deepchat_agent_required": "Proaktif iş birliği bir SRIBD Office Agent gerektirir.",
         "regular_parent_required": "Proaktif iş birliği alt oturumlarda kullanılamaz.",
         "agent_policy_unavailable": "İş birliği ilkesi yüklenemedi.",
         "subagents_disabled": "Proaktif iş birliğini kullanmak için bu Agent üzerinde Subagents özelliğini etkinleştirin."

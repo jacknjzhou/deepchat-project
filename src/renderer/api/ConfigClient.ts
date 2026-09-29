@@ -200,7 +200,9 @@ export function createConfigClient(bridge: DeepchatBridge = getDeepchatBridge())
   }
 
   async function setSetting<K extends ConfigEntryKey>(key: K, value: ConfigEntryValues[K]) {
-    return await settingsClient.setConfigEntry(key, value)
+    // Reactive proxies (Vue refs/reactive) cannot survive the structured clone
+    // performed by the IPC bridge; deep-convert to plain values first.
+    return await settingsClient.setConfigEntry(key, toPlainIpcValue(value))
   }
 
   async function getLanguage() {

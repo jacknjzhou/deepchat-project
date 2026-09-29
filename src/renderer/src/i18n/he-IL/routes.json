@@ -10,6 +10,9 @@
   "settings-about": "אודות",
   "settings-shortcut": "קיצורי מקשים",
   "settings-display": "תצוגה",
+  "settings-documents": "זיהוי מסמכים",
+  "settings-documents-template": "עורך תבניות",
+  "documents": "ארכיון מסמכים",
   "settings-knowledge-base": "בסיס ידע",
   "settings-prompt": "הנחיות (Prompts)",
   "settings-mcp-market": "חנות MCP",
@@ -20,11 +23,12 @@
   "settings-dashboard": "Dashboard",
   "settings-environments": "סביבות",
   "settings-remote": "שליטה מרחוק",
-  "settings-deepchat-agents": "סוכני DeepChat",
+  "settings-deepchat-agents": "סוכני SRIBD Office Agent",
   "settings-plugins": "Plugins",
   "settings-overview": "סקירת ההגדרות",
   "settings-memory": "זיכרון",
   "plugins": "Plugins",
   "settings-debug": "Debug",
-  "settings-toolchains": "Toolchains"
+  "settings-toolchains": "Toolchains",
+  "resumeScreening": "סינון קורות חיים"
 }

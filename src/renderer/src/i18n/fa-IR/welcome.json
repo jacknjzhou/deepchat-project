@@ -2,7 +2,7 @@
   "steps": {
     "welcome": {
       "title": "خوش‌آمدید",
-      "description": "بیایید راه‌اندازی دیپ‌چت را آغاز کنیم"
+      "description": "بیایید راه‌اندازی SRIBD Office Agent را آغاز کنیم"
     },
     "provider": {
       "title": "فراهم‌کننده مدل",
@@ -17,7 +17,7 @@
       "description": "همه‌چیز آماده است!"
     }
   },
-  "title": "خوش‌آمدید به دیپ‌چت",
+  "title": "خوش‌آمدید به SRIBD Office Agent",
   "description": "بیایید فرآیند راه‌اندازی را تکمیل کنیم",
   "provider": {
     "select": "انتخاب فراهم‌کننده",
@@ -35,7 +35,7 @@
     "back": "بازگشت"
   },
   "page": {
-    "title": "به DeepChat Agent خوش آمدید",
+    "title": "به SRIBD Office Agent خوش آمدید",
     "description": "برای شروع، یک ارائه‌دهنده مدل متصل کنید",
     "guide": {
       "title": "راهنمای راه‌اندازی",
@@ -72,8 +72,8 @@
   },
   "agentPage": {
     "title": "یک ایجنت انتخاب کنید و خلق را شروع کنید",
-    "deepchatType": "ایجنت DeepChat",
+    "deepchatType": "SRIBD Office Agent",
     "acpType": "ایجنت ACP",
-    "manageAgents": "مدیریت ایجنت‌های DeepChat"
+    "manageAgents": "مدیریت ایجنت‌های SRIBD Office Agent"
   }
 }

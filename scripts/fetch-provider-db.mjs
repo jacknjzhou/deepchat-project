@@ -11,6 +11,21 @@ const DEFAULT_URL =
   'https://raw.githubusercontent.com/ThinkInAIXYZ/PublicProviderConf/refs/heads/dev/dist/all.json'
 const MAX_PROVIDER_DB_PAYLOAD_BYTES = 10 * 1024 * 1024
 
+/**
+ * Build-time hard stop. When DEEPCHAT_PROVIDER_DB_OFFLINE=1 we treat the bundled
+ * `resources/model-db/providers.json` as the single source of truth and skip
+ * the upstream fetch entirely. Used by private distributions that ship a fixed
+ * provider catalog and want to guarantee `prebuild` does not overwrite it.
+ *
+ * Mirrors the runtime short-circuit in `src/main/provider/providerDbLoader.ts`.
+ */
+function shouldSkipRemoteFetch() {
+  const raw = process.env.DEEPCHAT_PROVIDER_DB_OFFLINE
+  if (!raw) return false
+  const normalized = raw.trim().toLowerCase()
+  return normalized === '1' || normalized === 'true' || normalized === 'yes'
+}
+
 const log = (...args) => console.log('[fetch-provider-db]', ...args)
 const warn = (...args) => console.warn('[fetch-provider-db]', ...args)
 const error = (...args) => console.error('[fetch-provider-db]', ...args)
@@ -277,6 +292,27 @@ export function sanitizeAggregateJson(json) {
 }
 
 async function main() {
+  if (shouldSkipRemoteFetch()) {
+    const outFile = path.resolve(
+      process.cwd(),
+      'resources',
+      'model-db',
+      'providers.json'
+    )
+    if (!fs.existsSync(outFile)) {
+      error(
+        'DEEPCHAT_PROVIDER_DB_OFFLINE=1 but no built-in providers.json exists at',
+        outFile
+      )
+      process.exit(1)
+    }
+    log(
+      'DEEPCHAT_PROVIDER_DB_OFFLINE=1 — skipping remote fetch, using existing built-in snapshot:',
+      outFile
+    )
+    return
+  }
+
   const url = DEFAULT_URL
   const outDir = path.resolve(process.cwd(), 'resources', 'model-db')
   const outFile = path.join(outDir, 'providers.json')

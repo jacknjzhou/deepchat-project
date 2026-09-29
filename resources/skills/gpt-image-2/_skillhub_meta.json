@@ -1,0 +1,10 @@
+{
+  "name": "GPT Image 2 图片生成与编辑",
+  "installedAt": 1790047762035,
+  "source": "marketplace",
+  "version": "1.0.0",
+  "skillId": "skill_2087496107183259648",
+  "description_zh": "基于 GPT Image 2 图片生成与编辑 的 AI 图片生成与编辑器，覆盖 GPT Image 2、GPT-Image-2、GPTImage2、OpenAI Image 2、ChatGPT Images、Image2 的裸接口图片能力。当用户需要 GPT Image 2、GPT-Image-2、GPTImage2、OpenAI Image 2、ChatGPT Images、Image2、文生图、图生图、图片编辑、电商图、广告图、详情页、带货、种草 时使用此 Skill。",
+  "description_en": "AI image generator via AI Hive open API for GPT Image 2. Covers generation and editing. Use when users need GPT Image 2 image creation.",
+  "iconSource": "letter:auto"
+}

@@ -221,7 +221,7 @@ describe('SessionTurn', () => {
     const harness = createHarness({ kind: 'acp' })
 
     await expect(harness.coordinator.resumePendingQueue('s1')).rejects.toThrow(
-      'Pending queue resume is only available for DeepChat sessions.'
+      'Pending queue resume is only available for SRIBD Office Agent sessions.'
     )
     expect(harness.resumePendingQueue).not.toHaveBeenCalled()
   })
@@ -245,7 +245,7 @@ describe('SessionTurn', () => {
     const harness = createHarness({ kind: 'acp' })
 
     await expect(harness.coordinator.retryPendingQueueInput('s1', 'pending-1')).rejects.toThrow(
-      'Pending queue retry is only available for DeepChat sessions.'
+      'Pending queue retry is only available for SRIBD Office Agent sessions.'
     )
     expect(harness.retryPendingQueueInput).not.toHaveBeenCalled()
   })
@@ -640,7 +640,7 @@ describe('SessionTurn', () => {
     const harness = createHarness({ providerId: 'acp' })
 
     await expect(harness.coordinator.compactSession('s1')).rejects.toThrow(
-      'Manual compaction is only available for DeepChat agent sessions.'
+      'Manual compaction is only available for SRIBD Office Agent sessions.'
     )
     expect(harness.compaction.compact).not.toHaveBeenCalled()
   })
