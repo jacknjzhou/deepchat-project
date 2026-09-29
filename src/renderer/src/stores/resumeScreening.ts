@@ -254,7 +254,11 @@ export const useResumeScreeningStore = defineStore('resumeScreening', () => {
   }
 
   function resetDraft() {
+    // 提交任务后保留模型选择，连续创建任务无需重新选择
+    const { providerId, modelId } = draft
     Object.assign(draft, createDefaultDraft())
+    draft.providerId = providerId
+    draft.modelId = modelId
   }
 
   return {

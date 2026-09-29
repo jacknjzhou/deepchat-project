@@ -80,7 +80,7 @@ describe('resumeScreening store', () => {
     vi.clearAllMocks()
   })
 
-  it('createTask sends trimmed draft input, prepends the task and resets the draft', async () => {
+  it('createTask sends trimmed draft input, prepends the task, resets the draft and keeps the model', async () => {
     const store = useResumeScreeningStore()
     store.draft.jdText = '  前端工程师  '
     store.draft.resumes.push({ path: 'C:\\a.pdf', name: 'a.pdf' })
@@ -108,6 +108,8 @@ describe('resumeScreening store', () => {
     expect(store.selectedResumeId).toBe('resume-1')
     expect(store.draft.jdText).toBe('')
     expect(store.draft.resumes).toHaveLength(0)
+    expect(store.draft.providerId).toBe('openai')
+    expect(store.draft.modelId).toBe('gpt-4o')
     expect(store.isCreating).toBe(false)
   })
 

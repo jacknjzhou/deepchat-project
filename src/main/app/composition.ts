@@ -3027,16 +3027,23 @@ export async function createMainProcessControl(dependencies: {
         return providerSettings
           .getProviders()
           .filter((provider) => provider.enable)
-          .flatMap((provider) =>
-            providerSettings.getProviderModels(provider.id).map((model) => ({
-              providerId: provider.id,
-              providerName: provider.name,
-              modelId: model.id,
-              modelName: model.name,
-              isDefault:
-                defaultModel?.providerId === provider.id && defaultModel?.modelId === model.id
-            }))
-          )
+          .flatMap((provider) => {
+            const models = providerSettings.getProviderModels(provider.id)
+            const statuses = providerSettings.getBatchModelStatus(
+              provider.id,
+              models.map((model) => model.id)
+            )
+            return models
+              .filter((model) => statuses[model.id])
+              .map((model) => ({
+                providerId: provider.id,
+                providerName: provider.name,
+                modelId: model.id,
+                modelName: model.name,
+                isDefault:
+                  defaultModel?.providerId === provider.id && defaultModel?.modelId === model.id
+              }))
+          })
       },
       publishTaskUpdated: (payload) =>
         publishDeepchatEvent('resumeScreening.task.updated', payload),
