@@ -159,7 +159,7 @@ watch(
 )
 
 // resumeInfo 是宽松契约字段（z.unknown()，见 Task 1），按键值对渲染；值格式化：
-// 数组顿号 join、对象 JSON.stringify、null/undefined 显示 —
+// null/undefined 显示 —、数组顿号 join、对象展开为「键:值」文本（递归，避免 [object Object]）
 const infoEntries = computed(() => {
   if (!props.resume?.resumeInfo || typeof props.resume.resumeInfo !== 'object') return []
   return Object.entries(props.resume.resumeInfo as Record<string, unknown>).map(([key, value]) => [
@@ -170,8 +170,15 @@ const infoEntries = computed(() => {
 
 function formatInfoValue(value: unknown): string {
   if (value === null || value === undefined) return '—'
-  if (Array.isArray(value)) return value.map((item) => String(item)).join('、')
-  if (typeof value === 'object') return JSON.stringify(value)
+  if (Array.isArray(value)) {
+    if (value.length === 0) return '—'
+    return value.map((item) => formatInfoValue(item)).join('、')
+  }
+  if (typeof value === 'object') {
+    return Object.entries(value as Record<string, unknown>)
+      .map(([key, item]) => `${key}:${formatInfoValue(item)}`)
+      .join('，')
+  }
   return String(value)
 }
 </script>

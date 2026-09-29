@@ -114,6 +114,25 @@ describe('ResumeDetailPanel', () => {
     expect(wrapper.find('[data-testid="detail-rawtext"]').text()).toContain('张三的简历原文')
   })
 
+  it('对象数组渲染为键值文本而非 [object Object]', async () => {
+    wrapper = await setup(
+      makeResume({
+        resumeInfo: {
+          work_history: [
+            { company: '阿里云', title: '项目经理' },
+            { company: '海康威视', title: '研发工程师' }
+          ],
+          empty_list: []
+        }
+      })
+    )
+    const info = wrapper.find('[data-testid="detail-info"]')
+    expect(info.text()).toContain('company:阿里云，title:项目经理')
+    expect(info.text()).toContain('company:海康威视，title:研发工程师')
+    expect(info.text()).not.toContain('[object Object]')
+    expect(info.text()).toContain('—')
+  })
+
   it('rawText 为 null 时不渲染原文节', async () => {
     wrapper = await setup(makeResume({ rawText: null }))
     expect(wrapper.find('[data-testid="detail-rawtext"]').exists()).toBe(false)
