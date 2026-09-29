@@ -97,7 +97,7 @@
         </div>
 
         <div v-else-if="activeTab === 'interview'" data-testid="interview-section" class="mt-3">
-          <div class="grid grid-cols-1 gap-3 text-sm md:grid-cols-3">
+          <div class="grid grid-cols-1 gap-3 text-sm">
             <div>
               <p class="font-medium">{{ t('resumeScreening.interviewHighlights') }}</p>
               <ul class="mt-1 list-disc space-y-1 pl-5 text-muted-foreground">
