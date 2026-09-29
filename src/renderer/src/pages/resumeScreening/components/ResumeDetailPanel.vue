@@ -16,9 +16,23 @@
         {{ resume.error }}
       </div>
 
-      <!-- 基本信息/初筛评估/面试考察/HR 汇总横向排列；窄窗口按 2 列/1 列回退 -->
-      <div class="grid min-w-0 grid-cols-1 items-start gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <div class="min-w-0 rounded-lg border p-4">
+      <!-- 基本信息/初筛评估/面试考察/HR 汇总以 Tab 切换（浅色激活态，同 JD 内容 Tab 模式） -->
+      <div class="rounded-lg border p-4" data-testid="detail-section-tabs">
+        <div class="flex items-center gap-1">
+          <DcButton
+            v-for="tab in tabs"
+            :key="tab.key"
+            size="xs"
+            :variant="activeTab === tab.key ? 'secondary' : 'ghost'"
+            :active="activeTab === tab.key"
+            :data-testid="`detail-tab-${tab.key}`"
+            @click="activeTab = tab.key"
+          >
+            {{ t(tab.labelKey) }}
+          </DcButton>
+        </div>
+
+        <div v-if="activeTab === 'profile'" data-testid="profile-section" class="mt-3">
           <div class="flex items-center justify-between gap-2">
             <h3 class="min-w-0 truncate text-base font-semibold">
               {{ resume.candidateName ?? resume.fileName }}
@@ -49,58 +63,45 @@
           </div>
         </div>
 
-        <div
-          v-if="resume.screening"
-          data-testid="screening-section"
-          class="min-w-0 rounded-lg border p-4"
-        >
+        <div v-else-if="activeTab === 'screening'" data-testid="screening-section" class="mt-3">
           <div class="flex items-center justify-between">
             <h4 class="text-sm font-medium">{{ t('resumeScreening.screeningSection') }}</h4>
-            <span class="text-lg font-semibold">{{ resume.screening.score }}</span>
+            <span class="text-lg font-semibold">{{ resume.screening?.score }}</span>
           </div>
-          <p class="mt-2 text-sm">{{ resume.screening.conclusion }}</p>
+          <p class="mt-2 text-sm">{{ resume.screening?.conclusion }}</p>
           <ul class="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
-            <li v-for="strength in resume.screening.strengths" :key="strength">{{ strength }}</li>
+            <li v-for="strength in resume.screening?.strengths" :key="strength">{{ strength }}</li>
           </ul>
         </div>
 
-        <div
-          v-if="resume.interview"
-          data-testid="interview-section"
-          class="min-w-0 rounded-lg border p-4"
-        >
-          <h4 class="text-sm font-medium">{{ t('resumeScreening.interviewSection') }}</h4>
-          <!-- 横向卡片内子列表纵向堆叠，避免多列挤压 -->
-          <div class="mt-2 grid grid-cols-1 gap-3 text-sm">
+        <div v-else-if="activeTab === 'interview'" data-testid="interview-section" class="mt-3">
+          <div class="grid grid-cols-1 gap-3 text-sm md:grid-cols-3">
             <div>
               <p class="font-medium">{{ t('resumeScreening.interviewHighlights') }}</p>
               <ul class="mt-1 list-disc space-y-1 pl-5 text-muted-foreground">
-                <li v-for="item in resume.interview.highlights" :key="item">{{ item }}</li>
+                <li v-for="item in resume.interview?.highlights" :key="item">{{ item }}</li>
               </ul>
             </div>
             <div>
               <p class="font-medium">{{ t('resumeScreening.interviewRisks') }}</p>
               <ul class="mt-1 list-disc space-y-1 pl-5 text-muted-foreground">
-                <li v-for="item in resume.interview.risks" :key="item">{{ item }}</li>
+                <li v-for="item in resume.interview?.risks" :key="item">{{ item }}</li>
               </ul>
             </div>
             <div>
               <p class="font-medium">{{ t('resumeScreening.interviewQuestions') }}</p>
               <ul class="mt-1 list-disc space-y-1 pl-5 text-muted-foreground">
-                <li v-for="item in resume.interview.questions" :key="item">{{ item }}</li>
+                <li v-for="item in resume.interview?.questions" :key="item">{{ item }}</li>
               </ul>
             </div>
           </div>
         </div>
 
-        <div v-if="resume.hr" data-testid="hr-section" class="min-w-0 rounded-lg border p-4">
-          <h4 class="text-sm font-medium">{{ t('resumeScreening.hrSection') }}</h4>
-          <p class="mt-2 text-xs text-muted-foreground">
-            {{ t('resumeScreening.hrFinalSummary') }}
-          </p>
-          <p class="mt-1 text-sm">{{ resume.hr.finalSummary }}</p>
+        <div v-else-if="activeTab === 'hr'" data-testid="hr-section" class="mt-3">
+          <p class="text-xs text-muted-foreground">{{ t('resumeScreening.hrFinalSummary') }}</p>
+          <p class="mt-1 text-sm">{{ resume.hr?.finalSummary }}</p>
           <p class="mt-3 text-xs text-muted-foreground">{{ t('resumeScreening.hrOpinion') }}</p>
-          <p class="mt-1 text-sm">{{ resume.hr.hrOpinion }}</p>
+          <p class="mt-1 text-sm">{{ resume.hr?.hrOpinion }}</p>
         </div>
       </div>
 
@@ -118,16 +119,44 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { DcBadge } from '@dc-ui/components/badge'
+import { DcButton } from '@dc-ui/components/button'
 import type { ResumeScreeningResumeDto } from '@api/resumeScreeningTasks'
+
+type DetailTabKey = 'profile' | 'screening' | 'interview' | 'hr'
 
 const props = defineProps<{
   resume: ResumeScreeningResumeDto | null
 }>()
 
 const { t } = useI18n()
+
+const activeTab = ref<DetailTabKey>('profile')
+
+// 仅列出当前简历已有数据的 Tab；基本信息恒可用
+const tabs = computed(() => {
+  const current = props.resume
+  if (!current) return []
+  const list: Array<{ key: DetailTabKey; labelKey: string }> = [
+    { key: 'profile', labelKey: 'resumeScreening.detailProfileTab' }
+  ]
+  if (current.screening)
+    list.push({ key: 'screening', labelKey: 'resumeScreening.screeningSection' })
+  if (current.interview)
+    list.push({ key: 'interview', labelKey: 'resumeScreening.interviewSection' })
+  if (current.hr) list.push({ key: 'hr', labelKey: 'resumeScreening.hrSection' })
+  return list
+})
+
+// 切换候选人时回到基本信息；防抖重同步会替换对象引用，只按简历 id 触发
+watch(
+  () => props.resume?.id,
+  () => {
+    activeTab.value = 'profile'
+  }
+)
 
 // resumeInfo 是宽松契约字段（z.unknown()，见 Task 1），按键值对渲染；值格式化：
 // 数组顿号 join、对象 JSON.stringify、null/undefined 显示 —

@@ -46,6 +46,7 @@
   "detailScore": "Score {score}",
   "detailRecommended": "Recommandé",
   "detailNotRecommended": "Non recommandé",
+  "detailProfileTab": "Informations de base",
   "screeningSection": "Évaluation de présélection",
   "interviewSection": "Axes d'entretien",
   "interviewHighlights": "Points forts",

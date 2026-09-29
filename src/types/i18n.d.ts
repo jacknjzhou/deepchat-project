@@ -2140,6 +2140,7 @@ declare module 'vue-i18n' {
     detailScore: string
     detailRecommended: string
     detailNotRecommended: string
+    detailProfileTab: string
     screeningSection: string
     interviewSection: string
     interviewHighlights: string

@@ -46,6 +46,7 @@
   "detailScore": "Puan {score}",
   "detailRecommended": "Önerilen",
   "detailNotRecommended": "Önerilmeyen",
+  "detailProfileTab": "Temel Bilgiler",
   "screeningSection": "Eleme Değerlendirmesi",
   "interviewSection": "Mülakat Odağı",
   "interviewHighlights": "Öne Çıkanlar",
