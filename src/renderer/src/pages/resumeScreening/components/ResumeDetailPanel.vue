@@ -51,17 +51,26 @@
             </div>
           </div>
 
+          <!-- 按截图分两栏：个人基础字段在左，教育/职业等其余字段在右 -->
           <div
             v-if="infoEntries.length > 0"
             data-testid="detail-info"
-            class="mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm"
+            class="mt-3 grid grid-cols-1 gap-x-8 gap-y-4 text-sm md:grid-cols-2"
           >
-            <template v-for="[key, value] in infoEntries" :key="key">
-              <span class="text-muted-foreground">{{ key }}</span>
-              <span class="min-w-0 break-words whitespace-pre-line">{{
-                value.kind === 'text' ? value.text : value.lines.join('\n')
-              }}</span>
-            </template>
+            <div
+              v-for="(group, index) in infoGroups"
+              :key="index"
+              data-testid="detail-info-group"
+              class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 self-start"
+              :class="infoGroups.length === 1 ? 'md:col-span-2' : ''"
+            >
+              <template v-for="[key, value] in group" :key="key">
+                <span class="text-muted-foreground">{{ key }}</span>
+                <span class="min-w-0 break-words whitespace-pre-line">{{
+                  value.kind === 'text' ? value.text : value.lines.join('\n')
+                }}</span>
+              </template>
+            </div>
           </div>
         </div>
 
@@ -169,6 +178,23 @@ const infoEntries = computed(() => {
   return Object.entries(props.resume.resumeInfo as Record<string, unknown>).map(
     ([key, value]): [string, InfoValue] => [key, describeInfoValue(value)]
   )
+})
+
+// 个人基础字段进左栏，其余（教育/职业/期望等）进右栏；宽松契约下未匹配键全部归右栏
+const BASIC_INFO_KEYS = new Set([
+  'name',
+  'gender',
+  'phone',
+  'email',
+  'birth_date',
+  'highest_degree',
+  'university'
+])
+
+const infoGroups = computed(() => {
+  const basic = infoEntries.value.filter(([key]) => BASIC_INFO_KEYS.has(key))
+  const rest = infoEntries.value.filter(([key]) => !BASIC_INFO_KEYS.has(key))
+  return [basic, rest].filter((group) => group.length > 0)
 })
 
 function describeInfoValue(value: unknown): InfoValue {

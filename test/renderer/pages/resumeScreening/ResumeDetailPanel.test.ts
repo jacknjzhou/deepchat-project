@@ -114,6 +114,28 @@ describe('ResumeDetailPanel', () => {
     expect(wrapper.find('[data-testid="detail-rawtext"]').text()).toContain('张三的简历原文')
   })
 
+  it('基本信息按个人基础/其余字段分两栏展示', async () => {
+    wrapper = await setup(
+      makeResume({
+        resumeInfo: {
+          name: '黄桂茂',
+          gender: '男',
+          phone: '13530034871',
+          university: '中国农业大学',
+          major: '计算机网络技术',
+          work_years: '8',
+          recent_company: '深圳市宝深珠宝有限公司'
+        }
+      })
+    )
+    const groups = wrapper.findAll('[data-testid="detail-info-group"]')
+    expect(groups).toHaveLength(2)
+    expect(groups[0].text()).toContain('黄桂茂')
+    expect(groups[0].text()).toContain('中国农业大学')
+    expect(groups[1].text()).toContain('计算机网络技术')
+    expect(groups[1].text()).toContain('深圳市宝深珠宝有限公司')
+  })
+
   it('对象数组渲染为键值文本而非 [object Object]', async () => {
     wrapper = await setup(
       makeResume({
