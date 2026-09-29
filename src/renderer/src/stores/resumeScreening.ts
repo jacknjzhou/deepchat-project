@@ -79,6 +79,7 @@ export const useResumeScreeningStore = defineStore('resumeScreening', () => {
   const models = ref<ResumeScreeningModelOption[]>([])
   const isCreating = ref(false)
   const createError = ref<string | null>(null)
+  const cancelError = ref<string | null>(null)
 
   let loadTaskSeq = 0
   let refreshTimer: ReturnType<typeof setTimeout> | null = null
@@ -167,7 +168,13 @@ export const useResumeScreeningStore = defineStore('resumeScreening', () => {
   async function cancelTask(client: ResumeScreeningClient = defaultClient) {
     const taskId = currentTask.value?.id
     if (!taskId) return
-    await client.cancelTask(taskId)
+    cancelError.value = null
+    try {
+      await client.cancelTask(taskId)
+    } catch (error) {
+      console.error('[ResumeScreeningStore] cancel task failed', error)
+      cancelError.value = error instanceof Error ? error.message : String(error)
+    }
   }
 
   async function loadProfile(client: ResumeScreeningClient = defaultClient) {
@@ -232,6 +239,8 @@ export const useResumeScreeningStore = defineStore('resumeScreening', () => {
   }
 
   function handleResumeUpdated(payload: ResumeScreeningResumeUpdatedPayload) {
+    // payload.stage（简历内角色阶段）有意不消费：任务级进度与简历状态已覆盖展示需求，
+    // 详情内容由 scheduleRefresh 全量重同步兜底
     const current = currentTask.value
     if (!current || current.id !== payload.taskId) return
     const index = currentResumes.value.findIndex((item) => item.id === payload.resumeId)
@@ -261,6 +270,7 @@ export const useResumeScreeningStore = defineStore('resumeScreening', () => {
     models,
     isCreating,
     createError,
+    cancelError,
     isTaskActive,
     hasValidDraft,
     canReview,

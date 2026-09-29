@@ -6,6 +6,7 @@
         v-if="store.profile"
         :name="store.profile.name"
         :email="store.profile.email"
+        @edit="profileDialogOpen = true"
       />
     </header>
 
@@ -73,6 +74,7 @@
         </div>
         <div v-else class="flex flex-col gap-4">
           <TaskProgressHeader :task="store.currentTask" />
+          <JdContentTabs :jd-analysis="store.currentTask.jdAnalysis" />
           <div class="grid min-h-0 flex-1 grid-cols-[280px_1fr] gap-4">
             <ResumeListPanel
               :resumes="store.currentResumes"
@@ -84,6 +86,8 @@
         </div>
       </section>
     </div>
+
+    <UserProfileDialog v-model:open="profileDialogOpen" />
   </div>
 </template>
 
@@ -98,15 +102,20 @@ import ResumeUploadCard from './components/ResumeUploadCard.vue'
 import ScreeningConfigCard from './components/ScreeningConfigCard.vue'
 import ReviewButton from './components/ReviewButton.vue'
 import UserProfileBadge from './components/UserProfileBadge.vue'
+import UserProfileDialog from './components/UserProfileDialog.vue'
 import ModelSelector from './components/ModelSelector.vue'
 import TaskHistoryList from './components/TaskHistoryList.vue'
 import TaskProgressHeader from './components/TaskProgressHeader.vue'
+import JdContentTabs from './components/JdContentTabs.vue'
 import ResumeListPanel from './components/ResumeListPanel.vue'
 import ResumeDetailPanel from './components/ResumeDetailPanel.vue'
 
 const { t } = useI18n()
 const deviceClient = createDeviceClient()
 const store = useResumeScreeningStore()
+
+// 用户档案编辑对话框
+const profileDialogOpen = ref(false)
 
 // 选择简历被上限截断时的可见反馈
 const pickNotice = ref('')

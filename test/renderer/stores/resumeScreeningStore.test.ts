@@ -302,6 +302,21 @@ describe('resumeScreening store', () => {
     expect(store.currentResumes[0]?.id).toBe('resume-2')
   })
 
+  it('cancelTask 失败时记录日志并设置 cancelError', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      const store = useResumeScreeningStore()
+      store.currentTask = makeTask()
+      cancelTask.mockRejectedValue(new Error('取消失败'))
+
+      await store.cancelTask()
+
+      expect(store.cancelError).toBe('取消失败')
+    } finally {
+      errorSpy.mockRestore()
+    }
+  })
+
   it('loadTasks 失败时记录日志并置 tasksLoaded 解锁空态', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     try {

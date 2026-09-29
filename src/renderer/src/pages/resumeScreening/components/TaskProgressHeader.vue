@@ -38,6 +38,17 @@
         :style="{ width: `${progressPercent}%` }"
       />
     </div>
+
+    <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+      <span v-if="task.createdByName" data-testid="progress-submitter">
+        {{ t('resumeScreening.headerSubmittedBy', { name: task.createdByName }) }}
+      </span>
+      <span data-testid="progress-timestamps">
+        {{ t('resumeScreening.headerStartedAt', { time: formatTime(task.startedAt) }) }}
+        ·
+        {{ t('resumeScreening.headerFinishedAt', { time: formatTime(task.finishedAt) }) }}
+      </span>
+    </div>
   </div>
 </template>
 
@@ -59,4 +70,9 @@ const progressPercent = computed(() => {
   if (props.task.total === 0) return 0
   return Math.round(((props.task.succeeded + props.task.failed) / props.task.total) * 100)
 })
+
+function formatTime(value: number | null): string {
+  if (value === null) return '—'
+  return new Date(value).toLocaleString()
+}
 </script>

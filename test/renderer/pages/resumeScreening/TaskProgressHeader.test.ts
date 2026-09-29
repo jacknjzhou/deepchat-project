@@ -2,7 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, type VueWrapper } from '@vue/test-utils'
 import type { ResumeScreeningTaskDto } from '@api/resumeScreeningTasks'
 
-const t = (key: string) => key
+const t = (key: string, params?: Record<string, unknown>) =>
+  params ? `${key} ${JSON.stringify(params)}` : key
 
 vi.resetModules()
 vi.doMock('vue-i18n', () => ({
@@ -72,6 +73,19 @@ describe('TaskProgressHeader', () => {
   it('avgScore 为 null 时显示占位符破折号', async () => {
     wrapper = await setup({ task: makeTask({ avgScore: null }) })
     expect(wrapper.get('[data-testid="progress-avg-score"]').text()).toContain('—')
+  })
+
+  it('展示提交人与起止时间，时间经 toLocaleString 格式化', async () => {
+    wrapper = await setup({ task: makeTask() })
+    expect(wrapper.get('[data-testid="progress-submitter"]').text()).toContain('张三')
+    const timestamps = wrapper.get('[data-testid="progress-timestamps"]').text()
+    expect(timestamps).toContain(new Date(1700000000000).toLocaleString())
+    expect(timestamps).toContain(new Date(1700000060000).toLocaleString())
+  })
+
+  it('startedAt/finishedAt 为 null 时显示占位破折号', async () => {
+    wrapper = await setup({ task: makeTask({ startedAt: null, finishedAt: null }) })
+    expect(wrapper.get('[data-testid="progress-timestamps"]').text()).toContain('—')
   })
 
   it('正常任务渲染统计数字、状态徽标与 100% 进度条', async () => {

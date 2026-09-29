@@ -2146,6 +2146,24 @@ declare module 'vue-i18n' {
     hrFinalSummary: string
     hrOpinion: string
     rawTextSection: string
+    jdTabResponsibilities: string
+    jdTabRequirements: string
+    jdTabPreferred: string
+    jdContentEmpty: string
+    jdAnalysisEmpty: string
+    profileEdit: string
+    profileDialogTitle: string
+    profileDialogDescription: string
+    profileNameLabel: string
+    profileNamePlaceholder: string
+    profileEmailLabel: string
+    profileEmailPlaceholder: string
+    profileEmailInvalid: string
+    profileSave: string
+    profileCancel: string
+    headerSubmittedBy: string
+    headerStartedAt: string
+    headerFinishedAt: string
     chat: string
     plugins: {
       title: string
