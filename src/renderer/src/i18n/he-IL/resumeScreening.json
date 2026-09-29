@@ -17,7 +17,6 @@
   "configSection": "הגדרות סינון",
   "configGenerateExplanation": "יצירת הערות סקירה",
   "configIncludeRawText": "כלול טקסט מקורי של קורות החיים",
-  "configMaxConcurrency": "מקביליות",
   "reviewStart": "התחלת סינון",
   "reviewCancel": "ביטול משימה",
   "modelLabel": "מודל",

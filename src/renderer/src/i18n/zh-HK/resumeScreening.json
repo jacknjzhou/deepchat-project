@@ -17,7 +17,6 @@
   "configSection": "審閱設定",
   "configGenerateExplanation": "產生審閱說明",
   "configIncludeRawText": "結果附帶履歷原文",
-  "configMaxConcurrency": "並行數",
   "reviewStart": "開始審閱",
   "reviewCancel": "取消任務",
   "modelLabel": "模型",

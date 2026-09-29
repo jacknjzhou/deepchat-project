@@ -17,7 +17,6 @@
   "configSection": "Eleme Ayarları",
   "configGenerateExplanation": "Değerlendirme notu oluştur",
   "configIncludeRawText": "Sonuçlara özgeçmiş ham metnini ekle",
-  "configMaxConcurrency": "Eşzamanlılık",
   "reviewStart": "Elemeyi Başlat",
   "reviewCancel": "Görevi İptal Et",
   "modelLabel": "Model",

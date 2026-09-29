@@ -17,7 +17,6 @@
   "configSection": "审阅配置",
   "configGenerateExplanation": "生成审阅说明",
   "configIncludeRawText": "结果携带简历原文",
-  "configMaxConcurrency": "并发数",
   "reviewStart": "开始审阅",
   "reviewCancel": "取消任务",
   "modelLabel": "模型",

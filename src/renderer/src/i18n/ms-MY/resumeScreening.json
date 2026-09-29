@@ -17,7 +17,6 @@
   "configSection": "Tetapan Penapisan",
   "configGenerateExplanation": "Jana nota ulasan",
   "configIncludeRawText": "Sertakan teks asal resume",
-  "configMaxConcurrency": "Serentak",
   "reviewStart": "Mula Penapisan",
   "reviewCancel": "Batalkan Tugasan",
   "modelLabel": "Model",

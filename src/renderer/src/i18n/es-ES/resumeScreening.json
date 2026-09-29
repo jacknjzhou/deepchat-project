@@ -17,7 +17,6 @@
   "configSection": "Ajustes de Filtrado",
   "configGenerateExplanation": "Generar observaciones de revisión",
   "configIncludeRawText": "Incluir texto original del CV",
-  "configMaxConcurrency": "Concurrencia",
   "reviewStart": "Iniciar Filtrado",
   "reviewCancel": "Cancelar Tarea",
   "modelLabel": "Modelo",

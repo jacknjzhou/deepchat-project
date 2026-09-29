@@ -17,7 +17,6 @@
   "configSection": "تنظیمات غربالگری",
   "configGenerateExplanation": "تولید یادداشت‌های بررسی",
   "configIncludeRawText": "درج متن اصلی رزومه در نتایج",
-  "configMaxConcurrency": "همزمانی",
   "reviewStart": "شروع غربالگری",
   "reviewCancel": "لغو وظیفه",
   "modelLabel": "مدل",

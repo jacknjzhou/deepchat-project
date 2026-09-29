@@ -2111,7 +2111,6 @@ declare module 'vue-i18n' {
     configSection: string
     configGenerateExplanation: string
     configIncludeRawText: string
-    configMaxConcurrency: string
     reviewStart: string
     reviewCancel: string
     modelLabel: string

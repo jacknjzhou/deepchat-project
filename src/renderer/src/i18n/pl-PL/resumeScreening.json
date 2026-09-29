@@ -17,7 +17,6 @@
   "configSection": "Ustawienia selekcji",
   "configGenerateExplanation": "Generuj uwagi do oceny",
   "configIncludeRawText": "Dołącz surowy tekst CV",
-  "configMaxConcurrency": "Współbieżność",
   "reviewStart": "Rozpocznij selekcję",
   "reviewCancel": "Anuluj zadanie",
   "modelLabel": "Model",

@@ -17,7 +17,6 @@
   "configSection": "スクリーニング設定",
   "configGenerateExplanation": "レビューコメントを生成",
   "configIncludeRawText": "結果に履歴書原文を含める",
-  "configMaxConcurrency": "同時実行数",
   "reviewStart": "スクリーニング開始",
   "reviewCancel": "タスクをキャンセル",
   "modelLabel": "モデル",

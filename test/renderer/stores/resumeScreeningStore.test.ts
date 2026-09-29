@@ -98,7 +98,7 @@ describe('resumeScreening store', () => {
       jdFilePath: undefined,
       jdFileName: undefined,
       resumes: [{ path: 'C:\\a.pdf', name: 'a.pdf' }],
-      config: { generateExplanation: true, includeRawText: false, maxConcurrency: 3 },
+      config: { generateExplanation: true, includeRawText: true, maxConcurrency: 5 },
       providerId: 'openai',
       modelId: 'gpt-4o'
     })

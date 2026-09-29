@@ -17,7 +17,6 @@
   "configSection": "Screening Settings",
   "configGenerateExplanation": "Generate review notes",
   "configIncludeRawText": "Include resume raw text in results",
-  "configMaxConcurrency": "Concurrency",
   "reviewStart": "Start Screening",
   "reviewCancel": "Cancel Task",
   "modelLabel": "Model",

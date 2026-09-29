@@ -38,7 +38,7 @@
         </p>
         <ScreeningConfigCard
           :config="store.draft.config"
-          @update:config="(config) => (store.draft.config = config)"
+          @update:config="(config) => (store.draft.config = { ...store.draft.config, ...config })"
         />
         <ModelSelector
           v-if="store.models.length > 0"

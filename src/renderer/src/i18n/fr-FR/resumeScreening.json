@@ -17,7 +17,6 @@
   "configSection": "Paramètres de tri",
   "configGenerateExplanation": "Générer des commentaires d'évaluation",
   "configIncludeRawText": "Inclure le texte brut du CV",
-  "configMaxConcurrency": "Concurrence",
   "reviewStart": "Lancer le tri",
   "reviewCancel": "Annuler la tâche",
   "modelLabel": "Modèle",

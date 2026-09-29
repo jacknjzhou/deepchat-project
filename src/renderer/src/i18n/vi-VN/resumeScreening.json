@@ -17,7 +17,6 @@
   "configSection": "Cấu hình sàng lọc",
   "configGenerateExplanation": "Tạo nhận xét đánh giá",
   "configIncludeRawText": "Kèm văn bản gốc của hồ sơ",
-  "configMaxConcurrency": "Số chạy đồng thời",
   "reviewStart": "Bắt đầu đánh giá",
   "reviewCancel": "Hủy tác vụ",
   "modelLabel": "Mô hình",

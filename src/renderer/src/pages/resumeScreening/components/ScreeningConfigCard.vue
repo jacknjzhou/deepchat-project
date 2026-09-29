@@ -17,20 +17,6 @@
           @update:model-value="(value) => update({ includeRawText: Boolean(value) })"
         />
       </div>
-      <div class="flex items-center justify-between text-sm">
-        <span>{{ t('resumeScreening.configMaxConcurrency') }}</span>
-        <Select
-          :model-value="String(config.maxConcurrency)"
-          @update:model-value="(value) => update({ maxConcurrency: Number(value) })"
-        >
-          <SelectTrigger class="h-8 w-20" data-testid="config-concurrency-trigger">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem v-for="n in 5" :key="n" :value="String(n)">{{ n }}</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
     </div>
   </div>
 </template>
@@ -38,18 +24,10 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import { Switch } from '@shadcn/components/ui/switch'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from '@shadcn/components/ui/select'
 
 export interface ScreeningConfig {
   generateExplanation: boolean
   includeRawText: boolean
-  maxConcurrency: number
 }
 
 const props = defineProps<{

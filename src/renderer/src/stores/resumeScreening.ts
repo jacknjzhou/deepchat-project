@@ -58,7 +58,7 @@ export function createDefaultDraft(): ResumeScreeningDraft {
     jdFilePath: null,
     jdFileName: null,
     resumes: [],
-    config: { generateExplanation: true, includeRawText: false, maxConcurrency: 3 },
+    config: { generateExplanation: true, includeRawText: true, maxConcurrency: 5 },
     providerId: null,
     modelId: null
   }

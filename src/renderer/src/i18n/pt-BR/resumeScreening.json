@@ -17,7 +17,6 @@
   "configSection": "Configurações da Triagem",
   "configGenerateExplanation": "Gerar observações de avaliação",
   "configIncludeRawText": "Incluir texto original do currículo",
-  "configMaxConcurrency": "Concorrência",
   "reviewStart": "Iniciar Triagem",
   "reviewCancel": "Cancelar Tarefa",
   "modelLabel": "Modelo",

@@ -17,7 +17,6 @@
   "configSection": "Impostazioni Screening",
   "configGenerateExplanation": "Genera note di revisione",
   "configIncludeRawText": "Includi testo originale del CV",
-  "configMaxConcurrency": "Concorrenza",
   "reviewStart": "Avvia Screening",
   "reviewCancel": "Annulla Attività",
   "modelLabel": "Modello",

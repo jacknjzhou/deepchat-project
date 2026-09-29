@@ -17,7 +17,6 @@
   "configSection": "Screening-indstillinger",
   "configGenerateExplanation": "Generér vurderingsnoter",
   "configIncludeRawText": "Medtag CV-tekst i resultater",
-  "configMaxConcurrency": "Samtidighed",
   "reviewStart": "Start screening",
   "reviewCancel": "Annuller opgave",
   "modelLabel": "Model",

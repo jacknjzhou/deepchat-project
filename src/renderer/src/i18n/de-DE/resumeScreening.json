@@ -17,7 +17,6 @@
   "configSection": "Screening-Einstellungen",
   "configGenerateExplanation": "Prüfnotizen erstellen",
   "configIncludeRawText": "Lebenslauf-Originaltext in Ergebnisse aufnehmen",
-  "configMaxConcurrency": "Parallelität",
   "reviewStart": "Screening starten",
   "reviewCancel": "Aufgabe abbrechen",
   "modelLabel": "Modell",

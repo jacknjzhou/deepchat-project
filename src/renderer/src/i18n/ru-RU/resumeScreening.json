@@ -17,7 +17,6 @@
   "configSection": "Настройки скрининга",
   "configGenerateExplanation": "Создавать комментарии к оценке",
   "configIncludeRawText": "Включать исходный текст резюме",
-  "configMaxConcurrency": "Параллелизм",
   "reviewStart": "Начать проверку",
   "reviewCancel": "Отменить задачу",
   "modelLabel": "Модель",

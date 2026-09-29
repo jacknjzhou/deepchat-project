@@ -17,7 +17,6 @@
   "configSection": "Pengaturan Penyaringan",
   "configGenerateExplanation": "Buat catatan tinjauan",
   "configIncludeRawText": "Sertakan teks asli resume",
-  "configMaxConcurrency": "Konkurensi",
   "reviewStart": "Mulai Penyaringan",
   "reviewCancel": "Batalkan Tugas",
   "modelLabel": "Model",

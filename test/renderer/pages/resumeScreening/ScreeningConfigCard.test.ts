@@ -9,27 +9,7 @@ const switchStub = defineComponent({
   template: '<button type="button" @click="$emit(\'update:modelValue\', !modelValue)" />'
 })
 
-const selectStub = defineComponent({
-  name: 'SelectStub',
-  props: ['modelValue'],
-  emits: ['update:modelValue'],
-  template:
-    '<select :value="modelValue" @change="$emit(\'update:modelValue\', $event.target.value)"><slot /></select>'
-})
-
-const selectTriggerStub = defineComponent({
-  name: 'SelectTrigger',
-  template: '<div><slot /></div>'
-})
-const selectValueStub = defineComponent({ name: 'SelectValue', template: '<slot />' })
-const selectContentStub = defineComponent({ name: 'SelectContent', template: '<slot />' })
-const selectItemStub = defineComponent({
-  name: 'SelectItem',
-  props: ['value'],
-  template: '<option :value="value"><slot /></option>'
-})
-
-const baseConfig = { generateExplanation: true, includeRawText: false, maxConcurrency: 3 }
+const baseConfig = { generateExplanation: true, includeRawText: true }
 
 async function setup(config: typeof baseConfig) {
   vi.resetModules()
@@ -43,36 +23,32 @@ async function setup(config: typeof baseConfig) {
     props: { config },
     global: {
       stubs: {
-        Switch: switchStub,
-        Select: selectStub,
-        SelectTrigger: selectTriggerStub,
-        SelectValue: selectValueStub,
-        SelectContent: selectContentStub,
-        SelectItem: selectItemStub
+        Switch: switchStub
       }
     }
   })
 }
 
 describe('ScreeningConfigCard', () => {
+  it('只渲染两个开关（并发数已固定，不提供配置）', async () => {
+    const wrapper = await setup(baseConfig)
+    expect(wrapper.findAll('[data-testid="config-explanation"] button')).toHaveLength(1)
+    expect(wrapper.findAll('[data-testid="config-raw-text"] button')).toHaveLength(1)
+    expect(wrapper.find('select').exists()).toBe(false)
+  })
+
   it('切换开关以不可变替换方式上抛完整配置', async () => {
     const wrapper = await setup(baseConfig)
     await wrapper.get('[data-testid="config-explanation"] button').trigger('click')
     expect(wrapper.emitted('update:config')?.[0]).toEqual([
-      { generateExplanation: false, includeRawText: false, maxConcurrency: 3 }
+      { generateExplanation: false, includeRawText: true }
     ])
-  })
 
-  it('选择并发数上抛数值型配置', async () => {
-    const wrapper = await setup(baseConfig)
-    await wrapper.find('select').setValue('2')
-    expect(wrapper.emitted('update:config')?.[0]).toEqual([
-      { generateExplanation: true, includeRawText: false, maxConcurrency: 2 }
+    // 模拟父组件回灌新配置后，再切换原文开关（受控组件语义）
+    await wrapper.setProps({ config: { generateExplanation: false, includeRawText: true } })
+    await wrapper.get('[data-testid="config-raw-text"] button').trigger('click')
+    expect(wrapper.emitted('update:config')?.[1]).toEqual([
+      { generateExplanation: false, includeRawText: false }
     ])
-  })
-
-  it('渲染 5 个并发选项', async () => {
-    const wrapper = await setup(baseConfig)
-    expect(wrapper.findAll('option')).toHaveLength(5)
   })
 })
