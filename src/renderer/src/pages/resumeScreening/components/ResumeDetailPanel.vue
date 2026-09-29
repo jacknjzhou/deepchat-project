@@ -249,7 +249,18 @@ const FIELD_LABELS: Record<string, string> = {
   work_history: '工作经历',
   education_history: '教育经历',
   project_history: '项目经历',
-  self_evaluation: '自我评价'
+  self_evaluation: '自我评价',
+  company: '公司',
+  position: '职位',
+  title: '职位',
+  department: '部门',
+  school: '学校',
+  degree: '学历',
+  start: '开始时间',
+  end: '结束时间',
+  start_date: '开始时间',
+  end_date: '结束时间',
+  description: '描述'
 }
 
 function fieldLabel(key: string): string {
@@ -289,7 +300,7 @@ function formatInfoInline(value: unknown): string {
   }
   if (typeof value === 'object') {
     return Object.entries(value as Record<string, unknown>)
-      .map(([key, item]) => `${key}:${formatInfoInline(item)}`)
+      .map(([key, item]) => `${fieldLabel(key)}:${formatInfoInline(item)}`)
       .join('，')
   }
   return String(value)
