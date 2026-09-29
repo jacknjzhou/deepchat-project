@@ -25,5 +25,13 @@
   "title": "SRIBD Office Agent",
   "updateChannel": "Opdateringskanal",
   "website": "Besøg vores hjemmeside",
-  "feedbackButton": "Feedback"
+  "feedbackButton": "Feedback",
+  "systemInfo": {
+    "title": "Systemoplysninger",
+    "username": "Brugernavn",
+    "domain": "Domæne",
+    "hostname": "Værtsnavn",
+    "homeDir": "Hjemmemappe",
+    "sid": "SID"
+  }
 }

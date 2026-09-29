@@ -25,5 +25,13 @@
     "cpuModel": "CPU型号",
     "totalMemory": "总内存",
     "osVersion": "系统版本"
+  },
+  "systemInfo": {
+    "title": "系统信息",
+    "username": "用户名",
+    "domain": "域名",
+    "hostname": "主机名",
+    "homeDir": "主目录",
+    "sid": "SID"
   }
 }

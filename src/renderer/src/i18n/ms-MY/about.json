@@ -25,5 +25,13 @@
     "cpuModel": "Model CPU",
     "totalMemory": "jumlah ingatan",
     "osVersion": "Versi sistem"
+  },
+  "systemInfo": {
+    "title": "Maklumat Sistem",
+    "username": "Nama Pengguna",
+    "domain": "Domain",
+    "hostname": "Nama Hos",
+    "homeDir": "Direktori Utama",
+    "sid": "SID"
   }
 }

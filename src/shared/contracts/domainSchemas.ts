@@ -775,7 +775,16 @@ export const DeviceInfoSchema = z.object({
       name: z.string(),
       build: z.number().int()
     })
-  )
+  ),
+  winAccount: z
+    .object({
+      username: z.string(),
+      domain: z.string(),
+      hostname: z.string(),
+      homeDir: z.string(),
+      sid: z.string().nullable()
+    })
+    .nullable()
 })
 
 export const ProjectSchema = z.object({

@@ -25,5 +25,13 @@
   "mockChatCreateUnavailable": "Dữ liệu trò chuyện mô phỏng chỉ khả dụng trong bản dựng phát triển.",
   "updateChannel": "Cập nhật kênh",
   "stableChannel": "Ổn định",
-  "betaChannel": "bản thử nghiệm"
+  "betaChannel": "bản thử nghiệm",
+  "systemInfo": {
+    "title": "Thông tin hệ thống",
+    "username": "Tên người dùng",
+    "domain": "Miền",
+    "hostname": "Tên máy chủ",
+    "homeDir": "Thư mục chính",
+    "sid": "SID"
+  }
 }

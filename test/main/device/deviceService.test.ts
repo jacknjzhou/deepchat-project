@@ -1,11 +1,44 @@
-import { describe, it, expect, vi, afterEach } from 'vitest'
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import fs from 'fs'
 import { DeviceService } from '@/device'
 
-const { appRelaunchMock, appExitMock } = vi.hoisted(() => ({
+const { appRelaunchMock, appExitMock, execMock, osMock } = vi.hoisted(() => ({
   appRelaunchMock: vi.fn(),
-  appExitMock: vi.fn()
+  appExitMock: vi.fn(),
+  execMock: vi.fn(),
+  osMock: {
+    release: vi.fn(() => '10.0.22631'),
+    cpus: vi.fn(() => [{ model: 'Mock CPU' }]),
+    totalmem: vi.fn(() => 16 * 1024 ** 3),
+    userInfo: vi.fn(() => ({
+      username: 'zhangsan',
+      uid: -1,
+      gid: -1,
+      shell: null,
+      homedir: 'C:\\Users\\zhangsan'
+    })),
+    homedir: vi.fn(() => 'C:\\Users\\zhangsan'),
+    hostname: vi.fn(() => 'DESKTOP-ABC')
+  }
 }))
+
+vi.mock('os', () => ({ default: osMock, ...osMock }))
+vi.mock('child_process', () => ({ exec: execMock }))
+
+const WHOAMI_OUTPUT = [
+  'USER INFORMATION',
+  '----------------',
+  'User Name      SID',
+  '============== =======================================',
+  'DESKTOP-ABC\\zhangsan S-1-5-21-1004336348-1177238915-682003330-5122'
+].join('\r\n')
+
+const originalPlatform = process.platform
+const originalUserDomain = process.env.USERDOMAIN
+
+const setPlatform = (value: NodeJS.Platform): void => {
+  Object.defineProperty(process, 'platform', { value, configurable: true })
+}
 
 vi.mock('electron', () => ({
   app: {
@@ -33,6 +66,8 @@ describe('DeviceService', () => {
     vi.restoreAllMocks()
     appRelaunchMock.mockClear()
     appExitMock.mockClear()
+    setPlatform(originalPlatform)
+    process.env.USERDOMAIN = originalUserDomain
   })
 
   describe('getDefaultHeaders', () => {
@@ -48,6 +83,96 @@ describe('DeviceService', () => {
 
       expect(headers['HTTP-Referer']).toBe('https://deepchatai.cn')
       expect(headers['X-Title']).toBe('DeepChat')
+    })
+  })
+
+  describe('getDeviceInfo winAccount', () => {
+    // 每个用例重新加载模块，隔离 getWindowsSid 的模块级缓存
+    const loadFreshService = async (): Promise<typeof DeviceService> => {
+      vi.resetModules()
+      const mod = await import('@/device')
+      return mod.DeviceService
+    }
+
+    beforeEach(() => {
+      execMock.mockReset()
+      execMock.mockImplementation(
+        (
+          cmd: string,
+          opts: unknown,
+          cb: (err: Error | null, result: { stdout: string; stderr: string }) => void
+        ) => {
+          cb(null, { stdout: WHOAMI_OUTPUT, stderr: '' })
+        }
+      )
+      process.env.USERDOMAIN = 'DESKTOP-ABC'
+    })
+
+    it('returns null winAccount on non-win32 platforms', async () => {
+      setPlatform('darwin')
+      const FreshService = await loadFreshService()
+      const info = await new FreshService().getDeviceInfo()
+
+      expect(info.winAccount).toBeNull()
+      expect(execMock).not.toHaveBeenCalled()
+    })
+
+    it('collects windows account fields and parses sid on win32', async () => {
+      setPlatform('win32')
+      const FreshService = await loadFreshService()
+      const info = await new FreshService().getDeviceInfo()
+
+      expect(info.winAccount).toEqual({
+        username: 'zhangsan',
+        domain: 'DESKTOP-ABC',
+        hostname: 'DESKTOP-ABC',
+        homeDir: 'C:\\Users\\zhangsan',
+        sid: 'S-1-5-21-1004336348-1177238915-682003330-5122'
+      })
+      expect(execMock).toHaveBeenCalledWith('whoami /user', { timeout: 5000 }, expect.any(Function))
+    })
+
+    it('falls back to null sid without rejecting when whoami fails', async () => {
+      setPlatform('win32')
+      execMock.mockImplementation((cmd: string, opts: unknown, cb: (err: Error | null) => void) =>
+        cb(new Error('whoami failed'))
+      )
+      const FreshService = await loadFreshService()
+      const info = await new FreshService().getDeviceInfo()
+
+      expect(info.winAccount).not.toBeNull()
+      expect(info.winAccount?.username).toBe('zhangsan')
+      expect(info.winAccount?.sid).toBeNull()
+    })
+
+    it('falls back to null sid when output cannot be parsed', async () => {
+      setPlatform('win32')
+      execMock.mockImplementation(
+        (
+          cmd: string,
+          opts: unknown,
+          cb: (err: Error | null, result: { stdout: string; stderr: string }) => void
+        ) => {
+          cb(null, { stdout: 'no sid here', stderr: '' })
+        }
+      )
+      const FreshService = await loadFreshService()
+      const info = await new FreshService().getDeviceInfo()
+
+      expect(info.winAccount?.sid).toBeNull()
+    })
+
+    it('caches sid and executes whoami only once across calls', async () => {
+      setPlatform('win32')
+      const FreshService = await loadFreshService()
+      const service = new FreshService()
+
+      const first = await service.getDeviceInfo()
+      const second = await service.getDeviceInfo()
+
+      expect(first.winAccount?.sid).toBe('S-1-5-21-1004336348-1177238915-682003330-5122')
+      expect(second.winAccount?.sid).toBe(first.winAccount?.sid)
+      expect(execMock).toHaveBeenCalledTimes(1)
     })
   })
 

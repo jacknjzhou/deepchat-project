@@ -25,5 +25,13 @@
     "totalMemory": "총 메모리",
     "osVersion": "시스템 버전"
   },
-  "feedbackButton": "피드백"
+  "feedbackButton": "피드백",
+  "systemInfo": {
+    "title": "시스템 정보",
+    "username": "사용자 이름",
+    "domain": "도메인",
+    "hostname": "호스트 이름",
+    "homeDir": "홈 디렉터리",
+    "sid": "SID"
+  }
 }

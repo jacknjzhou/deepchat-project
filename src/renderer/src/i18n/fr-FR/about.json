@@ -25,5 +25,13 @@
   "updateChannel": "Canal de mise à jour",
   "stableChannel": "Stable",
   "betaChannel": "Beta",
-  "feedbackButton": "Retour"
+  "feedbackButton": "Retour",
+  "systemInfo": {
+    "title": "Informations système",
+    "username": "Nom d'utilisateur",
+    "domain": "Domaine",
+    "hostname": "Nom d'hôte",
+    "homeDir": "Répertoire personnel",
+    "sid": "SID"
+  }
 }

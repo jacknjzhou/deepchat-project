@@ -25,5 +25,13 @@
     "totalMemory": "總記憶體",
     "osVersion": "系統版本"
   },
-  "feedbackButton": "意見反饋"
+  "feedbackButton": "意見反饋",
+  "systemInfo": {
+    "title": "系統資訊",
+    "username": "使用者名稱",
+    "domain": "網域",
+    "hostname": "主機名稱",
+    "homeDir": "主目錄",
+    "sid": "SID"
+  }
 }

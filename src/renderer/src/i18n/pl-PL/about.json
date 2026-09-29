@@ -25,5 +25,13 @@
   "mockChatCreateUnavailable": "Dane czatu testowego są dostępne tylko w kompilacjach deweloperskich.",
   "updateChannel": "Aktualizuj kanał",
   "stableChannel": "Stabilny",
-  "betaChannel": "Beta"
+  "betaChannel": "Beta",
+  "systemInfo": {
+    "title": "Informacje o systemie",
+    "username": "Nazwa użytkownika",
+    "domain": "Domena",
+    "hostname": "Nazwa hosta",
+    "homeDir": "Katalog domowy",
+    "sid": "SID"
+  }
 }

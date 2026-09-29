@@ -25,5 +25,13 @@
   "updateChannel": "کانال به‌روزرسانی",
   "stableChannel": "پایدار",
   "betaChannel": "Beta",
-  "feedbackButton": "بازخورد"
+  "feedbackButton": "بازخورد",
+  "systemInfo": {
+    "title": "اطلاعات سیستم",
+    "username": "نام کاربری",
+    "domain": "دامنه",
+    "hostname": "نام میزبان",
+    "homeDir": "پوشه خانگی",
+    "sid": "SID"
+  }
 }

@@ -25,5 +25,13 @@
   "updateChannel": "ערוץ עדכון",
   "stableChannel": "יציב (Stable)",
   "betaChannel": "Beta",
-  "feedbackButton": "מָשׁוֹב"
+  "feedbackButton": "מָשׁוֹב",
+  "systemInfo": {
+    "title": "מידע מערכת",
+    "username": "שם משתמש",
+    "domain": "דומיין",
+    "hostname": "שם מארח",
+    "homeDir": "ספריית בית",
+    "sid": "SID"
+  }
 }

@@ -1,5 +1,11 @@
 import logger from '@shared/logger'
-import type { DeviceInfo, DeviceServicePort, DiskInfo, MemoryInfo } from '@shared/types/device'
+import type {
+  DeviceInfo,
+  DeviceServicePort,
+  DiskInfo,
+  MemoryInfo,
+  WindowsAccountInfo
+} from '@shared/types/device'
 import os from 'os'
 import { exec } from 'child_process'
 import { promisify } from 'util'
@@ -9,6 +15,9 @@ import { app, dialog } from 'electron'
 import { svgSanitizer } from '../lib/svgSanitizer'
 import { cacheImage, type CacheImageOptions } from '@/platform/imageCache'
 const execAsync = promisify(exec)
+
+// undefined 表示尚未取过，null 表示获取失败（降级）
+let cachedSid: string | null | undefined
 
 export class DeviceService implements DeviceServicePort {
   static getDefaultHeaders(): Record<string, string> {
@@ -48,14 +57,48 @@ export class DeviceService implements DeviceServicePort {
       ]
     }
 
+    let winAccount: WindowsAccountInfo | null = null
+    if (platform === 'win32') {
+      winAccount = {
+        username: os.userInfo().username,
+        domain: process.env.USERDOMAIN ?? '',
+        hostname: os.hostname(),
+        homeDir: os.homedir(),
+        sid: await this.getWindowsSid()
+      }
+    }
+
     return {
       platform,
       arch: process.arch,
       cpuModel: os.cpus()[0].model,
       totalMemory: os.totalmem(),
       osVersion,
-      osVersionMetadata
+      osVersionMetadata,
+      winAccount
     }
+  }
+
+  /**
+   * 获取当前登录 Windows 用户的 SID
+   * 通过 `whoami /user` 解析，进程生命周期内仅执行一次；失败降级为 null
+   */
+  private async getWindowsSid(): Promise<string | null> {
+    if (cachedSid !== undefined) {
+      return cachedSid
+    }
+    try {
+      const { stdout } = await execAsync('whoami /user', { timeout: 5000 })
+      const match = stdout.match(/S-1-\d+(?:-\d+)+/)
+      cachedSid = match ? match[0] : null
+      if (!cachedSid) {
+        logger.debug('Failed to parse SID from whoami output')
+      }
+    } catch (error) {
+      logger.debug('Failed to get Windows SID:', error)
+      cachedSid = null
+    }
+    return cachedSid
   }
 
   async getCPUUsage(): Promise<number> {

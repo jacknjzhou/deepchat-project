@@ -25,5 +25,13 @@
     "cpuModel": "CPU Modeli",
     "totalMemory": "Toplam Bellek",
     "osVersion": "Sistem Sürümü"
+  },
+  "systemInfo": {
+    "title": "Sistem Bilgileri",
+    "username": "Kullanıcı Adı",
+    "domain": "Etki Alanı",
+    "hostname": "Ana Bilgisayar Adı",
+    "homeDir": "Giriş Dizini",
+    "sid": "SID"
   }
 }
