@@ -37,6 +37,26 @@ describe('ResumeTextExtractor', () => {
 
   it('throws on empty text content', async () => {
     const filePath = await writeFile('空简历.txt', '   \n  ')
-    await expect(extractor.extract(filePath)).rejects.toThrow('无法提取文本')
+    await expect(extractor.extract(filePath)).rejects.toThrow('简历内容为空、损坏或超过大小限制')
+  })
+
+  it('rejects a fake docx without PK magic bytes', async () => {
+    const filePath = await writeFile('假简历.docx', '这不是一个 ZIP 文件')
+    await expect(extractor.extract(filePath)).rejects.toThrow(
+      '简历文件已损坏或不是有效的 DOCX 文件'
+    )
+  })
+
+  it('rejects a txt file exceeding the size limit', async () => {
+    const strictExtractor = new ResumeTextExtractor({ getMaxFileSize: () => 10 })
+    const filePath = await writeFile('超限简历.txt', 'a'.repeat(11))
+    await expect(strictExtractor.extract(filePath)).rejects.toThrow(
+      '简历内容为空、损坏或超过大小限制'
+    )
+  })
+
+  it('rejects files without an extension', async () => {
+    const filePath = await writeFile('无扩展名文件', 'some content')
+    await expect(extractor.extract(filePath)).rejects.toThrow('不支持的简历文件格式: (无扩展名)')
   })
 })

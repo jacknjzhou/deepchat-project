@@ -47,21 +47,35 @@ describe('ResumeLlmInvoker', () => {
     expect(deps.generateCompletion).toHaveBeenCalledTimes(1)
   })
 
+  it('parses fenced JSON followed by trailing text without retry', async () => {
+    const deps = makeDeps()
+    deps.setResponses(['```json\n{"ok": true}\n```\n以上是我的分析，希望对你有帮助。'])
+    const invoker = new ResumeLlmInvoker(deps)
+    const result = await invoker.invokeJson<{ ok: boolean }>(baseOptions)
+    expect(result).toEqual({ ok: true })
+    expect(Array.isArray(result)).toBe(false)
+    expect(deps.generateCompletion).toHaveBeenCalledTimes(1)
+  })
+
   it('retries once with context when first output is not JSON', async () => {
     const deps = makeDeps()
     deps.setResponses(['抱歉，我无法回答。', '{"ok": 1}'])
     const invoker = new ResumeLlmInvoker(deps)
     const result = await invoker.invokeJson<{ ok: number }>(baseOptions)
     expect(result.ok).toBe(1)
+    expect(deps.calls).toEqual(['rateLimit', 'completion', 'rateLimit', 'completion'])
     expect(deps.generateCompletion).toHaveBeenCalledTimes(2)
     const retryMessages = deps.generateCompletion.mock.calls[1][1] as Array<{
       role: string
       content?: string
     }>
     expect(retryMessages).toHaveLength(4)
-    expect(retryMessages[2]).toMatchObject({ role: 'assistant' })
+    expect(retryMessages[2]).toMatchObject({ role: 'assistant', content: '抱歉，我无法回答。' })
     expect(retryMessages[3]).toMatchObject({ role: 'user' })
     expect(String(retryMessages[3].content)).toContain('JSON')
+    for (const call of deps.generateCompletion.mock.calls) {
+      expect(call[5]).toMatchObject({ signal: undefined, swallowErrors: false })
+    }
   })
 
   it('throws when both attempts fail to parse', async () => {

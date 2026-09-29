@@ -3,6 +3,7 @@ import { jsonrepair } from 'jsonrepair'
 
 export interface ResumeLlmInvokerDeps {
   executeWithRateLimit: (providerId: string, options?: { signal?: AbortSignal }) => Promise<void>
+  /** 对应 provider.generateCompletionStandalone；swallowErrors 由本模块固定为 false */
   generateCompletion: (
     providerId: string,
     messages: ChatMessage[],
@@ -54,6 +55,7 @@ export class ResumeLlmInvoker {
           '你的上一条回复不是合法的 JSON。请重新回复，只输出符合要求的 JSON，不要包含任何解释、markdown 代码围栏或其他文字。'
       }
     ]
+    await this.deps.executeWithRateLimit(options.providerId, { signal: options.signal })
     const second = await this.deps.generateCompletion(
       options.providerId,
       retryMessages,
@@ -76,7 +78,13 @@ export class ResumeLlmInvoker {
         .replace(/^```(?:json)?\s*/i, '')
         .replace(/```\s*$/, '')
         .trim()
-      const parsed = JSON.parse(jsonrepair(cleaned)) as T
+      // jsonrepair 会把「JSON + 尾随杂讯」修复成含杂讯的数组，先截取首个 {/[ 到末个 }/] 的切片
+      const start = cleaned.search(/[{[]/)
+      const end = Math.max(cleaned.lastIndexOf('}'), cleaned.lastIndexOf(']'))
+      if (start === -1 || end <= start) {
+        return null
+      }
+      const parsed = JSON.parse(jsonrepair(cleaned.slice(start, end + 1))) as T
       // jsonrepair 会把裸文本修复为 JSON 字符串，这里只接受对象/数组结果
       if (typeof parsed !== 'object' || parsed === null) {
         return null

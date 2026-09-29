@@ -1,3 +1,4 @@
+import { open } from 'node:fs/promises'
 import * as path from 'path'
 import { DocFileAdapter } from '@/file/adapters/DocFileAdapter'
 import { PdfFileAdapter } from '@/file/adapters/PdfFileAdapter'
@@ -18,6 +19,7 @@ export class ResumeTextExtractor {
     if (ext === '.pdf') {
       adapter = new PdfFileAdapter(filePath, maxFileSize)
     } else if (ext === '.docx') {
+      await this.assertDocxMagic(filePath)
       adapter = new DocFileAdapter(filePath, maxFileSize)
     } else if (ext === '.txt' || ext === '.md') {
       adapter = new TextFileAdapter(filePath, maxFileSize)
@@ -26,8 +28,22 @@ export class ResumeTextExtractor {
     }
     const content = await adapter.getContent()
     if (!content || !content.trim()) {
-      throw new Error(`简历内容为空或无法提取文本: ${path.basename(filePath)}`)
+      throw new Error(`简历内容为空、损坏或超过大小限制: ${path.basename(filePath)}`)
     }
     return content
+  }
+
+  /** DOCX 是 ZIP 容器，文件头必须是 PK 魔数；在交给 Word 解析器前拦截损坏或伪装的文件 */
+  private async assertDocxMagic(filePath: string): Promise<void> {
+    const handle = await open(filePath, 'r')
+    try {
+      const header = Buffer.alloc(2)
+      const { bytesRead } = await handle.read(header, 0, 2, 0)
+      if (bytesRead < 2 || header.toString('ascii', 0, 2) !== 'PK') {
+        throw new Error(`简历文件已损坏或不是有效的 DOCX 文件: ${path.basename(filePath)}`)
+      }
+    } finally {
+      await handle.close()
+    }
   }
 }
