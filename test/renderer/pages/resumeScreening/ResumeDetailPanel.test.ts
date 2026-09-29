@@ -136,6 +136,32 @@ describe('ResumeDetailPanel', () => {
     expect(groups[1].text()).toContain('深圳市宝深珠宝有限公司')
   })
 
+  it('数组字段通栏显示，标量字段保持两栏', async () => {
+    wrapper = await setup(
+      makeResume({
+        resumeInfo: {
+          name: '黄桂茂',
+          gender: '男',
+          major: '计算机网络技术',
+          skills: ['Linux', 'Docker'],
+          work_history: [{ company: '阿里云', title: '项目经理' }],
+          empty_list: []
+        }
+      })
+    )
+    const groups = wrapper.findAll('[data-testid="detail-info-group"]')
+    expect(groups).toHaveLength(2)
+    expect(groups[0].text()).toContain('黄桂茂')
+    expect(groups[0].text()).not.toContain('Linux')
+    expect(groups[1].text()).toContain('计算机网络技术')
+
+    const wide = wrapper.findAll('[data-testid="detail-info-wide"]')
+    expect(wide).toHaveLength(3)
+    expect(wide[0].text()).toContain('Linux、Docker')
+    expect(wide[1].text()).toContain('· company:阿里云，title:项目经理')
+    expect(wide[2].text()).toContain('—')
+  })
+
   it('对象数组渲染为键值文本而非 [object Object]', async () => {
     wrapper = await setup(
       makeResume({

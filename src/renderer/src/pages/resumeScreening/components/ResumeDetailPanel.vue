@@ -66,10 +66,21 @@
             >
               <template v-for="[key, value] in group" :key="key">
                 <span class="text-muted-foreground">{{ key }}</span>
-                <span class="min-w-0 break-words whitespace-pre-line">{{
-                  value.kind === 'text' ? value.text : value.lines.join('\n')
-                }}</span>
+                <span class="min-w-0 break-words whitespace-pre-line">{{ value.text }}</span>
               </template>
+            </div>
+
+            <!-- 数组类长内容（skills/work_history/education_history 等）通栏显示，从左侧占满整行 -->
+            <div
+              v-for="[key, value] in wideEntries"
+              :key="key"
+              data-testid="detail-info-wide"
+              class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 self-start md:col-span-2"
+            >
+              <span class="text-muted-foreground">{{ key }}</span>
+              <span class="min-w-0 break-words whitespace-pre-line">{{
+                value.kind === 'lines' ? value.lines.join('\n') : value.text
+              }}</span>
             </div>
           </div>
         </div>
@@ -170,8 +181,12 @@ watch(
 )
 
 // resumeInfo 是宽松契约字段（z.unknown()，见 Task 1），按键值对渲染：
-// 简单值内联显示；对象数组逐条分行（· 前缀）格式化展示；对象递归展开为「键:值」文本
-type InfoValue = { kind: 'text'; text: string } | { kind: 'lines'; lines: string[] }
+// 标量分两栏（个人基础字段左栏、其余右栏）；数组类长内容（对象数组逐行、原始数组内联）通栏显示
+type InfoValue =
+  | { kind: 'text'; text: string } // 标量，参与两栏分列
+  | { kind: 'wide'; text: string } // 原始类型数组，内联文本但通栏
+  | { kind: 'lines'; lines: string[] } // 对象数组，逐行展示且通栏
+type InfoScalar = Extract<InfoValue, { kind: 'text' }>
 
 const infoEntries = computed(() => {
   if (!props.resume?.resumeInfo || typeof props.resume.resumeInfo !== 'object') return []
@@ -180,7 +195,7 @@ const infoEntries = computed(() => {
   )
 })
 
-// 个人基础字段进左栏，其余（教育/职业/期望等）进右栏；宽松契约下未匹配键全部归右栏
+// 个人基础字段进左栏，其余标量进右栏；宽松契约下未匹配键全部归右栏
 const BASIC_INFO_KEYS = new Set([
   'name',
   'gender',
@@ -192,18 +207,23 @@ const BASIC_INFO_KEYS = new Set([
 ])
 
 const infoGroups = computed(() => {
-  const basic = infoEntries.value.filter(([key]) => BASIC_INFO_KEYS.has(key))
-  const rest = infoEntries.value.filter(([key]) => !BASIC_INFO_KEYS.has(key))
+  const scalars = infoEntries.value.filter(
+    (entry): entry is [string, InfoScalar] => entry[1].kind === 'text'
+  )
+  const basic = scalars.filter(([key]) => BASIC_INFO_KEYS.has(key))
+  const rest = scalars.filter(([key]) => !BASIC_INFO_KEYS.has(key))
   return [basic, rest].filter((group) => group.length > 0)
 })
 
+const wideEntries = computed(() => infoEntries.value.filter(([, value]) => value.kind !== 'text'))
+
 function describeInfoValue(value: unknown): InfoValue {
-  if (
-    Array.isArray(value) &&
-    value.length > 0 &&
-    value.every((item) => item !== null && typeof item === 'object')
-  ) {
-    return { kind: 'lines', lines: value.map((item) => `· ${formatInfoInline(item)}`) }
+  if (Array.isArray(value)) {
+    if (value.length === 0) return { kind: 'wide', text: '—' }
+    if (value.every((item) => item !== null && typeof item === 'object')) {
+      return { kind: 'lines', lines: value.map((item) => `· ${formatInfoInline(item)}`) }
+    }
+    return { kind: 'wide', text: formatInfoInline(value) }
   }
   return { kind: 'text', text: formatInfoInline(value) }
 }
