@@ -138,7 +138,18 @@ export class ResumeScreeningService {
     })
 
     const taskDir = path.join(this.deps.storageDir, task.id)
-    await mkdir(taskDir, { recursive: true })
+    try {
+      await mkdir(taskDir, { recursive: true })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      this.tasksTable.update(task.id, {
+        status: 'failed',
+        finishedAt: this.deps.now(),
+        now: this.deps.now()
+      })
+      this.publishTaskUpdate(task.id)
+      throw new Error(`简历筛选目录创建失败: ${message}`)
+    }
     for (const item of input.resumes) {
       const id = randomUUID()
       const ext = path.extname(item.name).toLowerCase()
@@ -177,6 +188,7 @@ export class ResumeScreeningService {
     const task = this.tasksTable.get(taskId)
     if (!task || (task.status !== 'queued' && task.status !== 'running')) return false
     this.abortControllers.get(taskId)?.abort()
+    this.resumesTable.markUnfinishedAsFailed(taskId, '已取消', this.deps.now())
     const stats = this.resumesTable.getTaskStats(taskId)
     this.tasksTable.update(taskId, {
       status: 'cancelled',
@@ -187,7 +199,6 @@ export class ResumeScreeningService {
       finishedAt: this.deps.now(),
       now: this.deps.now()
     })
-    this.resumesTable.markUnfinishedAsFailed(taskId, '已取消', this.deps.now())
     this.abortControllers.delete(taskId)
     this.publishTaskUpdate(taskId)
     return true
@@ -280,6 +291,11 @@ export class ResumeScreeningService {
       return
     }
 
+    if (signal.aborted) {
+      this.abortControllers.delete(taskId)
+      return
+    }
+
     this.tasksTable.update(taskId, {
       jdAnalysisJson: JSON.stringify(jdAnalysis),
       now: this.deps.now()
@@ -297,8 +313,11 @@ export class ResumeScreeningService {
         await this.processResume(initial, config, jdAnalysis, resume, signal)
       }
     }
-    await Promise.all(Array.from({ length: Math.min(concurrency, resumes.length) }, worker))
-    this.abortControllers.delete(taskId)
+    try {
+      await Promise.all(Array.from({ length: Math.min(concurrency, resumes.length) }, worker))
+    } finally {
+      this.abortControllers.delete(taskId)
+    }
     if (signal.aborted) return
 
     const stats = this.resumesTable.getTaskStats(taskId)

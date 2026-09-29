@@ -1,6 +1,7 @@
 import { tmpdir } from 'node:os'
 import * as path from 'node:path'
-import { afterEach, beforeAll, afterAll, describe, expect, it, vi } from 'vitest'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const sqliteModule = await import('better-sqlite3-multiple-ciphers').catch(() => null)
 const Database = sqliteModule?.default
@@ -38,14 +39,6 @@ const describeIfSqlite =
   sqliteAvailable && tasksModule && resumesModule && databaseModule ? describe : describe.skip
 
 const serviceDir = tmpdir()
-
-beforeAll(() => {
-  vi.spyOn(console, 'error').mockImplementation(() => {})
-})
-
-afterAll(() => {
-  vi.restoreAllMocks()
-})
 
 function scriptInvoker(
   responses: Record<string, unknown>
@@ -162,6 +155,11 @@ async function waitForTaskStatus(
 }
 
 describeIfSqlite('ResumeScreeningService', () => {
+  // console.error spy 必须每个用例重建：全局 afterEach restore 会把顶层 spy 还原
+  beforeEach(() => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+  })
+
   afterEach(() => {
     vi.restoreAllMocks()
   })
@@ -357,11 +355,31 @@ describeIfSqlite('ResumeScreeningService', () => {
 
     const task = deps.database.tasksTable.get(created.id)!
     expect(task.status).toBe('cancelled')
+    // 未完成简历先标记失败再统计，cancelled 行内 failed 计数必须包含刚被标记的简历
+    expect(task.failed).toBe(1)
+    expect(task.succeeded).toBe(0)
     const resume = deps.database.resumesTable.listByTask(created.id)[0]!
     expect(resume.status).toBe('failed')
     expect(resume.error).toBe('已取消')
     expect(service.cancelTask(created.id)).toBe(false)
     expect(publishedTasks[publishedTasks.length - 1]).toMatchObject({ status: 'cancelled' })
+    db.close()
+  })
+
+  it('storageDir 为已存在文件时 createTask 失败且任务落库为 failed', async () => {
+    const { db, deps, service, publishedTasks } = makeSetup()
+    const tempRoot = await mkdtemp(path.join(tmpdir(), 'resume-mkdir-fail-'))
+    const blockerFile = path.join(tempRoot, 'storage-blocker')
+    await writeFile(blockerFile, '占位文件，阻止在其下创建任务目录', 'utf-8')
+    deps.storageDir = blockerFile
+    try {
+      await expect(service.createTask(makeTaskInput())).rejects.toThrow('简历筛选目录创建失败')
+      // 任务行已插入，失败后必须落库为 failed，不能永久卡在 queued
+      expect(deps.database.tasksTable.listRecent(10)[0]?.status).toBe('failed')
+      expect(publishedTasks[publishedTasks.length - 1]).toMatchObject({ status: 'failed' })
+    } finally {
+      await rm(tempRoot, { recursive: true, force: true })
+    }
     db.close()
   })
 
