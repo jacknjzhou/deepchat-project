@@ -23,6 +23,7 @@ import {
   sessionsUpdatedEvent
 } from '@shared/contracts/events'
 import path from 'path'
+import { promises as fsp } from 'node:fs'
 import { DialogService } from '../desktop/dialog'
 import { app, ipcMain, webContents as electronWebContents } from 'electron'
 import { DEEPCHAT_EVENT_CHANNEL } from '@shared/contracts/channels'
@@ -193,6 +194,11 @@ import { DocumentsRepository } from '@/documents/repository'
 import { createDocumentsRoutes } from '@/documents/routes'
 import { RecognitionTaskManager } from '@/documents/taskManager'
 import { seedPresetTemplates } from '@/documents/seed'
+import { ResumeScreeningDatabase } from '@/resumeScreening/data/database'
+import { ResumeLlmInvoker } from '@/resumeScreening/llmInvoker'
+import { createResumeScreeningRoutes } from '@/resumeScreening/routes'
+import { ResumeScreeningService, type ResumeScreeningProfile } from '@/resumeScreening/service'
+import { ResumeTextExtractor } from '@/resumeScreening/textExtractor'
 import { ImageFileAdapter } from '@/file/adapters/ImageFileAdapter'
 import { PdfFileAdapter } from '@/file/adapters/PdfFileAdapter'
 import { renderPdfPagesToDataUrls } from '@/file/adapters/pdfPageRenderer'
@@ -902,6 +908,7 @@ export async function createMainProcessControl(dependencies: {
   const documentsDatabase = new DocumentsDatabase(mainDatabase)
   seedPresetTemplates(documentsDatabase)
   const documentsRepository = new DocumentsRepository(documentsDatabase)
+  const resumeScreeningDatabase = new ResumeScreeningDatabase(mainDatabase)
   const appDatabase = new AppDatabase(mainDatabase)
   const agentRepository = new AgentRepository(agentDatabase, sessionData.database, memoryDatabase)
   const agentLifecycle = new AgentLifecycleGate()
@@ -2990,6 +2997,56 @@ export async function createMainProcessControl(dependencies: {
     )
     // Resume interrupted recognition tasks from the previous run.
     void recognitionTaskManager.resumePending()
+    const resumeScreeningService = new ResumeScreeningService({
+      database: resumeScreeningDatabase,
+      invoker: new ResumeLlmInvoker({
+        executeWithRateLimit: (providerId, options) =>
+          providerRuntime.executeWithRateLimit(providerId, { signal: options?.signal }),
+        generateCompletion: (providerId, messages, modelId, temperature, maxTokens, options) =>
+          providerRuntime.generateCompletionStandalone(
+            providerId,
+            messages,
+            modelId,
+            temperature,
+            maxTokens,
+            { signal: options?.signal, swallowErrors: false }
+          )
+      }),
+      textExtractor: new ResumeTextExtractor({
+        getMaxFileSize: () =>
+          dependencies.settingsStore.get<number>('maxFileSize') ?? 30 * 1024 * 1024
+      }),
+      storageDir: path.join(app.getPath('userData'), 'resume-screening'),
+      copyFile: (src, dest) => fsp.copyFile(src, dest),
+      getProfile: () =>
+        dependencies.settingsStore.get<ResumeScreeningProfile>('resumeScreening.profile'),
+      saveProfile: (profile) => dependencies.settingsStore.set('resumeScreening.profile', profile),
+      getDefaultModel: () => agentSettings.getDefaultModel(),
+      listModels: () => {
+        const defaultModel = agentSettings.getDefaultModel()
+        return providerSettings
+          .getProviders()
+          .filter((provider) => provider.enable)
+          .flatMap((provider) =>
+            providerSettings.getProviderModels(provider.id).map((model) => ({
+              providerId: provider.id,
+              providerName: provider.name,
+              modelId: model.id,
+              modelName: model.name,
+              isDefault:
+                defaultModel?.providerId === provider.id && defaultModel?.modelId === model.id
+            }))
+          )
+      },
+      publishTaskUpdated: (payload) =>
+        publishDeepchatEvent('resumeScreening.task.updated', payload),
+      publishResumeUpdated: (payload) =>
+        publishDeepchatEvent('resumeScreening.resume.updated', payload),
+      now: () => Date.now()
+    })
+    const resumeScreeningRoutes = createResumeScreeningRoutes(resumeScreeningService)
+    // 应用启动时把上次未跑完的简历筛选任务统一标记为失败
+    resumeScreeningService.recoverInterruptedTasks()
     const memoryRoutes = createMemoryRoutes({
       memoryService,
       getAgentType: (agentId) => agentSettings.getAgentType(agentId),
@@ -3246,6 +3303,7 @@ export async function createMainProcessControl(dependencies: {
         remoteRoutes,
         schedulerRoutes,
         documentsRoutes,
+        resumeScreeningRoutes,
         memoryRoutes,
         desktopRoutes,
         fileRoutes,
