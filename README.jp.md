@@ -1,85 +1,28 @@
 <p align='center'>
-<img src='./build/icon.png' width="150" height="150" alt="DeepChat AI アシスタントアイコン" />
+<img src='./build/icon.png' width="150" height="150" alt="SRIBD Office Agent アイコン" />
 </p>
 
-<h1 align="center">DeepChat - オープンソースのローカルファーストAgentデスクトップクライアント</h1>
+<h1 align="center">SRIBD Office Agent - エンタープライズ AI Agent デスクトップクライアント</h1>
 
-<p align="center">DeepChatは、豊富なAgent機能を備えたオープンソースのローカルファーストAgentデスクトップクライアントです。Tape.systemsの哲学に基づいて設計され、MCP、Skills、ACP、メッセージアプリ向けのリモートコントロールをサポートします。</p>
+<p align="center">SRIBD Office Agent は、ローカルファーストのエンタープライズ向け AI Agent デスクトップクライアントです。オープンソースプロジェクト <a href="https://github.com/ThinkInAIXYZ/deepchat">DeepChat</a>（Apache License 2.0）をベースに構築されています。Tape.systemsの哲学に基づく豊富な Agent 機能に加え、MCP、Skills、ACP、メッセージアプリ向けリモートコントロールをサポートし、ドキュメント認識・アーカイブ、履歴書スクリーニング、オフィス自動化などの SRIBD エンタープライズ拡張機能を備えています。</p>
 
 <p align="center">
-  <a href="https://github.com/ThinkInAIXYZ/deepchat/stargazers"><img src="https://img.shields.io/github/stars/ThinkInAIXYZ/deepchat" alt="Stars Badge"/></a>
-  <a href="https://github.com/ThinkInAIXYZ/deepchat/network/members"><img src="https://img.shields.io/github/forks/ThinkInAIXYZ/deepchat" alt="Forks Badge"/></a>
-  <a href="https://github.com/ThinkInAIXYZ/deepchat/pulls"><img src="https://img.shields.io/github/issues-pr/ThinkInAIXYZ/deepchat" alt="Pull Requests Badge"/></a>
-  <a href="https://github.com/ThinkInAIXYZ/deepchat/issues"><img src="https://img.shields.io/github/issues/ThinkInAIXYZ/deepchat" alt="Issues Badge"/></a>
-  <a href="https://github.com/ThinkInAIXYZ/deepchat/blob/main/LICENSE"><img src="https://img.shields.io/github/license/ThinkInAIXYZ/deepchat" alt="License Badge"/></a>
-  <a href="https://github.com/ThinkInAIXYZ/deepchat/releases/latest"><img src="https://img.shields.io/endpoint?url=https://api.pinstudios.net/api/badges/downloads/ThinkInAIXYZ/deepchat/total" alt="Downloads"></a>
-  <a href="https://deepwiki.com/ThinkInAIXYZ/deepchat"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
+  <a href="https://github.com/jacknjzhou/deepchat-project/stargazers"><img src="https://img.shields.io/github/stars/jacknjzhou/deepchat-project" alt="Stars Badge"/></a>
+  <a href="https://github.com/jacknjzhou/deepchat-project/network/members"><img src="https://img.shields.io/github/forks/jacknjzhou/deepchat-project" alt="Forks Badge"/></a>
+  <a href="https://github.com/jacknjzhou/deepchat-project/pulls"><img src="https://img.shields.io/github/issues-pr/jacknjzhou/deepchat-project" alt="Pull Requests Badge"/></a>
+  <a href="https://github.com/jacknjzhou/deepchat-project/issues"><img src="https://img.shields.io/github/issues/jacknjzhou/deepchat-project" alt="Issues Badge"/></a>
+  <a href="https://github.com/jacknjzhou/deepchat-project/blob/develop/LICENSE"><img src="https://img.shields.io/github/license/jacknjzhou/deepchat-project" alt="License Badge"/></a>
 </p>
-
-<div align="center">
-  <a href="https://trendshift.io/repositories/15162" target="_blank"><img src="https://trendshift.io/api/badge/repositories/15162" alt="ThinkInAIXYZ%2Fdeepchat | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
-</div>
 
 <div align="center">
   <a href="./README.zh.md">中文</a> / <a href="./README.md">English</a> / <a href="./README.jp.md">日本語</a>
 </div>
 
-## ❤️ スポンサー
-
-<table>
-  <tr>
-    <td width="25%" align="center">
-      <a href="https://go.apimart.ai/gh-deepchat">
-        <img src="./assets/sponsors/apimart.png" alt="APIMart" width="240" />
-      </a>
-    </td>
-    <td width="75%">
-      APIMart のご支援に感謝します！APIMart は、AI による画像・動画生成に特化した低価格な API
-      プラットフォームです。GPT-Image-2 は 1 枚あたり $0.006 から利用でき、1 ドルで 160
-      枚以上を生成できます。画像と動画を共通の非同期 API で扱い、タスクを送信して ID
-      を取得した後、ポーリングまたはコールバックで結果を受け取れます。
-      数万枚規模のバッチ処理でもタイムアウトせず、コードを変更せずにモデルを切り替えられます。月額料金なしの従量課金制です。<a
-      href="https://go.apimart.ai/gh-deepchat">こちらから登録</a>して利用を開始できます。
-    </td>
-  </tr>
-  <tr>
-    <td width="25%" align="center">
-      <a href="https://www.openmodel.ai?ref=ZGLyq8YQ">
-        <img src="./assets/sponsors/openmodel.png" alt="OpenModel" width="240" />
-      </a>
-    </td>
-    <td width="75%">
-      本プロジェクトをご支援いただいている OpenModel に感謝します！OpenModel は、対応モデルで
-      Codex に最大 90%、Claude Code に最大 60%
-      のクライアント専用割引を提供し、開発者が作業方法を変えずに API
-      コストを削減できるよう支援します。OpenModel API キーを接続するだけで、これまでどおり Codex
-      または Claude Code
-      を使用できます。対応クライアントは自動的に検出され、追加パラメーターや手動ルーティングなしで割引ルートが適用されます。また、API
-      キーごとにフォールバック動作を設定し、割引ルートが一時的に利用できない場合に、標準料金で利用を続けるか停止するかを選択できます。DeepChat
-      ユーザーは<a href="https://www.openmodel.ai?ref=ZGLyq8YQ">こちら</a>から登録できます。
-    </td>
-  </tr>
-  <tr>
-    <td width="25%" align="center">
-      <a href="https://www.packyapi.ai/register?aff=0A33">
-        <img src="./assets/sponsors/packycode.png" alt="PackyCode" width="240" />
-      </a>
-    </td>
-    <td width="75%">
-      PackyCode は、Claude Code、Codex、Gemini
-      などの中継サービスを提供する、安定性と高いパフォーマンスを備えた API
-      中継プロバイダーです。自動フェイルオーバー、スマートルーティング、無制限の同時実行などの機能により、AI
-      を真の生産性向上ツールにします。<a
-      href="https://www.packyapi.ai/register?aff=0A33">こちら</a>から登録して、今すぐ利用を開始できます。
-    </td>
-  </tr>
-</table>
-
 ## 📑 目次
 
 - [📑 目次](#-目次)
 - [🚀 プロジェクト紹介](#-プロジェクト紹介)
-- [💡 なぜDeepChatを選ぶのか](#-なぜdeepchatを選ぶのか)
+- [💡 なぜSRIBD Office Agentを選ぶのか](#-なぜsribd-office-agentを選ぶのか)
 - [🔥 主な機能](#-主な機能)
 - [🏢 SRIBD エンタープライズ拡張機能](#-sribd-エンタープライズ拡張機能)
 - [📼 Tape と Trace](#-tape-と-trace)
@@ -98,39 +41,26 @@
   - [開発を開始](#開発を開始)
   - [ビルド](#ビルド)
 - [👥 コミュニティと貢献](#-コミュニティと貢献)
-- [⭐ スター履歴](#-スター履歴)
-- [👨‍💻 貢献者](#-貢献者)
 - [📃 ライセンス](#-ライセンス)
 
 ## 🚀 プロジェクト紹介
 
-DeepChatは、モデル・ツール・Skills・エージェントランタイム・Tape・長時間セッションを1つのデスクトップアプリに統合する、強力なオープンソースのローカルファーストAgentデスクトップクライアントです。OpenAI、Gemini、AnthropicなどのクラウドAPIや、ローカルにデプロイされたOllamaモデルを使用する場合でも、DeepChatはスムーズなユーザー体験を提供します。
+SRIBD Office Agentは、モデル・ツール・Skills・エージェントランタイム・Tape・長時間セッションを1つのデスクトップアプリに統合する、強力なローカルファーストAgentデスクトップクライアントです。OpenAI、Gemini、AnthropicなどのクラウドAPIや、ローカルにデプロイされたOllamaモデルを使用する場合でも、SRIBD Office Agentはスムーズなユーザー体験を提供します。
 
-DeepChatのセッションとAgentプロセスはTape.systemsの哲学に基づいています。プロセスを残すことで、コンテキスト、ツール呼び出し、リクエスト、結果を復元・追跡・検査できます。さらに、優れたMCPサポート、インストール可能なSkills、ACP Agent連携、Telegram、Feishu/Lark、QQBot、Discord、WeChat iLinkなどのIMツールからのリモートコントロールを提供します。
+SRIBD Office AgentのセッションとAgentプロセスはTape.systemsの哲学に基づいています。プロセスを残すことで、コンテキスト、ツール呼び出し、リクエスト、結果を復元・追跡・検査できます。さらに、優れたMCPサポート、インストール可能なSkills、ACP Agent連携、Telegram、Feishu/Lark、QQBot、Discord、WeChat iLinkなどのIMツールからのリモートコントロールを提供します。
 
-<table align="center">
-  <tr>
-    <td align="center" style="padding: 10px;">
-      <img src='https://github.com/user-attachments/assets/6e932a65-78e0-4d2e-9654-ccc010f78bf7' alt="DeepChat Light Mode" width="400"/>
-      <br/>
-    </td>
-    <td align="center" style="padding: 10px;">
-      <img src='https://github.com/user-attachments/assets/ea6ccf60-32af-4bc1-91cc-e72703bdc1ff' alt="DeepChat Dark Mode" width="400"/>
-      <br/>
-    </td>
-  </tr>
-</table>
+SRIBD Office Agentは、オープンソースプロジェクト DeepChat をベースに構築されています。上流コミュニティが築いた素晴らしい基盤に感謝します。
 
-## 💡 なぜDeepChatを選ぶのか
+## 💡 なぜSRIBD Office Agentを選ぶのか
 
-他のAIツールと比較して、DeepChatは以下のようなユニークな利点を提供します：
+他のAIツールと比較して、SRIBD Office Agentは以下のようなユニークな利点を提供します：
 
-- **ローカルファーストAgentデスクトップクライアント**: DeepChat Agent、ACP Agent、リモート対応Botを1つのローカルアプリで実行できます
+- **ローカルファーストAgentデスクトップクライアント**: SRIBD Office Agent、ACP Agent、リモート対応Botを1つのローカルアプリで実行できます
 - **Tape.systemsの哲学**: 復元可能なセッション履歴を保持し、リクエストコンテキストとtoken予算を検査できます
 - **持ち運べるSkills**: 会話ごとにSkillsをインストール、インポート、エクスポート、有効化し、コードレビュー、文書、フロントエンド、Office/PDFなどに対応できます
 - **ネイティブACP連携**: ACP互換のコーディング/タスクエージェントを「モデル」と同じ入口から使用できます
 - **優れたMCPサポート**: Resources、Prompts、Tools、複数Transport、inMemoryサービス、ワンクリックインストールに対応します
-- **リモート対応ワークフロー**: Telegram、Feishu/Lark、QQBot、Discord、WeChat iLink からDeepChatセッションを操作できます
+- **リモート対応ワークフロー**: Telegram、Feishu/Lark、QQBot、Discord、WeChat iLink からSRIBD Office Agentセッションを操作できます
 - **統一されたマルチモデル管理**: 主要なクラウドLLMとローカルOllamaモデルを1つのアプリで扱えます
 - **プライバシー重視**: ローカルデータストレージとネットワークプロキシのサポートにより、情報漏洩のリスクを軽減します
 - **ビジネスフレンドリー**: Apache License 2.0の下でオープンソース化され、商用・個人利用の両方に適しています
@@ -138,7 +68,7 @@ DeepChatのセッションとAgentプロセスはTape.systemsの哲学に基づ�
 ## 🔥 主な機能
 
 - 🤖 **ローカルファーストAgentデスクトップクライアント**
-  - DeepChat、ACP、リモート対応エージェントを1つのモデル選択に近い入口から選択
+  - SRIBD Office Agent、ACP、リモート対応エージェントを1つのモデル選択に近い入口から選択
   - プロジェクトフォルダー、権限モード、ツール出力、復元可能なコンテキストを備えた長時間セッションに対応
 - 📼 **Tape と Trace**
   - Session Tapeが構造化された作業履歴を記録し、復元、再開、将来のAgent memoryフローを支えます
@@ -151,7 +81,7 @@ DeepChatのセッションとAgentプロセスはTape.systemsの哲学に基づ�
   - ACP互換エージェント（内蔵/カスタムコマンド）を「モデル」として選択可能
   - エージェントが提供する場合、ACP Workspace UI で構造化プラン、ツール呼び出し、ターミナル出力を表示
 - 📡 **リモートコントロール**
-  - Telegram、Feishu/Lark、QQBot、Discord、WeChat iLink からDeepChatセッションを操作可能
+  - Telegram、Feishu/Lark、QQBot、Discord、WeChat iLink からSRIBD Office Agentセッションを操作可能
   - リモートエンドポイントをセッションに紐づけ、モデル切り替え、保留中の操作対応、生成停止、デスクトップ表示を実行可能
 - 🌐 **複数のクラウドLLMプロバイダーサポート**: DeepSeek、OpenAI、Moonshot/Kimi、Grok、Gemini、Anthropicなど
 - 🏠 **ローカルモデルデプロイメントサポート**:
@@ -216,11 +146,11 @@ DeepChatのセッションとAgentプロセスはTape.systemsの哲学に基づ�
 
 ## 📼 Tape と Trace
 
-DeepChatのSession TapeはTape.systemsの哲学を継承し、エージェント作業を復元可能かつ検査可能にします。Traceプレビューでは、リクエスト番号、プロバイダー/モデル情報、Tape view manifest、含まれる/除外されるコンテキストエントリー、token予算を確認でき、長時間セッションのデバッグと再開が容易になります。
+SRIBD Office AgentのSession TapeはTape.systemsの哲学を継承し、エージェント作業を復元可能かつ検査可能にします。Traceプレビューでは、リクエスト番号、プロバイダー/モデル情報、Tape view manifest、含まれる/除外されるコンテキストエントリー、token予算を確認でき、長時間セッションのデバッグと再開が容易になります。
 
 ## 🧠 Skills サポート
 
-DeepChat Skills は標準の Agent Skills 仕様と互換性のある設計です。Skillにはタスク手順、参考資料、アセット、任意のスクリプトを含めることができ、有効化するとDeepChatがその分野の専門アシスタントのように振る舞えます。
+SRIBD Office Agent Skills は標準の Agent Skills 仕様と互換性のある設計です。Skillにはタスク手順、参考資料、アセット、任意のスクリプトを含めることができ、有効化するとSRIBD Office Agentがその分野の専門アシスタントのように振る舞えます。
 
 Skillsはフォルダー、ZIPファイル、URLからインストールできます。Claude Code、Codex、Cursor、Windsurf、GitHub Copilot、Kiro、Antigravity、OpenCode、Goose、Kilo Code などの互換ツールとのインポート/エクスポートにも対応します。
 
@@ -234,7 +164,7 @@ Skillsはフォルダー、ZIPファイル、URLからインストールでき�
 
 ## 🧩 ACP 連携（Agent Client Protocol）
 
-DeepChatは [Agent Client Protocol（ACP）](https://agentclientprotocol.com) を内蔵しており、外部のエージェントランタイムをDeepChatにネイティブに統合できます。有効化すると、ACPエージェントはモデルセレクターに「モデル」として表示され、DeepChat内でコーディング/タスク系エージェントをWorkspace UIと一緒に利用できます。
+SRIBD Office Agentは [Agent Client Protocol（ACP）](https://agentclientprotocol.com) を内蔵しており、外部のエージェントランタイムをSRIBD Office Agentにネイティブに統合できます。有効化すると、ACPエージェントはモデルセレクターに「モデル」として表示され、SRIBD Office Agent内でコーディング/タスク系エージェントをWorkspace UIと一緒に利用できます。
 
 クイックスタート：
 
@@ -246,9 +176,9 @@ ACP互換のエージェント/クライアント一覧：https://agentclientpro
 
 ## 📡 リモートコントロール
 
-DeepChatはメッセージアプリからリモート操作できるため、デスクトップから離れていても同じセッションを継続できます。設定は **設定 → Remote** から行います。
+SRIBD Office Agentはメッセージアプリからリモート操作できるため、デスクトップから離れていても同じセッションを継続できます。設定は **設定 → Remote** から行います。
 
-対応チャンネルは Telegram、Feishu/Lark、QQBot、Discord、WeChat iLink です。リモートエンドポイントは1つのDeepChatセッションに紐づけられ、リモートチャットから新規セッション作成、最近のセッション一覧と切り替え、生成停止、現在のセッションをデスクトップで開く、保留中の質問や権限リクエストへの回答、モデル切り替え、実行状態の確認ができます。
+対応チャンネルは Telegram、Feishu/Lark、QQBot、Discord、WeChat iLink です。リモートエンドポイントは1つのSRIBD Office Agentセッションに紐づけられ、リモートチャットから新規セッション作成、最近のセッション一覧と切り替え、生成停止、現在のセッションをデスクトップで開く、保留中の質問や権限リクエストへの回答、モデル切り替え、実行状態の確認ができます。
 
 主なコマンドは `/start`、`/help`、`/pair`、`/new`、`/sessions`、`/use`、`/stop`、`/open`、`/pending`、`/model`、`/status` です。
 
@@ -460,7 +390,7 @@ DeepChatはメッセージアプリからリモート操作できるため、デ
 
 ## 🔍 ユースケース
 
-DeepChatは様々なAIアプリケーションシナリオに適しています：
+SRIBD Office Agentは様々なAIアプリケーションシナリオに適しています：
 
 - **日常アシスタント**: 質問への回答、提案の提供、文章作成の支援
 - **開発支援**: コード生成、デバッグ、技術的問題の解決
@@ -472,31 +402,17 @@ DeepChatは様々なAIアプリケーションシナリオに適しています�
 
 ### ダウンロードとインストール
 
-以下のいずれかの方法で DeepChat をインストールできます：
-
-**方法1：GitHub Releases**
-
-[GitHub Releases](https://github.com/ThinkInAIXYZ/deepchat/releases)ページからお使いのシステム用の最新バージョンをダウンロードしてください：
+[GitHub Releases](https://github.com/jacknjzhou/deepchat-project/releases)ページから、お使いのシステム用の最新バージョンをダウンロードしてください：
 
 - Windows: `.exe`インストールファイル
 - macOS: `.dmg`インストールファイル
 - Linux: `.AppImage`または`.deb`インストールファイル
 
-**方法2：公式ウェブサイト**
-
-[公式ウェブサイト](https://deepchatai.cn/#/download)からダウンロードできます。
-
-**方法3：Homebrew（macOS のみ）**
-
-macOS ユーザーは Homebrew を使用してインストールできます：
-
-```bash
-brew install --cask deepchat
-```
+内部分発チャネルは SRIBD チームが管理しています。内部ダウンロードリンクについては、メンテナーまでお問い合わせください。
 
 ### モデルの設定
 
-1. DeepChatアプリケーションを起動
+1. SRIBD Office Agentアプリケーションを起動
 2. 設定アイコンをクリック
 3. "モデルプロバイダー"タブを選択
 4. APIキーを追加するか、ローカルOllamaを設定
@@ -554,38 +470,25 @@ $ pnpm run build:linux:arm64
 
 ## 👥 コミュニティと貢献
 
-DeepChatはアクティブなオープンソースコミュニティプロジェクトであり、様々な形での貢献を歓迎します：
+SRIBD Office Agentは SRIBD チームによってメンテナンスされており、様々な形での貢献を歓迎します：
 
-- 🐛 [問題を報告する](https://github.com/ThinkInAIXYZ/deepchat/issues)
-- 💡 [機能の提案を提出する](https://github.com/ThinkInAIXYZ/deepchat/issues)
-- 🔧 [コードの改善を提出する](https://github.com/ThinkInAIXYZ/deepchat/pulls)
-- 📚 [ドキュメントを改善する](https://github.com/ThinkInAIXYZ/deepchat/wiki)
-- 🌍 [翻訳を手伝う](https://github.com/ThinkInAIXYZ/deepchat/tree/main/locales)
+- 🐛 [問題を報告する](https://github.com/jacknjzhou/deepchat-project/issues)
+- 💡 [機能の提案を提出する](https://github.com/jacknjzhou/deepchat-project/issues)
+- 🔧 [コードの改善を提出する](https://github.com/jacknjzhou/deepchat-project/pulls)
+- 🌍 [翻訳を手伝う](./src/renderer/src/i18n)
 
 プロジェクトへの参加方法について詳しく知るには、[貢献ガイドライン](./CONTRIBUTING.md)をご確認ください。
 
-## ⭐ スター履歴
-
-[![Star History Chart](https://star-history.dera.page/svg?repos=ThinkInAIXYZ/deepchat&type=Timeline)](https://star-history.dera.page/#ThinkInAIXYZ/deepchat&Timeline)
-
-## 👨‍💻 貢献者
-
-deepchatへの貢献をご検討いただきありがとうございます！貢献ガイドは[貢献ガイドライン](./CONTRIBUTING.md)でご確認いただけます。
-
-<a href="https://openomy.com/thinkinaixyz/deepchat" target="_blank" style="display: block; width: 100%;" align="center">
-  <img src="https://openomy.com/svg?repo=thinkinaixyz/deepchat&chart=bubble&latestMonth=3" target="_blank" alt="Contribution Leaderboard" style="display: block; width: 100%;" />
-</a>
-
 ## 🙏🏻 謝辞
 
-このプロジェクトは、以下の素晴らしいライブラリとプロジェクトの支援により構築されています：
+このプロジェクトは、オープンソースプロジェクト [DeepChat](https://github.com/ThinkInAIXYZ/deepchat) をベースに構築されており、以下の素晴らしいライブラリとプロジェクトの支援を受けています：
 
 - [Vue](https://vuejs.org/)
 - [Electron](https://www.electronjs.org/)
 - [Electron-Vite](https://electron-vite.org/)
 - [oxlint](https://github.com/oxc-project/oxc)
-- [Bub](https://github.com/bubbuild/bub)。その tape model は DeepChat の session tape 設計に着想を与えました。基盤となる tape アーキテクチャに関心がある方は [tape.systems](https://tape.systems/) をご覧ください。
+- [Bub](https://github.com/bubbuild/bub)。その tape model は session tape 設計に着想を与えました。基盤となる tape アーキテクチャに関心がある方は [tape.systems](https://tape.systems/) をご覧ください。
 
 ## 📃 ライセンス
 
-[LICENSE](./LICENSE)
+[L

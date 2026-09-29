@@ -1,87 +1,31 @@
 <p align='center'>
-<img src='./build/icon.png' width="150" height="150" alt="DeepChat AI Assistant Icon" />
+<img src='./build/icon.png' width="150" height="150" alt="SRIBD Office Agent Icon" />
 </p>
 
-<h1 align="center">DeepChat - Open-Source Local-First AI Agent Desktop Client</h1>
+<h1 align="center">SRIBD Office Agent - Enterprise AI Agent Desktop Client</h1>
 
-<p align="center">DeepChat is an open-source, local-first AI agent desktop client with rich agent capabilities, designed around the Tape.systems philosophy, with support for MCP, Skills, ACP, and remote control integrations for messaging apps.</p>
+<p align="center">SRIBD Office Agent is a local-first, enterprise-oriented AI agent desktop client built on the open-source <a href="https://github.com/ThinkInAIXYZ/deepchat">DeepChat</a> project (Apache License 2.0). It offers rich agent capabilities around the Tape.systems philosophy, with support for MCP, Skills, ACP, remote control for messaging apps, and a suite of SRIBD enterprise features for document recognition, resume screening, and office automation.</p>
 
 <p align="center">
-  <a href="https://github.com/ThinkInAIXYZ/deepchat/stargazers"><img src="https://img.shields.io/github/stars/ThinkInAIXYZ/deepchat" alt="Stars Badge"/></a>
-  <a href="https://github.com/ThinkInAIXYZ/deepchat/network/members"><img src="https://img.shields.io/github/forks/ThinkInAIXYZ/deepchat" alt="Forks Badge"/></a>
-  <a href="https://github.com/ThinkInAIXYZ/deepchat/pulls"><img src="https://img.shields.io/github/issues-pr/ThinkInAIXYZ/deepchat" alt="Pull Requests Badge"/></a>
-  <a href="https://github.com/ThinkInAIXYZ/deepchat/issues"><img src="https://img.shields.io/github/issues/ThinkInAIXYZ/deepchat" alt="Issues Badge"/></a>
-  <a href="https://github.com/ThinkInAIXYZ/deepchat/blob/main/LICENSE"><img src="https://img.shields.io/github/license/ThinkInAIXYZ/deepchat" alt="License Badge"/></a>
-  <a href="https://github.com/ThinkInAIXYZ/deepchat/releases/latest"><img src="https://img.shields.io/endpoint?url=https://api.pinstudios.net/api/badges/downloads/ThinkInAIXYZ/deepchat/total" alt="Downloads"></a>
-  <a href="https://deepwiki.com/ThinkInAIXYZ/deepchat"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
+  <a href="https://github.com/jacknjzhou/deepchat-project/stargazers"><img src="https://img.shields.io/github/stars/jacknjzhou/deepchat-project" alt="Stars Badge"/></a>
+  <a href="https://github.com/jacknjzhou/deepchat-project/network/members"><img src="https://img.shields.io/github/forks/jacknjzhou/deepchat-project" alt="Forks Badge"/></a>
+  <a href="https://github.com/jacknjzhou/deepchat-project/pulls"><img src="https://img.shields.io/github/issues-pr/jacknjzhou/deepchat-project" alt="Pull Requests Badge"/></a>
+  <a href="https://github.com/jacknjzhou/deepchat-project/issues"><img src="https://img.shields.io/github/issues/jacknjzhou/deepchat-project" alt="Issues Badge"/></a>
+  <a href="https://github.com/jacknjzhou/deepchat-project/blob/develop/LICENSE"><img src="https://img.shields.io/github/license/jacknjzhou/deepchat-project" alt="License Badge"/></a>
 </p>
-
-<div align="center">
-  <a href="https://trendshift.io/repositories/15162" target="_blank"><img src="https://trendshift.io/api/badge/repositories/15162" alt="ThinkInAIXYZ%2Fdeepchat | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
-</div>
 
 <div align="center">
   <a href="./README.zh.md">中文</a> / <a href="./README.md">English</a> / <a href="./README.jp.md">日本語</a>
 </div>
 
-## ❤️ Sponsor
-
-<table>
-  <tr>
-    <td width="25%" align="center">
-      <a href="https://go.apimart.ai/gh-deepchat">
-        <img src="./assets/sponsors/apimart.png" alt="APIMart" width="240" />
-      </a>
-    </td>
-    <td width="75%">
-      Thanks to APIMart for sponsoring this project! APIMart is a low-cost API platform for AI image
-      &amp; video generation — GPT-Image-2 from $0.006/image, 160+ images per dollar. One async API
-      covers both image and video: submit a task, get an ID, fetch results via polling or callback.
-      Batch tens of thousands of images without timeouts, switch models without changing code.
-      Pay-as-you-go with no monthly fee — <a href="https://go.apimart.ai/gh-deepchat">sign up
-      here</a> to get started.
-    </td>
-  </tr>
-  <tr>
-    <td width="25%" align="center">
-      <a href="https://www.openmodel.ai?ref=ZGLyq8YQ">
-        <img src="./assets/sponsors/openmodel.png" alt="OpenModel" width="240" />
-      </a>
-    </td>
-    <td width="75%">
-      Thanks to OpenModel for sponsoring this project! OpenModel offers client-specific discounts of
-      up to 90% for Codex and 60% for Claude Code across supported models, helping developers cut API
-      costs without changing how they work. Just connect your OpenModel API key and keep using Codex
-      or Claude Code as usual — supported clients are detected automatically and discounted routes
-      are applied with no extra parameters or manual routing required. You can also configure
-      fallback behavior per API key, choosing whether to continue at standard pricing or stop when a
-      discounted route is temporarily unavailable. DeepChat users can register via <a
-      href="https://www.openmodel.ai?ref=ZGLyq8YQ">this link</a>.
-    </td>
-  </tr>
-  <tr>
-    <td width="25%" align="center">
-      <a href="https://www.packyapi.ai/register?aff=0A33">
-        <img src="./assets/sponsors/packycode.png" alt="PackyCode" width="240" />
-      </a>
-    </td>
-    <td width="75%">
-      PackyCode is a stable, high-performance API relay provider, offering relay services for Claude
-      Code, Codex, Gemini, and more. With automatic failover, smart routing, and unlimited
-      concurrency, it turns AI into a real productivity tool. Register via <a
-      href="https://www.packyapi.ai/register?aff=0A33">this link</a> and get started!
-    </td>
-  </tr>
-</table>
-
 ## 📑 Table of Contents
 
 - [📑 Table of Contents](#-table-of-contents)
 - [🚀 Project Introduction](#-project-introduction)
-- [💡 Why Choose DeepChat](#-why-choose-deepchat)
+- [💡 Why Choose SRIBD Office Agent](#-why-choose-sribd-office-agent)
 - [🔥 Main Features](#-main-features)
 - [🏢 SRIBD Enterprise Enhancements](#-sribd-enterprise-enhancements)
-- [📼 Tape & Trace](#-tape--trace)
+- [📼 Tape \& Trace](#-tape--trace)
 - [🧠 Skills Support](#-skills-support)
 - [🧩 ACP Integration (Agent Client Protocol)](#-acp-integration-agent-client-protocol)
 - [📡 Remote Control](#-remote-control)
@@ -97,39 +41,27 @@
   - [Start Development](#start-development)
   - [Build](#build)
 - [👥 Community \& Contribution](#-community--contribution)
-- [⭐ Star History](#-star-history)
-- [👨‍💻 Contributors](#-contributors)
+- [🙏🏻 Thanks](#-thanks)
 - [📃 License](#-license)
 
 ## 🚀 Project Introduction
 
-DeepChat is a powerful open-source, local-first AI agent desktop client that brings together models, tools, Skills, agent runtimes, Tape, and long-running sessions in one desktop app. Whether you're using cloud APIs like OpenAI, Gemini, Anthropic, or locally deployed Ollama models, DeepChat delivers a smooth user experience.
+SRIBD Office Agent is a powerful, local-first AI agent desktop client that brings together models, tools, Skills, agent runtimes, Tape, and long-running sessions in one desktop app. Whether you're using cloud APIs like OpenAI, Gemini, Anthropic, or locally deployed Ollama models, SRIBD Office Agent delivers a smooth user experience.
 
-DeepChat's sessions and agent processes follow the Tape.systems philosophy: keep the process, so context, tool calls, requests, and results stay recoverable, traceable, and inspectable. It also provides strong MCP support, installable Skills, ACP agent integration, and remote control for Telegram, Feishu/Lark, QQBot, Discord, WeChat iLink, and other messaging workflows.
+SRIBD Office Agent's sessions and agent processes follow the Tape.systems philosophy: keep the process, so context, tool calls, requests, and results stay recoverable, traceable, and inspectable. It also provides strong MCP support, installable Skills, ACP agent integration, and remote control for Telegram, Feishu/Lark, QQBot, Discord, WeChat iLink, and other messaging workflows.
 
-<table align="center">
-  <tr>
-    <td align="center" style="padding: 10px;">
-      <img src='https://github.com/user-attachments/assets/6e932a65-78e0-4d2e-9654-ccc010f78bf7' alt="DeepChat Light Mode" width="400"/>
-      <br/>
-    </td>
-    <td align="center" style="padding: 10px;">
-      <img src='https://github.com/user-attachments/assets/ea6ccf60-32af-4bc1-91cc-e72703bdc1ff' alt="DeepChat Dark Mode" width="400"/>
-      <br/>
-    </td>
-  </tr>
-</table>
+SRIBD Office Agent is built on the open-source DeepChat project — thanks to the upstream community for the excellent foundation.
 
-## 💡 Why Choose DeepChat
+## 💡 Why Choose SRIBD Office Agent
 
-Compared to other AI tools, DeepChat offers the following unique advantages:
+Compared to other AI tools, SRIBD Office Agent offers the following unique advantages:
 
-- **Local-First Agent Desktop Client**: Run DeepChat agents, ACP agents, and remote-ready bots in one local app
+- **Local-First Agent Desktop Client**: Run SRIBD Office Agent, ACP agents, and remote-ready bots in one local app
 - **Tape.systems Philosophy**: Preserve recoverable session history, trace request context, and inspect token budgets when agent work gets complex
 - **Skills That Travel**: Install, import, export, and enable reusable Skills per conversation for code review, documents, frontend work, Office/PDF tasks, and more
 - **Native ACP Integration**: Run ACP-compatible coding and task agents as first-class entries in the model selector
 - **Strong MCP Support**: Support Resources, Prompts, Tools, multiple transports, inMemory services, and one-click installation
-- **Remote-Ready Workflows**: Control DeepChat sessions from Telegram, Feishu/Lark, QQBot, Discord, and WeChat iLink
+- **Remote-Ready Workflows**: Control SRIBD Office Agent sessions from Telegram, Feishu/Lark, QQBot, Discord, and WeChat iLink
 - **Unified Multi-Model Management**: One application supports mainstream cloud LLMs and local Ollama models, eliminating the need to switch between multiple apps
 - **Privacy-Focused**: Local data storage and network proxy support reduce the risk of information leakage
 - **Business-Friendly**: Embraces open source under the Apache License 2.0, suitable for both commercial and personal use
@@ -137,20 +69,20 @@ Compared to other AI tools, DeepChat offers the following unique advantages:
 ## 🔥 Main Features
 
 - 🤖 **Local-First Agent Desktop Client**
-  - Select DeepChat, ACP, and remote-capable agents from one model-like entry point
+  - Select SRIBD Office Agent, ACP, and remote-capable agents from one model-like entry point
   - Run long-lived sessions with project folders, permission modes, tool output, and resumable context
 - 📼 **Tape & Trace**
   - Session Tape records structured work history for recovery, resume, and future agent memory flows
   - Trace previews show request sequences, provider/model metadata, Tape view manifests, included entries, and token budgets
 - 🧠 **Skills**
   - Install Skills from folders, ZIP files, or URLs
-  - Enable Skills per conversation so DeepChat can load task-specific instructions, references, and optional scripts
+  - Enable Skills per conversation so the agent can load task-specific instructions, references, and optional scripts
   - Import and export Skills with Claude Code, Codex, Cursor, Windsurf, GitHub Copilot, and other compatible tools
 - 🤝 **ACP (Agent Client Protocol) Agent Integration**
   - Run ACP-compatible agents (built-in or custom commands) as selectable “models”
   - ACP workspace UI for structured plans, tool calls, and terminal output when provided by the agent
 - 📡 **Remote Control**
-  - Control DeepChat sessions from Telegram, Feishu/Lark, QQBot, Discord, and WeChat iLink
+  - Control SRIBD Office Agent sessions from Telegram, Feishu/Lark, QQBot, Discord, and WeChat iLink
   - Bind remote endpoints to sessions, switch models, answer pending interactions, stop runs, and open desktop sessions remotely
 - 🌐 **Multiple Cloud LLM Provider Support**: DeepSeek, OpenAI, Moonshot/Kimi, Grok, Gemini, Anthropic, and more
 - 🏠 **Local Model Deployment Support**:
@@ -217,11 +149,11 @@ This fork ships as **SRIBD Office Agent** and extends upstream DeepChat with the
 
 ## 📼 Tape & Trace
 
-DeepChat's session Tape follows the Tape.systems philosophy and keeps agent work recoverable and inspectable. Trace previews expose request sequences, provider/model metadata, Tape view manifests, included or excluded entries, and token budgets, making long-running agent sessions easier to debug and resume.
+SRIBD Office Agent's session Tape follows the Tape.systems philosophy and keeps agent work recoverable and inspectable. Trace previews expose request sequences, provider/model metadata, Tape view manifests, included or excluded entries, and token budgets, making long-running agent sessions easier to debug and resume.
 
 ## 🧠 Skills Support
 
-DeepChat Skills are designed to be compatible with the standard Agent Skills specification. A Skill can include task instructions, reference files, assets, and optional scripts, so DeepChat can act more like a domain specialist after it is enabled.
+SRIBD Office Agent Skills are designed to be compatible with the standard Agent Skills specification. A Skill can include task instructions, reference files, assets, and optional scripts, so SRIBD Office Agent can act more like a domain specialist after it is enabled.
 
 You can install Skills from folders, ZIP files, or URLs, and import/export them with Claude Code, Codex, Cursor, Windsurf, GitHub Copilot, Kiro, Antigravity, OpenCode, Goose, Kilo Code, and other compatible tools.
 
@@ -235,7 +167,7 @@ Quick start:
 
 ## 🧩 ACP Integration (Agent Client Protocol)
 
-DeepChat has built-in support for [Agent Client Protocol (ACP)](https://agentclientprotocol.com), allowing you to integrate external agent runtimes into DeepChat with a native UI. Once enabled, ACP agents appear as first-class entries in the model selector, so you can use coding agents and task agents directly inside DeepChat.
+SRIBD Office Agent has built-in support for [Agent Client Protocol (ACP)](https://agentclientprotocol.com), allowing you to integrate external agent runtimes with a native UI. Once enabled, ACP agents appear as first-class entries in the model selector, so you can use coding agents and task agents directly inside the app.
 
 Quick start:
 
@@ -247,9 +179,9 @@ To explore the ecosystem of compatible agents and clients, see: https://agentcli
 
 ## 📡 Remote Control
 
-DeepChat can be controlled from messaging apps, so you can keep a session running even when you are away from the desktop. Configure remote channels under **Settings → Remote**.
+SRIBD Office Agent can be controlled from messaging apps, so you can keep a session running even when you are away from the desktop. Configure remote channels under **Settings → Remote**.
 
-Supported channels include Telegram, Feishu/Lark, QQBot, Discord, and WeChat iLink. Remote endpoints can bind to one DeepChat session, then create new sessions, list and switch recent sessions, stop generation, open the current session on desktop, answer pending questions or permission prompts, switch models, and check runtime status.
+Supported channels include Telegram, Feishu/Lark, QQBot, Discord, and WeChat iLink. Remote endpoints can bind to one session, then create new sessions, list and switch recent sessions, stop generation, open the current session on desktop, answer pending questions or permission prompts, switch models, and check runtime status.
 
 Common commands include `/start`, `/help`, `/pair`, `/new`, `/sessions`, `/use`, `/stop`, `/open`, `/pending`, `/model`, and `/status`.
 
@@ -461,7 +393,7 @@ Common commands include `/start`, `/help`, `/pair`, `/new`, `/sessions`, `/use`,
 
 ## 🔍 Use Cases
 
-DeepChat is suitable for various AI application scenarios:
+SRIBD Office Agent is suitable for various AI application scenarios:
 
 - **Daily Assistant**: Answering questions, providing suggestions, assisting with writing and creation
 - **Development Aid**: Code generation, debugging, technical problem solving
@@ -473,31 +405,17 @@ DeepChat is suitable for various AI application scenarios:
 
 ### Download and Install
 
-You can install DeepChat using one of the following methods:
-
-**Option 1: GitHub Releases**
-
-Download the latest version for your system from the [GitHub Releases](https://github.com/ThinkInAIXYZ/deepchat/releases) page:
+Download the latest version for your system from the [GitHub Releases](https://github.com/jacknjzhou/deepchat-project/releases) page:
 
 - Windows: `.exe` installation file
 - macOS: `.dmg` installation file
 - Linux: `.AppImage` or `.deb` installation file
 
-**Option 2: Official Website**
-
-Download from the [official website](https://deepchatai.cn/#/download).
-
-**Option 3: Homebrew (macOS only)**
-
-For macOS users, you can install DeepChat using Homebrew:
-
-```bash
-brew install --cask deepchat
-```
+Internal distribution channels are maintained by the SRIBD team; contact the maintainers for internal download links.
 
 ### Configure Models
 
-1. Launch the DeepChat application
+1. Launch the SRIBD Office Agent application
 2. Click the settings icon
 3. Select the "Model Providers" tab
 4. Add your API keys or configure local Ollama
@@ -559,37 +477,24 @@ For a more detailed guide on development, project structure, and architecture, p
 
 ## 👥 Community & Contribution
 
-DeepChat is an active open-source community project, and we welcome various forms of contribution:
+SRIBD Office Agent is maintained by the SRIBD team, and we welcome various forms of contribution:
 
-- 🐛 [Report issues](https://github.com/ThinkInAIXYZ/deepchat/issues)
-- 💡 [Submit feature suggestions](https://github.com/ThinkInAIXYZ/deepchat/issues)
-- 🔧 [Submit code improvements](https://github.com/ThinkInAIXYZ/deepchat/pulls)
-- 📚 [Improve documentation](https://github.com/ThinkInAIXYZ/deepchat/wiki)
-- 🌍 [Help with translation](https://github.com/ThinkInAIXYZ/deepchat/tree/main/locales)
+- 🐛 [Report issues](https://github.com/jacknjzhou/deepchat-project/issues)
+- 💡 [Submit feature suggestions](https://github.com/jacknjzhou/deepchat-project/issues)
+- 🔧 [Submit code improvements](https://github.com/jacknjzhou/deepchat-project/pulls)
+- 🌍 [Help with translation](./src/renderer/src/i18n)
 
 Check the [Contribution Guidelines](./CONTRIBUTING.md) to learn more about ways to participate in the project.
 
-## ⭐ Star History
-
-[![Star History Chart](https://star-history.dera.page/svg?repos=ThinkInAIXYZ/deepchat&type=Timeline)](https://star-history.dera.page/#ThinkInAIXYZ/deepchat&Timeline)
-
-## 👨‍💻 Contributors
-
-Thank you for considering contributing to deepchat! The contribution guide can be found in the [Contribution Guidelines](./CONTRIBUTING.md).
-
-<a href="https://openomy.com/thinkinaixyz/deepchat" target="_blank" style="display: block; width: 100%;" align="center">
-  <img src="https://openomy.com/svg?repo=thinkinaixyz/deepchat&chart=bubble&latestMonth=3" target="_blank" alt="Contribution Leaderboard" style="display: block; width: 100%;" />
-</a>
-
 ## 🙏🏻 Thanks
 
-This project is built with the help of these awesome libraries and projects:
+This project is built on the open-source [DeepChat](https://github.com/ThinkInAIXYZ/deepchat) project, with the help of these awesome libraries and projects:
 
 - [Vue](https://vuejs.org/)
 - [Electron](https://www.electronjs.org/)
 - [Electron-Vite](https://electron-vite.org/)
 - [oxlint](https://github.com/oxc-project/oxc)
-- [Bub](https://github.com/bubbuild/bub), whose tape model inspired DeepChat's session tape design. For the underlying tape architecture, visit [tape.systems](https://tape.systems/).
+- [Bub](https://github.com/bubbuild/bub), whose tape model inspired the session tape design. For the underlying tape architecture, visit [tape.systems](https://tape.systems/).
 
 ## 📃 License
 
