@@ -58,7 +58,9 @@
           >
             <template v-for="[key, value] in infoEntries" :key="key">
               <span class="text-muted-foreground">{{ key }}</span>
-              <span class="min-w-0 break-words">{{ value }}</span>
+              <span class="min-w-0 break-words whitespace-pre-line">{{
+                value.kind === 'text' ? value.text : value.lines.join('\n')
+              }}</span>
             </template>
           </div>
         </div>
@@ -158,25 +160,38 @@ watch(
   }
 )
 
-// resumeInfo 是宽松契约字段（z.unknown()，见 Task 1），按键值对渲染；值格式化：
-// null/undefined 显示 —、数组顿号 join、对象展开为「键:值」文本（递归，避免 [object Object]）
+// resumeInfo 是宽松契约字段（z.unknown()，见 Task 1），按键值对渲染：
+// 简单值内联显示；对象数组逐条分行（· 前缀）格式化展示；对象递归展开为「键:值」文本
+type InfoValue = { kind: 'text'; text: string } | { kind: 'lines'; lines: string[] }
+
 const infoEntries = computed(() => {
   if (!props.resume?.resumeInfo || typeof props.resume.resumeInfo !== 'object') return []
   return Object.entries(props.resume.resumeInfo as Record<string, unknown>).map(([key, value]) => [
     key,
-    formatInfoValue(value)
+    describeInfoValue(value)
   ])
 })
 
-function formatInfoValue(value: unknown): string {
+function describeInfoValue(value: unknown): InfoValue {
+  if (
+    Array.isArray(value) &&
+    value.length > 0 &&
+    value.every((item) => item !== null && typeof item === 'object')
+  ) {
+    return { kind: 'lines', lines: value.map((item) => `· ${formatInfoInline(item)}`) }
+  }
+  return { kind: 'text', text: formatInfoInline(value) }
+}
+
+function formatInfoInline(value: unknown): string {
   if (value === null || value === undefined) return '—'
   if (Array.isArray(value)) {
     if (value.length === 0) return '—'
-    return value.map((item) => formatInfoValue(item)).join('、')
+    return value.map((item) => formatInfoInline(item)).join('、')
   }
   if (typeof value === 'object') {
     return Object.entries(value as Record<string, unknown>)
-      .map(([key, item]) => `${key}:${formatInfoValue(item)}`)
+      .map(([key, item]) => `${key}:${formatInfoInline(item)}`)
       .join('，')
   }
   return String(value)
