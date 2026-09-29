@@ -2114,6 +2114,37 @@ declare module 'vue-i18n' {
     reviewStart: string
     reviewCancel: string
     modelLabel: string
+    historySection: string
+    historyEmpty: string
+    statusQueued: string
+    statusRunning: string
+    statusCompleted: string
+    statusPartial: string
+    statusFailed: string
+    statusCancelled: string
+    statusPending: string
+    statusDone: string
+    progressTotal: string
+    progressSucceeded: string
+    progressFailed: string
+    progressAvgScore: string
+    progressRecommended: string
+    resumeListSection: string
+    resumeListEmpty: string
+    detailPanelEmpty: string
+    detailEmpty: string
+    detailScore: string
+    detailRecommended: string
+    detailNotRecommended: string
+    screeningSection: string
+    interviewSection: string
+    interviewHighlights: string
+    interviewRisks: string
+    interviewQuestions: string
+    hrSection: string
+    hrFinalSummary: string
+    hrOpinion: string
+    rawTextSection: string
     chat: string
     plugins: {
       title: string
