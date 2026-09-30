@@ -477,4 +477,18 @@ describe('session boundary composition', () => {
       documentsSource.match(/\.\.\.providerSettings\.getCustomModels\(providerId\)/g)
     ).toHaveLength(2)
   })
+
+  it('wires managed config sync before documents migration', async () => {
+    const { readFileSync } = await vi.importActual<typeof import('node:fs')>('node:fs')
+    const compositionSource = readFileSync(
+      path.resolve(process.cwd(), 'src/main/app/composition.ts'),
+      'utf8'
+    )
+
+    expect(compositionSource).toContain('syncManagedConfig(')
+    expect(compositionSource).toContain('migrateDocumentsModelSettings(')
+    expect(compositionSource.indexOf('syncManagedConfig(')).toBeLessThan(
+      compositionSource.indexOf('migrateDocumentsModelSettings(')
+    )
+  })
 })

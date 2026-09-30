@@ -53,6 +53,14 @@ import { ProviderImportService } from '../provider/providerImportService'
 import { ProviderDatabase } from '../provider/data/database'
 import { createProviderRoutes } from '../provider/routes'
 import { ProviderSettings } from '../provider/settings'
+import { DEFAULT_PROVIDERS } from '../provider/defaults'
+import { createManagedConfigStore, syncManagedConfig } from '../managed'
+import {
+  applyManagedAgentModels,
+  type ManagedAgentSettingsWriter
+} from '../managed/applyAgentModels'
+import type { ManagedDeviceInfo } from '../managed/client'
+import type { ManagedProviderWriter } from '../managed/apply'
 import type { SettingsStore } from '../config/settingsStore'
 import type { SecretStore } from '../config/secretStore'
 import { providerDbLoader } from '../provider/providerDbLoader'
@@ -117,6 +125,7 @@ import { createKnowledgeRoutes } from '../knowledge/routes'
 import { KnowledgeSettings } from '@/knowledge/settings'
 import { PromptSettings } from '@/agent/promptSettings'
 import { AgentSettings } from '@/agent/settings'
+import { BUILTIN_DEEPCHAT_AGENT_ID } from '@/agent/repository'
 import { AgentLifecycleGate } from '@/agent/lifecycleGate'
 import { SessionDeletionGate } from '@/session/deletionGate'
 import { emitAcpAgentModelsChanged, emitAgentCatalogChanged } from '@/app/agentEvents'
@@ -506,6 +515,52 @@ function createLivePort<T extends object>(resolve: () => T): T {
       return typeof value === 'function' ? value.bind(target) : value
     }
   })
+}
+
+function resolveManagedConfigEndpoint(): string {
+  return process.env.DEEPCHAT_MANAGED_CONFIG_URL ?? ''
+}
+
+function toManagedDeviceInfo(
+  info: Awaited<ReturnType<DeviceService['getDeviceInfo']>>
+): ManagedDeviceInfo {
+  return {
+    username: info.winAccount?.username ?? '',
+    domain: info.winAccount?.domain ?? '',
+    hostname: info.winAccount?.hostname ?? '',
+    sid: info.winAccount?.sid ?? ''
+  }
+}
+
+/** 允许的供应商类型 = 内置服务商注册表的 apiType 集合 */
+function getKnownProviderTypes(): string[] {
+  return DEFAULT_PROVIDERS.map((provider) => provider.apiType)
+}
+
+/** apiType → 内置 provider id，用于托管实例的 baseProviderId 归属 */
+function getBuiltinIdByApiType(): Record<string, string> {
+  return Object.fromEntries(DEFAULT_PROVIDERS.map((provider) => [provider.apiType, provider.id]))
+}
+
+/** 把 ProviderSettings 适配成 ManagedProviderWriter（upsert 语义） */
+function createManagedProviderWriter(settings: ProviderSettings): ManagedProviderWriter {
+  return {
+    async setProvider(id, patch) {
+      const existing = settings.getProviderById(id)
+      if (existing) settings.updateProviderAtomic(id, patch as never)
+      else settings.addProviderAtomic(patch as never)
+    }
+  }
+}
+
+/** 把 AgentSettings 适配成 ManagedAgentSettingsWriter（扁平 patch → { config } 包装） */
+function createManagedAgentSettingsWriter(settings: AgentSettings): ManagedAgentSettingsWriter {
+  return {
+    getDeepChatAgentConfig: async (agentId) =>
+      ((await settings.getDeepChatAgentConfig(agentId)) ?? null) as Record<string, unknown> | null,
+    updateDeepChatAgent: async (agentId, patch) =>
+      settings.updateDeepChatAgent(agentId, { config: patch } as never)
+  }
 }
 
 export async function createMainProcessControl(dependencies: {
@@ -2836,7 +2891,7 @@ export async function createMainProcessControl(dependencies: {
     }
   }
 
-  function registerRoutes(): void {
+  async function registerRoutes(): Promise<void> {
     const providerQueryScheduler = createNodeScheduler()
     const providerRoutes = createProviderRoutes({
       providerSettings,
@@ -2883,6 +2938,50 @@ export async function createMainProcessControl(dependencies: {
     const schedulerRoutes = createSchedulerRoutes(cronJobs)
     const documentsMaxFileSize = () =>
       dependencies.settingsStore.get<number>('maxFileSize') ?? 30 * 1024 * 1024
+
+    // 企业托管配置：启动时按登录用户名拉取并固化（失败保留缓存）
+    const managedStore = createManagedConfigStore(dependencies.settingsStore)
+    const managedResult = await syncManagedConfig({
+      endpoint: resolveManagedConfigEndpoint(),
+      device: toManagedDeviceInfo(await deviceService.getDeviceInfo()),
+      store: managedStore,
+      writer: createManagedProviderWriter(providerSettings),
+      knownProviderTypes: getKnownProviderTypes(),
+      builtinIdByApiType: getBuiltinIdByApiType(),
+      clientVersion: app.getVersion()
+    }).catch((error) => {
+      console.warn('[managed] sync failed, continuing with cached state', error)
+      return null
+    })
+
+    // 内置 Agent「模型默认值」四项：先拉取托管 provider 的模型列表，再按 id 匹配预填
+    if (managedResult?.config) {
+      const managedConfig = managedResult.config
+
+      for (const provider of managedConfig.providers) {
+        await providerRuntime.refreshModels(provider.id).catch((error) => {
+          console.warn(`[managed] model refresh failed for ${provider.id}:`, error)
+        })
+      }
+
+      await applyManagedAgentModels(
+        managedConfig,
+        createManagedAgentSettingsWriter(agentSettings),
+        managedStore,
+        {
+          listModelIds: (providerId) =>
+            providerSettings.getProviderModels(providerId).map((model) => model.id)
+        },
+        BUILTIN_DEEPCHAT_AGENT_ID
+      )
+        .then(({ warnings }) => {
+          for (const warning of warnings) console.warn(`[managed] ${warning}`)
+        })
+        .catch((error) => {
+          console.warn('[managed] agent model prefill failed', error)
+        })
+    }
+
     migrateDocumentsModelSettings(providerSettings)
     documentExtractor = new DocumentExtractor({
       repository: documentsRepository,
@@ -3768,7 +3867,7 @@ export async function createMainProcessControl(dependencies: {
   }
 
   dependencies.bindControl(control)
-  registerRoutes()
+  await registerRoutes()
   deeplinkService.init()
   setupApplicationListeners()
   await runAcpRegistryMigration()
