@@ -55,12 +55,9 @@ import { createProviderRoutes } from '../provider/routes'
 import { ProviderSettings } from '../provider/settings'
 import { DEFAULT_PROVIDERS } from '../provider/defaults'
 import { createManagedConfigStore, syncManagedConfig } from '../managed'
-import {
-  applyManagedAgentModels,
-  type ManagedAgentSettingsWriter
-} from '../managed/applyAgentModels'
+import { applyManagedAgentModels } from '../managed/applyAgentModels'
+import { createManagedAgentSettingsWriter, createManagedProviderWriter } from '../managed/adapters'
 import type { ManagedDeviceInfo } from '../managed/client'
-import type { ManagedProviderWriter } from '../managed/apply'
 import type { SettingsStore } from '../config/settingsStore'
 import type { SecretStore } from '../config/secretStore'
 import { providerDbLoader } from '../provider/providerDbLoader'
@@ -540,27 +537,6 @@ function getKnownProviderTypes(): string[] {
 /** apiType → 内置 provider id，用于托管实例的 baseProviderId 归属 */
 function getBuiltinIdByApiType(): Record<string, string> {
   return Object.fromEntries(DEFAULT_PROVIDERS.map((provider) => [provider.apiType, provider.id]))
-}
-
-/** 把 ProviderSettings 适配成 ManagedProviderWriter（upsert 语义） */
-function createManagedProviderWriter(settings: ProviderSettings): ManagedProviderWriter {
-  return {
-    async setProvider(id, patch) {
-      const existing = settings.getProviderById(id)
-      if (existing) settings.updateProviderAtomic(id, patch as never)
-      else settings.addProviderAtomic(patch as never)
-    }
-  }
-}
-
-/** 把 AgentSettings 适配成 ManagedAgentSettingsWriter（扁平 patch → { config } 包装） */
-function createManagedAgentSettingsWriter(settings: AgentSettings): ManagedAgentSettingsWriter {
-  return {
-    getDeepChatAgentConfig: async (agentId) =>
-      ((await settings.getDeepChatAgentConfig(agentId)) ?? null) as Record<string, unknown> | null,
-    updateDeepChatAgent: async (agentId, patch) =>
-      settings.updateDeepChatAgent(agentId, { config: patch } as never)
-  }
 }
 
 export async function createMainProcessControl(dependencies: {
@@ -2964,32 +2940,42 @@ export async function createMainProcessControl(dependencies: {
       return null
     })
 
-    // 内置 Agent「模型默认值」四项：先拉取托管 provider 的模型列表，再按 id 匹配预填
+    // 拉取/应用阶段的告警统一打印（即便没有 config 也要可见，便于排查托管预填未生效）
+    if (managedResult) {
+      for (const warning of managedResult.warnings) console.warn(`[managed] ${warning}`)
+    }
+
+    // 内置 Agent「模型默认值」四项：无启动期消费者，后台并行刷新模型后按 id 匹配预填（契约 §1.4）
     if (managedResult?.config) {
       const managedConfig = managedResult.config
+      void (async () => {
+        const refreshResults = await Promise.allSettled(
+          managedConfig.providers.map((provider) => providerRuntime.refreshModels(provider.id))
+        )
+        const failed = refreshResults.filter(
+          (result): result is PromiseRejectedResult => result.status === 'rejected'
+        )
+        if (failed.length > 0) {
+          console.warn(
+            `[managed] model refresh failed for ${failed.length} provider(s):`,
+            failed.map((result) => result.reason)
+          )
+        }
 
-      for (const provider of managedConfig.providers) {
-        await providerRuntime.refreshModels(provider.id).catch((error) => {
-          console.warn(`[managed] model refresh failed for ${provider.id}:`, error)
-        })
-      }
-
-      await applyManagedAgentModels(
-        managedConfig,
-        createManagedAgentSettingsWriter(agentSettings),
-        managedStore,
-        {
-          listModelIds: (providerId) =>
-            providerSettings.getProviderModels(providerId).map((model) => model.id)
-        },
-        BUILTIN_DEEPCHAT_AGENT_ID
-      )
-        .then(({ warnings }) => {
-          for (const warning of warnings) console.warn(`[managed] ${warning}`)
-        })
-        .catch((error) => {
-          console.warn('[managed] agent model prefill failed', error)
-        })
+        const { warnings } = await applyManagedAgentModels(
+          managedConfig,
+          createManagedAgentSettingsWriter(agentSettings),
+          managedStore,
+          {
+            listModelIds: (providerId) =>
+              providerSettings.getProviderModels(providerId).map((model) => model.id)
+          },
+          BUILTIN_DEEPCHAT_AGENT_ID
+        )
+        for (const warning of warnings) console.warn(`[managed] ${warning}`)
+      })().catch((error) => {
+        console.warn('[managed] agent model prefill failed', error)
+      })
     }
 
     migrateDocumentsModelSettings(providerSettings)
