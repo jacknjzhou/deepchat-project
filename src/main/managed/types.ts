@@ -21,8 +21,9 @@ export const ManagedModelRefSchema = z.object({
 })
 
 export const ManagedDocumentsSchema = z.object({
-  textModel: ManagedModelRefSchema.nullish(),
-  visionModel: ManagedModelRefSchema.nullish(),
+  // 模型 ref 只做形状外层的宽松接收；字段级校验与逐条丢弃由客户端 normalizeModelRef 负责
+  textModel: z.unknown().nullish(),
+  visionModel: z.unknown().nullish(),
   concurrency: z.number().nullish(),
   temperature: z.number().nullish(),
   maxTokens: z.number().nullish()
@@ -121,7 +122,7 @@ export type SyncStatus = 'applied' | 'absent' | 'denied' | 'unavailable' | 'skip
 export interface SyncResult {
   status: SyncStatus
   config: ManagedConfigPayload | null
-  /** 丢弃原因（未知 apiType / 未知 providerKey / 非法 endpointType），用于日志 */
+  /** 逐条丢弃原因（provider 形状非法 / 未知 apiType / 模型 ref 非法 / 未知 providerKey 等），用于日志 */
   warnings: string[]
 }
 

@@ -50,9 +50,16 @@ function normalizeModelRef(
   localIdByKey: Map<string, string>,
   warnings: string[]
 ): ManagedModelRef | null {
-  if (!raw || typeof raw !== 'object') return null
+  if (raw === null || raw === undefined) return null
+  if (typeof raw !== 'object' || Array.isArray(raw)) {
+    warnings.push(`model ref dropped: expected an object, got ${typeof raw}`)
+    return null
+  }
   const ref = raw as { providerKey?: unknown; modelId?: unknown; endpointType?: unknown }
-  if (typeof ref.providerKey !== 'string' || typeof ref.modelId !== 'string') return null
+  if (typeof ref.providerKey !== 'string' || typeof ref.modelId !== 'string') {
+    warnings.push('model ref dropped: providerKey and modelId must be strings')
+    return null
+  }
 
   const providerId = localIdByKey.get(ref.providerKey)
   if (!providerId) {
@@ -86,8 +93,14 @@ function normalizeDocuments(
     textModel: normalizeModelRef(raw.textModel, localIdByKey, warnings),
     visionModel: normalizeModelRef(raw.visionModel, localIdByKey, warnings),
     concurrency: clampManagedConcurrency(raw.concurrency as number | null | undefined),
-    temperature: typeof raw.temperature === 'number' ? raw.temperature : null,
-    maxTokens: typeof raw.maxTokens === 'number' ? raw.maxTokens : null
+    temperature:
+      typeof raw.temperature === 'number' && Number.isFinite(raw.temperature)
+        ? raw.temperature
+        : null,
+    maxTokens:
+      typeof raw.maxTokens === 'number' && Number.isInteger(raw.maxTokens) && raw.maxTokens > 0
+        ? raw.maxTokens
+        : null
   }
 }
 
@@ -125,16 +138,22 @@ function normalizeAgentModelIds(
 }
 
 export async function fetchManagedConfig(options: FetchManagedConfigOptions): Promise<SyncResult> {
-  const { endpoint, device, clientVersion, timeoutMs = DEFAULT_TIMEOUT_MS } = options
+  const { endpoint, device, clientVersion, timeoutMs } = options
   const warnings: string[] = []
 
   if (!endpoint) {
     return { status: 'skipped', config: null, warnings }
   }
 
+  // 非法 timeoutMs（NaN / 负数 / 非数字）回落到默认值，避免定时器被当成 0 立即 abort
+  const effectiveTimeout =
+    typeof timeoutMs === 'number' && Number.isFinite(timeoutMs) && timeoutMs > 0
+      ? timeoutMs
+      : DEFAULT_TIMEOUT_MS
+
   const fetchImpl = options.fetchImpl ?? fetch
   const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  const timer = setTimeout(() => controller.abort(), effectiveTimeout)
 
   try {
     const response = await fetchImpl(buildUrl(endpoint, device), {
@@ -170,7 +189,10 @@ export async function fetchManagedConfig(options: FetchManagedConfigOptions): Pr
     for (const item of parsed.data.providers) {
       const spec = ManagedProviderSpecSchema.safeParse(item)
       if (!spec.success) {
-        warnings.push('provider spec dropped: invalid shape')
+        const detail = spec.error.issues
+          .map((issue) => `${issue.path.join('.') || '<root>'}: ${issue.message}`)
+          .join('; ')
+        warnings.push(`provider spec dropped: ${detail}`)
         continue
       }
       const provider = spec.data

@@ -307,6 +307,93 @@ describe('fetchManagedConfig', () => {
     expect(result.config?.documents?.concurrency).toBe(10)
   })
 
+  it('drops malformed provider entries individually and records the reason', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      jsonResponse({
+        version: 1,
+        providers: [
+          null,
+          'oops',
+          ['array', 'entry'],
+          { key: 'ok', name: 'OK', apiType: 'new-api', baseUrl: 'https://a', apiKey: 'k' },
+          { key: 'no-api-type', name: 'Y', baseUrl: 'https://b', apiKey: 'k' }
+        ]
+      })
+    )
+    const result = await fetchManagedConfig({ ...base, fetchImpl })
+    expect(result.status).toBe('applied')
+    expect(result.config?.providers.map((p) => p.key)).toEqual(['ok'])
+    const dropped = result.warnings.filter((w) => w.includes('provider spec dropped'))
+    expect(dropped).toHaveLength(4)
+    expect(dropped.every((w) => w !== 'provider spec dropped: ')).toBe(true)
+    expect(dropped.some((w) => w.includes('apiType'))).toBe(true)
+  })
+
+  it('keeps documents applied when a single model ref is malformed', async () => {
+    const providers = [
+      { key: 'ok', name: 'OK', apiType: 'new-api', baseUrl: 'https://a', apiKey: 'k' }
+    ]
+    const nonObject = await fetchManagedConfig({
+      ...base,
+      fetchImpl: vi
+        .fn()
+        .mockResolvedValue(
+          jsonResponse({ version: 1, providers, documents: { textModel: 'oops' } })
+        )
+    })
+    expect(nonObject.status).toBe('applied')
+    expect(nonObject.config?.documents?.textModel).toBeNull()
+
+    const badFields = await fetchManagedConfig({
+      ...base,
+      fetchImpl: vi.fn().mockResolvedValue(
+        jsonResponse({
+          version: 1,
+          providers,
+          documents: {
+            textModel: { providerKey: 1, modelId: 'm' },
+            visionModel: { providerKey: 'ok', modelId: 'm2' }
+          }
+        })
+      )
+    })
+    expect(badFields.status).toBe('applied')
+    expect(badFields.config?.documents?.textModel).toBeNull()
+    expect(badFields.config?.documents?.visionModel).toEqual({
+      providerId: 'managed-ok',
+      modelId: 'm2'
+    })
+  })
+
+  it('url-encodes non-ascii username and domain', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({ version: 1, providers: [] }))
+    await fetchManagedConfig({
+      ...base,
+      device: { username: '张三', domain: '研发域', hostname: 'PC-01', sid: 'S-1' },
+      fetchImpl
+    })
+    const calledUrl = fetchImpl.mock.calls[0][0] as string
+    expect(calledUrl).toContain(`username=${encodeURIComponent('张三')}`)
+    expect(calledUrl).toContain(`domain=${encodeURIComponent('研发域')}`)
+    expect(calledUrl).not.toContain('张三')
+  })
+
+  it('does not abort immediately when timeoutMs is invalid', async () => {
+    const body = {
+      version: 1,
+      providers: [{ key: 'ok', name: 'OK', apiType: 'new-api', baseUrl: 'https://a', apiKey: 'k' }]
+    }
+    let signal: AbortSignal | null | undefined
+    const fetchImpl = vi.fn().mockImplementation((_input: unknown, init?: RequestInit) => {
+      signal = init?.signal
+      return new Promise<Response>((resolve) => setTimeout(() => resolve(jsonResponse(body)), 10))
+    })
+    const result = await fetchManagedConfig({ ...base, timeoutMs: Number.NaN, fetchImpl })
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+    expect(result.status).toBe('applied')
+    expect(signal?.aborted).toBe(false)
+  })
+
   it('skips the request entirely when endpoint is empty', async () => {
     const fetchImpl = vi.fn()
     const result = await fetchManagedConfig({ ...base, endpoint: '', fetchImpl })
