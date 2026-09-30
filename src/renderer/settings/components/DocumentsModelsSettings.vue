@@ -1,5 +1,13 @@
 <template>
   <div data-testid="documents-models-page" class="flex flex-col gap-4 p-6 text-sm">
+    <div
+      v-if="locked"
+      class="flex items-start gap-2 rounded-md border border-blue-500/40 bg-blue-500/10 px-3 py-2 text-sm"
+      data-testid="documents-models-managed-badge"
+    >
+      <span>{{ t('settings.managed.documentsBadge') }}</span>
+    </div>
+
     <div>
       <h2 class="text-base font-semibold">{{ t('settings.documentsModels.title') }}</h2>
       <p class="mt-1 text-xs text-muted-foreground">
@@ -20,6 +28,7 @@
               <DcButton
                 data-testid="documents-text-model-trigger"
                 variant="outline"
+                :disabled="locked"
                 :class="[
                   'h-8 w-[320px] justify-between text-sm',
                   textInvalidReason
@@ -59,6 +68,7 @@
               <DcButton
                 data-testid="documents-vision-model-trigger"
                 variant="outline"
+                :disabled="locked"
                 :class="[
                   'h-8 w-[320px] justify-between text-sm',
                   visionInvalidReason
@@ -106,6 +116,7 @@
         :max="10"
         :step="1"
         class="w-24"
+        :disabled="locked"
         :model-value="String(concurrency)"
         @update:model-value="onConcurrencyInput"
       />
@@ -131,6 +142,7 @@
             :max="2"
             :step="0.1"
             class="w-32"
+            :disabled="locked"
             :placeholder="defaultPlaceholder"
             :model-value="temperatureInput"
             @update:model-value="
@@ -149,6 +161,7 @@
             :min="1"
             :step="1"
             class="w-32"
+            :disabled="locked"
             :placeholder="defaultPlaceholder"
             :model-value="maxTokensInput"
             @update:model-value="(value: string | number) => (maxTokensInput = String(value ?? ''))"
@@ -157,7 +170,7 @@
       </div>
     </details>
 
-    <div class="flex items-center gap-2">
+    <div v-if="!locked" class="flex items-center gap-2">
       <DcButton data-testid="documents-models-save" :disabled="!canSave || saving" @click="save">
         {{
           saveState === 'saved'
@@ -182,6 +195,7 @@ import { Input } from '@shadcn/components/ui/input'
 import ModelSelect from '@/components/ModelSelect.vue'
 import { useProviderStore } from '@/stores/providerStore'
 import { useModelStore } from '@/stores/modelStore'
+import { useManagedStore } from '@/stores/managedStore'
 import { createConfigClient } from '@api/ConfigClient'
 import type { RENDERER_MODEL_META } from '@shared/types/provider'
 
@@ -193,6 +207,9 @@ const { t } = useI18n()
 const configClient = createConfigClient()
 const providerStore = useProviderStore()
 const modelStore = useModelStore()
+const managedStore = useManagedStore()
+
+const locked = computed(() => managedStore.documentsLocked)
 
 const draftTextModel = ref<ModelRef | null>(null)
 const draftVisionModel = ref<ModelRef | null>(null)
@@ -284,6 +301,7 @@ const temperatureValue = computed(() =>
 const maxTokensValue = computed(() => parseOptionalNumber(maxTokensInput.value, { min: 1 }))
 
 const save = async (): Promise<void> => {
+  if (locked.value) return
   if (!canSave.value || saving.value) return
   saving.value = true
   saveState.value = 'idle'
@@ -323,6 +341,8 @@ onMounted(async () => {
   concurrency.value = typeof savedConcurrency === 'number' ? clampConcurrency(savedConcurrency) : 4
   temperatureInput.value = typeof savedTemperature === 'number' ? String(savedTemperature) : ''
   maxTokensInput.value = typeof savedMaxTokens === 'number' ? String(savedMaxTokens) : ''
+
+  await managedStore.load()
 })
 
 defineExpose({
