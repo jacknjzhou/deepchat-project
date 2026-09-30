@@ -31,4 +31,8 @@ describe('formatDocumentsTaskError', () => {
   it('returns null for unrelated errors', () => {
     expect(formatDocumentsTaskError('network timeout', t)).toBeNull()
   })
+  it('returns null for malformed prefixed errors', () => {
+    expect(formatDocumentsTaskError('[documents.modelMissing:p1|a|b] x', t)).toBeNull()
+    expect(formatDocumentsTaskError('[documents.providerMissing:g]1|m] x', t)).toBeNull()
+  })
 })

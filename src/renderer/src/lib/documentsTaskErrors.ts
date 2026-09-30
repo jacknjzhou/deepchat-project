@@ -1,6 +1,6 @@
 type Translate = (key: string, params?: Record<string, string>) => string
 
-const PROVIDER_REF_PATTERN = /^\[documents\.(providerMissing|providerDisabled):([^|\]]*)\|/
+const PROVIDER_REF_PATTERN = /^\[documents\.(?:providerMissing|providerDisabled):([^|\]]*)\|/
 const MODEL_REF_PATTERN = /^\[documents\.modelMissing:([^|\]]*)\|([^|\]]*)\]/
 
 /**
@@ -13,7 +13,7 @@ export function formatDocumentsTaskError(raw: string, t: Translate): string | nu
   }
   const providerMatch = raw.match(PROVIDER_REF_PATTERN)
   if (providerMatch) {
-    return t('documents.errors.modelProviderMissing', { provider: providerMatch[2] })
+    return t('documents.errors.modelProviderMissing', { provider: providerMatch[1] })
   }
   const modelMatch = raw.match(MODEL_REF_PATTERN)
   if (modelMatch) {
