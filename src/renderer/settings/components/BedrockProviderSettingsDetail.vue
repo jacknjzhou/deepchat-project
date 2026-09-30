@@ -11,6 +11,14 @@
   >
     <template #connection>
       <div class="flex flex-col gap-4">
+        <p
+          v-if="managed"
+          data-testid="provider-managed-hint"
+          class="text-xs leading-5 text-muted-foreground"
+        >
+          {{ t('settings.managed.providerHint') }}
+        </p>
+
         <!-- Auth mode selector -->
         <div class="flex flex-col items-start gap-2">
           <Label class="flex-1">{{ t('settings.provider.authMode') }}</Label>
