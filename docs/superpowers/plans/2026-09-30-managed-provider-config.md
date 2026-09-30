@@ -2244,6 +2244,8 @@ function readManagedStatus() {
 
 ```ts
 // src/renderer/src/stores/managedStore.ts
+// 注意（Task 6 实施后的实际形状）：store 提供 load()（读 getStatus 快照，页面初始化用）
+// 与 refreshConfig()（调 client.refresh() 触发服务端重拉）；内部 catch + console.error，不重抛。
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { createManagedClient } from '@api/ManagedClient'
@@ -2258,7 +2260,7 @@ export const useManagedStore = defineStore('managed', () => {
 
   const client = createManagedClient()
 
-  async function refresh() {
+  async function load() {
     loading.value = true
     try {
       const status = await client.getStatus()
@@ -2267,6 +2269,24 @@ export const useManagedStore = defineStore('managed', () => {
       documentsLocked.value = status.documentsLocked
       username.value = status.username
       endpoint.value = status.endpoint
+    } catch (error) {
+      console.error('[managed] load status failed', error)
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function refreshConfig() {
+    loading.value = true
+    try {
+      const status = await client.refresh()
+      managed.value = status.managed
+      providerIds.value = status.providerIds
+      documentsLocked.value = status.documentsLocked
+      username.value = status.username
+      endpoint.value = status.endpoint
+    } catch (error) {
+      console.error('[managed] refresh failed', error)
     } finally {
       loading.value = false
     }
@@ -2283,7 +2303,8 @@ export const useManagedStore = defineStore('managed', () => {
     username,
     endpoint,
     loading,
-    refresh,
+    load,
+    refreshConfig,
     isManagedProvider
   }
 })
@@ -2423,7 +2444,7 @@ Run: 同 Step 2 → Expected: PASS
 
 在服务商设置页组件中（实际文件名以现场为准）：
 
-1. 引入 `ProviderManagedBadge` 与 `useManagedStore`，`onMounted` 中调用 `managedStore.refresh()`
+1. 引入 `ProviderManagedBadge` 与 `useManagedStore`，`onMounted` 中调用 `managedStore.load()`（读快照；若要主动重拉用 `refreshConfig()`）
 2. provider 列表项渲染处，名称旁插入 `<ProviderManagedBadge :managed="provider.managed ?? false" />`
 3. 编辑表单：当 `provider.managed === true` 时，名称 / 地址 / API Key / 类型输入框加 `:disabled="true"`（按现场输入组件的实际 prop 名，可能为 `disabled` 或 `readonly`）
 4. 操作按钮：`v-if="!isManaged"` 隐藏「删除」「复制」「停用/启用」按钮，其中 `isManaged` 取 `managedStore.isManagedProvider(provider.id)`
@@ -2559,7 +2580,7 @@ Expected: FAIL
 
 在 `DocumentsModelsSettings.vue` 中：
 
-1. 引入并调用 `const managedStore = useManagedStore()`，`onMounted` 里额外 `await managedStore.refresh()`
+1. 引入并调用 `const managedStore = useManagedStore()`，`onMounted` 里额外 `await managedStore.load()`（读快照；store 内部已 catch，不会抛出）
 2. 新增计算属性：
 
 ```ts
