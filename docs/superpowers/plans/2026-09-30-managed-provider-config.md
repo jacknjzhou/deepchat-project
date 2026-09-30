@@ -74,7 +74,7 @@ Headers:
 | `documents` | 否 | 智能信息提取的文本/视觉模型与推理参数，**完全锁定**；为 `null`/缺省表示该企业不锁定此项 |
 | `documents.textModel` / `.visionModel` | 否 | `{ providerKey, modelId, endpointType? }`；`providerKey` 必须命中 `providers[].key`，未命中则该项按 `null` 处理 |
 | `documents.concurrency` | 否 | 1–10，越界收敛到边界；缺省沿用用户值 |
-| `documents.temperature` / `.maxTokens` | 否 | `null` 表示用 provider 默认；缺省沿用用户值 |
+| `documents.temperature` / `.maxTokens` | 否 | 字段**存在且为数字**时覆盖为用户该值；**为 `null` 或缺省**时一律表示「用 provider 默认」并清空用户值。注意：归一化后无法区分「显式 null」与「字段缺省」，两者行为相同（Task 5 已按此实现并由测试固定） |
 
 **不下发的内容（明确）**：模型清单（由客户端实时从 provider 拉取）、`providers[].defaultModelId`、Agent 四项模型的 provider 归属与推理参数（只给 id）。
 
@@ -2609,6 +2609,8 @@ git commit -m "feat(managed): lock documents models page"
 
 ## Task 9: i18n 文案与全量验证
 
+> **执行顺序**：本 Task 必须在 **Task 10（documents endpointType 透传）** 之后执行，否则冒烟第 10 项会失败。
+
 **Files:**
 - Modify: `src/renderer/src/i18n/*/settings.json` ×20
 
@@ -2675,6 +2677,68 @@ Expected: 全部 PASS（预存环境失败按已知清单排除：`rendererPerfo
 ```bash
 git add src/renderer/src/i18n
 git commit -m "i18n: add managed provider copy"
+```
+
+---
+
+## Task 10: documents `endpointType` 透传到 provider 调用层
+
+> **背景（Task 5 spec 审查发现）**：Task 5 已把托管 `endpointType` 写入 `documents.textModel/visionModel` 设置并在 `resolveDocumentsModelSettings` 中解析出来，但该字段在**第一跳就被丢弃**：`DocumentExtractor` 的 `ModelTarget`、`CompletionRequest`、`provider.completions` 契约均不携带它。后果：企业为 `new-api` 网关下发 `endpointType: "anthropic"` 时，实际会走推断出的默认协议（通常 `openai`），静默用错协议 → 请求失败或行为不符，Task 9 冒烟第 10 项必挂。
+>
+> **必须在 Task 9 之前完成**。
+
+**Files（现场核准确认，预计 5-7 处）**
+- Modify: `src/main/documents/extractor/documentExtractor.ts`（`ModelTarget`、`CompletionRequest` 增加可选 `endpointType`）
+- Modify: `src/main/app/composition.ts`（两个 resolver 与 `generateCompletion` 把解析出的 `endpointType` 传下去）
+- Modify: `src/main/provider/index.ts`（`generateCompletionStandalone` 等转发参数）
+- Modify: provider `completions` 调用契约（按现场实现位置）
+- Modify: new-api 路由解析（显式 `endpointType` **优先于**既有推断）
+- Test: extractor 透传单测 + 组装层断言
+
+- [ ] **Step 1: 现场勘察并确定最小改动面**
+
+先读并记录（写进最终报告）：
+1. `src/main/documents/extractor/documentExtractor.ts` 中 `ModelTarget` 与 `CompletionRequest` 的定义位置，以及从「构造 target」到「调用 provider completions」的完整调用链（每一跳的函数签名与所在文件）。
+2. `src/main/provider/index.ts` 中 `generateCompletionStandalone`（约 491 行）如何据此构造请求，以及 new-api 的 endpointType 解析入口（`resolveNewApiEndpointTypeFromRoute` / `configuredEndpointType` 优先级的实际代码位置）。
+3. 判断最小改动面：**只做端到端的字段透传 + 让显式值优先**，不要重构路由推断逻辑。
+
+- [ ] **Step 2: 写失败测试**
+
+至少覆盖：
+```ts
+// 断言：显式 endpointType 会被带到 provider 调用层，且优先于按模型 id 的推断
+it('forwards the explicit endpointType from the documents model ref to the provider call', async () => {
+  // 用 fake provider settings / fake provider 收集实际收到的请求参数
+  // documents.textModel = { providerId: 'managed-corp-gw', modelId: 'claude-x', endpointType: 'anthropic' }
+  // 断言 provider 收到的请求携带 endpointType === 'anthropic'（而不是推断出的 'openai'）
+})
+```
+另加：未指定 `endpointType` 时行为与改动前一致（回归保护）。
+
+- [ ] **Step 3: 运行确认失败** → `$env:ELECTRON_RUN_AS_NODE='1'; pnpm exec electron ./node_modules/vitest/vitest.mjs run test/main/documents --config vitest.config.ts`，Expected: 新增用例 FAIL
+
+- [ ] **Step 4: 实现逐层透传**
+
+逐层加可选字段并传递（每一跳只在有值时透传，保持既有调用点兼容）：
+- `ModelTarget` / `CompletionRequest` 增加 `endpointType?: NewApiEndpointType`
+- `composition.ts` 的两个 resolver 把 `settings.textModel.endpointType` / `settings.visionModel.endpointType` 传入 target 构造
+- `generateCompletion` 路径同样透传
+- provider `completions` 契约与 `generateCompletionStandalone` 接收并向下传
+- new-api 路由解析处：**显式 `endpointType` 优先**，无显式值时才走既有推断
+
+- [ ] **Step 5: 运行确认通过**
+
+```
+$env:ELECTRON_RUN_AS_NODE='1'; pnpm exec electron ./node_modules/vitest/vitest.mjs run test/main/documents test/main/provider test/main/managed --config vitest.config.ts
+pnpm run typecheck:node
+```
+Expected: 新增用例 PASS；documents 与 managed 既有用例不回归；`test/main/provider` 仍只有已知的 17 项预存失败（不增加）。
+
+- [ ] **Step 6: 提交**
+
+```bash
+git add src/main/documents src/main/provider src/main/app/composition.ts test/main/documents
+git commit -m "feat(documents): forward endpointType to provider calls"
 ```
 
 ---
