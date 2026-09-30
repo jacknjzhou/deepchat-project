@@ -2903,7 +2903,10 @@ export async function createMainProcessControl(dependencies: {
         const reason = validateDocumentsModelRef(
           ref,
           providerSettings.getProviders().map((p) => ({ id: p.id, enable: p.enable })),
-          (providerId) => providerSettings.getProviderModels(providerId) ?? []
+          (providerId) => [
+            ...(providerSettings.getProviderModels(providerId) ?? []),
+            ...providerSettings.getCustomModels(providerId)
+          ]
         )
         if (reason) throw new DocumentsModelConfigError(reason, ref)
         return ref
@@ -2914,7 +2917,10 @@ export async function createMainProcessControl(dependencies: {
         const reason = validateDocumentsModelRef(
           ref,
           providerSettings.getProviders().map((p) => ({ id: p.id, enable: p.enable })),
-          (providerId) => providerSettings.getProviderModels(providerId) ?? []
+          (providerId) => [
+            ...(providerSettings.getProviderModels(providerId) ?? []),
+            ...providerSettings.getCustomModels(providerId)
+          ]
         )
         if (reason) throw new DocumentsModelConfigError(reason, ref)
         return ref

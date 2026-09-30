@@ -117,10 +117,7 @@ export class DocumentExtractor {
 
     try {
       if (plan.route === 'vision') {
-        const target = this.requireTarget(
-          await this.deps.resolveVisionTarget(),
-          'defaultVisionModel'
-        )
+        const target = this.requireTarget(await this.deps.resolveVisionTarget(), 'visionModel')
         if (isPdfFile(input.file)) {
           // A partial pre-render (single classification page for oversized
           // documents) must not limit vision extraction; re-render fully then.
@@ -296,7 +293,7 @@ export class DocumentExtractor {
     issues: string[],
     signal?: AbortSignal
   ): Promise<{ fields: Record<string, DocumentFieldEntry>; rawOutput: string }> {
-    const target = this.requireTarget(await this.deps.resolveTextTarget(), 'defaultModel')
+    const target = this.requireTarget(await this.deps.resolveTextTarget(), 'textModel')
     const segments = splitTextIntoSegments(text)
     if (segments.length === 1) {
       const messages: ChatMessage[] = [
@@ -484,7 +481,7 @@ export class DocumentExtractor {
     let messages: ChatMessage[]
     let target: ModelTarget
     if (isImageFile(file)) {
-      target = this.requireTarget(await this.deps.resolveVisionTarget(), 'defaultVisionModel')
+      target = this.requireTarget(await this.deps.resolveVisionTarget(), 'visionModel')
       const dataUrl = await this.deps.readImageAsDataUrl(file.path)
       messages = [
         { role: 'system', content: system },
@@ -502,7 +499,7 @@ export class DocumentExtractor {
       // use vision; a first page present here implies a vision model exists.
       const firstPage = scanned ? pdfPages?.dataUrls[0] : undefined
       if (firstPage) {
-        target = this.requireTarget(await this.deps.resolveVisionTarget(), 'defaultVisionModel')
+        target = this.requireTarget(await this.deps.resolveVisionTarget(), 'visionModel')
         messages = [
           { role: 'system', content: system },
           {
@@ -514,7 +511,7 @@ export class DocumentExtractor {
           }
         ]
       } else {
-        target = this.requireTarget(await this.deps.resolveTextTarget(), 'defaultModel')
+        target = this.requireTarget(await this.deps.resolveTextTarget(), 'textModel')
         const sample = (pdfText?.text ?? '').slice(0, 4000)
         messages = [
           { role: 'system', content: system },
