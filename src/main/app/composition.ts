@@ -3299,6 +3299,33 @@ export async function createMainProcessControl(dependencies: {
       acknowledgePresentation: (episodeId, webContentsId) =>
         semanticNotificationRouter.acknowledgePresentation(episodeId, { webContentsId })
     })
+    // 托管配置状态：读取缓存快照；刷新复用启动期的同一 endpoint/device/writer 通路
+    const readManagedStatus = () => {
+      const meta = managedStore.readMeta()
+      const config = managedStore.readConfig()
+      const providerIds = managedStore.readProviderIds()
+      return {
+        managed: providerIds.length > 0,
+        username: meta?.username ?? '',
+        endpoint: meta?.endpoint ?? '',
+        fetchedAt: meta?.fetchedAt ?? null,
+        providerIds,
+        documentsLocked: Boolean(config?.documents)
+      }
+    }
+    const refreshManagedConfig = async () => {
+      await syncManagedConfig({
+        endpoint: resolveManagedConfigEndpoint(),
+        device: managedDevice,
+        store: managedStore,
+        writer: createManagedProviderWriter(providerSettings),
+        knownProviderTypes: getKnownProviderTypes(),
+        builtinIdByApiType: getBuiltinIdByApiType(),
+        clientVersion: app.getVersion(),
+        timeoutMs: 3000
+      })
+      return readManagedStatus()
+    }
     const appSettingsRoutes = createAppSettingsRoutes({
       settings: dependencies.settingsStore,
       agentDefaults,
@@ -3317,7 +3344,11 @@ export async function createMainProcessControl(dependencies: {
           console.warn('[SettingsActivity] Failed to record settings activity:', error)
         })
       },
-      listActivities: (limit) => settingsDatabase.listSettingsActivity(limit)
+      listActivities: (limit) => settingsDatabase.listSettingsActivity(limit),
+      managed: {
+        getStatus: readManagedStatus,
+        refresh: refreshManagedConfig
+      }
     })
     const appRoutes = createAppRoutes({
       logging: loggingService,

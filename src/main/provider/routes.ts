@@ -218,15 +218,25 @@ export function createProviderRoutes(deps: {
       providersListRoute.name,
       async (rawInput) => {
         providersListRoute.input.parse(rawInput)
-        return providersListRoute.output.parse({ providers: providerSettings.getProviders() })
+        const managedProviderIds = readManagedProviderIds()
+        return providersListRoute.output.parse({
+          providers: providerSettings.getProviders().map((provider) => ({
+            ...provider,
+            managed: managedProviderIds.includes(provider.id)
+          }))
+        })
       }
     ],
     [
       providersListSummariesRoute.name,
       async (rawInput) => {
         providersListSummariesRoute.input.parse(rawInput)
+        const managedProviderIds = readManagedProviderIds()
         return providersListSummariesRoute.output.parse({
-          providers: providerSettings.getProviders().map(toProviderSummary)
+          providers: providerSettings.getProviders().map((provider) => ({
+            ...toProviderSummary(provider),
+            managed: managedProviderIds.includes(provider.id)
+          }))
         })
       }
     ],

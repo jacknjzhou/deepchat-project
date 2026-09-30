@@ -87,6 +87,8 @@ export type LLM_PROVIDER = {
   disabledModels?: string[]
   custom?: boolean
   oauthToken?: string
+  /** 是否由企业统一配置（托管），true 时本地不可修改 */
+  managed?: boolean
   /**
    * Identifier of the *logical* provider family this instance belongs to.
    * Two LLM_PROVIDER rows with the same `baseProviderId` are duplicates of
