@@ -89,9 +89,19 @@ function normalizeDocuments(
   warnings: string[]
 ): ManagedDocumentsConfig | null {
   if (!raw) return null
+  const textModel = normalizeModelRef(raw.textModel, localIdByKey, warnings)
+  const visionModel = normalizeModelRef(raw.visionModel, localIdByKey, warnings)
+  if (!textModel && !visionModel) {
+    // 仅下发参数（如 concurrency）而没有可用模型：运行时模型是逐字段回退到用户值的，
+    // 若仍视为锁定会让用户既拿不到托管模型也无法配置，故整段作废（视作未锁定）
+    warnings.push(
+      'documents dropped: no usable text/vision model ref, section left unlocked for user configuration'
+    )
+    return null
+  }
   return {
-    textModel: normalizeModelRef(raw.textModel, localIdByKey, warnings),
-    visionModel: normalizeModelRef(raw.visionModel, localIdByKey, warnings),
+    textModel,
+    visionModel,
     concurrency: clampManagedConcurrency(raw.concurrency as number | null | undefined),
     temperature:
       typeof raw.temperature === 'number' && Number.isFinite(raw.temperature)

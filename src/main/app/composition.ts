@@ -28,6 +28,7 @@ import { DialogService } from '../desktop/dialog'
 import { app, ipcMain, webContents as electronWebContents } from 'electron'
 import { DEEPCHAT_EVENT_CHANNEL } from '@shared/contracts/channels'
 import { createDeepchatEventEnvelope, type DeepchatEventName } from '@shared/contracts/events'
+import type { ManagedConfigStatus } from '@shared/contracts/routes'
 import { optimizer } from '@electron-toolkit/utils'
 import { WindowPresenter } from '../desktop/window'
 import { PluginSettingsWindow } from '../desktop/pluginSettingsWindow'
@@ -529,6 +530,23 @@ function toManagedDeviceInfo(
     sid: info.winAccount?.sid ?? ''
   }
 }
+
+/**
+ * 解析当前设备身份；获取失败（权限/WMI 不可用等）回退空身份，绝不抛出。
+ * 启动同步与手动刷新都必须现场解析：复用启动期的结果会把陈旧（甚至空）身份带给服务端，
+ * 一旦被判为 absent/denied 就会清空托管缓存。
+ */
+async function resolveManagedDevice(deviceService: DeviceService): Promise<ManagedDeviceInfo> {
+  try {
+    return toManagedDeviceInfo(await deviceService.getDeviceInfo())
+  } catch (error) {
+    console.warn('[managed] device info unavailable, using empty identity', error)
+    return { username: '', domain: '', hostname: '', sid: '' }
+  }
+}
+
+/** 同一时刻只允许一次托管配置刷新在飞；并发调用复用同一结果，避免重复拉取与并发写盘 */
+let managedRefreshInFlight: Promise<ManagedConfigStatus> | null = null
 
 /** 允许的供应商类型 = 内置服务商注册表的 apiType 集合 */
 function getKnownProviderTypes(): string[] {
@@ -2925,13 +2943,7 @@ export async function createMainProcessControl(dependencies: {
       dependencies.settingsStore.get<number>('maxFileSize') ?? 30 * 1024 * 1024
 
     // 启动链上的阻塞调用：设备信息获取失败（权限/WMI 不可用等）不得阻断启动
-    let managedDevice: ManagedDeviceInfo
-    try {
-      managedDevice = toManagedDeviceInfo(await deviceService.getDeviceInfo())
-    } catch (error) {
-      console.warn('[managed] device info unavailable, using empty identity', error)
-      managedDevice = { username: '', domain: '', hostname: '', sid: '' }
-    }
+    const managedDevice = await resolveManagedDevice(deviceService)
 
     const managedResult = await syncManagedConfig({
       endpoint: resolveManagedConfigEndpoint(),
@@ -3299,7 +3311,7 @@ export async function createMainProcessControl(dependencies: {
       acknowledgePresentation: (episodeId, webContentsId) =>
         semanticNotificationRouter.acknowledgePresentation(episodeId, { webContentsId })
     })
-    // 托管配置状态：读取缓存快照；刷新复用启动期的同一 endpoint/device/writer 通路
+    // 托管配置状态：读取缓存快照；刷新时现场重解析设备身份，并复用进行中的刷新
     const readManagedStatus = () => {
       const meta = managedStore.readMeta()
       const config = managedStore.readConfig()
@@ -3313,18 +3325,25 @@ export async function createMainProcessControl(dependencies: {
         documentsLocked: Boolean(config?.documents)
       }
     }
-    const refreshManagedConfig = async () => {
-      await syncManagedConfig({
-        endpoint: resolveManagedConfigEndpoint(),
-        device: managedDevice,
-        store: managedStore,
-        writer: createManagedProviderWriter(providerSettings),
-        knownProviderTypes: getKnownProviderTypes(),
-        builtinIdByApiType: getBuiltinIdByApiType(),
-        clientVersion: app.getVersion(),
-        timeoutMs: 3000
+    const refreshManagedConfig = (): Promise<ManagedConfigStatus> => {
+      if (managedRefreshInFlight) return managedRefreshInFlight
+      const run = async (): Promise<ManagedConfigStatus> => {
+        await syncManagedConfig({
+          endpoint: resolveManagedConfigEndpoint(),
+          device: await resolveManagedDevice(deviceService),
+          store: managedStore,
+          writer: createManagedProviderWriter(providerSettings),
+          knownProviderTypes: getKnownProviderTypes(),
+          builtinIdByApiType: getBuiltinIdByApiType(),
+          clientVersion: app.getVersion(),
+          timeoutMs: 3000
+        })
+        return readManagedStatus()
+      }
+      managedRefreshInFlight = run().finally(() => {
+        managedRefreshInFlight = null
       })
-      return readManagedStatus()
+      return managedRefreshInFlight
     }
     const appSettingsRoutes = createAppSettingsRoutes({
       settings: dependencies.settingsStore,

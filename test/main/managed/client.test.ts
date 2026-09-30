@@ -329,7 +329,7 @@ describe('fetchManagedConfig', () => {
     expect(dropped.some((w) => w.includes('apiType'))).toBe(true)
   })
 
-  it('keeps documents applied when a single model ref is malformed', async () => {
+  it('drops malformed documents model refs individually', async () => {
     const providers = [
       { key: 'ok', name: 'OK', apiType: 'new-api', baseUrl: 'https://a', apiKey: 'k' }
     ]
@@ -342,7 +342,8 @@ describe('fetchManagedConfig', () => {
         )
     })
     expect(nonObject.status).toBe('applied')
-    expect(nonObject.config?.documents?.textModel).toBeNull()
+    // 两个模型引用都不可用 → 整段作废（视作未锁定），避免用户无法补配上缺失的模型
+    expect(nonObject.config?.documents).toBeNull()
 
     const badFields = await fetchManagedConfig({
       ...base,
@@ -363,6 +364,25 @@ describe('fetchManagedConfig', () => {
       providerId: 'managed-ok',
       modelId: 'm2'
     })
+  })
+
+  it('unlocks the documents section when only non-model parameters are delivered', async () => {
+    const result = await fetchManagedConfig({
+      ...base,
+      fetchImpl: vi.fn().mockResolvedValue(
+        jsonResponse({
+          version: 1,
+          providers: [
+            { key: 'ok', name: 'OK', apiType: 'new-api', baseUrl: 'https://a', apiKey: 'k' }
+          ],
+          documents: { concurrency: 6 }
+        })
+      )
+    })
+    expect(result.status).toBe('applied')
+    // 没有可用模型引用 → 整段为 null，用户仍可自行配置提取模型，不会被只读锁死
+    expect(result.config?.documents).toBeNull()
+    expect(result.warnings.some((w) => w.startsWith('documents dropped'))).toBe(true)
   })
 
   it('url-encodes non-ascii username and domain', async () => {
