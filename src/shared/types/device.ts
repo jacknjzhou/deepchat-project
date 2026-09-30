@@ -16,6 +16,14 @@ export interface DeviceServicePort {
   sanitizeSvgContent(svgContent: string): Promise<string | null>
 }
 
+export type WindowsAccountInfo = {
+  username: string
+  domain: string
+  hostname: string
+  homeDir: string
+  sid: string | null
+}
+
 export type DeviceInfo = {
   platform: string
   arch: string
@@ -23,6 +31,7 @@ export type DeviceInfo = {
   totalMemory: number
   osVersion: string
   osVersionMetadata: Array<{ name: string; build: number }>
+  winAccount: WindowsAccountInfo | null
 }
 
 export type MemoryInfo = {

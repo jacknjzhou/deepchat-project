@@ -39,7 +39,9 @@ const configClientMock = vi.hoisted(() => ({
   setUpdateChannel: vi.fn()
 }))
 const deviceClientMock = vi.hoisted(() => ({
-  getAppVersion: vi.fn()
+  getAppVersion: vi.fn(),
+  getDeviceInfo: vi.fn(),
+  copyText: vi.fn()
 }))
 const browserClientMock = vi.hoisted(() => ({
   openExternal: vi.fn()
@@ -116,6 +118,12 @@ vi.mock('vue-i18n', () => ({
         'about.disclaimerButton': '免责声明',
         'about.checkUpdateButton': '检查更新',
         'about.disclaimerTitle': '免责声明',
+        'about.systemInfo.title': '系统信息',
+        'about.systemInfo.username': '用户名',
+        'about.systemInfo.domain': '域名',
+        'about.systemInfo.hostname': '主机名',
+        'about.systemInfo.homeDir': '主目录',
+        'about.systemInfo.sid': 'SID',
         'update.versionAvailable': `${params?.version ?? ''} 可用`,
         'update.autoUpdateFailed': '自动更新可能不稳定，请手动下载更新',
         'update.githubDownload': 'GitHub 下载',
@@ -143,6 +151,8 @@ describe('AboutUsSettings', () => {
     configClientMock.getUpdateChannel.mockReset()
     configClientMock.setUpdateChannel.mockReset()
     deviceClientMock.getAppVersion.mockReset()
+    deviceClientMock.getDeviceInfo.mockReset()
+    deviceClientMock.copyText.mockReset()
     browserClientMock.openExternal.mockReset()
     upgradeStoreMock.refreshStatus.mockReset()
     upgradeStoreMock.checkUpdate.mockReset()
@@ -150,6 +160,8 @@ describe('AboutUsSettings', () => {
     configClientMock.getUpdateChannel.mockResolvedValue('stable')
     configClientMock.setUpdateChannel.mockResolvedValue('stable')
     deviceClientMock.getAppVersion.mockResolvedValue('1.0.0-beta.3')
+    deviceClientMock.getDeviceInfo.mockResolvedValue({ winAccount: null })
+    deviceClientMock.copyText.mockResolvedValue(undefined)
     browserClientMock.openExternal.mockResolvedValue(undefined)
     upgradeStoreMock.refreshStatus.mockResolvedValue('error')
     upgradeStoreMock.checkUpdate.mockResolvedValue('error')
@@ -440,5 +452,100 @@ describe('AboutUsSettings', () => {
     expect(wrapper.text()).not.toContain('模拟首次进入引导')
     expect(wrapper.text()).not.toContain('创建长会话Mock数据')
     expect(windowClientMock.startGuidedOnboarding).not.toHaveBeenCalled()
+  })
+
+  it('hides the system info card when winAccount is null', async () => {
+    const { default: AboutUsSettings } =
+      await import('../../../src/renderer/settings/components/AboutUsSettings.vue')
+
+    const wrapper = mount(AboutUsSettings, {
+      global: {
+        stubs: {
+          DcButton: buttonStub,
+          Icon: true,
+          Dialog: passthroughStub('Dialog'),
+          DialogContent: passthroughStub('DialogContent'),
+          DialogDescription: passthroughStub('DialogDescription'),
+          DialogFooter: passthroughStub('DialogFooter'),
+          DialogHeader: passthroughStub('DialogHeader'),
+          DialogTitle: passthroughStub('DialogTitle'),
+          Select: selectStub,
+          SelectContent: passthroughStub('SelectContent'),
+          SelectItem: passthroughStub('SelectItem'),
+          SelectTrigger: passthroughStub('SelectTrigger'),
+          SelectValue: passthroughStub('SelectValue'),
+          NodeRenderer: passthroughStub('NodeRenderer')
+        }
+      }
+    })
+
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="system-info-card"]').exists()).toBe(false)
+
+    wrapper.unmount()
+  })
+
+  it('renders windows account details and copies values to clipboard', async () => {
+    deviceClientMock.getDeviceInfo.mockResolvedValue({
+      winAccount: {
+        username: 'zhangsan',
+        domain: 'DESKTOP-ABC',
+        hostname: 'DESKTOP-ABC',
+        homeDir: 'C:\\Users\\zhangsan',
+        sid: 'S-1-5-21-1004336348-1177238915-682003330-5122'
+      }
+    })
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText },
+      configurable: true
+    })
+
+    const { default: AboutUsSettings } =
+      await import('../../../src/renderer/settings/components/AboutUsSettings.vue')
+
+    const wrapper = mount(AboutUsSettings, {
+      global: {
+        stubs: {
+          DcButton: buttonStub,
+          Icon: true,
+          Dialog: passthroughStub('Dialog'),
+          DialogContent: passthroughStub('DialogContent'),
+          DialogDescription: passthroughStub('DialogDescription'),
+          DialogFooter: passthroughStub('DialogFooter'),
+          DialogHeader: passthroughStub('DialogHeader'),
+          DialogTitle: passthroughStub('DialogTitle'),
+          Select: selectStub,
+          SelectContent: passthroughStub('SelectContent'),
+          SelectItem: passthroughStub('SelectItem'),
+          SelectTrigger: passthroughStub('SelectTrigger'),
+          SelectValue: passthroughStub('SelectValue'),
+          NodeRenderer: passthroughStub('NodeRenderer')
+        }
+      }
+    })
+
+    await flushPromises()
+
+    const card = wrapper.find('[data-testid="system-info-card"]')
+    expect(card.exists()).toBe(true)
+    expect(card.text()).toContain('系统信息')
+    expect(card.text()).toContain('zhangsan')
+    expect(card.text()).toContain('DESKTOP-ABC')
+    expect(card.text()).toContain('C:\\Users\\zhangsan')
+    expect(card.text()).toContain('S-1-5-21-1004336348-1177238915-682003330-5122')
+
+    const sidCopyButton = card
+      .findAll('button')
+      .find((button) => button.attributes('aria-label') === 'SID')
+    expect(sidCopyButton).toBeTruthy()
+    await sidCopyButton!.trigger('click')
+    await flushPromises()
+
+    expect(writeText).toHaveBeenCalledWith('S-1-5-21-1004336348-1177238915-682003330-5122')
+    expect(deviceClientMock.copyText).not.toHaveBeenCalled()
+
+    wrapper.unmount()
   })
 })

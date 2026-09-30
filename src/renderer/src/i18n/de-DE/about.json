@@ -25,5 +25,13 @@
     "cpuModel": "CPU-Modell",
     "totalMemory": "Gesamtspeicher",
     "osVersion": "Systemversion"
+  },
+  "systemInfo": {
+    "title": "Systeminformationen",
+    "username": "Benutzername",
+    "domain": "Domäne",
+    "hostname": "Hostname",
+    "homeDir": "Home-Verzeichnis",
+    "sid": "SID"
   }
 }

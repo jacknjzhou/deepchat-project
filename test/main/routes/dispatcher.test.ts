@@ -833,7 +833,8 @@ function createRuntime() {
       cpuModel: 'AMD Ryzen',
       totalMemory: 32,
       osVersion: 'Windows 11',
-      osVersionMetadata: [{ name: '23H2', build: 22631 }]
+      osVersionMetadata: [{ name: '23H2', build: 22631 }],
+      winAccount: null
     }),
     selectDirectory: vi.fn().mockResolvedValue({
       canceled: false,
@@ -5941,7 +5942,8 @@ describe('dispatchDeepchatRoute', () => {
         cpuModel: 'AMD Ryzen',
         totalMemory: 32,
         osVersion: 'Windows 11',
-        osVersionMetadata: [{ name: '23H2', build: 22631 }]
+        osVersionMetadata: [{ name: '23H2', build: 22631 }],
+        winAccount: null
       }
     })
     expect(directorySelection).toEqual({

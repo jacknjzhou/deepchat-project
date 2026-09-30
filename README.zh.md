@@ -1,81 +1,30 @@
 <p align='center'>
-<img src='./build/icon.png' width="150" height="150" alt="DeepChat AI助手图标" />
+<img src='./build/icon.png' width="150" height="150" alt="SRIBD办公智能体图标" />
 </p>
 
-<h1 align="center">DeepChat - 开源本地优先 Agent 桌面客户端</h1>
+<h1 align="center">SRIBD办公智能体 - 企业级 AI Agent 桌面客户端</h1>
 
-<p align="center">DeepChat 是一款开源、本地优先的 Agent 桌面客户端，具有丰富的 Agent 能力，基于 Tape.systems 哲学设计，支持 MCP、Skills、ACP，并具备丰富的远程控制能力，可无缝接入各种 IM 工具。</p>
+<p align="center">SRIBD办公智能体是一款本地优先、面向企业场景的 AI Agent 桌面客户端，基于开源项目 <a href="https://github.com/ThinkInAIXYZ/deepchat">DeepChat</a>（Apache License 2.0）构建。它围绕 Tape.systems 哲学提供丰富的 Agent 能力，支持 MCP、Skills、ACP 与 IM 远程控制，并新增了文档识别归档、简历筛选、办公自动化等一系列 SRIBD 企业增强功能。</p>
 
 <p align="center">
-  <a href="https://github.com/ThinkInAIXYZ/deepchat/stargazers"><img src="https://img.shields.io/github/stars/ThinkInAIXYZ/deepchat" alt="Stars Badge"/></a>
-  <a href="https://github.com/ThinkInAIXYZ/deepchat/network/members"><img src="https://img.shields.io/github/forks/ThinkInAIXYZ/deepchat" alt="Forks Badge"/></a>
-  <a href="https://github.com/ThinkInAIXYZ/deepchat/pulls"><img src="https://img.shields.io/github/issues-pr/ThinkInAIXYZ/deepchat" alt="Pull Requests Badge"/></a>
-  <a href="https://github.com/ThinkInAIXYZ/deepchat/issues"><img src="https://img.shields.io/github/issues/ThinkInAIXYZ/deepchat" alt="Issues Badge"/></a>
-  <a href="https://github.com/ThinkInAIXYZ/deepchat/blob/main/LICENSE"><img src="https://img.shields.io/github/license/ThinkInAIXYZ/deepchat" alt="License Badge"/></a>
-  <a href="https://github.com/ThinkInAIXYZ/deepchat/releases/latest"><img src="https://img.shields.io/endpoint?url=https://api.pinstudios.net/api/badges/downloads/ThinkInAIXYZ/deepchat/total" alt="Downloads"></a>
-  <a href="https://deepwiki.com/ThinkInAIXYZ/deepchat"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
+  <a href="https://github.com/jacknjzhou/deepchat-project/stargazers"><img src="https://img.shields.io/github/stars/jacknjzhou/deepchat-project" alt="Stars Badge"/></a>
+  <a href="https://github.com/jacknjzhou/deepchat-project/network/members"><img src="https://img.shields.io/github/forks/jacknjzhou/deepchat-project" alt="Forks Badge"/></a>
+  <a href="https://github.com/jacknjzhou/deepchat-project/pulls"><img src="https://img.shields.io/github/issues-pr/jacknjzhou/deepchat-project" alt="Pull Requests Badge"/></a>
+  <a href="https://github.com/jacknjzhou/deepchat-project/issues"><img src="https://img.shields.io/github/issues/jacknjzhou/deepchat-project" alt="Issues Badge"/></a>
+  <a href="https://github.com/jacknjzhou/deepchat-project/blob/develop/LICENSE"><img src="https://img.shields.io/github/license/jacknjzhou/deepchat-project" alt="License Badge"/></a>
 </p>
-
-<div align="center">
-  <a href="https://trendshift.io/repositories/15162" target="_blank"><img src="https://trendshift.io/api/badge/repositories/15162" alt="ThinkInAIXYZ%2Fdeepchat | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
-</div>
 
 <div align="center">
   <a href="./README.zh.md">中文</a> / <a href="./README.md">English</a> / <a href="./README.jp.md">日本語</a>
 </div>
 
-## ❤️ 赞助
-
-<table>
-  <tr>
-    <td width="25%" align="center">
-      <a href="https://go.apimart.ai/gh-deepchat">
-        <img src="./assets/sponsors/apimart.png" alt="APIMart" width="240" />
-      </a>
-    </td>
-    <td width="75%">
-      感谢 APIMart 赞助了本项目！APIMart 是专注 AI 图片/视频生成的低价 API 平台，GPT-Image-2
-      低至 $0.006/张，1 美元可出图 160+ 张。图片、视频一套异步 API 通吃，提交任务拿
-      ID、回调取结果，跑批万张不超时、换模型不改代码。按量付费、无月费，通过此<a
-      href="https://go.apimart.ai/gh-deepchat">注册链接</a>注册即可开用。
-    </td>
-  </tr>
-  <tr>
-    <td width="25%" align="center">
-      <a href="https://www.openmodel.ai?ref=ZGLyq8YQ">
-        <img src="./assets/sponsors/openmodel.png" alt="OpenModel" width="240" />
-      </a>
-    </td>
-    <td width="75%">
-      感谢 OpenModel 对本项目的支持！OpenModel 为 Codex 和 Claude Code 提供高达 90%
-      的客户专属折扣，涵盖所有支持的模型，帮助开发者在不改变工作方式的前提下降低 API
-      成本。只需连接您的 OpenModel API 密钥，即可像往常一样继续使用 Codex 或 Claude
-      Code——系统会自动检测支持的客户端，并应用折扣路由，无需额外参数或手动路由。您还可以为每个
-      API 密钥配置备用方案，选择在折扣路由暂时不可用时继续按标准价格计费或停止计费。DeepChat
-      用户可以通过<a href="https://www.openmodel.ai?ref=ZGLyq8YQ">此链接</a>注册。
-    </td>
-  </tr>
-  <tr>
-    <td width="25%" align="center">
-      <a href="https://www.packyapi.ai/register?aff=0A33">
-        <img src="./assets/sponsors/packycode.png" alt="PackyCode" width="240" />
-      </a>
-    </td>
-    <td width="75%">
-      PackyCode 是一家稳定、高效的 API 中转服务商，提供 Claude Code、Codex、Gemini
-      等多种中转服务。具备自动故障转移、智能路由和无限并发等多种功能，让 AI
-      编程成为真正的生产力工具。点击<a
-      href="https://www.packyapi.ai/register?aff=0A33">此链接</a>注册，立即开始使用！
-    </td>
-  </tr>
-</table>
-
 ## 📑 目录
 
 - [📑 目录](#-目录)
 - [🚀 项目简介](#-项目简介)
-- [💡 为什么选择DeepChat](#-为什么选择deepchat)
+- [💡 为什么选择SRIBD办公智能体](#-为什么选择sribd办公智能体)
 - [🔥 主要功能](#-主要功能)
+- [🏢 SRIBD 企业增强功能](#-sribd-企业增强功能)
 - [📼 Tape 与 Trace](#-tape-与-trace)
 - [🧠 Skills 支持](#-skills-支持)
 - [🧩 ACP 集成（Agent Client Protocol）](#-acp-集成agent-client-protocol)
@@ -92,39 +41,27 @@
   - [开始开发](#开始开发)
   - [构建](#构建)
 - [👥 社区与贡献](#-社区与贡献)
-- [⭐ Star历史](#-star历史)
-- [👨‍💻 贡献者](#-贡献者)
+- [🙏🏻 致谢](#-致谢)
 - [📃 许可证](#-许可证)
 
 ## 🚀 项目简介
 
-DeepChat 是一款功能强大的开源、本地优先 Agent 桌面客户端，将模型、工具、Skills、Agent Runtime、Tape 和长会话统一在一款桌面应用中。无论是云端 API 如 OpenAI、Gemini、Anthropic，还是本地部署的 Ollama 模型，DeepChat 都能提供流畅的用户体验。
+SRIBD办公智能体是一款功能强大的本地优先 Agent 桌面客户端，将模型、工具、Skills、Agent Runtime、Tape 和长会话统一在一款桌面应用中。无论是云端 API 如 OpenAI、Gemini、Anthropic，还是本地部署的 Ollama 模型，SRIBD办公智能体都能提供流畅的用户体验。
 
-DeepChat 的会话与 Agent 过程基于 Tape.systems 的哲学设计：把过程保留下来，让上下文、工具调用、请求与结果可恢复、可追踪、可审计。它同时提供出色的 MCP 支持、可安装 Skills、ACP Agent 集成，以及可接入 Telegram、飞书/Lark、QQBot、Discord、微信 iLink 等 IM 工具的远程控制能力。
+SRIBD办公智能体的会话与 Agent 过程基于 Tape.systems 的哲学设计：把过程保留下来，让上下文、工具调用、请求与结果可恢复、可追踪、可审计。它同时提供出色的 MCP 支持、可安装 Skills、ACP Agent 集成，以及可接入 Telegram、飞书/Lark、QQBot、Discord、微信 iLink 等 IM 工具的远程控制能力。
 
-<table align="center">
-  <tr>
-    <td align="center" style="padding: 10px;">
-      <img src='https://github.com/user-attachments/assets/6e932a65-78e0-4d2e-9654-ccc010f78bf7' alt="DeepChat Light Mode" width="400"/>
-      <br/>
-    </td>
-    <td align="center" style="padding: 10px;">
-      <img src='https://github.com/user-attachments/assets/ea6ccf60-32af-4bc1-91cc-e72703bdc1ff' alt="DeepChat Dark Mode" width="400"/>
-      <br/>
-    </td>
-  </tr>
-</table>
+SRIBD办公智能体基于开源项目 DeepChat 构建——感谢上游社区打下的优秀基础。
 
-## 💡 为什么选择DeepChat
+## 💡 为什么选择SRIBD办公智能体
 
-与其他AI工具相比，DeepChat具有以下独特优势：
+与其他AI工具相比，SRIBD办公智能体具有以下独特优势：
 
-- **本地优先 Agent 桌面客户端**：在一个本地应用里运行 DeepChat Agent、ACP Agent 和可远程控制的 Bot
+- **本地优先 Agent 桌面客户端**：在一个本地应用里运行 SRIBD办公智能体 Agent、ACP Agent 和可远程控制的 Bot
 - **Tape.systems 哲学**：保留可恢复的会话历史，追踪请求上下文，并在复杂 Agent 任务中检查 token 预算
 - **可迁移的 Skills**：按会话安装、导入、导出和启用 Skills，覆盖代码审查、文档、前端、Office/PDF 等任务
 - **原生 ACP 集成**：将 ACP 兼容的编码/任务 Agent 作为一等“模型”使用
 - **出色的 MCP 支持**：支持 Resources、Prompts、Tools、多种传输协议、inMemory 服务和一键安装
-- **远程工作流**：支持通过 Telegram、飞书/Lark、QQBot、Discord 和微信 iLink 控制 DeepChat 会话
+- **远程工作流**：支持通过 Telegram、飞书/Lark、QQBot、Discord 和微信 iLink 控制 SRIBD办公智能体会话
 - **多模型统一管理**：一个应用支持主流云端 LLM 和本地 Ollama 模型，无需在多个应用间切换
 - **注重隐私保护**：本地数据存储，支持网络代理，减少信息泄露风险
 - **开源友好**：基于 Apache License 2.0 协议，适合商业和个人使用
@@ -132,20 +69,20 @@ DeepChat 的会话与 Agent 过程基于 Tape.systems 的哲学设计：把过�
 ## 🔥 主要功能
 
 - 🤖 **本地优先 Agent 桌面客户端**
-  - 从同一个类似模型选择器的入口选择 DeepChat、ACP 和远程能力 Agent
+  - 从同一个类似模型选择器的入口选择 SRIBD办公智能体、ACP 和远程能力 Agent
   - 支持项目目录、权限模式、工具输出和可恢复上下文，适合长时间运行任务
 - 📼 **Tape 与 Trace**
   - Session Tape 记录结构化工作历史，为恢复、续跑和未来 Agent 记忆流程打底
   - Trace 预览展示请求序号、供应商/模型元数据、Tape 视图清单、上下文条目和 token 预算
 - 🧠 **Skills**
   - 支持从文件夹、ZIP 文件或 URL 安装 Skills
-  - 可按会话启用 Skills，让 DeepChat 加载任务专用说明、参考资料和可选脚本
+  - 可按会话启用 Skills，让 Agent 加载任务专用说明、参考资料和可选脚本
   - 支持与 Claude Code、Codex、Cursor、Windsurf、GitHub Copilot 等兼容工具导入/导出
 - 🤝 **ACP（Agent Client Protocol）Agent 集成**
   - 将 ACP 兼容 Agent（内置或自定义命令）作为可选“模型”使用
   - Agent 提供时，支持 ACP Workspace UI 展示结构化计划、工具调用与终端输出
 - 📡 **远程控制**
-  - 支持通过 Telegram、飞书/Lark、QQBot、Discord 和微信 iLink 控制 DeepChat 会话
+  - 支持通过 Telegram、飞书/Lark、QQBot、Discord 和微信 iLink 控制 SRIBD办公智能体会话
   - 可绑定远程端点、切换模型、处理待确认交互、停止任务，并在桌面打开对应会话
 - 🌐 **多种云端LLM提供商支持**：DeepSeek、OpenAI、Moonshot/Kimi、Grok、Gemini、Anthropic等
 - 🏠 **本地模型部署支持**：
@@ -180,13 +117,41 @@ DeepChat 的会话与 Agent 过程基于 Tape.systems 的哲学设计：把过�
   - 代码结构清晰，无论是模型供应商还是 MCP 服务都高度解耦，可以随意进行增删定制，成本极低
   - 架构合理，数据交互和UI行为分离，充分利用 Electron 的能力，拒绝简单的网页套壳，性能优异
 
+## 🏢 SRIBD 企业增强功能
+
+本分支以 **SRIBD Office Agent** 名义发布，在上游 DeepChat 能力之上新增以下企业级功能：
+
+- 📄 **文档识别归档**
+  - 可视化提取模板编辑器：内置发票预设模板，支持自定义字段、提示词与试提取面板
+  - 多文件批量识别任务：并发队列、实时进度、失败任务原位重试
+  - 按文件智能路由：PDF 文本层直接提取、扫描页走视觉模型识别、OCR 兜底
+  - 字段校验与金额交叉校验，发票感知的提取提示词
+  - 归档浏览：日期筛选、分页、详情编辑、源文件分栏对照预览、CSV 导出
+  - 支持在聊天中通过内置 Agent 工具调用文档识别
+- 🧑‍💼 **简历筛选助手**
+  - 上传简历创建筛选任务；文本提取 + LLM 流水线自动产出结构化候选人画像与面试要点
+  - 任务详情分栏展示、结果分节切换，支持简历源文件内联预览
+- 🖼️ **图片提示词模板**
+  - 内置图像生成提示词模板，在聊天中通过起步卡片与弹窗面板一键套用
+- 📊 **PPT Master 技能**
+  - 内置 PPT 演示文稿生成技能
+- 🏢 **办公自动化插件与百度搜索**
+  - 内置办公自动化 MCP 插件，集成百度网页搜索
+- 🔌 **模型接入增强**
+  - 支持通过 `DEEPCHAT_PROVIDER_DB_OFFLINE` 固定离线供应商数据库
+  - 同一供应商支持多实例配置，会话中可选择扩展模型
+- 🌏 **内置技能中文化**
+  - GPT-Image-2、PDF 图文提取、网页抓取等技能提供中文界面
+- ℹ️ **Windows 系统信息展示**
+  - 关于页以只读卡片展示当前 Windows 登录用户的基本账户信息（用户名、域名、主机名、主目录、SID）。信息仅本地读取、不上传任何数据；macOS/Linux 下自动隐藏
+
 ## 📼 Tape 与 Trace
 
-DeepChat 的 session Tape 继承 Tape.systems 的哲学，让 Agent 工作可恢复、可检查。Trace 预览可以查看请求序号、供应商/模型元数据、Tape 视图清单、包含/排除的上下文条目和 token 预算，让长会话更容易调试和续跑。
+SRIBD办公智能体的 session Tape 继承 Tape.systems 的哲学，让 Agent 工作可恢复、可检查。Trace 预览可以查看请求序号、供应商/模型元数据、Tape 视图清单、包含/排除的上下文条目和 token 预算，让长会话更容易调试和续跑。
 
 ## 🧠 Skills 支持
 
-DeepChat Skills 是兼容标准 Agent Skills 规范的设计。一个 Skill 可以包含任务说明、参考资料、素材和可选脚本，让 DeepChat 在启用后更像某个领域的专门助手。
+SRIBD办公智能体 Skills 是兼容标准 Agent Skills 规范的设计。一个 Skill 可以包含任务说明、参考资料、素材和可选脚本，让 Agent 在启用后更像某个领域的专门助手。
 
 你可以从文件夹、ZIP 文件或 URL 安装 Skills，也可以与 Claude Code、Codex、Cursor、Windsurf、GitHub Copilot、Kiro、Antigravity、OpenCode、Goose、Kilo Code 等兼容工具导入/导出。
 
@@ -200,7 +165,7 @@ DeepChat Skills 是兼容标准 Agent Skills 规范的设计。一个 Skill 可�
 
 ## 🧩 ACP 集成（Agent Client Protocol）
 
-DeepChat内置对 [Agent Client Protocol（ACP）](https://agentclientprotocol.com) 的支持，让你可以把外部 Agent Runtime 以原生体验接入 DeepChat。启用后，ACP Agent 会作为一等“模型”出现在模型选择器中，你可以直接在 DeepChat 内使用编码/任务类 Agent，并配合 Workspace UI 进行交互。
+SRIBD办公智能体内置对 [Agent Client Protocol（ACP）](https://agentclientprotocol.com) 的支持，让你可以把外部 Agent Runtime 以原生体验接入。启用后，ACP Agent 会作为一等“模型”出现在模型选择器中，你可以直接在应用内使用编码/任务类 Agent，并配合 Workspace UI 进行交互。
 
 快速上手：
 
@@ -212,9 +177,9 @@ ACP 生态中更多兼容 Agent/Client 参考：https://agentclientprotocol.com/
 
 ## 📡 远程控制
 
-DeepChat 可以通过聊天软件远程控制，让你离开桌面后也能继续使用同一个会话。配置入口在 **设置 → Remote**。
+SRIBD办公智能体可以通过聊天软件远程控制，让你离开桌面后也能继续使用同一个会话。配置入口在 **设置 → Remote**。
 
-当前支持 Telegram、飞书/Lark、QQBot、Discord 和微信 iLink。远程端点可以绑定到一个 DeepChat 会话，然后在远程聊天中创建新会话、列出和切换最近会话、停止生成、在桌面打开当前会话、回答待确认问题或权限请求、切换模型并查看运行状态。
+当前支持 Telegram、飞书/Lark、QQBot、Discord 和微信 iLink。远程端点可以绑定到一个会话，然后在远程聊天中创建新会话、列出和切换最近会话、停止生成、在桌面打开当前会话、回答待确认问题或权限请求、切换模型并查看运行状态。
 
 常用命令包括 `/start`、`/help`、`/pair`、`/new`、`/sessions`、`/use`、`/stop`、`/open`、`/pending`、`/model` 和 `/status`。
 
@@ -426,7 +391,7 @@ DeepChat 可以通过聊天软件远程控制，让你离开桌面后也能继�
 
 ## 🔍 使用场景
 
-DeepChat适用于多种AI应用场景：
+SRIBD办公智能体适用于多种AI应用场景：
 
 - **日常助手**：回答问题、提供建议、辅助写作和创作
 - **开发辅助**：代码生成、调试、技术问题解答
@@ -438,31 +403,17 @@ DeepChat适用于多种AI应用场景：
 
 ### 下载安装
 
-您可以通过以下任一方式安装 DeepChat：
-
-**方式一：GitHub Releases**
-
-从[GitHub Releases](https://github.com/ThinkInAIXYZ/deepchat/releases)页面下载适合您系统的最新版本：
+从[GitHub Releases](https://github.com/jacknjzhou/deepchat-project/releases)页面下载适合您系统的最新版本：
 
 - Windows: `.exe`安装文件
 - macOS: `.dmg`安装文件
 - Linux: `.AppImage`或`.deb`安装文件
 
-**方式二：官网下载**
-
-从[官网下载页面](https://deepchatai.cn/#/download)获取安装包。
-
-**方式三：Homebrew（仅 macOS）**
-
-macOS 用户可以使用 Homebrew 安装：
-
-```bash
-brew install --cask deepchat
-```
+内部分发渠道由 SRIBD 团队维护，内部下载链接请联系维护者获取。
 
 ### 配置模型
 
-1. 启动DeepChat应用
+1. 启动SRIBD办公智能体应用
 2. 点击设置图标
 3. 选择"模型提供商"选项卡
 4. 添加您的API密钥或配置本地Ollama
@@ -520,37 +471,24 @@ $ pnpm run build:linux:arm64
 
 ## 👥 社区与贡献
 
-DeepChat是一个活跃的开源社区项目，我们欢迎各种形式的贡献：
+SRIBD办公智能体由 SRIBD 团队维护，我们欢迎各种形式的贡献：
 
-- 🐛 [报告问题](https://github.com/ThinkInAIXYZ/deepchat/issues)
-- 💡 [提交功能建议](https://github.com/ThinkInAIXYZ/deepchat/issues)
-- 🔧 [提交代码改进](https://github.com/ThinkInAIXYZ/deepchat/pulls)
-- 📚 [完善文档](https://github.com/ThinkInAIXYZ/deepchat/wiki)
-- 🌍 [帮助翻译](https://github.com/ThinkInAIXYZ/deepchat/tree/main/locales)
+- 🐛 [报告问题](https://github.com/jacknjzhou/deepchat-project/issues)
+- 💡 [提交功能建议](https://github.com/jacknjzhou/deepchat-project/issues)
+- 🔧 [提交代码改进](https://github.com/jacknjzhou/deepchat-project/pulls)
+- 🌍 [帮助翻译](./src/renderer/src/i18n)
 
 查看[贡献指南](./CONTRIBUTING.md)了解更多参与项目的方式。
 
-## ⭐ Star历史
-
-[![Star History Chart](https://star-history.dera.page/svg?repos=ThinkInAIXYZ/deepchat&type=Timeline)](https://star-history.dera.page/#ThinkInAIXYZ/deepchat&Timeline)
-
-## 👨‍💻 贡献者
-
-感谢您考虑为deepchat做出贡献！贡献指南可以在[贡献指南](./CONTRIBUTING.md)中找到。
-
-<a href="https://openomy.com/thinkinaixyz/deepchat" target="_blank" style="display: block; width: 100%;" align="center">
-  <img src="https://openomy.com/svg?repo=thinkinaixyz/deepchat&chart=bubble&latestMonth=3" target="_blank" alt="Contribution Leaderboard" style="display: block; width: 100%;" />
-</a>
-
 ## 🙏🏻 致谢
 
-本项目的构建得益于这些优秀的开源库和项目：
+本项目基于开源项目 [DeepChat](https://github.com/ThinkInAIXYZ/deepchat) 构建，并得益于这些优秀的开源库和项目：
 
 - [Vue](https://vuejs.org/)
 - [Electron](https://www.electronjs.org/)
 - [Electron-Vite](https://electron-vite.org/)
 - [oxlint](https://github.com/oxc-project/oxc)
-- [Bub](https://github.com/bubbuild/bub)，其 tape model 启发了 DeepChat 的 session tape 设计。如果你对底层 tape 架构感兴趣，推荐访问 [tape.systems](https://tape.systems/)。
+- [Bub](https://github.com/bubbuild/bub)，其 tape model 启发了 session tape 设计。如果你对底层 tape 架构感兴趣，推荐访问 [tape.systems](https://tape.systems/)。
 
 ## 📃 许可证
 

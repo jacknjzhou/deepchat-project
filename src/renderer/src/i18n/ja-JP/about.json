@@ -25,5 +25,13 @@
     "totalMemory": "総メモリ",
     "osVersion": "システムバージョン"
   },
-  "feedbackButton": "フィードバック"
+  "feedbackButton": "フィードバック",
+  "systemInfo": {
+    "title": "システム情報",
+    "username": "ユーザー名",
+    "domain": "ドメイン",
+    "hostname": "ホスト名",
+    "homeDir": "ホームディレクトリ",
+    "sid": "SID"
+  }
 }

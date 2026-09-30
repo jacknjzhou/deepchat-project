@@ -72,6 +72,36 @@
       </div>
 
       <div
+        v-if="winAccount"
+        data-testid="system-info-card"
+        class="mt-2 w-full max-w-xl rounded-xl border border-border/80 bg-card/70 p-4 shadow-sm"
+      >
+        <div class="text-sm font-medium">{{ t('about.systemInfo.title') }}</div>
+        <div class="mt-3 flex flex-col gap-1.5 text-sm">
+          <div
+            v-for="row in systemInfoRows"
+            :key="row.key"
+            class="flex items-center justify-between gap-2"
+          >
+            <span class="shrink-0 text-muted-foreground">{{ row.label }}</span>
+            <span class="flex min-w-0 items-center gap-1">
+              <span class="truncate font-mono text-xs" :title="row.value">{{ row.value }}</span>
+              <button
+                class="shrink-0 rounded p-0.5 text-muted-foreground hover:text-foreground"
+                :aria-label="row.label"
+                @click="copySystemInfo(row.key, row.copyValue)"
+              >
+                <Icon
+                  :icon="copiedKey === row.key ? 'lucide:check' : 'lucide:copy'"
+                  class="h-3 w-3"
+                />
+              </button>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div
         v-if="upgrade.shouldShowUpdateNotes"
         class="mt-2 w-full max-w-xl rounded-xl border border-border/80 bg-card/70 p-4 shadow-sm"
       >
@@ -237,6 +267,7 @@ import NodeRenderer from 'markstream-vue'
 import { useUpgradeStore } from '@/stores/upgrade'
 import { useLanguageStore } from '@/stores/language'
 import type { AcceptableValue } from 'reka-ui'
+import type { WindowsAccountInfo } from '@shared/types/device'
 import { useThemeStore } from '@/stores/theme'
 import { useRoute } from 'vue-router'
 import SettingsPageShell from './control-center/SettingsPageShell.vue'
@@ -259,6 +290,41 @@ const isDisclaimerOpen = ref(false)
 let cleanupCheckForUpdates: (() => void) | null = null
 const updateChannelSaving = ref(false)
 const updateCheckPending = ref(false)
+const winAccount = ref<WindowsAccountInfo | null>(null)
+const copiedKey = ref<string | null>(null)
+let copiedResetTimer: ReturnType<typeof setTimeout> | null = null
+
+const systemInfoRows = computed(() => {
+  if (!winAccount.value) return []
+  const account = winAccount.value
+  const entries: Array<{ key: string; value: string | null }> = [
+    { key: 'username', value: account.username },
+    { key: 'domain', value: account.domain },
+    { key: 'hostname', value: account.hostname },
+    { key: 'homeDir', value: account.homeDir },
+    { key: 'sid', value: account.sid }
+  ]
+  return entries.map(({ key, value }) => ({
+    key,
+    label: t(`about.systemInfo.${key}`),
+    value: value ?? '—',
+    copyValue: value
+  }))
+})
+
+const copySystemInfo = (key: string, copyValue: string | null) => {
+  if (!copyValue) return
+  void navigator.clipboard.writeText(copyValue).catch(() => {
+    deviceClient.copyText(copyValue)
+  })
+  copiedKey.value = key
+  if (copiedResetTimer) {
+    clearTimeout(copiedResetTimer)
+  }
+  copiedResetTimer = setTimeout(() => {
+    copiedKey.value = null
+  }, 1500)
+}
 
 const formattedUpdateVersion = computed(() => {
   const version = upgrade.updateInfo?.version ?? ''
@@ -403,6 +469,15 @@ const loadAppVersion = async () => {
   }
 }
 
+const loadWinAccount = async () => {
+  try {
+    const info = await deviceClient.getDeviceInfo()
+    winAccount.value = info.winAccount
+  } catch (error) {
+    console.error('[AboutUsSettings] Failed to load device info', error)
+  }
+}
+
 onMounted(() => {
   cleanupCheckForUpdates = windowClient.onSettingsCheckForUpdates(() => {
     void handleExternalCheckUpdate()
@@ -410,6 +485,7 @@ onMounted(() => {
   void loadAppVersion()
   void loadUpdateChannel()
   void syncUpdateStatus()
+  void loadWinAccount()
 })
 
 watch(
@@ -424,5 +500,9 @@ watch(
 onBeforeUnmount(() => {
   cleanupCheckForUpdates?.()
   cleanupCheckForUpdates = null
+  if (copiedResetTimer) {
+    clearTimeout(copiedResetTimer)
+    copiedResetTimer = null
+  }
 })
 </script>

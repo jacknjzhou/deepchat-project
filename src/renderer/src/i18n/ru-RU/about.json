@@ -25,5 +25,13 @@
     "totalMemory": "Общий объем памяти",
     "osVersion": "Версия системы"
   },
-  "feedbackButton": "Обратная связь"
+  "feedbackButton": "Обратная связь",
+  "systemInfo": {
+    "title": "Информация о системе",
+    "username": "Имя пользователя",
+    "domain": "Домен",
+    "hostname": "Имя хоста",
+    "homeDir": "Домашний каталог",
+    "sid": "SID"
+  }
 }

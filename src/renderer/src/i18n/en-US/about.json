@@ -25,5 +25,13 @@
   "mockChatCreateUnavailable": "Mock chat data is only available in development builds.",
   "updateChannel": "Update Channel",
   "stableChannel": "Stable",
-  "betaChannel": "Beta"
+  "betaChannel": "Beta",
+  "systemInfo": {
+    "title": "System Information",
+    "username": "Username",
+    "domain": "Domain",
+    "hostname": "Hostname",
+    "homeDir": "Home Directory",
+    "sid": "SID"
+  }
 }
