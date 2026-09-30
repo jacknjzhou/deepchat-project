@@ -164,7 +164,74 @@ describe('applyManagedAgentModels', () => {
       'deepchat'
     )
     expect(agent.getCurrent().visionModel).toEqual(userPick)
-    expect(store.getApplied().vision).toEqual(userPick)
+    // applied 记录的是「上一次写入的托管值」，用户值从不写入，因此仍保留原托管值。
+    expect(store.getApplied().vision).toEqual({ providerId: 'managed-a', modelId: 'v1' })
+  })
+
+  it('keeps the user value across consecutive syncs', async () => {
+    const userPick = { providerId: 'my-newapi', modelId: 'my-model' }
+    const agent = createAgentSettings({ visionModel: userPick })
+    const store = createStore({ vision: { providerId: 'managed-a', modelId: 'v1' } })
+    const lookup = createLookup({ 'managed-a': ['v2'], 'managed-b': [] })
+
+    await applyManagedAgentModels(
+      config({ agentModels: { vision: 'v2' } }),
+      agent.api as never,
+      store.api as never,
+      lookup as never,
+      'deepchat'
+    )
+    await applyManagedAgentModels(
+      config({ agentModels: { vision: 'v2' } }),
+      agent.api as never,
+      store.api as never,
+      lookup as never,
+      'deepchat'
+    )
+
+    expect(agent.getCurrent().visionModel).toEqual(userPick)
+  })
+
+  it('preserves other fields on the model object when following a new managed value', async () => {
+    const agent = createAgentSettings({
+      defaultModelPreset: { providerId: 'managed-a', modelId: 'old', temperature: 0.3 }
+    })
+    const store = createStore({ chat: { providerId: 'managed-a', modelId: 'old' } })
+    const lookup = createLookup({ 'managed-a': ['new'], 'managed-b': [] })
+    await applyManagedAgentModels(
+      config({ agentModels: { chat: 'new' } }),
+      agent.api as never,
+      store.api as never,
+      lookup as never,
+      'deepchat'
+    )
+    expect(agent.getCurrent().defaultModelPreset).toEqual({
+      providerId: 'managed-a',
+      modelId: 'new',
+      temperature: 0.3
+    })
+  })
+
+  it('keeps going when one provider fails to list its models', async () => {
+    const agent = createAgentSettings()
+    const store = createStore()
+    const lookup = {
+      listModelIds: vi.fn(async (providerId: string) => {
+        if (providerId === 'managed-a') throw new Error('boom')
+        return ['deepseek-v3']
+      })
+    }
+    const result = await applyManagedAgentModels(
+      config({ agentModels: { chat: 'deepseek-v3' } }),
+      agent.api as never,
+      store.api as never,
+      lookup as never,
+      'deepchat'
+    )
+    expect(agent.api.updateDeepChatAgent).toHaveBeenCalledWith('deepchat', {
+      defaultModelPreset: { providerId: 'managed-b', modelId: 'deepseek-v3' }
+    })
+    expect(result.warnings.some((w) => w.includes('managed-a'))).toBe(true)
   })
 
   it('does nothing when the payload has no agentModels', async () => {

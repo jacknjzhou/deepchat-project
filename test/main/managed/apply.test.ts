@@ -33,7 +33,6 @@ const createSettings = (existing: Array<Record<string, unknown>> = []) => {
   const store = [...existing]
   return {
     store,
-    getProviders: vi.fn(() => store.map((p) => ({ ...p }))),
     setProvider: vi.fn(async (id: string, patch: Record<string, unknown>) => {
       const index = store.findIndex((p) => p.id === id)
       if (index >= 0) store[index] = { ...store[index], ...patch }

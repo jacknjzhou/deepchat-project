@@ -1,7 +1,6 @@
 import type { ManagedConfigPayload } from './types'
 
 export interface ManagedProviderWriter {
-  getProviders(): Array<Record<string, unknown>>
   setProvider(id: string, patch: Record<string, unknown>): Promise<void> | void
 }
 
@@ -18,6 +17,7 @@ export async function applyManagedConfig(
       id: provider.id,
       name: provider.name,
       apiType: provider.apiType,
+      // baseProviderId 实际总有值（apiType 必须命中内置注册表）；此处仅在异常情况下退化为沿用旧值。
       ...(provider.baseProviderId ? { baseProviderId: provider.baseProviderId } : {}),
       instanceLabel: provider.instanceLabel,
       baseUrl: provider.baseUrl,

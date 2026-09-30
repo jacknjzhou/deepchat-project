@@ -2,10 +2,14 @@ import {
   AGENT_MODEL_KEYS,
   MANAGED_AGENT_MODEL_FIELDS,
   type ManagedAgentModels,
-  type ManagedConfigPayload,
-  type ManagedModelRef
+  type ManagedConfigPayload
 } from './types'
 
+/**
+ * 内置 Agent 配置读写适配层。形状与真实 `AgentSettings` 不同（真实接口是
+ * `updateDeepChatAgent(agentId, { config })` 的包装），这层适配由调用方（composition）负责，
+ * 不要直接把真实 `AgentSettings` 传进来。
+ */
 export interface ManagedAgentSettingsWriter {
   getDeepChatAgentConfig(agentId: string): Promise<Record<string, unknown> | null>
   updateDeepChatAgent(agentId: string, patch: Record<string, unknown>): Promise<unknown>
@@ -61,7 +65,14 @@ export async function applyManagedAgentModels(
   const order = orderedProviderIds(config)
   const modelIdsByProvider = new Map<string, Set<string>>()
   for (const providerId of order) {
-    modelIdsByProvider.set(providerId, new Set(await lookup.listModelIds(providerId)))
+    try {
+      modelIdsByProvider.set(providerId, new Set(await lookup.listModelIds(providerId)))
+    } catch (error) {
+      // 单个 provider 读取模型失败不应导致整体失败：视为「无模型」并继续处理其余 provider。
+      warnings.push(
+        `provider ${providerId}: failed to list models, treated as offering none: ${String(error)}`
+      )
+    }
   }
 
   const resolved: ManagedAgentModels = {
@@ -96,11 +107,12 @@ export async function applyManagedAgentModels(
     const lastApplied = applied[key]
 
     if (!currentValue || sameRef(currentValue, lastApplied)) {
-      patch[field] = target
+      // 合并写入，保留用户在同一 provider/model 上设置的其它参数（如 temperature）。
+      patch[field] = { ...(currentValue as Record<string, unknown> | null | undefined), ...target }
       applied[key] = target
-    } else {
-      applied[key] = currentValue as ManagedModelRef
     }
+    // 用户改过（currentValue 存在且与上次写入的托管值不同）：保留用户值，且不修改 applied。
+    // applied 始终记录「上一次成功写入的托管值」，否则下次同步 sameRef 会误命中而覆盖用户值。
   }
 
   if (Object.keys(patch).length > 0) {
