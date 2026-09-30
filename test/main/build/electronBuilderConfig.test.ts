@@ -5,6 +5,11 @@ import { parse } from 'yaml'
 
 interface ElectronBuilderConfig {
   asarUnpack?: string[]
+  extraResources?: Array<{
+    from?: string
+    to?: string
+    filter?: string[]
+  }>
 }
 
 interface PackageJson {
@@ -80,6 +85,16 @@ describe('electron-builder config', () => {
         '**/node_modules/@yuuang/ffi-rs-*/**/*'
       ])
     )
+  })
+
+  it('ships the provider database as an unpacked resource', async () => {
+    const config = await readElectronBuilderConfig()
+
+    expect(config.extraResources).toContainEqual({
+      from: './resources/model-db/',
+      to: 'app.asar.unpacked/resources/model-db',
+      filter: ['providers.json']
+    })
   })
 
   it('pins NativeKit to the reviewed native overlay release', async () => {
