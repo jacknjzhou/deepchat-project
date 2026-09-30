@@ -68,8 +68,8 @@ Headers:
 | `providers[].apiKey` | 是 | API Key。渲染端已有 UI 脱敏（只显示 `••••••••` + 末 4 位），无需额外处理 |
 | `providers[].enabled` | 否 | 默认 `true`；`false` 时写入但停用（用户仍不可启用） |
 | `providers[].instanceLabel` | 否 | 同类型多实例的区分标签，缺省用 `name` |
-| `defaultProviderKey` | 否 | `agentModels` 各项模型 id 的归属服务商 key；缺省用 `providers[0].key` |
-| `agentModels` | 否 | 内置 Agent 设置页「模型默认值」四项的托管默认值，**只下发模型 id 字符串**（不下发 provider、不下发推理参数）；归属 provider 由 `defaultProviderKey` 决定。**仅作默认值预填**，用户改过后不再覆盖（见 §1.4） |
+| `defaultProviderKey` | 否 | `agentModels` 匹配时的**优先级锚点**（不是强制归属，匹配不到仍会去其它托管 provider 找）；缺省用 `providers[0].key`。见 §1.4 |
+| `agentModels` | 否 | 内置 Agent 设置页「模型默认值」四项，**只下发模型 id 字符串**（不下发 provider、不下发推理参数）。归属 provider 由「哪个托管 provider 的模型列表包含该 id」匹配得出，锚点 provider 优先。**仅作默认值预填**，用户改过后不再覆盖（见 §1.4） |
 | `agentModels.chat` / `.assistant` / `.vision` / `.imageGeneration` | 否 | 各自的模型 id，如 `"deepseek-v3"`；缺省则该字段不预填 |
 | `documents` | 否 | 智能信息提取的文本/视觉模型与推理参数，**完全锁定**；为 `null`/缺省表示该企业不锁定此项 |
 | `documents.textModel` / `.visionModel` | 否 | `{ providerKey, modelId, endpointType? }`；`providerKey` 必须命中 `providers[].key`，未命中则该项按 `null` 处理 |
@@ -142,13 +142,15 @@ Agent 设置页「模型默认值」四项实际写入的是**内置 Agent（id 
 | `agentModels.vision` | `visionModel` | 视觉模型 |
 | `agentModels.imageGeneration` | `imageGenerationModel` | 图像生成模型 |
 
-因为只下发模型 id（字符串），客户端需要补出 `providerId`：
+因为只下发模型 id（字符串），归属 provider 由**模型列表匹配**得出，而不是猜：
 
-1. 归属 provider = `defaultProviderKey` 命中的托管 provider；未给或未命中则取 `providers[0]`
-2. `providers` 为空 → 整个 `agentModels` 忽略并记 warning
-3. 写入值为 `{ providerId: <归属实例的本地 id>, modelId: <下发的 id> }`
-4. **不做模型存在性校验**：启动时 provider 模型列表尚未拉取。id 若在该网关下不存在，Agent 设置页既有的失效校验会提示用户重选——这符合「预填值、用户可改」的定位（对比 `documents` 是锁定项，故那边用 `{providerKey, modelId}` 显式指定且校验 provider 存在）
-5. `new-api` 的 agent 侧模型走哪个协议（`endpointType`）由模型配置本身承载，不在 preset 里，故无需下发
+1. 启动时先对本次下发的每个托管 provider 主动拉取一次模型列表（`providerRuntime.refreshModels(providerId)`，复用既有刷新机制；逐个 best-effort，单个失败只记日志、不阻断，也不影响其它 provider）
+2. 然后按 id 在各托管 provider 的模型列表中匹配，**优先级顺序**：锚点 provider（`defaultProviderKey` 命中的，缺省 `providers[0]`）排在最前，其余按下发 `providers` 数组顺序
+3. 第一个「模型列表包含该 id」的 provider 即为命中项，写入 `{ providerId: <该托管实例的本地 id>, modelId: <下发的 id> }`
+4. **都没命中**（id 不在任何托管 provider 的模型列表中）→ 跳过该字段，保持用户当前值，记 warning 与日志（便于服务端排查 id 写错）
+5. 因此 `defaultProviderKey` 是「匹配优先级锚点」而非「强制归属」；只在下发的托管 provider 之间匹配，用户自建的 provider 不参与
+6. 匹配发生在模型列表拉取之后，所以启动时会多一次网关 `/models` 请求（离线/失败时模型列表可能为空 → 全部跳过，用户当前值不受影响）
+7. `new-api` 的 agent 侧模型走哪个协议（`endpointType`）由模型配置本身承载，不在 preset 里，故无需下发
 
 **语义（默认值跟随，用户优先）**：托管值只作默认值预填，不锁定。每次成功下发后按下述规则逐字段决定是否写入：
 
@@ -189,7 +191,7 @@ Agent 设置页「模型默认值」四项实际写入的是**内置 Agent（id 
 - `src/main/managed/client.ts` — HTTP 拉取与响应规范化
 - `src/main/managed/store.ts` — 四个 settings 键的读写封装
 - `src/main/managed/apply.ts` — 把 payload 应用到 providerSettings（多实例写入）
-- `src/main/managed/applyAgentModels.ts` — 按「默认值跟随，用户优先」规则预填内置 Agent 的模型默认值
+- `src/main/managed/applyAgentModels.ts` — 按模型列表匹配 id，并按「默认值跟随，用户优先」预填内置 Agent 的模型默认值
 - `src/main/managed/index.ts` — 编排入口 `syncManagedConfig()`
 - `src/shared/contracts/routes/managed.routes.ts` — 渲染端查询/刷新契约
 - `src/renderer/api/ManagedClient.ts` — 渲染端 client
@@ -318,7 +320,7 @@ describe('fetchManagedConfig', () => {
     })
   })
 
-  it('normalizes agentModels ids against the anchored provider', async () => {
+  it('keeps agentModels as bare model ids and records the anchor provider id', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(
       jsonResponse({
         version: 1,
@@ -336,63 +338,66 @@ describe('fetchManagedConfig', () => {
       })
     )
     const result = await fetchManagedConfig({ ...base, fetchImpl })
+    expect(result.config?.defaultProviderId).toBe('managed-corp-gw')
     expect(result.config?.agentModels).toEqual({
-      chat: { providerId: 'managed-corp-gw', modelId: 'deepseek-v3' },
-      assistant: { providerId: 'managed-corp-gw', modelId: 'gpt-4o-mini' },
-      vision: { providerId: 'managed-corp-gw', modelId: 'gpt-4o' },
-      imageGeneration: { providerId: 'managed-corp-gw', modelId: 'gpt-image-2' }
+      chat: 'deepseek-v3',
+      assistant: 'gpt-4o-mini',
+      vision: 'gpt-4o',
+      imageGeneration: 'gpt-image-2'
     })
   })
 
-  it('keeps unspecified agentModels fields null', async () => {
-    const fetchImpl = vi.fn().mockResolvedValue(
-      jsonResponse({
-        version: 1,
-        providers: [{ key: 'ok', name: 'OK', apiType: 'new-api', baseUrl: 'https://a', apiKey: 'k' }],
-        agentModels: { chat: 'm1' }
-      })
-    )
-    const result = await fetchManagedConfig({ ...base, fetchImpl })
-    expect(result.config?.agentModels).toEqual({
-      chat: { providerId: 'managed-ok', modelId: 'm1' },
-      assistant: null,
-      vision: null,
-      imageGeneration: null
+  it('omits empty agentModels entries and nulls the block when nothing is left', async () => {
+    const partial = await fetchManagedConfig({
+      ...base,
+      fetchImpl: vi.fn().mockResolvedValue(
+        jsonResponse({
+          version: 1,
+          providers: [{ key: 'ok', name: 'OK', apiType: 'new-api', baseUrl: 'https://a', apiKey: 'k' }],
+          agentModels: { chat: 'm1', assistant: '', vision: null }
+        })
+      )
     })
+    expect(partial.config?.agentModels).toEqual({ chat: 'm1' })
+
+    const empty = await fetchManagedConfig({
+      ...base,
+      fetchImpl: vi.fn().mockResolvedValue(
+        jsonResponse({
+          version: 1,
+          providers: [{ key: 'ok', name: 'OK', apiType: 'new-api', baseUrl: 'https://a', apiKey: 'k' }],
+          agentModels: { chat: '', assistant: null }
+        })
+      )
+    })
+    expect(empty.config?.agentModels).toBeNull()
   })
 
-  it('falls back to the first provider when defaultProviderKey is missing or unknown', async () => {
+  it('falls back to the first provider as the anchor when defaultProviderKey is missing or unknown', async () => {
     const body = (defaultProviderKey?: string) => ({
       version: 1,
       ...(defaultProviderKey ? { defaultProviderKey } : {}),
       providers: [
         { key: 'first', name: 'First', apiType: 'new-api', baseUrl: 'https://f', apiKey: 'k' },
         { key: 'second', name: 'Second', apiType: 'new-api', baseUrl: 'https://s', apiKey: 'k' }
-      ],
-      agentModels: { chat: 'm1' }
+      ]
     })
 
     const withoutAnchor = await fetchManagedConfig({
       ...base,
       fetchImpl: vi.fn().mockResolvedValue(jsonResponse(body()))
     })
-    expect(withoutAnchor.config?.agentModels?.chat).toEqual({
-      providerId: 'managed-first',
-      modelId: 'm1'
-    })
+    expect(withoutAnchor.config?.defaultProviderId).toBe('managed-first')
 
     const unknownAnchor = await fetchManagedConfig({
       ...base,
       fetchImpl: vi.fn().mockResolvedValue(jsonResponse(body('nope')))
     })
-    expect(unknownAnchor.config?.agentModels?.chat).toEqual({
-      providerId: 'managed-first',
-      modelId: 'm1'
-    })
+    expect(unknownAnchor.config?.defaultProviderId).toBe('managed-first')
     expect(unknownAnchor.warnings.some((w) => w.includes('defaultProviderKey not found'))).toBe(true)
   })
 
-  it('ignores agentModels when no provider survives normalization', async () => {
+  it('keeps the agentModels ids even when no provider survives normalization', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(
       jsonResponse({
         version: 1,
@@ -403,8 +408,9 @@ describe('fetchManagedConfig', () => {
       })
     )
     const result = await fetchManagedConfig({ ...base, fetchImpl })
-    expect(result.config?.agentModels).toBeNull()
-    expect(result.warnings.some((w) => w.includes('agentModels ignored'))).toBe(true)
+    expect(result.config?.providers).toEqual([])
+    expect(result.config?.agentModels).toEqual({ chat: 'm1' })
+    expect(result.config?.defaultProviderId).toBeNull()
   })
 
   it('returns absent on 404 and 204', async () => {
@@ -613,13 +619,22 @@ export const MANAGED_AGENT_MODEL_FIELDS: Record<AgentModelKey, string> = {
   imageGeneration: 'imageGenerationModel'
 }
 
-/** 内置 Agent 四项模型默认值的托管值（已解析出归属 providerId）；缺省字段为 null */
+/** 下发来的 agent 模型 id（未解析 provider，靠模型列表匹配确定归属） */
+export type ManagedAgentModelIds = Partial<Record<AgentModelKey, string>>
+
+/** 匹配落地后的 agent 模型值（已确定 providerId） */
 export type ManagedAgentModels = Record<AgentModelKey, ManagedModelRef | null>
 
 export interface ManagedConfigPayload {
   version: number
   providers: ManagedProvider[]
-  agentModels: ManagedAgentModels | null
+  /**
+   * agentModels 匹配时的优先级锚点（由下发的 defaultProviderKey 解析出的本地 provider id）；
+   * null 表示缺省用 providers[0]
+   */
+  defaultProviderId: string | null
+  /** 下发的 agent 模型 id；未命中的 id 在应用阶段被跳过（见契约 §1.4） */
+  agentModels: ManagedAgentModelIds | null
   documents: ManagedDocumentsConfig | null
 }
 
@@ -659,7 +674,7 @@ import {
   ManagedConfigPayloadSchema,
   clampManagedConcurrency,
   toLocalProviderId,
-  type ManagedAgentModels,
+  type ManagedAgentModelIds,
   type ManagedConfigPayload,
   type ManagedDocumentsConfig,
   type ManagedModelRef,
@@ -757,26 +772,21 @@ function resolveAnchorProviderId(
   return first.done ? null : first.value
 }
 
-/** 只下发模型 id：补出归属 providerId（见契约 §1.4） */
-function normalizeAgentModels(
-  raw: Record<string, unknown> | null | undefined,
-  anchorProviderId: string | null,
-  warnings: string[]
-): ManagedAgentModels | null {
+/** 只保留非空模型 id；归属 provider 由应用阶段的模型列表匹配决定（见契约 §1.4） */
+function normalizeAgentModelIds(
+  raw: Record<string, unknown> | null | undefined
+): ManagedAgentModelIds | null {
   if (!raw) return null
-  if (!anchorProviderId) {
-    warnings.push('agentModels ignored: no managed provider to anchor to')
-    return null
-  }
-  const result = {} as ManagedAgentModels
+  const result: ManagedAgentModelIds = {}
+  let hasAny = false
   for (const key of AGENT_MODEL_KEYS) {
     const modelId = raw[key]
-    result[key] =
-      typeof modelId === 'string' && modelId.length > 0
-        ? { providerId: anchorProviderId, modelId }
-        : null
+    if (typeof modelId === 'string' && modelId.length > 0) {
+      result[key] = modelId
+      hasAny = true
+    }
   }
-  return result
+  return hasAny ? result : null
 }
 
 export async function fetchManagedConfig(
@@ -844,19 +854,16 @@ export async function fetchManagedConfig(
       })
     }
 
-    const anchorProviderId = resolveAnchorProviderId(
-      parsed.data.defaultProviderKey,
-      localIdByKey,
-      warnings
-    )
-
     const config: ManagedConfigPayload = {
       version: parsed.data.version,
       providers,
-      agentModels: normalizeAgentModels(
-        (parsed.data.agentModels ?? null) as Record<string, unknown> | null,
-        anchorProviderId,
+      defaultProviderId: resolveAnchorProviderId(
+        parsed.data.defaultProviderKey,
+        localIdByKey,
         warnings
+      ),
+      agentModels: normalizeAgentModelIds(
+        (parsed.data.agentModels ?? null) as Record<string, unknown> | null
       ),
       documents: normalizeDocuments(
         (parsed.data.documents ?? null) as Record<string, unknown> | null,
@@ -1105,23 +1112,32 @@ vi.unmock('path')
 vi.unmock('node:path')
 
 import { applyManagedAgentModels } from '@/managed/applyAgentModels'
-import type { ManagedAgentModels, ManagedConfigPayload } from '@/managed/types'
+import type { ManagedConfigPayload, ManagedProvider } from '@/managed/types'
 
-const ref = (providerId: string, modelId: string) => ({ providerId, modelId })
-
-const config = (agentModels: ManagedConfigPayload['agentModels']): ManagedConfigPayload => ({
-  version: 1,
-  providers: [],
-  agentModels,
-  documents: null
+const provider = (id: string, key = id): ManagedProvider => ({
+  id,
+  key,
+  name: key,
+  apiType: 'new-api',
+  baseProviderId: 'new-api',
+  instanceLabel: key,
+  baseUrl: 'https://gw',
+  apiKey: 'sk',
+  enabled: true
 })
 
-const allFour: ManagedAgentModels = {
-  chat: ref('managed-corp-gw', 'c1'),
-  assistant: ref('managed-corp-gw', 'a1'),
-  vision: ref('managed-corp-gw', 'v1'),
-  imageGeneration: ref('managed-corp-gw', 'i1')
-}
+const config = (overrides: Partial<ManagedConfigPayload> = {}): ManagedConfigPayload => ({
+  version: 1,
+  providers: [provider('managed-a'), provider('managed-b')],
+  defaultProviderId: 'managed-a',
+  agentModels: null,
+  documents: null,
+  ...overrides
+})
+
+const createLookup = (byProvider: Record<string, string[]>) => ({
+  listModelIds: vi.fn(async (providerId: string) => byProvider[providerId] ?? [])
+})
 
 const createAgentSettings = (initial: Record<string, unknown> = {}) => {
   let current = { ...initial }
@@ -1142,7 +1158,7 @@ const createStore = (applied: Record<string, unknown> = {}) => {
   return {
     getApplied: () => stored,
     api: {
-      readAgentModelApplied: () => stored,
+      readAgentModelApplied: () => stored as never,
       writeAgentModelApplied: (next: Record<string, unknown>) => {
         stored = next
       }
@@ -1151,96 +1167,141 @@ const createStore = (applied: Record<string, unknown> = {}) => {
 }
 
 describe('applyManagedAgentModels', () => {
-  it('fills all four fields when the agent has none configured', async () => {
+  it('selects the managed provider whose model list contains the id', async () => {
     const agent = createAgentSettings()
     const store = createStore()
+    const lookup = createLookup({
+      'managed-a': ['other-model'],
+      'managed-b': ['deepseek-v3', 'gpt-4o']
+    })
     await applyManagedAgentModels(
-      config(allFour),
+      config({ agentModels: { chat: 'deepseek-v3' } }),
       agent.api as never,
       store.api as never,
+      lookup as never,
       'deepchat'
     )
     expect(agent.api.updateDeepChatAgent).toHaveBeenCalledWith('deepchat', {
-      defaultModelPreset: ref('managed-corp-gw', 'c1'),
-      assistantModel: ref('managed-corp-gw', 'a1'),
-      visionModel: ref('managed-corp-gw', 'v1'),
-      imageGenerationModel: ref('managed-corp-gw', 'i1')
+      defaultModelPreset: { providerId: 'managed-b', modelId: 'deepseek-v3' }
     })
-    expect(store.getApplied()).toEqual({
-      chat: ref('managed-corp-gw', 'c1'),
-      assistant: ref('managed-corp-gw', 'a1'),
-      vision: ref('managed-corp-gw', 'v1'),
-      imageGeneration: ref('managed-corp-gw', 'i1')
+  })
+
+  it('prefers the anchor provider when several offer the same id', async () => {
+    const agent = createAgentSettings()
+    const store = createStore()
+    const lookup = createLookup({
+      'managed-a': ['deepseek-v3'],
+      'managed-b': ['deepseek-v3']
     })
+    await applyManagedAgentModels(
+      config({ agentModels: { chat: 'deepseek-v3' } }),
+      agent.api as never,
+      store.api as never,
+      lookup as never,
+      'deepchat'
+    )
+    expect(agent.api.updateDeepChatAgent).toHaveBeenCalledWith('deepchat', {
+      defaultModelPreset: { providerId: 'managed-a', modelId: 'deepseek-v3' }
+    })
+  })
+
+  it('falls back to provider order when the anchor does not offer the id', async () => {
+    const agent = createAgentSettings()
+    const store = createStore()
+    const lookup = createLookup({ 'managed-a': ['nope'], 'managed-b': ['deepseek-v3'] })
+    await applyManagedAgentModels(
+      config({ agentModels: { chat: 'deepseek-v3' } }),
+      agent.api as never,
+      store.api as never,
+      lookup as never,
+      'deepchat'
+    )
+    expect(agent.api.updateDeepChatAgent).toHaveBeenCalledWith('deepchat', {
+      defaultModelPreset: { providerId: 'managed-b', modelId: 'deepseek-v3' }
+    })
+  })
+
+  it('skips ids no managed provider offers and keeps the user value', async () => {
+    const userPick = { providerId: 'my-newapi', modelId: 'my-model' }
+    const agent = createAgentSettings({ visionModel: userPick })
+    const store = createStore()
+    const lookup = createLookup({ 'managed-a': [], 'managed-b': [] })
+    const result = await applyManagedAgentModels(
+      config({ agentModels: { vision: 'ghost-model' } }),
+      agent.api as never,
+      store.api as never,
+      lookup as never,
+      'deepchat'
+    )
+    expect(agent.api.updateDeepChatAgent).not.toHaveBeenCalled()
+    expect(agent.getCurrent().visionModel).toEqual(userPick)
+    expect(result.warnings.some((w) => w.includes('ghost-model'))).toBe(true)
   })
 
   it('follows a new managed value when the user has not changed it', async () => {
-    const agent = createAgentSettings({ defaultModelPreset: ref('managed-corp-gw', 'old') })
-    const store = createStore({ chat: ref('managed-corp-gw', 'old') })
+    const agent = createAgentSettings({
+      defaultModelPreset: { providerId: 'managed-a', modelId: 'old' }
+    })
+    const store = createStore({ chat: { providerId: 'managed-a', modelId: 'old' } })
+    const lookup = createLookup({ 'managed-a': ['new'], 'managed-b': [] })
     await applyManagedAgentModels(
-      config({ ...allFour, chat: ref('managed-corp-gw', 'new') }),
+      config({ agentModels: { chat: 'new' } }),
       agent.api as never,
       store.api as never,
+      lookup as never,
       'deepchat'
     )
-    expect(agent.getCurrent().defaultModelPreset).toEqual(ref('managed-corp-gw', 'new'))
-    expect(store.getApplied().chat).toEqual(ref('managed-corp-gw', 'new'))
+    expect(agent.getCurrent().defaultModelPreset).toEqual({
+      providerId: 'managed-a',
+      modelId: 'new'
+    })
   })
 
   it('keeps the user value when it differs from the last applied managed value', async () => {
-    const userPick = ref('my-newapi', 'my-model')
+    const userPick = { providerId: 'my-newapi', modelId: 'my-model' }
     const agent = createAgentSettings({ visionModel: userPick })
-    const store = createStore({ vision: ref('managed-corp-gw', 'v1') })
+    const store = createStore({ vision: { providerId: 'managed-a', modelId: 'v1' } })
+    const lookup = createLookup({ 'managed-a': ['v2'], 'managed-b': [] })
     await applyManagedAgentModels(
-      config({ ...allFour, vision: ref('managed-corp-gw', 'v2') }),
+      config({ agentModels: { vision: 'v2' } }),
       agent.api as never,
       store.api as never,
+      lookup as never,
       'deepchat'
     )
     expect(agent.getCurrent().visionModel).toEqual(userPick)
-    expect(agent.api.updateDeepChatAgent).not.toHaveBeenCalled()
-  })
-
-  it('records user values so a later managed change still does not override them', async () => {
-    const userPick = ref('my-newapi', 'my-model')
-    const agent = createAgentSettings({ visionModel: userPick })
-    const store = createStore({ vision: ref('managed-corp-gw', 'v1') })
-    await applyManagedAgentModels(
-      config({ ...allFour, vision: ref('managed-corp-gw', 'v2') }),
-      agent.api as never,
-      store.api as never,
-      'deepchat'
-    )
     expect(store.getApplied().vision).toEqual(userPick)
   })
 
   it('does nothing when the payload has no agentModels', async () => {
     const agent = createAgentSettings()
     const store = createStore()
-    await applyManagedAgentModels(
-      config(null),
+    const lookup = createLookup({ 'managed-a': ['m1'] })
+    const result = await applyManagedAgentModels(
+      config({ agentModels: null }),
       agent.api as never,
       store.api as never,
+      lookup as never,
       'deepchat'
     )
     expect(agent.api.updateDeepChatAgent).not.toHaveBeenCalled()
-    expect(store.getApplied()).toEqual({})
+    expect(lookup.listModelIds).not.toHaveBeenCalled()
+    expect(result.applied).toEqual({})
   })
 
-  it('skips fields the payload leaves null', async () => {
-    const keep = ref('my-newapi', 'keep')
-    const agent = createAgentSettings({ assistantModel: keep })
+  it('does nothing when there is no managed provider to match against', async () => {
+    const agent = createAgentSettings()
     const store = createStore()
-    await applyManagedAgentModels(
-      config({ chat: ref('managed-corp-gw', 'c1'), assistant: null, vision: null, imageGeneration: null }),
+    const lookup = createLookup({})
+    const result = await applyManagedAgentModels(
+      config({ providers: [], defaultProviderId: null, agentModels: { chat: 'm1' } }),
       agent.api as never,
       store.api as never,
+      lookup as never,
       'deepchat'
     )
-    expect(agent.api.updateDeepChatAgent).toHaveBeenCalledWith('deepchat', {
-      defaultModelPreset: ref('managed-corp-gw', 'c1')
-    })
-    expect(agent.getCurrent().assistantModel).toEqual(keep)
+    expect(agent.api.updateDeepChatAgent).not.toHaveBeenCalled()
+    expect(result.warnings.length).toBeGreaterThan(0)
   })
 })
 ```
@@ -1274,6 +1335,16 @@ export interface ManagedAgentAppliedStore {
   writeAgentModelApplied(applied: Partial<ManagedAgentModels>): void
 }
 
+/** 读取某 provider 当前可用的模型 id 列表（调用方接 providerSettings.getProviderModels） */
+export interface ManagedProviderModelLookup {
+  listModelIds(providerId: string): string[] | Promise<string[]>
+}
+
+export interface ApplyManagedAgentModelsResult {
+  applied: Partial<ManagedAgentModels>
+  warnings: string[]
+}
+
 function sameRef(a: unknown, b: unknown): boolean {
   if (!a || !b) return false
   const left = a as { providerId?: unknown; modelId?: unknown }
@@ -1281,25 +1352,62 @@ function sameRef(a: unknown, b: unknown): boolean {
   return left.providerId === right.providerId && left.modelId === right.modelId
 }
 
+/** 匹配优先级：锚点 provider 最前，其余按下发顺序（见契约 §1.4） */
+function orderedProviderIds(config: ManagedConfigPayload): string[] {
+  const ids = config.providers.map((provider) => provider.id)
+  const anchor = config.defaultProviderId
+  if (!anchor || !ids.includes(anchor)) return ids
+  return [anchor, ...ids.filter((id) => id !== anchor)]
+}
+
 /**
- * 按「默认值跟随，用户优先」规则把托管模型默认值写入内置 Agent 配置（见契约 §1.4）。
- * 返回实际落地的映射，便于调用方持久化与排障。
+ * 按「模型列表匹配 + 默认值跟随、用户优先」把托管模型默认值写入内置 Agent 配置（见契约 §1.4）。
+ * 匹配不到的 id 被跳过并记入 warnings，保持用户当前值。
  */
 export async function applyManagedAgentModels(
   config: ManagedConfigPayload,
   agentSettings: ManagedAgentSettingsWriter,
   store: ManagedAgentAppliedStore,
+  lookup: ManagedProviderModelLookup,
   agentId: string
-): Promise<Partial<ManagedAgentModels>> {
-  const desired = config.agentModels
-  if (!desired) return store.readAgentModelApplied()
+): Promise<ApplyManagedAgentModelsResult> {
+  const desiredIds = config.agentModels
+  const warnings: string[] = []
+  if (!desiredIds) {
+    return { applied: store.readAgentModelApplied(), warnings }
+  }
+
+  const order = orderedProviderIds(config)
+  const modelIdsByProvider = new Map<string, Set<string>>()
+  for (const providerId of order) {
+    modelIdsByProvider.set(providerId, new Set(await lookup.listModelIds(providerId)))
+  }
+
+  const resolved: ManagedAgentModels = {
+    chat: null,
+    assistant: null,
+    vision: null,
+    imageGeneration: null
+  }
+  for (const key of AGENT_MODEL_KEYS) {
+    const modelId = desiredIds[key]
+    if (!modelId) continue
+    const providerId = order.find((id) => modelIdsByProvider.get(id)?.has(modelId))
+    if (!providerId) {
+      warnings.push(
+        `agentModels.${key}: model id not offered by any managed provider, skipped: ${modelId}`
+      )
+      continue
+    }
+    resolved[key] = { providerId, modelId }
+  }
 
   const current = (await agentSettings.getDeepChatAgentConfig(agentId)) ?? {}
   const applied: Partial<ManagedAgentModels> = { ...store.readAgentModelApplied() }
   const patch: Record<string, unknown> = {}
 
   for (const key of AGENT_MODEL_KEYS) {
-    const target = desired[key]
+    const target = resolved[key]
     if (!target) continue
 
     const field = MANAGED_AGENT_MODEL_FIELDS[key]
@@ -1320,7 +1428,7 @@ export async function applyManagedAgentModels(
     await agentSettings.updateDeepChatAgent(agentId, patch)
   }
   store.writeAgentModelApplied(applied)
-  return applied
+  return { applied, warnings }
 }
 ```
 
@@ -1379,12 +1487,8 @@ const payload: ManagedConfigPayload = {
       enabled: true
     }
   ],
-  agentModels: {
-    chat: { providerId: 'managed-corp-gw', modelId: 'deepseek-v3' },
-    assistant: null,
-    vision: null,
-    imageGeneration: null
-  },
+  defaultProviderId: 'managed-corp-gw',
+  agentModels: { chat: 'deepseek-v3' },
   documents: {
     textModel: { providerId: 'managed-corp-gw', modelId: 'deepseek-v3', endpointType: 'openai' },
     visionModel: { providerId: 'managed-corp-gw', modelId: 'gpt-4o' },
@@ -1634,16 +1738,32 @@ Run: 同 Step 2 → Expected: PASS
     return null
   })
 
-  // 内置 Agent「模型默认值」四项：默认值跟随，用户改过则不覆盖（见契约 §1.4）
+  // 内置 Agent「模型默认值」四项：先拉取托管 provider 的模型列表，再按 id 匹配预填（见契约 §1.4）
   if (managedResult?.config) {
+    const managedConfig = managedResult.config
+
+    for (const provider of managedConfig.providers) {
+      await providerRuntime.refreshModels(provider.id).catch((error) => {
+        console.warn(`[managed] model refresh failed for ${provider.id}:`, error)
+      })
+    }
+
     await applyManagedAgentModels(
-      managedResult.config,
+      managedConfig,
       agentSettings,
       managedStore,
+      {
+        listModelIds: (providerId) =>
+          providerSettings.getProviderModels(providerId).map((model) => model.id)
+      },
       BUILTIN_DEEPCHAT_AGENT_ID
-    ).catch((error) => {
-      console.warn('[managed] agent model prefill failed', error)
-    })
+    )
+      .then(({ warnings }) => {
+        for (const warning of warnings) console.warn(`[managed] ${warning}`)
+      })
+      .catch((error) => {
+        console.warn('[managed] agent model prefill failed', error)
+      })
   }
 ```
 
@@ -1674,7 +1794,7 @@ function getBuiltinIdByApiType(): Record<string, string> {
 }
 ```
 
-> 实现提示：`getDeviceInfo()` 的返回结构以 `src/main/device/index.ts` 为准（必须含 `winAccount{username,domain,hostname,sid}`，非 Windows 平台该字段可能为空——空值时 `username` 为空串，接口调用仍可发出，由服务端决定是否返回配置）。`DEFAULT_PROVIDERS` 直接从 `src/main/provider/defaults.ts` 导入（composition.ts 很可能已导入 `PROVIDER_GROUPS` 或 `DEFAULT_PROVIDERS`，先检查）。`agentSettings` 与 `BUILTIN_DEEPCHAT_AGENT_ID` 在 composition.ts 中已存在（`agentSettings` 另有约 18 处使用），直接引用即可；`applyManagedAgentModels` 的调用必须放在 `agentSettings` 初始化完成之后（与 documents 迁移同区段即可）。imports 需补 `syncManagedConfig`、`createManagedConfigStore`、`applyManagedAgentModels`、`getDeviceInfo`、`ManagedDeviceInfo`、`DEFAULT_PROVIDERS`、`BUILTIN_DEEPCHAT_AGENT_ID`。
+> 实现提示：`getDeviceInfo()` 的返回结构以 `src/main/device/index.ts` 为准（必须含 `winAccount{username,domain,hostname,sid}`，非 Windows 平台该字段可能为空——空值时 `username` 为空串，接口调用仍可发出，由服务端决定是否返回配置）。`DEFAULT_PROVIDERS` 直接从 `src/main/provider/defaults.ts` 导入（composition.ts 很可能已导入 `PROVIDER_GROUPS` 或 `DEFAULT_PROVIDERS`，先检查）。`agentSettings`、`BUILTIN_DEEPCHAT_AGENT_ID`、`providerRuntime`、`providerSettings` 在 composition.ts 中均已存在，直接引用即可；**`providerRuntime` 在 composition.ts:1097 才创建，`applyManagedAgentModels` 那段必须放在它创建之后**（与 documents 迁移同区段即可）。`providerRuntime.refreshModels(providerId)` 是既有公开方法（`src/main/provider/index.ts:1039`），内部会先做 provider DB 同步再刷新模型并发 `MODEL_LIST_CHANGED`，因此**刷新后 `providerSettings.getProviderModels(providerId)` 即可读到最新列表**。imports 需补 `syncManagedConfig`、`createManagedConfigStore`、`applyManagedAgentModels`、`getDeviceInfo`、`ManagedDeviceInfo`、`DEFAULT_PROVIDERS`、`BUILTIN_DEEPCHAT_AGENT_ID`。
 
 - [ ] **Step 6: 补 composition 边界断言 + 验证 + 提交**
 
@@ -2543,7 +2663,7 @@ Expected: 全部 PASS（预存环境失败按已知清单排除：`rendererPerfo
 2. 设 `DEEPCHAT_MANAGED_CONFIG_URL` 指向 mock 服务（本地 json-server 按上述契约返回 `defaultProviderKey` + 一条 `apiType: "new-api"` 的 provider + `agentModels` + `documents`）：启动后服务商页的 `new-api` 分组下出现企业托管实例，带「由企业统一配置」徽章，输入框禁用，无删除/复制/停用按钮
 3. 同组的**内置 `new-api` 条目**仍可正常编辑（仅托管实例被锁）
 4. 手动新增一个自己的 `new-api` 实例：可正常新增/编辑/删除，与托管实例并存
-5. **Agent 设置页「模型默认值」四项被预填**为下发的 id 配对到托管网关（首次启动、原本为空）
+5. **Agent 设置页「模型默认值」四项被预填**：mock 下发的 id 若存在于托管网关的模型列表 → 被正确选中（多个 provider 都有时选锚点 provider）；不存在的 id 不被写入，日志出现 `not offered by any managed provider` warning
 6. 在 Agent 设置页把「视觉模型」改成自有 provider 的模型 → 重启（mock 仍下发原 id）→ **该字段保持用户选择不被覆盖**，其余未改过的字段仍跟随托管值
 7. 识别模型页：整页只读、无保存按钮；任务实际使用下发的文本/视觉模型
 8. 断开 mock 服务重启：配置保留（走缓存），页面仍为锁定态
@@ -2561,8 +2681,8 @@ git commit -m "i18n: add managed provider copy"
 
 ## 自检记录
 
-**Spec 覆盖**：服务商配置统一管理（Task 1-4、6、7）✓；按登录用户名自动获取（Task 1、3）✓；**多个服务商与供应商类型**（Task 1 `providers[]` + `apiType`/`baseProviderId`）✓；**同一服务商多个配置实例**（Task 1.3 多实例写入 + Task 2 applier + Task 7 分组内只锁单条）✓；自动配置后不可修改（Task 4 主进程写保护 + Task 7 UI 锁定）✓；用户可自定义添加其它服务商（Task 4 仅拦托管 id + Task 7 并存）✓；**new-api 多协议聚合的 endpointType**（Task 1 schema/规范化 + Task 5 透传 + Task 9 冒烟 10）✓；智能信息提取模型与参数完全锁定（Task 5 托管优先 + Task 8 只读页）✓；**Agent 四项模型「只下发 id」的默认值预填**（Task 1 schema/锚点解析 + Task 2 applyAgentModels + Task 3 接线 + Task 9 冒烟 5/6）✓；离线可用（Task 3 缓存回退 + 重新应用）✓。
+**Spec 覆盖**：服务商配置统一管理（Task 1-4、6、7）✓；按登录用户名自动获取（Task 1、3）✓；**多个服务商与供应商类型**（Task 1 `providers[]` + `apiType`/`baseProviderId`）✓；**同一服务商多个配置实例**（Task 1.3 多实例写入 + Task 2 applier + Task 7 分组内只锁单条）✓；自动配置后不可修改（Task 4 主进程写保护 + Task 7 UI 锁定）✓；用户可自定义添加其它服务商（Task 4 仅拦托管 id + Task 7 并存）✓；**new-api 多协议聚合的 endpointType**（Task 1 schema/规范化 + Task 5 透传 + Task 9 冒烟 10）✓；智能信息提取模型与参数完全锁定（Task 5 托管优先 + Task 8 只读页）✓；**Agent 四项模型「只下发 id + 按模型列表匹配选中」**（Task 1 id 规范化/锚点 + Task 2 applyAgentModels 匹配 + Task 3 先刷新模型再匹配 + Task 9 冒烟 5/6）✓；离线可用（Task 3 缓存回退 + 重新应用；模型列表拉取失败时跳过预填而非报错）✓。
 
-**未纳入（YAGNI，明确不做）**：定时轮询刷新（已选「每次启动拉取」）；下发模型清单（客户端实时拉取）；Agent 四项模型的 provider 归属与推理参数下发（按需求只给 id）；Agent 设置页对托管默认值的锁定或来源徽章（该处保持用户可自由修改）；接管内置 `new-api` 条目（改为多实例并存）；服务端下发 provider 级 `supportedEndpointTypes`/`selectableEndpointTypes`（按 provider 类型由客户端既有逻辑推导）；托管 provider 的 OAuth 流程。apiKey 在渲染端已有 UI 脱敏（`ProviderApiConfig.vue:322-325`），无需改造。
+**未纳入（YAGNI，明确不做）**：定时轮询刷新（已选「每次启动拉取」）；下发模型清单（客户端实时拉取）；Agent 四项模型的 provider 归属与推理参数下发（按需求只给 id，归属靠匹配）；把用户自建 provider 纳入 agentModels 匹配范围；Agent 设置页对托管默认值的锁定或来源徽章（该处保持用户可自由修改）；接管内置 `new-api` 条目（改为多实例并存）；服务端下发 provider 级 `supportedEndpointTypes`/`selectableEndpointTypes`；托管 provider 的 OAuth 流程。apiKey 在渲染端已有 UI 脱敏（`ProviderApiConfig.vue:322-325`），无需改造。
 
-**类型一致性**：`ManagedConfigPayload` / `ManagedProvider` / `ManagedModelRef` / `ManagedAgentModels` / `AgentModelKey` / `ManagedDocumentsConfig` / `SyncStatus` / `SyncResult` 在 Task 1 定义，Task 2/3/5/6 引用一致；`AGENT_MODEL_KEYS` 与 `MANAGED_AGENT_MODEL_FIELDS`（`chat→defaultModelPreset` 等映射）在 Task 1 定义，被 Task 1 的 `normalizeAgentModels` 与 Task 2 的 `applyManagedAgentModels` 一致使用；`ManagedProvider.baseProviderId`/`instanceLabel` 在 Task 1 规范化、Task 2 写入、Task 7 概念上消费；`ManagedModelRef.endpointType`（可选）在 Task 1 定义并被 Task 1 规范化、Task 5 透传、Task 8 兼容；`ManagedConfigStore` 方法名 `readConfig/writeConfig/readMeta/writeMeta/readProviderIds/writeProviderIds/readAgentModelApplied/writeAgentModelApplied` 在 Task 2 定义并被 Task 3/6 一致使用；`applyManagedConfig(config, writer)` 与 `applyManagedAgentModels(config, agentSettings, store, agentId)` 签名在 Task 2 定义、Task 3 调用一致；`assertProviderWritable(providerId, action, readManagedProviderIds)` 在 Task 4 定义并调用一致；`resolveDocumentsModelSettings(userSettings, managed)` 在 Task 5 定义并调用一致；`getKnownProviderTypes()` / `getBuiltinIdByApiType()` 在 Task 3 定义并传给 `syncManagedConfig`，与 Task 1 的 `FetchManagedConfigOptions` 字段名一致。
+**类型一致性**：`ManagedConfigPayload` / `ManagedProvider` / `ManagedModelRef` / `ManagedAgentModelIds`（下发的 id 映射）/ `ManagedAgentModels`（匹配落地值）/ `AgentModelKey` / `ManagedDocumentsConfig` / `SyncStatus` / `SyncResult` 在 Task 1 定义，Task 2/3/5/6 引用一致；`AGENT_MODEL_KEYS` 与 `MANAGED_AGENT_MODEL_FIELDS`（`chat→defaultModelPreset` 等映射）在 Task 1 定义，被 Task 1 的 `normalizeAgentModelIds` 与 Task 2 的 `applyManagedAgentModels` 一致使用；`ManagedConfigPayload.defaultProviderId`（由下发 `defaultProviderKey` 解析）在 Task 1 产出、Task 2 `orderedProviderIds` 消费；`ManagedProviderModelLookup.listModelIds` 在 Task 2 定义、Task 3 用 `providerSettings.getProviderModels` 实现；`ApplyManagedAgentModelsResult` 在 Task 2 定义、Task 3 消费 `warnings`；`ManagedConfigStore` 方法名 `readConfig/writeConfig/readMeta/writeMeta/readProviderIds/writeProviderIds/readAgentModelApplied/writeAgentModelApplied` 在 Task 2 定义并被 Task 3/6 一致使用；`applyManagedConfig(config, writer)` 与 `applyManagedAgentModels(config, agentSettings, store, lookup, agentId)` 签名在 Task 2 定义、Task 3 调用一致；`assertProviderWritable(providerId, action, readManagedProviderIds)` 在 Task 4 定义并调用一致；`resolveDocumentsModelSettings(userSettings, managed)` 在 Task 5 定义并调用一致；`getKnownProviderTypes()` / `getBuiltinIdByApiType()` 在 Task 3 定义并传给 `syncManagedConfig`，与 Task 1 的 `FetchManagedConfigOptions` 字段名一致。
