@@ -30,8 +30,9 @@
 | `documents.maxTokens` | `number \| null` | null | 留空=沿用现有内置默认 |
 | `documents.settingsMigrated` | `boolean` | - | 一次性迁移标记，不暴露到 UI |
 
-配套 zod schema 追加到 `src/shared/contracts/domainSchemas.ts`（`{providerId, modelId}` 复用
-现有模型引用结构）。**不新增 typed IPC route**：读写复用现有 settings get/set 通道。
+配套模型引用结构 `{providerId, modelId}` 以 `modelSettings.ts` 内部 zod schema 校验
+（方案A无 typed IPC route，不新增 domainSchemas 键）。**不新增 typed IPC route**：读写复用
+现有 settings get/set 通道。
 
 ## 3. 主进程设计
 
