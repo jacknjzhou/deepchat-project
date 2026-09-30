@@ -4,7 +4,10 @@ import type { LLM_PROVIDER, MODEL_META, ModelConfig } from '@shared/types/provid
 import { TOOL_EXECUTION, type MCPToolDefinition } from '@shared/types/mcp'
 import type { ChatMessage } from '@shared/types/core/chat-message'
 import type { LLMResponse } from '@shared/types/provider'
-import { BaseLLMProvider } from '../../../src/main/provider/baseProvider'
+import {
+  BaseLLMProvider,
+  type ProviderGenerateTextOptions
+} from '../../../src/main/provider/baseProvider'
 
 class TestProvider extends BaseLLMProvider {
   constructor(
@@ -52,7 +55,7 @@ class TestProvider extends BaseLLMProvider {
     _modelId: string,
     _temperature?: number,
     _maxTokens?: number,
-    _tools?: MCPToolDefinition[]
+    _options?: ProviderGenerateTextOptions
   ): Promise<LLMResponse> {
     return { content: 'ok' }
   }

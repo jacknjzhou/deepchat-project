@@ -4,7 +4,10 @@ import {
   resolveDocumentsModelSettings
 } from '@/documents/modelSettings'
 import { DocumentExtractor } from '@/documents/extractor/documentExtractor'
-import type { DocumentExtractorDeps } from '@/documents/extractor/documentExtractor'
+import type {
+  CompletionRequest,
+  DocumentExtractorDeps
+} from '@/documents/extractor/documentExtractor'
 import type { DocumentsSettingsStore } from '@/documents/modelSettings'
 import type { ManagedConfigPayload } from '@/managed/types'
 import type { DocumentTemplate } from '@shared/documents'
@@ -99,19 +102,15 @@ const managedWithEndpointType: ManagedConfigPayload = {
 
 describe('documents endpointType 端到端透传', () => {
   it('把托管下发的显式 endpointType 一路带到 provider 调用参数', async () => {
-    const requests: Array<{ providerId: string; modelId: string; endpointType?: string }> = []
+    const requests: CompletionRequest[] = []
     const store = makeStore({})
 
     await runExtraction(store, managedWithEndpointType, async (input) => {
-      requests.push({
-        providerId: input.providerId,
-        modelId: input.modelId,
-        endpointType: input.endpointType
-      })
+      requests.push(input)
       return '{"fields": {"invoice_code": "123456789012"}, "uncertain_fields": []}'
     })
 
-    expect(requests[0]).toEqual({
+    expect(requests[0]).toMatchObject({
       providerId: 'managed-corp-gw',
       modelId: 'claude-x',
       endpointType: 'anthropic'
@@ -119,24 +118,20 @@ describe('documents endpointType 端到端透传', () => {
   })
 
   it('未指定 endpointType 时 provider 调用参数不含该字段（回归保护）', async () => {
-    const requests: Array<{ providerId: string; modelId: string; endpointType?: string }> = []
+    const requests: CompletionRequest[] = []
     const store = makeStore({
       'documents.textModel': { providerId: 'openai', modelId: 'gpt-4o-mini' }
     })
 
     await runExtraction(store, null, async (input) => {
-      requests.push({
-        providerId: input.providerId,
-        modelId: input.modelId,
-        endpointType: input.endpointType
-      })
+      requests.push(input)
       return '{"fields": {"invoice_code": "123456789012"}, "uncertain_fields": []}'
     })
 
-    expect(requests[0]).toEqual({
+    expect(requests[0]).toMatchObject({
       providerId: 'openai',
-      modelId: 'gpt-4o-mini',
-      endpointType: undefined
+      modelId: 'gpt-4o-mini'
     })
+    expect(requests[0]).not.toHaveProperty('endpointType')
   })
 })

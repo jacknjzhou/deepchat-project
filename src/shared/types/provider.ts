@@ -381,7 +381,12 @@ export interface ProviderRuntimePort {
     modelId: string,
     temperature?: number,
     maxTokens?: number,
-    options?: { signal?: AbortSignal; swallowErrors?: boolean }
+    options?: {
+      signal?: AbortSignal
+      swallowErrors?: boolean
+      /** new-api 等聚合网关的显式协议端点；缺省时由 provider 按模型推断 */
+      endpointType?: NewApiEndpointType
+    }
   ): Promise<string>
 
   transcribeAudioStandalone(
