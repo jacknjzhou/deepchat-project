@@ -1600,6 +1600,7 @@ function createRuntime() {
     providerImportService: new ProviderImportService(providerSettings as any),
     oauthService,
     scheduler: createNodeScheduler(),
+    readManagedProviderIds: () => [],
     recordSettingsActivity: (input) => sqlitePresenter.recordSettingsActivity(input)
   })
   const toolRoutes = createToolRoutes(toolService)

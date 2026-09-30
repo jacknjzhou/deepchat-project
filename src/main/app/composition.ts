@@ -2875,12 +2875,17 @@ export async function createMainProcessControl(dependencies: {
       providerSettings,
       providerRuntime,
       acpProviderAdminPort,
-      providerImportService: new ProviderImportService({
-        getProviders: () => providerSettings.getProviders(),
-        getDefaultProviders: () => providerSettings.getDefaultProviders(),
-        addCustomModel: (providerId, model) => providerSettings.addCustomModel(providerId, model),
-        updateProvidersBatch: (batchUpdate) => providerRuntime.updateProvidersBatch(batchUpdate)
-      }),
+      providerImportService: new ProviderImportService(
+        {
+          getProviders: () => providerSettings.getProviders(),
+          getDefaultProviders: () => providerSettings.getDefaultProviders(),
+          addCustomModel: (providerId, model) => providerSettings.addCustomModel(providerId, model),
+          updateProvidersBatch: (batchUpdate) => providerRuntime.updateProvidersBatch(batchUpdate)
+        },
+        {
+          readManagedProviderIds: () => managedStore.readProviderIds()
+        }
+      ),
       oauthService,
       scheduler: providerQueryScheduler,
       recordSettingsActivity: (input) => settingsDatabase.recordSettingsActivity(input),
@@ -3361,6 +3366,7 @@ export async function createMainProcessControl(dependencies: {
       providerSettings,
       providerRuntime,
       scheduler: providerQueryScheduler,
+      readManagedProviderIds: () => managedStore.readProviderIds(),
       recordSettingsActivity: (input) => {
         void settingsDatabase.recordSettingsActivity(input).catch((error) => {
           console.warn('[SettingsActivity] Failed to record CLI provider activity:', error)

@@ -76,7 +76,7 @@ import type { ProviderImportService } from './providerImportService'
 import { ProviderService, type ProviderQueryScheduler } from './providerService'
 import type { ProviderRuntime } from '.'
 import { CliRequestError } from '@/cli/errors'
-import { assertProviderWritable } from './managedGuard'
+import { assertManagedOrderPreserved, assertProviderWritable } from './managedGuard'
 
 export function createProviderRoutes(deps: {
   providerSettings: ProviderSettingsPort
@@ -86,8 +86,8 @@ export function createProviderRoutes(deps: {
   oauthService: OAuthServicePort
   scheduler: ProviderQueryScheduler
   recordSettingsActivity(input: SettingsActivityInput): Promise<unknown>
-  /** 托管 provider id 的权威读取入口；缺省表示无托管约束 */
-  readManagedProviderIds?: () => string[]
+  /** 托管 provider id 的权威读取入口（必需，避免漏注入导致写保护静默失效） */
+  readManagedProviderIds: () => string[]
 }): DeepchatRouteMap {
   const {
     providerSettings,
@@ -95,9 +95,9 @@ export function createProviderRoutes(deps: {
     acpProviderAdminPort,
     providerImportService,
     oauthService,
-    scheduler
+    scheduler,
+    readManagedProviderIds
   } = deps
-  const readManagedProviderIds = deps.readManagedProviderIds ?? (() => [])
   const providerService = new ProviderService({
     providerCatalogPort: {
       getProviderModels: (providerId) => providerSettings.getProviderModels(providerId) ?? [],
@@ -252,7 +252,7 @@ export function createProviderRoutes(deps: {
       providersSetByIdRoute.name,
       async (rawInput) => {
         const input = providersSetByIdRoute.input.parse(rawInput)
-        assertProviderWritable(input.providerId, 'update', readManagedProviderIds)
+        assertProviderWritable(input.providerId, readManagedProviderIds)
         providerRuntime.setProviderById(input.providerId, input.provider)
         return providersSetByIdRoute.output.parse({
           provider: providerSettings.getProviderById(input.providerId) ?? input.provider
@@ -263,7 +263,7 @@ export function createProviderRoutes(deps: {
       providersUpdateRoute.name,
       async (rawInput) => {
         const input = providersUpdateRoute.input.parse(rawInput)
-        assertProviderWritable(input.providerId, 'update', readManagedProviderIds)
+        assertProviderWritable(input.providerId, readManagedProviderIds)
         const requiresRebuild = providerRuntime.updateProviderAtomic(
           input.providerId,
           input.updates
@@ -294,7 +294,7 @@ export function createProviderRoutes(deps: {
       providersAddRoute.name,
       async (rawInput) => {
         const input = providersAddRoute.input.parse(rawInput)
-        assertProviderWritable(input.provider.id, 'update', readManagedProviderIds)
+        assertProviderWritable(input.provider.id, readManagedProviderIds)
         providerRuntime.addProviderAtomic(input.provider)
         const result = providersAddRoute.output.parse({
           provider: providerSettings.getProviderById(input.provider.id) ?? input.provider
@@ -335,7 +335,7 @@ export function createProviderRoutes(deps: {
       providersRemoveRoute.name,
       async (rawInput, context) => {
         const input = providersRemoveRoute.input.parse(rawInput)
-        assertProviderWritable(input.providerId, 'remove', readManagedProviderIds)
+        assertProviderWritable(input.providerId, readManagedProviderIds)
         if (context.caller.kind === 'cli') {
           const provider = providerSettings.getProviderById(input.providerId)
           if (!provider) {
@@ -366,9 +366,11 @@ export function createProviderRoutes(deps: {
       providersReorderRoute.name,
       async (rawInput) => {
         const input = providersReorderRoute.input.parse(rawInput)
-        for (const provider of input.providers) {
-          assertProviderWritable(provider.id, 'reorder', readManagedProviderIds)
-        }
+        assertManagedOrderPreserved(
+          input.providers.map((provider) => provider.id),
+          providerSettings.getProviders().map((provider) => provider.id),
+          readManagedProviderIds
+        )
         providerRuntime.reorderProvidersAtomic(input.providers)
         return providersReorderRoute.output.parse({ providers: providerSettings.getProviders() })
       }
@@ -739,6 +741,7 @@ export function createProviderRoutes(deps: {
       oauthGithubCopilotStartLoginRoute.name,
       async (rawInput) => {
         const input = oauthGithubCopilotStartLoginRoute.input.parse(rawInput)
+        assertProviderWritable(input.providerId, readManagedProviderIds)
         return oauthGithubCopilotStartLoginRoute.output.parse({
           success: await oauthService.startGitHubCopilotLogin(input.providerId)
         })
@@ -748,6 +751,7 @@ export function createProviderRoutes(deps: {
       oauthGithubCopilotStartDeviceFlowLoginRoute.name,
       async (rawInput) => {
         const input = oauthGithubCopilotStartDeviceFlowLoginRoute.input.parse(rawInput)
+        assertProviderWritable(input.providerId, readManagedProviderIds)
         return oauthGithubCopilotStartDeviceFlowLoginRoute.output.parse({
           success: await oauthService.startGitHubCopilotDeviceFlowLogin(input.providerId)
         })
