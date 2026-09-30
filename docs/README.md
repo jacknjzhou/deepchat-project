@@ -7,6 +7,7 @@
 
 | 文档 | 用途 |
 | --- | --- |
+| [CODE_STRUCTURE.md](./CODE_STRUCTURE.md) | 全仓库代码结构与各模块逻辑梳理（新人通读入口） |
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | main 进程模块、所有权、生命周期和依赖方向 |
 | [FLOWS.md](./FLOWS.md) | 启动、Session、Agent、Tool、Remote、Scheduler、Sync 和退出流程 |
 | [architecture/agent-system.md](./architecture/agent-system.md) | DeepChat / ACP backend、Run、权限和 Subagent 合同 |
