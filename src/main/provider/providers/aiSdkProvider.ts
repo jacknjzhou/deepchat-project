@@ -104,6 +104,8 @@ type RouteDecision = {
 
 type RouteDecisionOptions = {
   deepSeekResponsesRoute?: DeepSeekResponsesRoute
+  /** 调用方（如 documents 托管配置）显式指定的协议端点，优先于按模型推断 */
+  endpointType?: NewApiEndpointType
 }
 
 type ProviderRequestOptions = {
@@ -447,11 +449,15 @@ export class AiSdkProvider extends BaseLLMProvider {
 
     if (strategy === 'new-api' || strategy === 'apimart') {
       const isApimart = strategy === 'apimart'
+      const explicitEndpointType = isNewApiEndpointType(options?.endpointType)
+        ? options.endpointType
+        : undefined
       const endpointType =
-        isApimartResponsesRoute(this.provider.id, modelId) ||
+        explicitEndpointType ??
+        (isApimartResponsesRoute(this.provider.id, modelId) ||
         isApimartResponsesRoute(this.provider.apiType, modelId)
           ? 'openai-response'
-          : this.resolveNewApiEndpointType(modelId, providerRouteConfig, storedModel)
+          : this.resolveNewApiEndpointType(modelId, providerRouteConfig, storedModel))
       const capabilityIdentity = this.resolveCapabilityIdentity(
         modelId,
         endpointType,
@@ -2577,9 +2583,10 @@ export class AiSdkProvider extends BaseLLMProvider {
     messages: ChatMessage[],
     modelId: string,
     temperature?: number,
-    maxTokens?: number
+    maxTokens?: number,
+    options?: ProviderGenerateTextOptions
   ): Promise<LLMResponse> {
-    const decision = this.resolveRouteDecision(modelId)
+    const decision = this.resolveRouteDecision(modelId, undefined, options)
     if (decision.endpointType === 'grok-image' || decision.endpointType === 'image-generation') {
       return this.collectStreamResponseWithDecision(
         messages,

@@ -621,11 +621,11 @@ export class GithubCopilotProvider extends BaseLLMProvider {
     modelId: string,
     temperature?: number,
     _maxTokens?: number,
-    callerSignal?: AbortSignal
+    options?: ProviderGenerateTextOptions
   ): Promise<LLMResponse> {
     if (!modelId) throw new Error('Model ID is required')
     const modelConfig = this.providerSettings.getModelConfig(modelId, this.provider.id)
-    const { signal, dispose } = this.createModelRequestSignal(modelConfig, callerSignal)
+    const { signal, dispose } = this.createModelRequestSignal(modelConfig, options?.signal)
     try {
       const token = await this.getCopilotToken(signal)
       const formattedMessages = this.formatMessages(messages)
@@ -748,7 +748,7 @@ export class GithubCopilotProvider extends BaseLLMProvider {
       modelId,
       temperature,
       maxTokens,
-      options?.signal
+      options
     )
   }
 

@@ -6,8 +6,9 @@ import { AiSdkProvider } from '../../../src/main/provider/providers/aiSdkProvide
 import { resolveAiSdkProviderDefinition } from '../../../src/main/provider/providerRegistry'
 import { modelCapabilities } from '../../../src/main/provider/modelCapabilities'
 
-const { mockRunAiSdkCoreStream } = vi.hoisted(() => ({
-  mockRunAiSdkCoreStream: vi.fn()
+const { mockRunAiSdkCoreStream, mockRunAiSdkGenerateText } = vi.hoisted(() => ({
+  mockRunAiSdkCoreStream: vi.fn(),
+  mockRunAiSdkGenerateText: vi.fn()
 }))
 
 vi.mock('@shared/logger', () => ({
@@ -42,7 +43,7 @@ vi.mock('../../../src/main/provider/aiSdk', () => ({
   runAiSdkCoreStream: mockRunAiSdkCoreStream,
   runAiSdkDimensions: vi.fn(),
   runAiSdkEmbeddings: vi.fn(),
-  runAiSdkGenerateText: vi.fn()
+  runAiSdkGenerateText: mockRunAiSdkGenerateText
 }))
 
 const createProvider = (overrides?: Partial<LLM_PROVIDER>): LLM_PROVIDER => ({
@@ -106,6 +107,7 @@ describe('NewApiProvider capability routing', () => {
         yield { type: 'image_data', image_data: { data: 'generated-image', mimeType: 'image/png' } }
       }
     })
+    mockRunAiSdkGenerateText.mockResolvedValue({ content: 'ok' })
   })
 
   afterEach(() => {
@@ -1091,5 +1093,39 @@ describe('NewApiProvider capability routing', () => {
     const modelConfig = mockRunAiSdkCoreStream.mock.calls.at(-1)?.[3]
     expect(modelConfig.apiEndpoint).toBe(ApiEndpointType.Image)
     expect(providerSettings.getModelConfig).toHaveBeenCalledOnce()
+  })
+
+  it('prefers an explicit completions endpointType over model-id inference', async () => {
+    const providerSettings = createProviderSettings({
+      'claude-x': {
+        endpointType: 'openai'
+      }
+    })
+    const provider = new AiSdkProvider(createProvider(), providerSettings)
+    ;(provider as any).isInitialized = true
+
+    await provider.completions([{ role: 'user', content: 'extract' }], 'claude-x', 0.2, 64, {
+      endpointType: 'anthropic'
+    })
+
+    const context = mockRunAiSdkGenerateText.mock.calls.at(-1)?.[0]
+    expect(context.providerKind).toBe('anthropic')
+    expect(context.provider.apiType).toBe('anthropic')
+  })
+
+  it('keeps model-id inference when no endpointType is supplied', async () => {
+    const providerSettings = createProviderSettings({
+      'claude-x': {
+        endpointType: 'openai'
+      }
+    })
+    const provider = new AiSdkProvider(createProvider(), providerSettings)
+    ;(provider as any).isInitialized = true
+
+    await provider.completions([{ role: 'user', content: 'extract' }], 'claude-x', 0.2, 64)
+
+    const context = mockRunAiSdkGenerateText.mock.calls.at(-1)?.[0]
+    expect(context.providerKind).toBe('openai-compatible')
+    expect(context.provider.apiType).toBe('openai-completions')
   })
 })

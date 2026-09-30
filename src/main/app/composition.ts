@@ -3000,7 +3000,14 @@ export async function createMainProcessControl(dependencies: {
     migrateDocumentsModelSettings(providerSettings)
     documentExtractor = new DocumentExtractor({
       repository: documentsRepository,
-      generateCompletion: ({ providerId, modelId, messages, temperature, maxTokens }) => {
+      generateCompletion: ({
+        providerId,
+        modelId,
+        messages,
+        temperature,
+        maxTokens,
+        endpointType
+      }) => {
         // 实时读取托管配置：temperature/maxTokens 需在每次调用时取最新值
         const generation = resolveDocumentsModelSettings(
           readDocumentsModelSettings(providerSettings),
@@ -3012,7 +3019,7 @@ export async function createMainProcessControl(dependencies: {
           modelId,
           generation.temperature ?? temperature,
           generation.maxTokens ?? maxTokens,
-          { swallowErrors: false }
+          { swallowErrors: false, ...(endpointType ? { endpointType } : {}) }
         )
       },
       resolveVisionTarget: async () => {

@@ -1,5 +1,6 @@
 import type { ProviderSettingsPort } from '@/provider/settings'
 import type { LLMResponse, ProviderStreamOptions } from '@shared/types/provider'
+import type { NewApiEndpointType } from '@shared/model'
 import type { LLMCoreStreamEvent } from '@shared/types/core/llm-events'
 import type { ChatMessage } from '@shared/types/core/chat-message'
 import type { MCPToolDefinition } from '@shared/types/mcp'
@@ -26,6 +27,8 @@ export function isAudioTranscriptionNotSupportedError(error: unknown): boolean {
 
 export interface ProviderGenerateTextOptions {
   signal?: AbortSignal
+  /** new-api 等聚合网关的显式协议端点；缺省时由 provider 按模型推断 */
+  endpointType?: NewApiEndpointType
 }
 
 /**
@@ -691,7 +694,8 @@ ${this.convertToolsToXml(tools)}
     messages: ChatMessage[],
     modelId: string,
     temperature?: number,
-    maxTokens?: number
+    maxTokens?: number,
+    options?: ProviderGenerateTextOptions
   ): Promise<LLMResponse>
 
   /**

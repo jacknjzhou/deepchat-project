@@ -21,7 +21,7 @@ import type {
   ProviderStreamOptions
 } from '@shared/types/provider'
 import type { AcpConfigState, AcpDebugRequest, AcpDebugRunResult } from '@shared/types/acp'
-import { ApiEndpointType, ModelType } from '@shared/model'
+import { ApiEndpointType, ModelType, type NewApiEndpointType } from '@shared/model'
 import {
   normalizeImageGenerationOptions,
   type ImageGenerationOptions
@@ -494,7 +494,12 @@ export class ProviderRuntime
     modelId: string,
     temperature?: number,
     maxTokens?: number,
-    options?: { signal?: AbortSignal; swallowErrors?: boolean }
+    options?: {
+      signal?: AbortSignal
+      swallowErrors?: boolean
+      /** 调用方显式指定的 new-api 协议端点，优先于按模型推断 */
+      endpointType?: NewApiEndpointType
+    }
   ): Promise<string> {
     const provider = this.getProviderInstance(providerId)
     let response = ''
@@ -505,7 +510,13 @@ export class ProviderRuntime
       throw createAbortError()
     }
 
-    const completionPromise = provider.completions(messages, modelId, temperature, maxTokens)
+    const completionPromise = provider.completions(
+      messages,
+      modelId,
+      temperature,
+      maxTokens,
+      options?.endpointType ? { endpointType: options.endpointType } : undefined
+    )
     const abort = createAbortPromise(signal)
 
     try {

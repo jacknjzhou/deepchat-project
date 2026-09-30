@@ -315,7 +315,7 @@ export class AcpProvider extends BaseLLMProvider {
     modelId: string,
     temperature: number = 0.6,
     maxTokens: number = 4096,
-    signal?: AbortSignal
+    options?: ProviderGenerateTextOptions
   ): Promise<LLMResponse> {
     const modelConfig = this.providerSettings.getModelConfig(modelId, this.provider.id)
     const { content, reasoning } = await this.collectFromStream(
@@ -324,7 +324,7 @@ export class AcpProvider extends BaseLLMProvider {
       modelConfig,
       temperature,
       maxTokens,
-      signal
+      options?.signal
     )
 
     return {
@@ -354,7 +354,7 @@ export class AcpProvider extends BaseLLMProvider {
       modelId,
       temperature,
       maxTokens,
-      options?.signal
+      options
     )
   }
 
