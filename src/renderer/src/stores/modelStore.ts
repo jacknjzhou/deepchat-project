@@ -376,9 +376,40 @@ export const useModelStore = defineStore('model', () => {
     })
   }
 
+  const normalizeModelConfigLookupKey = (modelId: string) =>
+    (modelId ? modelId.toLowerCase() : modelId).replace(/^models\//, '')
+
+  const buildModelConfigLookup = (
+    configs: Array<{ modelId: string; config: ModelConfig }>
+  ): Map<string, ModelConfig> => {
+    const map = new Map<string, ModelConfig>()
+    for (const { modelId, config } of configs) {
+      map.set(modelId, config)
+      const normalizedKey = normalizeModelConfigLookupKey(modelId)
+      if (!map.has(normalizedKey)) {
+        map.set(normalizedKey, config)
+      }
+    }
+    return map
+  }
+
+  // 一次批量读取该 provider 的全部用户模型配置，避免逐模型 IPC（冷启动 N+1）。
+  const fetchProviderModelConfigLookup = async (
+    providerId: string
+  ): Promise<Map<string, ModelConfig> | null> => {
+    try {
+      const configs = await modelConfigStore.getProviderModelConfigs(providerId)
+      return buildModelConfigLookup(configs ?? [])
+    } catch (error) {
+      console.error(`批量读取模型配置失败: ${providerId}`, error)
+      return null
+    }
+  }
+
   const applyUserDefinedModelConfig = async (
     model: RENDERER_MODEL_META,
-    providerId: string
+    providerId: string,
+    configLookup?: Map<string, ModelConfig> | null
   ): Promise<RENDERER_MODEL_META> => {
     const normalized: RENDERER_MODEL_META = {
       ...model,
@@ -390,7 +421,10 @@ export const useModelStore = defineStore('model', () => {
     }
 
     try {
-      const config: ModelConfig | null = await modelConfigStore.getModelConfig(model.id, providerId)
+      const config: ModelConfig | null =
+        configLookup?.get(model.id) ??
+        configLookup?.get(normalizeModelConfigLookupKey(model.id)) ??
+        (await modelConfigStore.getModelConfig(model.id, providerId))
       if (config?.isUserDefined) {
         const resolvedMaxTokens =
           config.maxTokens ?? config.maxCompletionTokens ?? normalized.maxTokens
@@ -613,6 +647,7 @@ export const useModelStore = defineStore('model', () => {
 
       const modelIds = customModelsList.map((model) => model.id)
       const modelStatusMap = await modelClient.getBatchModelStatus(providerId, modelIds)
+      const configLookup = await fetchProviderModelConfigLookup(providerId)
 
       const customModelsWithStatus = await Promise.all(
         customModelsList.map(async (model) => {
@@ -621,7 +656,7 @@ export const useModelStore = defineStore('model', () => {
             enabled: modelStatusMap[model.id] ?? true,
             isCustom: true
           }
-          return applyUserDefinedModelConfig(base, providerId)
+          return applyUserDefinedModelConfig(base, providerId, configLookup)
         })
       )
 
@@ -787,6 +822,7 @@ export const useModelStore = defineStore('model', () => {
       const modelIds = models.map((model) => model.id)
       const modelStatusMap = await modelClient.getBatchModelStatus(providerId, modelIds)
 
+      const configLookup = await fetchProviderModelConfigLookup(providerId)
       const modelsWithStatus = await Promise.all(
         models.map(async (model) => {
           const base: RENDERER_MODEL_META = {
@@ -794,7 +830,7 @@ export const useModelStore = defineStore('model', () => {
             enabled: modelStatusMap[model.id] ?? true,
             isCustom: model.isCustom || false
           }
-          return applyUserDefinedModelConfig(base, providerId)
+          return applyUserDefinedModelConfig(base, providerId, configLookup)
         })
       )
 
