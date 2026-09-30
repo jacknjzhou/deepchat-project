@@ -20,6 +20,7 @@ import traceDialog from './traceDialog.json'
 import tapeInspector from './tapeInspector.json'
 import plan from './plan.json'
 import resumeScreening from './resumeScreening.json'
+import documents from './documents.json'
 
 // Chiavi top-level separate
 const others = {
@@ -59,5 +60,6 @@ export default {
   tapeInspector,
   plan,
   resumeScreening,
+  documents,
   ...others
 }

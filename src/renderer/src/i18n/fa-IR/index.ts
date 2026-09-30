@@ -20,6 +20,7 @@ import traceDialog from './traceDialog.json'
 import tapeInspector from './tapeInspector.json'
 import plan from './plan.json'
 import resumeScreening from './resumeScreening.json'
+import documents from './documents.json'
 
 const others = {
   Silicon: 'SiliconFlow',
@@ -57,5 +58,6 @@ export default {
   tapeInspector,
   plan,
   resumeScreening,
+  documents,
   ...others
 }

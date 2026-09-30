@@ -352,6 +352,34 @@
       "fileRequired": "未能获取样张文件路径，请重新选择"
     }
   },
+  "documentsModels": {
+    "title": "单据识别模型",
+    "description": "为单据档案的识别任务单独指定模型，未配置时识别功能不可用。",
+    "models": {
+      "title": "模型设置"
+    },
+    "textModel": "文本抽取模型",
+    "visionModel": "视觉模型（扫描件/图片）",
+    "notSet": "未设置",
+    "invalid": {
+      "providerMissing": "所选模型服务商已被删除，请重新选择",
+      "providerDisabled": "所选模型服务商已被停用，请启用后再试",
+      "modelMissing": "所选模型不存在或已被移除，请重新选择"
+    },
+    "concurrency": {
+      "title": "识别并发",
+      "hint": "仅影响任务级并发（1–10）"
+    },
+    "advanced": {
+      "title": "推理参数",
+      "temperature": "温度",
+      "maxTokens": "最大生成 Token 数",
+      "defaultPlaceholder": "默认"
+    },
+    "save": "保存",
+    "saved": "已保存",
+    "saveError": "保存失败"
+  },
   "leaveGuard": {
     "dirtyTitle": "修改尚未保存",
     "dirtyDescription": "现在离开并放弃这些修改吗？",
