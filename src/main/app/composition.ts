@@ -198,6 +198,7 @@ import {
   DocumentsModelConfigError,
   migrateDocumentsModelSettings,
   readDocumentsModelSettings,
+  resolveDocumentsModelSettings,
   validateDocumentsModelRef
 } from '@/documents/modelSettings'
 import { DocumentsRepository } from '@/documents/repository'
@@ -2988,7 +2989,11 @@ export async function createMainProcessControl(dependencies: {
     documentExtractor = new DocumentExtractor({
       repository: documentsRepository,
       generateCompletion: ({ providerId, modelId, messages, temperature, maxTokens }) => {
-        const generation = readDocumentsModelSettings(providerSettings)
+        // 实时读取托管配置：temperature/maxTokens 需在每次调用时取最新值
+        const generation = resolveDocumentsModelSettings(
+          readDocumentsModelSettings(providerSettings),
+          managedStore.readConfig()
+        )
         return providerRuntime.generateCompletionStandalone(
           providerId,
           messages,
@@ -2999,7 +3004,10 @@ export async function createMainProcessControl(dependencies: {
         )
       },
       resolveVisionTarget: async () => {
-        const ref = readDocumentsModelSettings(providerSettings).visionModel
+        const ref = resolveDocumentsModelSettings(
+          readDocumentsModelSettings(providerSettings),
+          managedStore.readConfig()
+        ).visionModel
         if (!ref) return null
         const reason = validateDocumentsModelRef(
           ref,
@@ -3013,7 +3021,10 @@ export async function createMainProcessControl(dependencies: {
         return ref
       },
       resolveTextTarget: async () => {
-        const ref = readDocumentsModelSettings(providerSettings).textModel
+        const ref = resolveDocumentsModelSettings(
+          readDocumentsModelSettings(providerSettings),
+          managedStore.readConfig()
+        ).textModel
         if (!ref) return null
         const reason = validateDocumentsModelRef(
           ref,
@@ -3067,7 +3078,10 @@ export async function createMainProcessControl(dependencies: {
     const recognitionTaskManager = new RecognitionTaskManager({
       repository: documentsRepository,
       extractor: documentExtractor,
-      concurrency: readDocumentsModelSettings(providerSettings).concurrency,
+      concurrency: resolveDocumentsModelSettings(
+        readDocumentsModelSettings(providerSettings),
+        managedStore.readConfig()
+      ).concurrency,
       publishTaskUpdated: ({ task, doneCount, totalCount }) =>
         publishDeepchatEvent('documents.task.updated', {
           ...task,

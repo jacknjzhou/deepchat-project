@@ -1,8 +1,12 @@
 import { z } from 'zod'
+import { isNewApiEndpointType, type NewApiEndpointType } from '@shared/model'
+import type { ManagedConfigPayload } from '../managed/types'
 
 export interface DocumentsModelRef {
   providerId: string
   modelId: string
+  /** new-api 等聚合网关的协议端点；托管模型引用可能携带，缺省由客户端推断 */
+  endpointType?: NewApiEndpointType
 }
 
 export interface DocumentsSettingsStore {
@@ -21,7 +25,11 @@ export const DOCUMENTS_SETTINGS_KEYS = {
 
 export const DEFAULT_DOCUMENTS_CONCURRENCY = 4
 
-const modelRefSchema = z.object({ providerId: z.string().min(1), modelId: z.string().min(1) })
+const modelRefSchema = z.object({
+  providerId: z.string().min(1),
+  modelId: z.string().min(1),
+  endpointType: z.string().optional()
+})
 
 export interface DocumentsModelSettings {
   textModel: DocumentsModelRef | null
@@ -38,7 +46,9 @@ const clampConcurrency = (value: number): number =>
 
 const sanitizeRef = (value: unknown): DocumentsModelRef | null => {
   const parsed = modelRefSchema.safeParse(value)
-  return parsed.success ? parsed.data : null
+  if (!parsed.success) return null
+  const { endpointType, ...rest } = parsed.data
+  return isNewApiEndpointType(endpointType) ? { ...rest, endpointType } : rest
 }
 
 export function readDocumentsModelSettings(store: DocumentsSettingsStore): DocumentsModelSettings {
@@ -99,5 +109,30 @@ export class DocumentsModelConfigError extends Error {
     this.name = 'DocumentsModelConfigError'
     this.reason = reason
     this.ref = ref
+  }
+}
+
+/**
+ * 计算 documents 生效设置：documents 段存在即视为企业锁定该功能。
+ *
+ * - 模型引用与并发：托管值优先，字段为 null 时回退到用户值（并发不可为 null）。
+ * - temperature / maxTokens：以托管值为准，null 表示不传参、走服务商默认。
+ *
+ * documents 段为 null 表示企业未锁定，完全沿用用户设置。
+ */
+export function resolveDocumentsModelSettings<T extends DocumentsModelSettings>(
+  userSettings: T,
+  managed: ManagedConfigPayload | null
+): T {
+  const managedDocuments = managed?.documents
+  if (!managedDocuments) return userSettings
+
+  return {
+    ...userSettings,
+    textModel: managedDocuments.textModel ?? userSettings.textModel,
+    visionModel: managedDocuments.visionModel ?? userSettings.visionModel,
+    concurrency: managedDocuments.concurrency ?? userSettings.concurrency,
+    temperature: managedDocuments.temperature,
+    maxTokens: managedDocuments.maxTokens
   }
 }
