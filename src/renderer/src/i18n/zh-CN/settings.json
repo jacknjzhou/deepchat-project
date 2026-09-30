@@ -1958,6 +1958,11 @@
       "invalidBaseUrl": "请输入不含账号或查询参数的 HTTP(S) 地址"
     }
   },
+  "managed": {
+    "providerBadge": "由企业统一配置",
+    "providerHint": "该服务商由企业统一配置，不可在本机修改。",
+    "documentsBadge": "识别模型由企业统一配置，不可修改。"
+  },
   "mcp": {
     "title": "MCP设置",
     "description": "管理和配置MCP（模型控制协议）服务器和工具",

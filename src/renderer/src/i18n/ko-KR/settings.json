@@ -1387,6 +1387,11 @@
       "invalidBaseUrl": "자격 증명이나 쿼리 매개변수가 없는 HTTP 또는 HTTPS 주소를 입력하세요"
     }
   },
+  "managed": {
+    "providerBadge": "Managed by your organization",
+    "providerHint": "This provider is configured by your organization and cannot be changed on this device.",
+    "documentsBadge": "Extraction models are configured by your organization and cannot be changed."
+  },
   "mcp": {
     "title": "MCP 설정",
     "description": "MCP(Model Context Protocol) 서버 및 도구 관리 및 구성",

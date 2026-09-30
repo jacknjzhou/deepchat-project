@@ -1320,6 +1320,11 @@
     "selectLanguage": "Vælg forudindstilling",
     "separatorsPreset": "Indlæser forudindstillinger"
   },
+  "managed": {
+    "providerBadge": "Managed by your organization",
+    "providerHint": "This provider is configured by your organization and cannot be changed on this device.",
+    "documentsBadge": "Extraction models are configured by your organization and cannot be changed."
+  },
   "mcp": {
     "title": "MCP-indstillinger",
     "description": "Administrér og konfigurer MCP-servere (Model Context Protocol) og værktøjer",

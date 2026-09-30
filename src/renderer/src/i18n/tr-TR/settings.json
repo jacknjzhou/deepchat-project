@@ -1958,6 +1958,11 @@
       "invalidBaseUrl": "Kimlik bilgileri veya sorgu parametreleri içermeyen bir HTTP ya da HTTPS adresi girin"
     }
   },
+  "managed": {
+    "providerBadge": "Managed by your organization",
+    "providerHint": "This provider is configured by your organization and cannot be changed on this device.",
+    "documentsBadge": "Extraction models are configured by your organization and cannot be changed."
+  },
   "mcp": {
     "title": "MCP Ayarlar",
     "description": "MCP (Model Bağlam Protokolü) sunucularını ve araçlarını yönetin ve yapılandırın",

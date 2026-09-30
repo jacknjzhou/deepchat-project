@@ -1958,6 +1958,11 @@
     "selectLanguage": "Chọn một cài đặt trước",
     "separatorsPreset": "Đang tải cài đặt trước"
   },
+  "managed": {
+    "providerBadge": "Managed by your organization",
+    "providerHint": "This provider is configured by your organization and cannot be changed on this device.",
+    "documentsBadge": "Extraction models are configured by your organization and cannot be changed."
+  },
   "mcp": {
     "title": "Cài đặt MCP",
     "description": "Quản lý và định cấu hình máy chủ và công cụ MCP (Giao thức bối cảnh mô hình)",

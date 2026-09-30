@@ -1387,6 +1387,11 @@
       "invalidBaseUrl": "Insira um endereço HTTP ou HTTPS sem credenciais ou parâmetros de consulta"
     }
   },
+  "managed": {
+    "providerBadge": "Managed by your organization",
+    "providerHint": "This provider is configured by your organization and cannot be changed on this device.",
+    "documentsBadge": "Extraction models are configured by your organization and cannot be changed."
+  },
   "mcp": {
     "title": "Configurações MCP",
     "description": "Gerenciar e configurar servidores e ferramentas MCP (Model Context Protocol)",

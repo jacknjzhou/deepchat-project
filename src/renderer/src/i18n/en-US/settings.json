@@ -1958,6 +1958,11 @@
     "selectLanguage": "Select a preset",
     "separatorsPreset": "Loading presets"
   },
+  "managed": {
+    "providerBadge": "Managed by your organization",
+    "providerHint": "This provider is configured by your organization and cannot be changed on this device.",
+    "documentsBadge": "Extraction models are configured by your organization and cannot be changed."
+  },
   "mcp": {
     "title": "MCP Settings",
     "description": "Manage and configure MCP (Model Context Protocol) servers and tools",
