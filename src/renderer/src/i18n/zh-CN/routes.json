@@ -13,6 +13,7 @@
   "settings-shortcut": "快捷键",
   "settings-display": "显示设置",
   "settings-documents": "单据识别",
+  "settings-documents-models": "单据识别模型",
   "settings-documents-template": "模板编辑器",
   "documents": "单据档案",
   "settings-knowledge-base": "知识库",

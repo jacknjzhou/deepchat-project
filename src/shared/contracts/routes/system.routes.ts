@@ -25,7 +25,8 @@ export const SettingsRouteNameSchema = z.enum([
   'settings-about',
   'settings-debug',
   'settings-documents',
-  'settings-documents-template'
+  'settings-documents-template',
+  'settings-documents-models'
 ])
 
 export const systemOpenSettingsRoute = defineRouteContract({

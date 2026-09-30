@@ -11,6 +11,7 @@
   "settings-shortcut": "Atalhos",
   "settings-display": "Exibição",
   "settings-documents": "Reconhecimento de documentos",
+  "settings-documents-models": "Document Models",
   "settings-documents-template": "Editor de modelo",
   "documents": "Arquivo de documentos",
   "settings-knowledge-base": "Base de Conhecimento",
