@@ -31,7 +31,10 @@ export interface DocumentsModelSettings {
   maxTokens: number | null
 }
 
-const clampConcurrency = (value: number): number => Math.min(10, Math.max(1, Math.round(value)))
+const clampConcurrency = (value: number): number =>
+  Number.isFinite(value)
+    ? Math.min(10, Math.max(1, Math.round(value)))
+    : DEFAULT_DOCUMENTS_CONCURRENCY
 
 const sanitizeRef = (value: unknown): DocumentsModelRef | null => {
   const parsed = modelRefSchema.safeParse(value)
@@ -85,4 +88,16 @@ export function validateDocumentsModelRef(
   if (!getProviderModels(ref.providerId).some((model) => model.id === ref.modelId))
     return 'modelMissing'
   return null
+}
+
+export class DocumentsModelConfigError extends Error {
+  readonly reason: DocumentsConfigInvalidReason
+  readonly ref: DocumentsModelRef
+  constructor(reason: DocumentsConfigInvalidReason, ref: DocumentsModelRef) {
+    // 稳定前缀码，渲染端 documentsTaskErrors.ts 按此映射本地化文案
+    super(`[documents.${reason}:${ref.providerId}|${ref.modelId}] documents model config invalid`)
+    this.name = 'DocumentsModelConfigError'
+    this.reason = reason
+    this.ref = ref
+  }
 }

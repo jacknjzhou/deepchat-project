@@ -451,11 +451,13 @@ export class DocumentExtractor {
 
   private requireTarget(
     target: { providerId: string; modelId: string } | null,
-    settingName: string
+    // Retained as an internal call-site identifier; the user-facing message
+    // now carries the stable prefix code mapped by the renderer.
+    _settingName: string
   ): { providerId: string; modelId: string } {
     if (!target) {
       throw new ModelNotConfiguredError(
-        `No model available for extraction: configure "${settingName}" in provider settings first`
+        `[documents.modelRequired] No documents extraction model configured. Open Settings -> Agent -> Document Models.`
       )
     }
     return target

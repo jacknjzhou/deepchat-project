@@ -60,6 +60,11 @@ describe('readDocumentsModelSettings', () => {
     const store = createStore({ [DOCUMENTS_SETTINGS_KEYS.textModel]: { providerId: '' } })
     expect(readDocumentsModelSettings(store).textModel).toBeNull()
   })
+
+  it('clamps concurrency below the lower bound to 1', () => {
+    const store = createStore({ [DOCUMENTS_SETTINGS_KEYS.concurrency]: 0 })
+    expect(readDocumentsModelSettings(store).concurrency).toBe(1)
+  })
 })
 
 describe('migrateDocumentsModelSettings', () => {
@@ -93,6 +98,17 @@ describe('migrateDocumentsModelSettings', () => {
     const store = createStore()
     migrateDocumentsModelSettings(store)
     expect(store.data[DOCUMENTS_SETTINGS_KEYS.migrated]).toBe(true)
+  })
+
+  it('is idempotent across consecutive runs', () => {
+    const store = createStore({
+      defaultModel: { providerId: 'g1', modelId: 'gm1' },
+      defaultVisionModel: { providerId: 'g1', modelId: 'gm2' }
+    })
+    migrateDocumentsModelSettings(store)
+    const snapshot = { ...store.data }
+    migrateDocumentsModelSettings(store)
+    expect(store.data).toEqual(snapshot)
   })
 })
 

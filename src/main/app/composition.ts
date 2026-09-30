@@ -117,7 +117,6 @@ import { createKnowledgeRoutes } from '../knowledge/routes'
 import { KnowledgeSettings } from '@/knowledge/settings'
 import { PromptSettings } from '@/agent/promptSettings'
 import { AgentSettings } from '@/agent/settings'
-import { BUILTIN_DEEPCHAT_AGENT_ID } from '@/agent/repository'
 import { AgentLifecycleGate } from '@/agent/lifecycleGate'
 import { SessionDeletionGate } from '@/session/deletionGate'
 import { emitAcpAgentModelsChanged, emitAgentCatalogChanged } from '@/app/agentEvents'
@@ -189,7 +188,12 @@ import { SettingsDatabase } from '@/settings/data/database'
 import { SchedulerDatabase } from '@/scheduler/data/database'
 import { DocumentsDatabase } from '@/documents/data/database'
 import { DocumentExtractor } from '@/documents/extractor/documentExtractor'
-import { pickVisionTarget } from '@/documents/extractor/visionTarget'
+import {
+  DocumentsModelConfigError,
+  migrateDocumentsModelSettings,
+  readDocumentsModelSettings,
+  validateDocumentsModelRef
+} from '@/documents/modelSettings'
 import { DocumentsRepository } from '@/documents/repository'
 import { createDocumentsRoutes } from '@/documents/routes'
 import { RecognitionTaskManager } from '@/documents/taskManager'
@@ -2879,67 +2883,41 @@ export async function createMainProcessControl(dependencies: {
     const schedulerRoutes = createSchedulerRoutes(cronJobs)
     const documentsMaxFileSize = () =>
       dependencies.settingsStore.get<number>('maxFileSize') ?? 30 * 1024 * 1024
+    migrateDocumentsModelSettings(providerSettings)
     documentExtractor = new DocumentExtractor({
       repository: documentsRepository,
-      generateCompletion: ({ providerId, modelId, messages, temperature, maxTokens }) =>
-        providerRuntime.generateCompletionStandalone(
+      generateCompletion: ({ providerId, modelId, messages, temperature, maxTokens }) => {
+        const generation = readDocumentsModelSettings(providerSettings)
+        return providerRuntime.generateCompletionStandalone(
           providerId,
           messages,
           modelId,
-          temperature,
-          maxTokens,
+          generation.temperature ?? temperature,
+          generation.maxTokens ?? maxTokens,
           { swallowErrors: false }
-        ),
+        )
+      },
       resolveVisionTarget: async () => {
-        const selection = providerSettings.getSetting<{ providerId: string; modelId: string }>(
-          'defaultVisionModel'
+        const ref = readDocumentsModelSettings(providerSettings).visionModel
+        if (!ref) return null
+        const reason = validateDocumentsModelRef(
+          ref,
+          providerSettings.getProviders().map((p) => ({ id: p.id, enable: p.enable })),
+          (providerId) => providerSettings.getProviderModels(providerId) ?? []
         )
-        const agentConfig = await agentSettings.getDeepChatAgentConfig(BUILTIN_DEEPCHAT_AGENT_ID)
-        const visionModel = agentConfig?.visionModel
-        const textSelection = providerSettings.getSetting<{ providerId: string; modelId: string }>(
-          'defaultModel'
-        )
-        const mainModel = agentConfig?.defaultModelPreset
-        const textTarget =
-          textSelection?.providerId && textSelection?.modelId
-            ? { providerId: textSelection.providerId, modelId: textSelection.modelId }
-            : mainModel?.providerId && mainModel?.modelId
-              ? { providerId: mainModel.providerId, modelId: mainModel.modelId }
-              : null
-        return pickVisionTarget({
-          explicitVision:
-            selection?.providerId && selection?.modelId
-              ? { providerId: selection.providerId, modelId: selection.modelId }
-              : null,
-          agentVision:
-            visionModel?.providerId && visionModel?.modelId
-              ? { providerId: visionModel.providerId, modelId: visionModel.modelId }
-              : null,
-          textTarget,
-          isVisionCapable: async ({ providerId, modelId }) => {
-            try {
-              const model = providerSettings
-                .getProviderModels(providerId)
-                .find((m) => m.id === modelId)
-              return model?.vision === true
-            } catch {
-              return false
-            }
-          }
-        })
+        if (reason) throw new DocumentsModelConfigError(reason, ref)
+        return ref
       },
       resolveTextTarget: async () => {
-        const selection = providerSettings.getSetting<{ providerId: string; modelId: string }>(
-          'defaultModel'
+        const ref = readDocumentsModelSettings(providerSettings).textModel
+        if (!ref) return null
+        const reason = validateDocumentsModelRef(
+          ref,
+          providerSettings.getProviders().map((p) => ({ id: p.id, enable: p.enable })),
+          (providerId) => providerSettings.getProviderModels(providerId) ?? []
         )
-        if (selection?.providerId && selection?.modelId) {
-          return selection
-        }
-        const agentConfig = await agentSettings.getDeepChatAgentConfig(BUILTIN_DEEPCHAT_AGENT_ID)
-        const mainModel = agentConfig?.defaultModelPreset
-        return mainModel?.providerId && mainModel?.modelId
-          ? { providerId: mainModel.providerId, modelId: mainModel.modelId }
-          : null
+        if (reason) throw new DocumentsModelConfigError(reason, ref)
+        return ref
       },
       readImageAsDataUrl: async (filePath) => {
         const adapter = new ImageFileAdapter(filePath, documentsMaxFileSize())
@@ -2982,6 +2960,7 @@ export async function createMainProcessControl(dependencies: {
     const recognitionTaskManager = new RecognitionTaskManager({
       repository: documentsRepository,
       extractor: documentExtractor,
+      concurrency: readDocumentsModelSettings(providerSettings).concurrency,
       publishTaskUpdated: ({ task, doneCount, totalCount }) =>
         publishDeepchatEvent('documents.task.updated', {
           ...task,
