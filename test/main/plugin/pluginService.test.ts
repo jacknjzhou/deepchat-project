@@ -2050,7 +2050,7 @@ describe('PluginService', () => {
     const source = await readFile('plugins/feishu/mcp/serve.mjs', 'utf8')
 
     expect(source).not.toContain('@modelcontextprotocol/sdk')
-    expect(source).toContain('Content-Length:')
+    expect(source).toContain('process.stdout.write(`${JSON.stringify(message)}\\n`)')
     expect(source).toContain('@larksuiteoapi/lark-mcp@0.5.1')
     expect(source).toContain('REGISTRY_OVERRIDE')
     expect(source).not.toContain('registry.npmmirror.com')

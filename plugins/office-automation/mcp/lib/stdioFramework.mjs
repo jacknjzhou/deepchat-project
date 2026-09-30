@@ -1,11 +1,12 @@
-// 零依赖 MCP stdio 通信框架（对齐 plugins/feishu/mcp/serve.mjs 的分帧模式）
+// 零依赖 MCP stdio 通信框架
+// MCP stdio 传输规范：消息为换行分隔的 JSON（一行一条，不得内嵌换行），
+// 与 @modelcontextprotocol/client 的 StdioClientTransport 对齐。
 // 由 reimbursementServer.mjs / workflowServer.mjs 共享使用
 import { readFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 
 export function sendFrame(message) {
-  const body = JSON.stringify(message)
-  process.stdout.write(`Content-Length: ${Buffer.byteLength(body, 'utf8')}\r\n\r\n${body}`)
+  process.stdout.write(`${JSON.stringify(message)}\n`)
 }
 
 export function sendResult(id, result) {
@@ -93,29 +94,19 @@ export function runStdioServer({ serverInfo, tools, callTool, instructions }) {
   process.stdin.on('data', (chunk) => {
     buffer = Buffer.concat([buffer, chunk])
     while (true) {
-      const headerEnd = buffer.indexOf('\r\n\r\n')
-      if (headerEnd < 0) {
+      const newlineIndex = buffer.indexOf('\n')
+      if (newlineIndex < 0) {
         return
       }
 
-      const header = buffer.slice(0, headerEnd).toString('utf8')
-      const match = header.match(/content-length\s*:\s*(\d+)/i)
-      if (!match) {
-        buffer = Buffer.alloc(0)
-        return
+      const line = buffer.slice(0, newlineIndex).toString('utf8').trim()
+      buffer = buffer.slice(newlineIndex + 1)
+      if (!line) {
+        continue
       }
-
-      const bodyLength = Number(match[1])
-      const frameEnd = headerEnd + 4 + bodyLength
-      if (buffer.length < frameEnd) {
-        return
-      }
-
-      const body = buffer.slice(headerEnd + 4, frameEnd).toString('utf8')
-      buffer = buffer.slice(frameEnd)
 
       try {
-        const message = JSON.parse(body)
+        const message = JSON.parse(line)
         if (Array.isArray(message)) {
           for (const item of message) {
             handleMessage(item)
