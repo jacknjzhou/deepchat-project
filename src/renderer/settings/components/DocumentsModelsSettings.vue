@@ -1,12 +1,10 @@
 <template>
   <div data-testid="documents-models-page" class="flex flex-col gap-4 p-6 text-sm">
-    <div
-      v-if="locked"
-      class="flex items-start gap-2 rounded-md border border-blue-500/40 bg-blue-500/10 px-3 py-2 text-sm"
-      data-testid="documents-models-managed-badge"
-    >
-      <span>{{ t('settings.managed.documentsBadge') }}</span>
-    </div>
+    <ProviderManagedBadge
+      :managed="locked"
+      label-key="settings.managed.documentsBadge"
+      test-id="documents-models-managed-badge"
+    />
 
     <div>
       <h2 class="text-base font-semibold">{{ t('settings.documentsModels.title') }}</h2>
@@ -193,6 +191,7 @@ import { DcButton } from '@dc-ui/components/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@shadcn/components/ui/popover'
 import { Input } from '@shadcn/components/ui/input'
 import ModelSelect from '@/components/ModelSelect.vue'
+import ProviderManagedBadge from './ProviderManagedBadge.vue'
 import { useProviderStore } from '@/stores/providerStore'
 import { useModelStore } from '@/stores/modelStore'
 import { useManagedStore } from '@/stores/managedStore'
@@ -209,7 +208,7 @@ const providerStore = useProviderStore()
 const modelStore = useModelStore()
 const managedStore = useManagedStore()
 
-const locked = computed(() => managedStore.documentsLocked)
+const locked = computed(() => managedStore.loading || managedStore.documentsLocked)
 
 const draftTextModel = ref<ModelRef | null>(null)
 const draftVisionModel = ref<ModelRef | null>(null)
@@ -260,6 +259,7 @@ const textModelLabel = computed(() => modelLabel(draftTextModel.value))
 const visionModelLabel = computed(() => modelLabel(draftVisionModel.value))
 
 const selectTextModel = (model: RENDERER_MODEL_META, providerId: string) => {
+  if (locked.value) return
   draftTextModel.value = { providerId, modelId: model.id }
   savedTextModel.value = null
   textSelectOpen.value = false
@@ -267,6 +267,7 @@ const selectTextModel = (model: RENDERER_MODEL_META, providerId: string) => {
 }
 
 const selectVisionModel = (model: RENDERER_MODEL_META, providerId: string) => {
+  if (locked.value) return
   draftVisionModel.value = { providerId, modelId: model.id }
   savedVisionModel.value = null
   visionSelectOpen.value = false
@@ -325,6 +326,8 @@ const save = async (): Promise<void> => {
 }
 
 onMounted(async () => {
+  await managedStore.load()
+
   const [textModel, visionModel, savedConcurrency, savedTemperature, savedMaxTokens] =
     await Promise.all([
       configClient.getSetting('documents.textModel'),
