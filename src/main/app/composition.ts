@@ -2869,6 +2869,8 @@ export async function createMainProcessControl(dependencies: {
 
   async function registerRoutes(): Promise<void> {
     const providerQueryScheduler = createNodeScheduler()
+    // 企业托管配置：启动时按登录用户名拉取并固化（失败保留缓存）
+    const managedStore = createManagedConfigStore(dependencies.settingsStore)
     const providerRoutes = createProviderRoutes({
       providerSettings,
       providerRuntime,
@@ -2881,7 +2883,8 @@ export async function createMainProcessControl(dependencies: {
       }),
       oauthService,
       scheduler: providerQueryScheduler,
-      recordSettingsActivity: (input) => settingsDatabase.recordSettingsActivity(input)
+      recordSettingsActivity: (input) => settingsDatabase.recordSettingsActivity(input),
+      readManagedProviderIds: () => managedStore.readProviderIds()
     })
     const toolRoutes = createToolRoutes(toolService)
     const pluginRoutes = createPluginRoutes(pluginService)
@@ -2915,8 +2918,6 @@ export async function createMainProcessControl(dependencies: {
     const documentsMaxFileSize = () =>
       dependencies.settingsStore.get<number>('maxFileSize') ?? 30 * 1024 * 1024
 
-    // 企业托管配置：启动时按登录用户名拉取并固化（失败保留缓存）
-    const managedStore = createManagedConfigStore(dependencies.settingsStore)
     // 启动链上的阻塞调用：设备信息获取失败（权限/WMI 不可用等）不得阻断启动
     let managedDevice: ManagedDeviceInfo
     try {

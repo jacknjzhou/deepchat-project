@@ -76,6 +76,7 @@ import type { ProviderImportService } from './providerImportService'
 import { ProviderService, type ProviderQueryScheduler } from './providerService'
 import type { ProviderRuntime } from '.'
 import { CliRequestError } from '@/cli/errors'
+import { assertProviderWritable } from './managedGuard'
 
 export function createProviderRoutes(deps: {
   providerSettings: ProviderSettingsPort
@@ -85,6 +86,8 @@ export function createProviderRoutes(deps: {
   oauthService: OAuthServicePort
   scheduler: ProviderQueryScheduler
   recordSettingsActivity(input: SettingsActivityInput): Promise<unknown>
+  /** 托管 provider id 的权威读取入口；缺省表示无托管约束 */
+  readManagedProviderIds?: () => string[]
 }): DeepchatRouteMap {
   const {
     providerSettings,
@@ -94,6 +97,7 @@ export function createProviderRoutes(deps: {
     oauthService,
     scheduler
   } = deps
+  const readManagedProviderIds = deps.readManagedProviderIds ?? (() => [])
   const providerService = new ProviderService({
     providerCatalogPort: {
       getProviderModels: (providerId) => providerSettings.getProviderModels(providerId) ?? [],
@@ -248,6 +252,7 @@ export function createProviderRoutes(deps: {
       providersSetByIdRoute.name,
       async (rawInput) => {
         const input = providersSetByIdRoute.input.parse(rawInput)
+        assertProviderWritable(input.providerId, 'update', readManagedProviderIds)
         providerRuntime.setProviderById(input.providerId, input.provider)
         return providersSetByIdRoute.output.parse({
           provider: providerSettings.getProviderById(input.providerId) ?? input.provider
@@ -258,6 +263,7 @@ export function createProviderRoutes(deps: {
       providersUpdateRoute.name,
       async (rawInput) => {
         const input = providersUpdateRoute.input.parse(rawInput)
+        assertProviderWritable(input.providerId, 'update', readManagedProviderIds)
         const requiresRebuild = providerRuntime.updateProviderAtomic(
           input.providerId,
           input.updates
@@ -288,6 +294,7 @@ export function createProviderRoutes(deps: {
       providersAddRoute.name,
       async (rawInput) => {
         const input = providersAddRoute.input.parse(rawInput)
+        assertProviderWritable(input.provider.id, 'update', readManagedProviderIds)
         providerRuntime.addProviderAtomic(input.provider)
         const result = providersAddRoute.output.parse({
           provider: providerSettings.getProviderById(input.provider.id) ?? input.provider
@@ -328,6 +335,7 @@ export function createProviderRoutes(deps: {
       providersRemoveRoute.name,
       async (rawInput, context) => {
         const input = providersRemoveRoute.input.parse(rawInput)
+        assertProviderWritable(input.providerId, 'remove', readManagedProviderIds)
         if (context.caller.kind === 'cli') {
           const provider = providerSettings.getProviderById(input.providerId)
           if (!provider) {
@@ -358,6 +366,9 @@ export function createProviderRoutes(deps: {
       providersReorderRoute.name,
       async (rawInput) => {
         const input = providersReorderRoute.input.parse(rawInput)
+        for (const provider of input.providers) {
+          assertProviderWritable(provider.id, 'reorder', readManagedProviderIds)
+        }
         providerRuntime.reorderProvidersAtomic(input.providers)
         return providersReorderRoute.output.parse({ providers: providerSettings.getProviders() })
       }
