@@ -344,8 +344,6 @@ onMounted(async () => {
   concurrency.value = typeof savedConcurrency === 'number' ? clampConcurrency(savedConcurrency) : 4
   temperatureInput.value = typeof savedTemperature === 'number' ? String(savedTemperature) : ''
   maxTokensInput.value = typeof savedMaxTokens === 'number' ? String(savedMaxTokens) : ''
-
-  await managedStore.load()
 })
 
 defineExpose({
