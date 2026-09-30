@@ -456,4 +456,25 @@ describe('session boundary composition', () => {
     expect(runtimePortsSource).not.toMatch(/^\s+\w+\?\(/m)
     expect(toolSources).not.toMatch(/from ['"].*desktop/)
   })
+
+  it('validates documents model settings against merged custom models', async () => {
+    const { readFileSync } = await vi.importActual<typeof import('node:fs')>('node:fs')
+    const compositionSource = readFileSync(
+      path.resolve(process.cwd(), 'src/main/app/composition.ts'),
+      'utf8'
+    )
+    const documentsStart = compositionSource.indexOf(
+      'migrateDocumentsModelSettings(providerSettings)'
+    )
+    const documentsEnd = compositionSource.indexOf('new RecognitionTaskManager(', documentsStart)
+    const documentsSource = compositionSource.slice(documentsStart, documentsEnd)
+
+    expect(documentsStart).toBeGreaterThanOrEqual(0)
+    expect(documentsEnd).toBeGreaterThan(documentsStart)
+    expect(documentsSource.match(/resolveVisionTarget:|resolveTextTarget:/g)).toHaveLength(2)
+    expect(documentsSource.match(/getProviderModels\(providerId\) \?\? \[\]/g)).toHaveLength(2)
+    expect(
+      documentsSource.match(/\.\.\.providerSettings\.getCustomModels\(providerId\)/g)
+    ).toHaveLength(2)
+  })
 })

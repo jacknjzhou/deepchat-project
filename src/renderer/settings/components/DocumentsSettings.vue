@@ -4,6 +4,17 @@
     :description="t('settings.documents.description')"
     data-testid="documents-settings-page"
   >
+    <div
+      v-if="bannerVisible"
+      data-testid="documents-settings-banner"
+      class="flex items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm"
+    >
+      <span>{{ t('documents.settingsBanner.required') }}</span>
+      <DcButton size="sm" @click="goToModelSettings">
+        {{ t('documents.settingsBanner.go') }}
+      </DcButton>
+    </div>
+
     <div class="mb-4 flex justify-end">
       <DcButton variant="default" size="sm" data-testid="template-create" @click="createNew">
         <Icon icon="lucide:plus" class="mr-2 size-4" />
@@ -169,18 +180,21 @@ import {
 import SettingsPageShell from './control-center/SettingsPageShell.vue'
 import SettingsSectionCard from './control-center/SettingsSectionCard.vue'
 import { useDocumentsStore } from '@/stores/documents'
+import { createConfigClient } from '@api/ConfigClient'
 import type { DocumentTemplate } from '@shared/documents'
 import { DOCUMENT_TEMPLATE_CATEGORIES, type DocumentTemplateCategory } from '@shared/documents'
 
 const { t } = useI18n()
 const router = useRouter()
 const store = useDocumentsStore()
+const configClient = createConfigClient()
 
 const deleteConfirmOpen = ref(false)
 const pendingDelete = ref<DocumentTemplate | null>(null)
 const isDeleting = ref(false)
 const forceRequired = ref<{ count: number } | null>(null)
 const deleteErrorKey = ref<string | null>(null)
+const bannerVisible = ref(false)
 
 const builtinGroups = computed(() => {
   const groups: Array<{ category: DocumentTemplateCategory; templates: DocumentTemplate[] }> = []
@@ -291,9 +305,18 @@ watch(deleteConfirmOpen, (open) => {
   }
 })
 
-onMounted(() => {
+function goToModelSettings() {
+  router.push('/documents-models')
+}
+
+onMounted(async () => {
   if (store.templates.length === 0) {
     store.loadTemplates()
   }
+  const [textModel, visionModel] = await Promise.all([
+    configClient.getSetting('documents.textModel'),
+    configClient.getSetting('documents.visionModel')
+  ])
+  bannerVisible.value = !textModel || !visionModel
 })
 </script>

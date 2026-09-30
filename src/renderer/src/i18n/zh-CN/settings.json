@@ -177,7 +177,7 @@
     }
   },
   "documents": {
-    "description": "管理单据识别模板，配置字段并测试提取效果",
+    "description": "管理智能信息提取模板，配置字段并测试提取效果",
     "templates": {
       "title": "单据模板",
       "builtinGroup": "预置模板",
@@ -190,7 +190,7 @@
       "delete": "删除",
       "deleteConfirmTitle": "删除模板",
       "deleteConfirmDescription": "确定要删除模板「{name}」吗？此操作不可撤销。",
-      "deleteForceDescription": "该模板已被 {count} 份单据档案引用，确认强制删除吗？",
+      "deleteForceDescription": "该模板已被 {count} 条智能信息提取记录引用，确认强制删除吗？",
       "deleteFailed": "删除模板失败",
       "loadFailed": "模板列表加载失败",
       "retry": "重试",
@@ -266,7 +266,7 @@
       "testCreateModeHint": "模板保存后可进行样张测试"
     },
     "archive": {
-      "title": "单据档案",
+      "title": "智能信息提取",
       "loadFailed": "加载单据失败",
       "empty": "暂无单据",
       "retry": "重试",
@@ -351,6 +351,34 @@
       "empty": "上传样张后查看提取结果",
       "fileRequired": "未能获取样张文件路径，请重新选择"
     }
+  },
+  "documentsModels": {
+    "title": "智能信息提取模型",
+    "description": "为智能信息提取的识别任务单独指定模型，未配置时识别功能不可用。",
+    "models": {
+      "title": "模型设置"
+    },
+    "textModel": "文本抽取模型",
+    "visionModel": "视觉模型（扫描件/图片）",
+    "notSet": "未设置",
+    "invalid": {
+      "providerMissing": "所选模型服务商已被删除，请重新选择",
+      "providerDisabled": "所选模型服务商已被停用，请启用后再试",
+      "modelMissing": "所选模型不存在或已被移除，请重新选择"
+    },
+    "concurrency": {
+      "title": "识别并发",
+      "hint": "仅影响任务级并发（1–10）"
+    },
+    "advanced": {
+      "title": "推理参数",
+      "temperature": "温度",
+      "maxTokens": "最大生成 Token 数",
+      "defaultPlaceholder": "默认"
+    },
+    "save": "保存",
+    "saved": "已保存",
+    "saveError": "保存失败"
   },
   "leaveGuard": {
     "dirtyTitle": "修改尚未保存",

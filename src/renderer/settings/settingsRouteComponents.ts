@@ -22,6 +22,7 @@ export const settingsRouteComponents = {
   'settings-about': () => import('./components/AboutUsSettings.vue'),
   'settings-debug': () => import('./components/DebugSettings.vue'),
   'settings-documents': () => import('./components/DocumentsSettings.vue'),
+  'settings-documents-models': () => import('./components/DocumentsModelsSettings.vue'),
   'settings-documents-template': () => import('./components/documents/TemplateEditorPage.vue')
 } as const
 

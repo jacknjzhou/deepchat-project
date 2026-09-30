@@ -1,0 +1,11 @@
+{
+  "errors": {
+    "modelRequired": "Document extraction models are not configured. Open Settings -> Agent -> Document Models to configure them first",
+    "modelProviderMissing": "Invalid document model configuration: provider {provider} has been removed or disabled. Please reconfigure",
+    "modelMissing": "Invalid document model configuration: model {model} no longer exists. Please reconfigure"
+  },
+  "settingsBanner": {
+    "required": "Document models are not configured, extraction tasks will fail. Configure them in Settings -> Agent -> Document Models.",
+    "go": "Configure"
+  }
+}

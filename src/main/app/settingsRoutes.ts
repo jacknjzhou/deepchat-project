@@ -69,6 +69,11 @@ export function createAppSettingsRoutes(deps: {
     read('providerHealth')
     read('sidebar_group_mode')
     read('input_enabledMcpTools')
+    read('documents.textModel')
+    read('documents.visionModel')
+    read('documents.concurrency')
+    read('documents.temperature')
+    read('documents.maxTokens')
     return values
   }
   const readSnapshot = (): SettingsSnapshotValues => ({

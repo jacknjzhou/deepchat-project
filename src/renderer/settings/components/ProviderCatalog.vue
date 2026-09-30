@@ -93,7 +93,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { refDebounced } from '@vueuse/core'
 import { Icon } from '@iconify/vue'
@@ -103,6 +103,12 @@ import { DcBadge } from '@dc-ui/components/badge'
 import ModelIcon from '@/components/icons/ModelIcon.vue'
 import { useProviderStore } from '@/stores/providerStore'
 import { useThemeStore } from '@/stores/theme'
+
+onMounted(() => {
+  void providerStore.ensureDefaultProvidersReady().catch((error) => {
+    console.error('Failed to load default providers:', error)
+  })
+})
 
 defineEmits<{
   select: [providerId: string]

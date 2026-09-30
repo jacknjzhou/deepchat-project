@@ -27,6 +27,14 @@ declare module 'vue-i18n' {
       totalMemory: string
       osVersion: string
     }
+    systemInfo: {
+      title: string
+      username: string
+      domain: string
+      hostname: string
+      homeDir: string
+      sid: string
+    }
     clickToOpen: string
     codeSnippet: string
     function: string
@@ -1592,14 +1600,10 @@ declare module 'vue-i18n' {
       }
       confirmEnable: string
     }
-    loadError: string
-    saveAs: string
-    saveSuccess: string
-    saveFailed: string
-    enabledTitle: string
-    enabledDescription: string
-    enableToAccess: string
     errors: {
+      modelRequired: string
+      modelProviderMissing: string
+      modelMissing: string
       loadConfigFailed: string
       setEnabledFailed: string
       getServerStatusFailed: string
@@ -1627,6 +1631,17 @@ declare module 'vue-i18n' {
       detail_failed: string
       record_not_found: string
     }
+    settingsBanner: {
+      required: string
+      go: string
+    }
+    loadError: string
+    saveAs: string
+    saveSuccess: string
+    saveFailed: string
+    enabledTitle: string
+    enabledDescription: string
+    enableToAccess: string
     tabs: {
       servers: string
       tools: string
@@ -2214,6 +2229,7 @@ declare module 'vue-i18n' {
     'settings-shortcut': string
     'settings-display': string
     'settings-documents': string
+    'settings-documents-models': string
     'settings-documents-template': string
     documents: {
       description: string
@@ -2582,6 +2598,34 @@ declare module 'vue-i18n' {
         database_error: string
         safe_storage_unavailable: string
       }
+    }
+    documentsModels: {
+      title: string
+      description: string
+      models: {
+        title: string
+      }
+      textModel: string
+      visionModel: string
+      notSet: string
+      invalid: {
+        providerMissing: string
+        providerDisabled: string
+        modelMissing: string
+      }
+      concurrency: {
+        title: string
+        hint: string
+      }
+      advanced: {
+        title: string
+        temperature: string
+        maxTokens: string
+        defaultPlaceholder: string
+      }
+      save: string
+      saved: string
+      saveError: string
     }
     leaveGuard: {
       dirtyTitle: string

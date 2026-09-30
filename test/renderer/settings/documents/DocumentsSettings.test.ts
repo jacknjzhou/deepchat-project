@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { Mock } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { defineComponent, reactive } from 'vue'
 
@@ -58,10 +59,18 @@ const stubStore = reactive({
   testExtract: vi.fn()
 })
 
+let getSettingMock: Mock
+
 async function setup(forceConfirm = false) {
   vi.resetModules()
   vi.doMock('@/stores/documents', () => ({
     useDocumentsStore: () => stubStore
+  }))
+  vi.doMock('@api/ConfigClient', () => ({
+    createConfigClient: () => ({
+      getSetting: getSettingMock,
+      setSetting: vi.fn()
+    })
   }))
   vi.doMock('vue-i18n', () => ({
     useI18n: () => ({
@@ -167,6 +176,13 @@ describe('DocumentsSettings', () => {
     stubStore.customTemplates = [customTemplate]
     stubStore.loadTemplates.mockClear()
     stubStore.attemptDelete.mockClear()
+    // Both model refs configured by default so existing cases render without
+    // the guidance banner; banner cases override via mockImplementation.
+    getSettingMock = vi.fn((key: string) =>
+      key === 'documents.textModel' || key === 'documents.visionModel'
+        ? { providerId: 'p1', modelId: 'm1' }
+        : undefined
+    )
   })
 
   it('renders builtin templates grouped by category', async () => {
@@ -234,5 +250,29 @@ describe('DocumentsSettings', () => {
     expect(errorElement).not.toBeNull()
     expect(errorElement!.textContent).toContain('settings.documents.templates.deleteFailed')
     expect(wrapper.text()).toContain('Custom')
+  })
+
+  it('shows required banner when a model ref is missing', async () => {
+    getSettingMock.mockImplementation((key: string) =>
+      key === 'documents.textModel' ? { providerId: 'p1', modelId: 'm1' } : undefined
+    )
+    const { wrapper } = await setup()
+    expect(wrapper.find('[data-testid="documents-settings-banner"]').exists()).toBe(true)
+
+    wrapper.unmount()
+  })
+
+  it('hides banner when both refs configured', async () => {
+    getSettingMock.mockImplementation((key: string) =>
+      key === 'documents.textModel'
+        ? { providerId: 'p1', modelId: 'm1' }
+        : key === 'documents.visionModel'
+          ? { providerId: 'p1', modelId: 'm2' }
+          : undefined
+    )
+    const { wrapper } = await setup()
+    expect(wrapper.find('[data-testid="documents-settings-banner"]').exists()).toBe(false)
+
+    wrapper.unmount()
   })
 })

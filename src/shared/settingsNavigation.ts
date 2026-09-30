@@ -24,6 +24,7 @@ export interface SettingsNavigationItem {
     | 'settings-debug'
     | 'settings-documents'
     | 'settings-documents-template'
+    | 'settings-documents-models'
   path: string
   titleKey: string
   icon: string
@@ -144,6 +145,15 @@ export const SETTINGS_NAVIGATION_ITEMS: SettingsNavigationItem[] = [
     position: 3.5,
     groupKey: 'models',
     keywords: ['agent', 'agents', 'deepchat', '智能体', 'agent']
+  },
+  {
+    routeName: 'settings-documents-models',
+    path: '/documents-models',
+    titleKey: 'routes.settings-documents-models',
+    icon: 'lucide:receipt-text',
+    position: 3.55,
+    groupKey: 'models',
+    keywords: ['documents', 'models', 'extraction', '单据', '识别', '模型', '提取']
   },
   {
     routeName: 'settings-acp',

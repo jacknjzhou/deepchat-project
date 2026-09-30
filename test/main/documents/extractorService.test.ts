@@ -145,7 +145,7 @@ describe('DocumentExtractor.extract 路由', () => {
         templateId: 'tpl-1',
         file: { path: '/tmp/a.jpg', mimeType: 'image/jpeg' }
       })
-    ).rejects.toThrow(/defaultVisionModel/)
+    ).rejects.toThrow(/\[documents\.modelRequired\]/)
   })
 
   it('图片 auto 模式无视觉模型时回落 OCR 路由', async () => {
@@ -175,7 +175,7 @@ describe('DocumentExtractor.extract 路由', () => {
         templateId: 'tpl-1',
         file: { path: '/tmp/a.pdf', mimeType: 'application/pdf' }
       })
-    ).rejects.toThrow(/defaultModel/)
+    ).rejects.toThrow(/\[documents\.modelRequired\]/)
   })
 
   it('无 mimeType 时按扩展名路由', async () => {
@@ -951,7 +951,7 @@ describe('模型调用异常降级', () => {
         templateId: 'tpl-1',
         file: { path: '/tmp/a.jpg', mimeType: 'image/jpeg' }
       })
-    ).rejects.toThrow(/defaultVisionModel/)
+    ).rejects.toThrow(/\[documents\.modelRequired\]/)
     expect(deps.extractOcrText).not.toHaveBeenCalled()
   })
 

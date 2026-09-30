@@ -59,6 +59,9 @@ extraResources:
   - from: ./resources/skills/
     to: app.asar.unpacked/resources/skills
     filter: ['**/*']
+  - from: ./resources/model-db/
+    to: app.asar.unpacked/resources/model-db
+    filter: ['providers.json']
   - from: ./build/bundled-plugins/
     to: app.asar.unpacked/plugins
     filter: ['**/*.dcplugin']

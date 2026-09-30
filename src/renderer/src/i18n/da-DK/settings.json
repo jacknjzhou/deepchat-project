@@ -2853,6 +2853,34 @@
       "fileRequired": "Kunne ikke finde filstien. Vælg prøven igen"
     }
   },
+  "documentsModels": {
+    "title": "Document Models",
+    "description": "Configure dedicated models for document archive extraction. Extraction is unavailable until configured.",
+    "models": {
+      "title": "Model Settings"
+    },
+    "textModel": "Text extraction model",
+    "visionModel": "Vision model (scans/images)",
+    "notSet": "Not set",
+    "invalid": {
+      "providerMissing": "The selected model provider has been removed. Please choose again",
+      "providerDisabled": "The selected model provider is disabled. Enable it and try again",
+      "modelMissing": "The selected model no longer exists. Please choose again"
+    },
+    "concurrency": {
+      "title": "Extraction Concurrency",
+      "hint": "Affects task-level concurrency only (1-10)"
+    },
+    "advanced": {
+      "title": "Generation Parameters",
+      "temperature": "Temperature",
+      "maxTokens": "Max tokens",
+      "defaultPlaceholder": "Default"
+    },
+    "save": "Save",
+    "saved": "Saved",
+    "saveError": "Save failed"
+  },
   "leaveGuard": {
     "dirtyTitle": "Ikke-gemte ændringer",
     "dirtyDescription": "Forlad siden og kassér ændringerne?",

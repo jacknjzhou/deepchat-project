@@ -123,7 +123,12 @@ export const CONFIG_ENTRY_KEYS = [
   'providerHealth',
   'sidebar_group_mode',
   'input_enabledMcpTools',
-  'user_image_prompt_templates'
+  'user_image_prompt_templates',
+  'documents.textModel',
+  'documents.visionModel',
+  'documents.concurrency',
+  'documents.temperature',
+  'documents.maxTokens'
 ] as const
 
 // Cached verification result for a provider's current connection configuration.
@@ -155,7 +160,12 @@ export const ConfigEntryValuesSchema = z.object({
   providerHealth: z.record(z.string(), ProviderHealthEntrySchema),
   sidebar_group_mode: z.string(),
   input_enabledMcpTools: z.array(z.string()),
-  user_image_prompt_templates: z.array(UserImagePromptTemplateSchema)
+  user_image_prompt_templates: z.array(UserImagePromptTemplateSchema),
+  'documents.textModel': ModelSelectionSchema.nullable(),
+  'documents.visionModel': ModelSelectionSchema.nullable(),
+  'documents.concurrency': z.number().int().min(1).max(10),
+  'documents.temperature': z.number().nullable(),
+  'documents.maxTokens': z.number().int().nullable()
 })
 
 export const ConfigEntryChangeSchema = z.discriminatedUnion('key', [
@@ -226,6 +236,26 @@ export const ConfigEntryChangeSchema = z.discriminatedUnion('key', [
   z.object({
     key: z.literal('user_image_prompt_templates'),
     value: z.array(UserImagePromptTemplateSchema)
+  }),
+  z.object({
+    key: z.literal('documents.textModel'),
+    value: ModelSelectionSchema.nullable()
+  }),
+  z.object({
+    key: z.literal('documents.visionModel'),
+    value: ModelSelectionSchema.nullable()
+  }),
+  z.object({
+    key: z.literal('documents.concurrency'),
+    value: z.number().int().min(1).max(10)
+  }),
+  z.object({
+    key: z.literal('documents.temperature'),
+    value: z.number().nullable()
+  }),
+  z.object({
+    key: z.literal('documents.maxTokens'),
+    value: z.number().int().nullable()
   })
 ])
 
