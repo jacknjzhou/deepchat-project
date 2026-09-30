@@ -33,8 +33,12 @@
         <span v-else-if="task.templateId === 'auto'" class="text-xs text-muted-foreground">
           {{ t('settings.documents.archive.taskClassifying') }}
         </span>
-        <span v-if="task.error" class="truncate text-xs text-destructive" :title="task.error">
-          {{ task.error }}
+        <span
+          v-if="task.error"
+          class="truncate text-xs text-destructive"
+          :title="localizedError(task)"
+        >
+          {{ localizedError(task) }}
         </span>
         <span class="ml-auto shrink-0 text-xs text-muted-foreground">
           {{ statusText(task.status) }}
@@ -86,6 +90,7 @@ import {
 } from '@shadcn/components/ui/dropdown-menu'
 import type { DocumentTemplate } from '@shared/documents'
 import type { DocumentsTaskItem } from '@api/documentTasks'
+import { formatDocumentsTaskError } from '@/lib/documentsTaskErrors'
 
 const props = withDefaults(
   defineProps<{
@@ -113,6 +118,10 @@ function statusIcon(status: DocumentsTaskItem['status']): string {
   if (status === 'done') return 'lucide:check-circle-2'
   if (status === 'failed') return 'lucide:x-circle'
   return 'lucide:clock'
+}
+
+function localizedError(task: DocumentsTaskItem): string {
+  return formatDocumentsTaskError(task.error ?? '', t) ?? task.error ?? ''
 }
 
 function statusText(status: DocumentsTaskItem['status']): string {
