@@ -6,6 +6,7 @@
     :enabled="provider.enable"
     :enabled-updating="isProviderStatusUpdating"
     :health="providerHealth"
+    :managed="managed"
     @enabled-change="handleProviderEnabledChange"
   >
     <template #connection>
@@ -44,6 +45,7 @@
                 :model-value="accessKeyId"
                 :type="showAccessKeyId ? 'text' : 'password'"
                 :placeholder="t('settings.provider.accessKeyIdPlaceholder')"
+                :disabled="managed"
                 style="padding-right: 2.5rem !important"
                 @blur="handleAccessKeyIdChange(String($event.target.value))"
                 @keyup.enter="handleAccessKeyIdChange(accessKeyId)"
@@ -73,6 +75,7 @@
                 :model-value="secretAccessKey"
                 :type="showSecretAccessKey ? 'text' : 'password'"
                 :placeholder="t('settings.provider.secretAccessKeyPlaceholder')"
+                :disabled="managed"
                 style="padding-right: 2.5rem !important"
                 @blur="handleSecretAccessKeyChange(String($event.target.value))"
                 @keyup.enter="handleSecretAccessKeyChange(secretAccessKey)"
@@ -104,6 +107,7 @@
               :id="`${provider.id}-profile`"
               :model-value="profile"
               :placeholder="t('settings.provider.profilePlaceholder')"
+              :disabled="managed"
               @blur="handleProfileChange(String($event.target.value))"
               @keyup.enter="handleProfileChange(profile)"
               @update:model-value="profile = String($event)"
@@ -118,6 +122,7 @@
             :id="`${provider.id}-region`"
             :model-value="region"
             :placeholder="t('settings.provider.regionPlaceholder')"
+            :disabled="managed"
             @blur="handleRegionChange(String($event.target.value))"
             @keyup.enter="handleRegionChange(region)"
             @update:model-value="region = String($event)"
@@ -213,6 +218,8 @@ import ProviderRateLimitConfig from './ProviderRateLimitConfig.vue'
 
 const props = defineProps<{
   provider: AWS_BEDROCK_PROVIDER
+  /** 企业托管配置的服务商：凭证只读 */
+  managed?: boolean
 }>()
 
 const emit = defineEmits<{

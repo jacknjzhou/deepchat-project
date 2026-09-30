@@ -1,5 +1,12 @@
 <template>
   <div class="flex flex-col gap-4">
+    <p
+      v-if="managed"
+      data-testid="provider-managed-hint"
+      class="text-xs leading-5 text-muted-foreground"
+    >
+      {{ t('settings.managed.providerHint') }}
+    </p>
     <div
       v-if="provider.id === 'openai'"
       class="w-full rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-amber-900"
@@ -17,7 +24,7 @@
       <div class="flex justify-between items-center w-full">
         <Label :for="`${provider.id}-url`" class="flex-1">API URL</Label>
         <DcButton
-          v-if="provider.custom"
+          v-if="provider.custom && !managed"
           variant="destructive"
           size="sm"
           class="text-xs rounded-lg"
@@ -36,6 +43,7 @@
           </span>
         </div>
         <DcButton
+          v-if="!managed"
           variant="outline"
           size="sm"
           class="shrink-0 text-xs"
@@ -49,6 +57,7 @@
         :id="`${provider.id}-url`"
         :model-value="apiHost"
         :placeholder="t('settings.provider.urlPlaceholder')"
+        :disabled="managed"
         @blur="handleApiHostBlur"
         @keyup.enter="handleApiHostChange(apiHost)"
         @update:model-value="apiHost = String($event)"
@@ -135,6 +144,7 @@
             />
           </div>
           <DcButton
+            v-if="!managed"
             data-testid="provider-update-key-button"
             variant="outline"
             size="sm"
@@ -151,6 +161,7 @@
             :model-value="apiKey"
             :type="showApiKey ? 'text' : 'password'"
             :placeholder="t('settings.provider.keyPlaceholder')"
+            :disabled="managed"
             style="padding-right: 2.5rem !important"
             @blur="handleApiKeyBlur"
             @keyup.enter="handleValidateKey"
@@ -296,6 +307,8 @@ const EDITABLE_BASE_URL_PROVIDER_IDS = new Set([
 const props = defineProps<{
   provider: LLM_PROVIDER
   providerWebsites?: ProviderWebsites
+  /** 企业托管配置的服务商：地址与密钥只读 */
+  managed?: boolean
 }>()
 
 const emit = defineEmits<{
