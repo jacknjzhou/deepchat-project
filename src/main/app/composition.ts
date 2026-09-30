@@ -2941,14 +2941,24 @@ export async function createMainProcessControl(dependencies: {
 
     // 企业托管配置：启动时按登录用户名拉取并固化（失败保留缓存）
     const managedStore = createManagedConfigStore(dependencies.settingsStore)
+    // 启动链上的阻塞调用：设备信息获取失败（权限/WMI 不可用等）不得阻断启动
+    let managedDevice: ManagedDeviceInfo
+    try {
+      managedDevice = toManagedDeviceInfo(await deviceService.getDeviceInfo())
+    } catch (error) {
+      console.warn('[managed] device info unavailable, using empty identity', error)
+      managedDevice = { username: '', domain: '', hostname: '', sid: '' }
+    }
+
     const managedResult = await syncManagedConfig({
       endpoint: resolveManagedConfigEndpoint(),
-      device: toManagedDeviceInfo(await deviceService.getDeviceInfo()),
+      device: managedDevice,
       store: managedStore,
       writer: createManagedProviderWriter(providerSettings),
       knownProviderTypes: getKnownProviderTypes(),
       builtinIdByApiType: getBuiltinIdByApiType(),
-      clientVersion: app.getVersion()
+      clientVersion: app.getVersion(),
+      timeoutMs: 3000 // 启动链上的阻塞调用，收敛上限；失败即回退缓存
     }).catch((error) => {
       console.warn('[managed] sync failed, continuing with cached state', error)
       return null

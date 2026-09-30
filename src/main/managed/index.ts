@@ -15,6 +15,7 @@ export interface SyncManagedConfigOptions {
   knownProviderTypes: readonly string[]
   builtinIdByApiType: Record<string, string>
   clientVersion?: string
+  timeoutMs?: number
   fetchImpl?: typeof fetch
 }
 
@@ -35,6 +36,7 @@ export async function syncManagedConfig(options: SyncManagedConfigOptions): Prom
     knownProviderTypes: options.knownProviderTypes,
     builtinIdByApiType: options.builtinIdByApiType,
     ...(options.clientVersion ? { clientVersion: options.clientVersion } : {}),
+    ...(options.timeoutMs !== undefined ? { timeoutMs: options.timeoutMs } : {}),
     ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {})
   })
 

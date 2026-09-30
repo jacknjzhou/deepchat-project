@@ -486,9 +486,20 @@ describe('session boundary composition', () => {
     )
 
     expect(compositionSource).toContain('syncManagedConfig(')
+    expect(compositionSource).toContain('applyManagedAgentModels(')
     expect(compositionSource).toContain('migrateDocumentsModelSettings(')
     expect(compositionSource.indexOf('syncManagedConfig(')).toBeLessThan(
       compositionSource.indexOf('migrateDocumentsModelSettings(')
     )
+  })
+
+  it('keeps managed config sync from blocking startup on device info failures', async () => {
+    const { readFileSync } = await vi.importActual<typeof import('node:fs')>('node:fs')
+    const compositionSource = readFileSync(
+      path.resolve(process.cwd(), 'src/main/app/composition.ts'),
+      'utf8'
+    )
+
+    expect(compositionSource).toContain('device info unavailable')
   })
 })

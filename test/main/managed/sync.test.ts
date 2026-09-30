@@ -163,4 +163,28 @@ describe('syncManagedConfig', () => {
     expect(result.status).toBe('denied')
     expect(store.getConfig()).toBeNull()
   })
+
+  it('forwards timeoutMs to the fetch request signal', async () => {
+    const store = createStore()
+    let observedSignal: AbortSignal | undefined
+    const fetchImpl = vi.fn((_url: string, init?: { signal?: AbortSignal }) => {
+      observedSignal = init?.signal
+      return new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () =>
+          reject(new DOMException('aborted', 'AbortError'))
+        )
+      })
+    }) as unknown as typeof fetch
+
+    const result = await syncManagedConfig({
+      ...baseOptions,
+      store: store.store,
+      writer: { setProvider: vi.fn() } as never,
+      timeoutMs: 20,
+      fetchImpl
+    })
+
+    expect(result.status).toBe('unavailable')
+    expect(observedSignal?.aborted).toBe(true)
+  })
 })
