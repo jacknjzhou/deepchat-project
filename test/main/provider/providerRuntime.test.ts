@@ -163,7 +163,8 @@ describe('ProviderRuntime Integration Tests', () => {
       enableModel: vi.fn(),
       setCustomModels: vi.fn(),
       addCustomModel: vi.fn(),
-      removeCustomModel: vi.fn()
+      removeCustomModel: vi.fn(),
+      isManagedProvider: vi.fn().mockReturnValue(false)
     }
 
     mockProviderSettings = mockProviderSettingsInstance as unknown as ProviderSettings
@@ -203,6 +204,7 @@ describe('ProviderRuntime Integration Tests', () => {
     mockProviderSettings.getCustomModels = vi.fn().mockReturnValue([])
     mockProviderSettings.getProviderModels = vi.fn().mockReturnValue([])
     mockProviderSettings.getModelStatus = vi.fn().mockReturnValue(true)
+    mockProviderSettings.isManagedProvider = vi.fn().mockReturnValue(false)
     mockProviderSettings.resolveEffectiveModels = vi.fn((models, providerId) =>
       models.map((model) => ({
         ...model,

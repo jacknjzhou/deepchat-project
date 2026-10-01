@@ -354,3 +354,43 @@ describe('BaseLLMProvider tool XML conversion', () => {
     }
   })
 })
+
+describe('BaseLLMProvider automatic model enablement', () => {
+  const models = [
+    { id: 'managed-1', name: 'Managed 1', providerId: 'test-provider', group: 'default' },
+    { id: 'managed-2', name: 'Managed 2', providerId: 'test-provider', group: 'default' },
+    { id: 'managed-3', name: 'Managed 3', providerId: 'test-provider', group: 'default' }
+  ] as unknown as MODEL_META[]
+
+  const createSettings = (isManagedProvider: boolean, setModelStatus: ReturnType<typeof vi.fn>) =>
+    ({
+      getProviderModels: vi.fn().mockReturnValue([]),
+      getCustomModels: vi.fn().mockReturnValue([]),
+      getModelStatus: vi.fn().mockReturnValue(false),
+      setModelStatus,
+      setProviderModels: vi.fn(),
+      notifyModelsChanged: vi.fn(),
+      isManagedProvider: vi.fn().mockReturnValue(isManagedProvider)
+    }) as unknown as ProviderSettingsPort
+
+  it('enables every fetched model for a managed provider on refresh', async () => {
+    const setModelStatus = vi.fn()
+    const provider = new TestProvider(createSettings(true, setModelStatus), async () => models)
+
+    await provider.refreshModels()
+
+    expect(setModelStatus).toHaveBeenCalledTimes(models.length)
+    for (const model of models) {
+      expect(setModelStatus).toHaveBeenCalledWith('test-provider', model.id, true)
+    }
+  })
+
+  it('does not auto-enable models for a non-managed provider', async () => {
+    const setModelStatus = vi.fn()
+    const provider = new TestProvider(createSettings(false, setModelStatus), async () => models)
+
+    await provider.refreshModels()
+
+    expect(setModelStatus).not.toHaveBeenCalled()
+  })
+})

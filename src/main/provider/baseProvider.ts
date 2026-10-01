@@ -239,6 +239,18 @@ export abstract class BaseLLMProvider {
     if (!this.models || this.models.length === 0) return
     const providerId = this.provider.id
 
+    // 托管 provider：企业统一下发的模型刷新后默认全部开启——
+    // 否则只读的识别模型页无法让用户手动开启，托管模型将不可用。
+    if (this.providerSettings.isManagedProvider(providerId)) {
+      for (const model of this.models) {
+        this.providerSettings.setModelStatus(providerId, model.id, true)
+      }
+      logger.info(
+        `[Provider] auto-enabled ${this.models.length} managed model(s) for "${providerId}"`
+      )
+      return
+    }
+
     // Check if there are custom models (use cached customModels)
     if (this.customModels && this.customModels.length > 0) return
 
