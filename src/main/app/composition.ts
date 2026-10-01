@@ -55,7 +55,7 @@ import { ProviderDatabase } from '../provider/data/database'
 import { createProviderRoutes } from '../provider/routes'
 import { ProviderSettings } from '../provider/settings'
 import { DEFAULT_PROVIDERS } from '../provider/defaults'
-import { createManagedConfigStore, syncManagedConfig } from '../managed'
+import { createManagedConfigStore, syncManagedConfig, type ManagedConfigPayload } from '../managed'
 import { applyManagedAgentModels } from '../managed/applyAgentModels'
 import { createManagedAgentSettingsWriter, createManagedProviderWriter } from '../managed/adapters'
 import type { ManagedDeviceInfo } from '../managed/client'
@@ -2964,13 +2964,16 @@ export async function createMainProcessControl(dependencies: {
       for (const warning of managedResult.warnings) console.warn(`[managed] ${warning}`)
     }
 
-    // 内置 Agent「模型默认值」四项：无启动期消费者，后台并行刷新模型后按 id 匹配预填（契约 §1.4）
-    if (managedResult?.config) {
-      const managedConfig = managedResult.config
-      // 托管 provider 由 writer 直接写入 provider 存储，不经过运行时；先让运行时重建实例表，
-      // 否则紧随其后的模型刷新会因 Provider not found 失败，Agent 默认值预填也会整段跳过。
-      providerRuntime.reloadProvidersFromSettings()
-      void (async () => {
+    // 「刷新托管 provider 模型列表 → 按模型 id 匹配 → 预填内置 Agent 四项默认值」的共用编排：
+    // 启动期与手动刷新（managed.refresh）都走这里。自带 try/catch，调用方按后台任务触发即可，
+    // 不会产生 unhandled rejection。
+    async function runManagedModelRefreshAndAgentPrefill(
+      managedConfig: ManagedConfigPayload
+    ): Promise<void> {
+      try {
+        // 托管 provider 由 writer 直接写入 provider 存储，不经过运行时；先让运行时重建实例表，
+        // 否则紧随其后的模型刷新会因 Provider not found 失败，Agent 默认值预填也会整段跳过。
+        providerRuntime.reloadProvidersFromSettings()
         const refreshResults = await Promise.allSettled(
           managedConfig.providers.map((provider) => providerRuntime.refreshModels(provider.id))
         )
@@ -2995,9 +2998,14 @@ export async function createMainProcessControl(dependencies: {
           BUILTIN_DEEPCHAT_AGENT_ID
         )
         for (const warning of warnings) console.warn(`[managed] ${warning}`)
-      })().catch((error) => {
+      } catch (error) {
         console.warn('[managed] agent model prefill failed', error)
-      })
+      }
+    }
+
+    // 内置 Agent「模型默认值」四项：无启动期消费者，后台并行刷新模型后按 id 匹配预填（契约 §1.4）
+    if (managedResult?.config) {
+      void runManagedModelRefreshAndAgentPrefill(managedResult.config)
     }
 
     migrateDocumentsModelSettings(providerSettings)
@@ -3338,7 +3346,7 @@ export async function createMainProcessControl(dependencies: {
     const refreshManagedConfig = (): Promise<ManagedConfigStatus> => {
       if (managedRefreshInFlight) return managedRefreshInFlight
       const run = async (): Promise<ManagedConfigStatus> => {
-        await syncManagedConfig({
+        const syncResult = await syncManagedConfig({
           endpoint: resolveManagedConfigEndpoint(),
           device: await resolveManagedDevice(deviceService),
           store: managedStore,
@@ -3348,6 +3356,11 @@ export async function createMainProcessControl(dependencies: {
           clientVersion: app.getVersion(),
           timeoutMs: 3000
         })
+        // 写入完成后（读到的是最新托管配置）后台重跑模型刷新 + Agent 预填；
+        // absent/denied 时 config 为 null，不预填，与启动期语义一致。
+        if (syncResult.config) {
+          void runManagedModelRefreshAndAgentPrefill(syncResult.config)
+        }
         return readManagedStatus()
       }
       managedRefreshInFlight = run().finally(() => {

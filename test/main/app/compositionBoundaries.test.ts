@@ -522,4 +522,28 @@ describe('session boundary composition', () => {
 
     expect(compositionSource).toContain('device info unavailable')
   })
+
+  it('reruns managed agent prefill on manual refresh through one shared flow', async () => {
+    const { readFileSync } = await vi.importActual<typeof import('node:fs')>('node:fs')
+    const compositionSource = readFileSync(
+      path.resolve(process.cwd(), 'src/main/app/composition.ts'),
+      'utf8'
+    )
+
+    // 定义 1 次 + 启动期调用 1 次 + 手动刷新调用 1 次；删掉刷新期调用会退化为 2 次而失败。
+    expect(compositionSource.match(/runManagedModelRefreshAndAgentPrefill\(/g)).toHaveLength(3)
+
+    const refreshStart = compositionSource.indexOf('const refreshManagedConfig =')
+    const refreshEnd = compositionSource.indexOf('const appSettingsRoutes =', refreshStart)
+    expect(refreshStart).toBeGreaterThanOrEqual(0)
+    expect(refreshEnd).toBeGreaterThan(refreshStart)
+    const refreshSource = compositionSource.slice(refreshStart, refreshEnd)
+
+    // 预填必须发生在 syncManagedConfig 写入完成之后，且仅在拿到 config 时触发。
+    const syncCall = refreshSource.indexOf('const syncResult = await syncManagedConfig(')
+    const prefillCall = refreshSource.indexOf('void runManagedModelRefreshAndAgentPrefill(')
+    expect(syncCall).toBeGreaterThanOrEqual(0)
+    expect(prefillCall).toBeGreaterThan(syncCall)
+    expect(refreshSource).toContain('if (syncResult.config)')
+  })
 })
