@@ -56,7 +56,7 @@ import { createProviderRoutes } from '../provider/routes'
 import { ProviderSettings } from '../provider/settings'
 import { DEFAULT_PROVIDERS } from '../provider/defaults'
 import { createManagedConfigStore, syncManagedConfig, type ManagedConfigPayload } from '../managed'
-import { applyManagedAgentModels } from '../managed/applyAgentModels'
+import { applyManagedAgentModels, revertManagedAgentModels } from '../managed/applyAgentModels'
 import { createManagedAgentSettingsWriter, createManagedProviderWriter } from '../managed/adapters'
 import type { ManagedDeviceInfo } from '../managed/client'
 import type { SettingsStore } from '../config/settingsStore'
@@ -3008,6 +3008,22 @@ export async function createMainProcessControl(dependencies: {
       void runManagedModelRefreshAndAgentPrefill(managedResult.config)
     }
 
+    // 服务端明确「无配置/拒绝」：同步已删除托管 provider，这里再清除此前写入内置 Agent 的
+    // 托管模型默认值（用户改过的保留），best-effort 后台执行，不阻断启动。
+    if (managedResult && (managedResult.status === 'absent' || managedResult.status === 'denied')) {
+      void revertManagedAgentModels(
+        createManagedAgentSettingsWriter(agentSettings),
+        managedStore,
+        BUILTIN_DEEPCHAT_AGENT_ID
+      )
+        .then((cleared) => {
+          if (cleared.length > 0) {
+            console.warn(`[managed] reverted agent model defaults: ${cleared.join(', ')}`)
+          }
+        })
+        .catch((error) => console.warn('[managed] failed to revert agent model defaults', error))
+    }
+
     migrateDocumentsModelSettings(providerSettings)
     documentExtractor = new DocumentExtractor({
       repository: documentsRepository,
@@ -3360,6 +3376,23 @@ export async function createMainProcessControl(dependencies: {
         // absent/denied 时 config 为 null，不预填，与启动期语义一致。
         if (syncResult.config) {
           void runManagedModelRefreshAndAgentPrefill(syncResult.config)
+        }
+        // absent/denied：同步已删除托管 provider，这里清除此前写入内置 Agent 的托管模型
+        // 默认值（用户改过的保留），best-effort 后台执行，不阻断刷新。
+        if (syncResult.status === 'absent' || syncResult.status === 'denied') {
+          void revertManagedAgentModels(
+            createManagedAgentSettingsWriter(agentSettings),
+            managedStore,
+            BUILTIN_DEEPCHAT_AGENT_ID
+          )
+            .then((cleared) => {
+              if (cleared.length > 0) {
+                console.warn(`[managed] reverted agent model defaults: ${cleared.join(', ')}`)
+              }
+            })
+            .catch((error) =>
+              console.warn('[managed] failed to revert agent model defaults', error)
+            )
         }
         return readManagedStatus()
       }

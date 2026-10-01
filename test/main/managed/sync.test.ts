@@ -35,10 +35,10 @@ const payload: ManagedConfigPayload = {
   }
 }
 
-const createStore = (initial?: { config?: ManagedConfigPayload | null }) => {
+const createStore = (initial?: { config?: ManagedConfigPayload | null; ids?: string[] }) => {
   let config = initial?.config ?? null
   let meta: unknown = null
-  let ids: string[] = []
+  let ids: string[] = initial?.ids ?? []
   let agentModelApplied: Record<string, unknown> = {}
   const store: ManagedConfigStore = {
     readConfig: () => config,
@@ -60,6 +60,11 @@ const createStore = (initial?: { config?: ManagedConfigPayload | null }) => {
   }
   return { store, getConfig: () => config, getIds: () => ids, getMeta: () => meta }
 }
+
+const createWriter = () => ({
+  setProvider: vi.fn(async () => {}),
+  removeProvider: vi.fn(async () => {})
+})
 
 const baseOptions = {
   endpoint: 'https://cfg',
@@ -83,7 +88,7 @@ describe('syncManagedConfig', () => {
       ...baseOptions,
       endpoint: '',
       store: store.store,
-      writer: { setProvider: vi.fn() } as never,
+      writer: createWriter() as never,
       fetchImpl
     })
     expect(result.status).toBe('skipped')
@@ -102,7 +107,7 @@ describe('syncManagedConfig', () => {
     const result = await syncManagedConfig({
       ...baseOptions,
       store: store.store,
-      writer: { setProvider: vi.fn(async () => {}) } as never,
+      writer: createWriter() as never,
       fetchImpl
     })
     expect(result.status).toBe('applied')
@@ -111,57 +116,112 @@ describe('syncManagedConfig', () => {
     expect(store.getMeta()).toMatchObject({ username: 'u', endpoint: 'https://cfg' })
   })
 
+  it('does not remove providers on applied', async () => {
+    const store = createStore({ ids: ['managed-corp-gw'] })
+    const writer = createWriter()
+    const fetchImpl = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(appliedBody), {
+        status: 200,
+        headers: { 'content-type': 'application/json' }
+      })
+    )
+    await syncManagedConfig({
+      ...baseOptions,
+      store: store.store,
+      writer: writer as never,
+      fetchImpl
+    })
+    expect(writer.removeProvider).not.toHaveBeenCalled()
+  })
+
   it('keeps cached config and managed mode when fetch is unavailable', async () => {
     const store = createStore({ config: payload })
     const result = await syncManagedConfig({
       ...baseOptions,
       store: store.store,
-      writer: { setProvider: vi.fn(async () => {}) } as never,
+      writer: createWriter() as never,
       fetchImpl: vi.fn().mockRejectedValue(new Error('offline'))
     })
     expect(result.status).toBe('unavailable')
     expect(store.getConfig()).toEqual(payload)
   })
 
-  it('re-applies cached config when unavailable so instances survive a wiped db', async () => {
-    const store = createStore({ config: payload })
-    const setProvider = vi.fn(async () => {})
+  it('does not remove providers when the fetch is unavailable', async () => {
+    const store = createStore({ config: payload, ids: ['managed-corp-gw'] })
+    const writer = createWriter()
     await syncManagedConfig({
       ...baseOptions,
       store: store.store,
-      writer: { setProvider } as never,
+      writer: writer as never,
       fetchImpl: vi.fn().mockRejectedValue(new Error('offline'))
     })
-    expect(setProvider).toHaveBeenCalledWith(
+    expect(writer.removeProvider).not.toHaveBeenCalled()
+  })
+
+  it('re-applies cached config when unavailable so instances survive a wiped db', async () => {
+    const store = createStore({ config: payload })
+    const writer = createWriter()
+    await syncManagedConfig({
+      ...baseOptions,
+      store: store.store,
+      writer: writer as never,
+      fetchImpl: vi.fn().mockRejectedValue(new Error('offline'))
+    })
+    expect(writer.setProvider).toHaveBeenCalledWith(
       'managed-corp-gw',
       expect.objectContaining({ apiKey: 'sk-x', baseProviderId: 'new-api' })
     )
   })
 
-  it('clears managed state on absent', async () => {
-    const store = createStore({ config: payload })
+  it('removes previously written managed providers on absent', async () => {
+    const store = createStore({ config: payload, ids: ['managed-corp-gw', 'managed-other'] })
+    const writer = createWriter()
     const result = await syncManagedConfig({
       ...baseOptions,
       store: store.store,
-      writer: { setProvider: vi.fn() } as never,
+      writer: writer as never,
       fetchImpl: vi.fn().mockResolvedValue(new Response('', { status: 404 }))
     })
     expect(result.status).toBe('absent')
+    expect(writer.removeProvider).toHaveBeenCalledTimes(2)
+    expect(writer.removeProvider).toHaveBeenCalledWith('managed-corp-gw')
+    expect(writer.removeProvider).toHaveBeenCalledWith('managed-other')
     expect(store.getConfig()).toBeNull()
     expect(store.getIds()).toEqual([])
     expect(store.getMeta()).toBeNull()
   })
 
   it('clears managed state on denied', async () => {
-    const store = createStore({ config: payload })
+    const store = createStore({ config: payload, ids: ['managed-corp-gw'] })
+    const writer = createWriter()
     const result = await syncManagedConfig({
       ...baseOptions,
       store: store.store,
-      writer: { setProvider: vi.fn() } as never,
+      writer: writer as never,
       fetchImpl: vi.fn().mockResolvedValue(new Response('', { status: 401 }))
     })
     expect(result.status).toBe('denied')
+    expect(writer.removeProvider).toHaveBeenCalledWith('managed-corp-gw')
     expect(store.getConfig()).toBeNull()
+    expect(store.getIds()).toEqual([])
+  })
+
+  it('collects a warning and keeps clearing when one provider removal fails', async () => {
+    const store = createStore({ config: payload, ids: ['managed-a', 'managed-b'] })
+    const writer = createWriter()
+    writer.removeProvider.mockImplementation(async (id: string) => {
+      if (id === 'managed-a') throw new Error('boom')
+    })
+    const result = await syncManagedConfig({
+      ...baseOptions,
+      store: store.store,
+      writer: writer as never,
+      fetchImpl: vi.fn().mockResolvedValue(new Response('', { status: 404 }))
+    })
+    expect(writer.removeProvider).toHaveBeenCalledWith('managed-a')
+    expect(writer.removeProvider).toHaveBeenCalledWith('managed-b')
+    expect(result.warnings.some((w) => w.includes('managed-a'))).toBe(true)
+    expect(store.getIds()).toEqual([])
   })
 
   it('forwards timeoutMs to the fetch request signal', async () => {
@@ -179,7 +239,7 @@ describe('syncManagedConfig', () => {
     const result = await syncManagedConfig({
       ...baseOptions,
       store: store.store,
-      writer: { setProvider: vi.fn() } as never,
+      writer: createWriter() as never,
       timeoutMs: 20,
       fetchImpl
     })

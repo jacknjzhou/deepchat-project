@@ -124,3 +124,36 @@ export async function applyManagedAgentModels(
   store.writeAgentModelApplied(applied)
   return { applied, warnings }
 }
+
+/**
+ * 清除托管痕迹：把内置 Agent 中「仍等于我们上次写入的托管值」的模型默认字段置回 null，
+ * 用户改过的（当前值与 applied 不同）保持不动。最后清空 applied 记录。
+ * 返回实际被清除的字段 key 列表，便于日志。
+ */
+export async function revertManagedAgentModels(
+  agentSettings: ManagedAgentSettingsWriter,
+  store: ManagedAgentAppliedStore,
+  agentId: string
+): Promise<string[]> {
+  const applied: Partial<ManagedAgentModels> = { ...store.readAgentModelApplied() }
+  const current = (await agentSettings.getDeepChatAgentConfig(agentId)) ?? {}
+  const patch: Record<string, unknown> = {}
+  const cleared: string[] = []
+
+  for (const key of AGENT_MODEL_KEYS) {
+    const lastApplied = applied[key]
+    // 没有托管写入记录：从未托管过该字段，不动。
+    if (!lastApplied) continue
+    const field = MANAGED_AGENT_MODEL_FIELDS[key]
+    // 当前值仍等于我们写入的值，说明用户没改过，可以安全清除；否则保留用户值。
+    if (!sameRef(current[field], lastApplied)) continue
+    patch[field] = null
+    cleared.push(key)
+  }
+
+  if (Object.keys(patch).length > 0) {
+    await agentSettings.updateDeepChatAgent(agentId, patch)
+  }
+  store.writeAgentModelApplied({})
+  return cleared
+}

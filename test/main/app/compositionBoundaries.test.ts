@@ -546,4 +546,18 @@ describe('session boundary composition', () => {
     expect(prefillCall).toBeGreaterThan(syncCall)
     expect(refreshSource).toContain('if (syncResult.config)')
   })
+
+  it('reverts managed agent model artifacts when the server reports absent or denied', async () => {
+    const { readFileSync } = await vi.importActual<typeof import('node:fs')>('node:fs')
+    const compositionSource = readFileSync(
+      path.resolve(process.cwd(), 'src/main/app/composition.ts'),
+      'utf8'
+    )
+
+    // 启动期与手动刷新各一处；删除任一 absent/denied 分支的回滚调用都会失败。
+    expect(compositionSource.match(/revertManagedAgentModels\(/g)).toHaveLength(2)
+    expect(compositionSource).toContain("managedResult.status === 'absent'")
+    expect(compositionSource).toContain("syncResult.status === 'absent'")
+    expect(compositionSource).toContain('createManagedAgentSettingsWriter(agentSettings)')
+  })
 })

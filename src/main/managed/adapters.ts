@@ -12,6 +12,9 @@ export function createManagedProviderWriter(settings: ProviderSettings): Managed
       const existing = settings.getProviderById(id)
       if (existing) settings.updateProviderAtomic(id, patch as unknown as Partial<LLM_PROVIDER>)
       else settings.addProviderAtomic(patch as unknown as LLM_PROVIDER)
+    },
+    removeProvider(id) {
+      settings.removeProviderAtomic(id)
     }
   }
 }

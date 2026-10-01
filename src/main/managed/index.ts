@@ -51,10 +51,22 @@ export async function syncManagedConfig(options: SyncManagedConfigOptions): Prom
   }
 
   if (result.status === 'absent' || result.status === 'denied') {
+    // 服务端明确「无配置/拒绝」：连同此前写入的托管痕迹一并清除。
+    // 务必先读取托管 provider id（清除会把它清空），再逐个 best-effort 删除：
+    // 单个失败不阻断其余，失败 id 记入 warnings；最后才清除托管态。
+    const previousIds = store.readProviderIds()
+    const warnings = [...result.warnings]
+    for (const id of previousIds) {
+      try {
+        await writer.removeProvider(id)
+      } catch (error) {
+        warnings.push(`failed to remove managed provider ${id}: ${String(error)}`)
+      }
+    }
     store.writeConfig(null)
     store.writeProviderIds([])
     store.writeMeta(null)
-    return { status: result.status, config: null, warnings: result.warnings }
+    return { status: result.status, config: null, warnings }
   }
 
   const config = result.config

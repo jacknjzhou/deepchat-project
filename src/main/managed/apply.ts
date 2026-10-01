@@ -2,6 +2,7 @@ import type { ManagedConfigPayload } from './types'
 
 export interface ManagedProviderWriter {
   setProvider(id: string, patch: Record<string, unknown>): Promise<void> | void
+  removeProvider(id: string): Promise<void> | void
 }
 
 /**

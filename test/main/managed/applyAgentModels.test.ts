@@ -5,7 +5,7 @@ vi.unmock('node:fs')
 vi.unmock('path')
 vi.unmock('node:path')
 
-import { applyManagedAgentModels } from '@/managed/applyAgentModels'
+import { applyManagedAgentModels, revertManagedAgentModels } from '@/managed/applyAgentModels'
 import type { ManagedConfigPayload, ManagedProvider } from '@/managed/types'
 
 const provider = (id: string, key = id): ManagedProvider => ({
@@ -282,5 +282,61 @@ describe('applyManagedAgentModels', () => {
     )
     expect(agent.api.updateDeepChatAgent).not.toHaveBeenCalled()
     expect(result.warnings.length).toBeGreaterThan(0)
+  })
+})
+
+describe('revertManagedAgentModels', () => {
+  it('clears fields the user has not changed and resets applied', async () => {
+    const agent = createAgentSettings({
+      defaultModelPreset: { providerId: 'managed-a', modelId: 'm1' }
+    })
+    const store = createStore({ chat: { providerId: 'managed-a', modelId: 'm1' } })
+
+    const cleared = await revertManagedAgentModels(
+      agent.api as never,
+      store.api as never,
+      'deepchat'
+    )
+
+    expect(agent.api.updateDeepChatAgent).toHaveBeenCalledWith('deepchat', {
+      defaultModelPreset: null
+    })
+    expect(agent.getCurrent().defaultModelPreset).toBeNull()
+    expect(cleared).toEqual(['chat'])
+    expect(store.getApplied()).toEqual({})
+  })
+
+  it('keeps fields the user changed but still resets applied', async () => {
+    const userPick = { providerId: 'my-newapi', modelId: 'my-model' }
+    const agent = createAgentSettings({ visionModel: userPick })
+    const store = createStore({ vision: { providerId: 'managed-a', modelId: 'v1' } })
+
+    const cleared = await revertManagedAgentModels(
+      agent.api as never,
+      store.api as never,
+      'deepchat'
+    )
+
+    expect(agent.api.updateDeepChatAgent).not.toHaveBeenCalled()
+    expect(agent.getCurrent().visionModel).toEqual(userPick)
+    expect(cleared).toEqual([])
+    expect(store.getApplied()).toEqual({})
+  })
+
+  it('does nothing when there is no applied record', async () => {
+    const applied = { providerId: 'managed-a', modelId: 'm1' }
+    const agent = createAgentSettings({ defaultModelPreset: applied })
+    const store = createStore()
+
+    const cleared = await revertManagedAgentModels(
+      agent.api as never,
+      store.api as never,
+      'deepchat'
+    )
+
+    expect(agent.api.updateDeepChatAgent).not.toHaveBeenCalled()
+    expect(agent.getCurrent().defaultModelPreset).toEqual(applied)
+    expect(cleared).toEqual([])
+    expect(store.getApplied()).toEqual({})
   })
 })

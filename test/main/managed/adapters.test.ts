@@ -12,12 +12,14 @@ import type { AgentSettings } from '@/agent/settings'
 const createProviderSettings = (existingId?: string) => {
   const updateProviderAtomic = vi.fn()
   const addProviderAtomic = vi.fn()
+  const removeProviderAtomic = vi.fn()
   const settings = {
     getProviderById: vi.fn((id: string) => (id === existingId ? { id } : undefined)),
     updateProviderAtomic,
-    addProviderAtomic
+    addProviderAtomic,
+    removeProviderAtomic
   } as unknown as ProviderSettings
-  return { settings, updateProviderAtomic, addProviderAtomic }
+  return { settings, updateProviderAtomic, addProviderAtomic, removeProviderAtomic }
 }
 
 describe('createManagedProviderWriter', () => {
@@ -42,6 +44,15 @@ describe('createManagedProviderWriter', () => {
 
     expect(addProviderAtomic).toHaveBeenCalledWith(patch)
     expect(updateProviderAtomic).not.toHaveBeenCalled()
+  })
+
+  it('removes the target provider through removeProviderAtomic', async () => {
+    const { settings, removeProviderAtomic } = createProviderSettings('managed-a')
+    const writer = createManagedProviderWriter(settings)
+
+    await writer.removeProvider('managed-a')
+
+    expect(removeProviderAtomic).toHaveBeenCalledWith('managed-a')
   })
 })
 
