@@ -376,10 +376,21 @@ import GuidedOnboardingOverlay from '@/components/onboarding/GuidedOnboardingOve
 import { useGuidedOnboardingStep } from '@/composables/useGuidedOnboardingStep'
 import { createWindowClient } from '@api/WindowClient'
 import { continueGuidedOnboardingFromSettings } from '../lib/guidedOnboardingSettings'
+import { notifyRenderer } from '@renderer-notifications/rendererNotificationPort'
+import { formatManagedProviderError } from '@/lib/managedProviderErrors'
 
 const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
+
+const notifyProviderMutationFailure = (error: unknown) => {
+  notifyRenderer({
+    kind: 'error',
+    code: 'settings.provider.mutationFailed',
+    title: t('common.error.operationFailed'),
+    description: formatManagedProviderError(String(error), t) ?? String(error)
+  })
+}
 const windowClient = createWindowClient()
 const languageStore = useLanguageStore()
 const providerStore = useProviderStore()
@@ -759,6 +770,7 @@ const sidebarProviders = computed({
       .updateProvidersOrder([...reorderedConfigured, ...unconfigured])
       .catch((error) => {
         console.error('Failed to reorder providers:', error)
+        notifyProviderMutationFailure(error)
       })
   }
 })
@@ -823,6 +835,7 @@ const toggleProviderStatus = async (provider: LLM_PROVIDER) => {
     await providerStore.updateProviderStatus(provider.id, willEnable)
   } catch (error) {
     console.error('Failed to update provider status:', error)
+    notifyProviderMutationFailure(error)
     return
   }
   // 切换状态后，同时打开该服务商的详情页面
@@ -860,6 +873,7 @@ const handleDuplicateProviderConfirm = async (label: string) => {
     setActiveProvider(created.id)
   } catch (error) {
     console.error('Failed to duplicate provider:', error)
+    notifyProviderMutationFailure(error)
   }
 }
 
@@ -873,6 +887,7 @@ const confirmDeleteProvider = async () => {
     await providerStore.removeProvider(provider.id)
   } catch (error) {
     console.error('Failed to delete provider:', error)
+    notifyProviderMutationFailure(error)
     return
   }
   if (route.params.providerId === provider.id) {

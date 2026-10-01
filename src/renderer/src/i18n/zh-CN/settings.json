@@ -1961,7 +1961,8 @@
   "managed": {
     "providerBadge": "由企业统一配置",
     "providerHint": "该服务商由企业统一配置，不可在本机修改。",
-    "documentsBadge": "识别模型由企业统一配置，不可修改。"
+    "documentsBadge": "识别模型由企业统一配置，不可修改。",
+    "providerLocked": "该服务商由企业统一配置，不可在本机修改。"
   },
   "mcp": {
     "title": "MCP设置",
