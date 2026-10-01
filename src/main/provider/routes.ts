@@ -627,6 +627,10 @@ export function createProviderRoutes(deps: {
       modelsAddCustomRoute.name,
       async (rawInput) => {
         const input = modelsAddCustomRoute.input.parse(rawInput)
+        // 托管 provider 禁止添加自定义模型（防篡改）；模型开关、删除自定义模型不在此列。
+        assertProviderWritable(input.providerId, () =>
+          providerSettings.isManagedProvider(input.providerId) ? [input.providerId] : []
+        )
         return modelsAddCustomRoute.output.parse({
           model: await providerRuntime.addCustomModel(input.providerId, input.model)
         })

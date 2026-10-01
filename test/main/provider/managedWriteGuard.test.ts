@@ -1,7 +1,12 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createRendererRouteContext } from '@/routes/routeRegistry'
 import { createProviderRoutes } from '@/provider/routes'
-import { providersAddRoute, providersRemoveRoute } from '@shared/contracts/routes'
+import {
+  modelsAddCustomRoute,
+  modelsSetStatusRoute,
+  providersAddRoute,
+  providersRemoveRoute
+} from '@shared/contracts/routes'
 import {
   ManagedProviderLockedError,
   assertManagedOrderPreserved,
@@ -82,15 +87,25 @@ describe('provider write guard integration', () => {
   function createRoutes(managedIds: string[]) {
     const removeProviderAtomic = vi.fn()
     const addProviderAtomic = vi.fn()
+    const addCustomModel = vi.fn(async (providerId: string, model: Record<string, unknown>) => ({
+      ...model,
+      group: 'custom',
+      providerId,
+      isCustom: true
+    }))
+    const updateModelStatus = vi.fn()
     const getProviderById = vi.fn(() => undefined)
     const routes = createProviderRoutes({
       providerSettings: {
         getProviders: () => [],
-        getProviderById
+        getProviderById,
+        isManagedProvider: (providerId: string) => managedIds.includes(providerId)
       } as any,
       providerRuntime: {
         removeProviderAtomic,
-        addProviderAtomic
+        addProviderAtomic,
+        addCustomModel,
+        updateModelStatus
       } as any,
       acpProviderAdminPort: {} as any,
       providerImportService: {} as any,
@@ -101,7 +116,7 @@ describe('provider write guard integration', () => {
       readManagedProviderIds: () => managedIds,
       recordSettingsActivity: vi.fn(async () => undefined)
     })
-    return { routes, removeProviderAtomic, addProviderAtomic }
+    return { routes, removeProviderAtomic, addProviderAtomic, addCustomModel, updateModelStatus }
   }
 
   it('blocks removing a managed provider and leaves settings untouched', async () => {
@@ -133,5 +148,47 @@ describe('provider write guard integration', () => {
       )
     ).resolves.toMatchObject({ provider: { id: 'my-corp-gw' } })
     expect(addProviderAtomic).toHaveBeenCalledTimes(1)
+  })
+
+  it('blocks adding a custom model to a managed provider', async () => {
+    const { routes, addCustomModel } = createRoutes(['managed-corp-gw'])
+
+    await expect(
+      routes.get(modelsAddCustomRoute.name)?.(
+        { providerId: 'managed-corp-gw', model: { id: 'tampered', name: 'Tampered' } },
+        context
+      )
+    ).rejects.toBeInstanceOf(ManagedProviderLockedError)
+    await expect(
+      routes.get(modelsAddCustomRoute.name)?.(
+        { providerId: 'managed-corp-gw', model: { id: 'tampered', name: 'Tampered' } },
+        context
+      )
+    ).rejects.toThrow(/\[managed\.providerLocked:managed-corp-gw\]/)
+    expect(addCustomModel).not.toHaveBeenCalled()
+  })
+
+  it('allows adding a custom model to a user provider', async () => {
+    const { routes, addCustomModel } = createRoutes(['managed-corp-gw'])
+
+    await expect(
+      routes.get(modelsAddCustomRoute.name)?.(
+        { providerId: 'my-provider', model: { id: 'my-model', name: 'My Model' } },
+        context
+      )
+    ).resolves.toMatchObject({ model: { id: 'my-model', providerId: 'my-provider' } })
+    expect(addCustomModel).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not block toggling models on a managed provider', async () => {
+    const { routes, updateModelStatus } = createRoutes(['managed-corp-gw'])
+
+    await expect(
+      routes.get(modelsSetStatusRoute.name)?.(
+        { providerId: 'managed-corp-gw', modelId: 'managed-model', enabled: true },
+        context
+      )
+    ).resolves.toEqual({ providerId: 'managed-corp-gw', modelId: 'managed-model', enabled: true })
+    expect(updateModelStatus).toHaveBeenCalledWith('managed-corp-gw', 'managed-model', true)
   })
 })
