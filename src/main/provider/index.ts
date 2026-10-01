@@ -268,6 +268,15 @@ export class ProviderRuntime
     this.refreshEnabledProviderDbBackedModelsInBackground('provider-db-updated')
   }
 
+  /**
+   * 从 provider 存储重建实例表。
+   * 用于托管配置等绕过运行时、直接写入 provider 存储的场景：写入本身不会通知运行时，
+   * 必须显式重建，否则 getProviderById/refreshModels 会因 Provider not found 失败。
+   */
+  reloadProvidersFromSettings(): void {
+    this.replaceProviders(this.providerSettings.getProviders())
+  }
+
   getProviders(): LLM_PROVIDER[] {
     return this.providerInstanceManager.getProviders()
   }

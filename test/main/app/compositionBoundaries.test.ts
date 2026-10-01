@@ -493,6 +493,26 @@ describe('session boundary composition', () => {
     )
   })
 
+  it('reloads the provider runtime after managed writes and before model refresh', async () => {
+    const { readFileSync } = await vi.importActual<typeof import('node:fs')>('node:fs')
+    const compositionSource = readFileSync(
+      path.resolve(process.cwd(), 'src/main/app/composition.ts'),
+      'utf8'
+    )
+
+    const sync = compositionSource.indexOf('syncManagedConfig(')
+    const reload = compositionSource.indexOf('providerRuntime.reloadProvidersFromSettings()')
+    const refresh = compositionSource.indexOf('providerRuntime.refreshModels(provider.id)')
+    const migrate = compositionSource.indexOf('migrateDocumentsModelSettings(')
+
+    // managed writer 绕过运行时直接写存储，必须在刷新模型前显式重建运行时实例表，
+    // 否则 refreshModels 会因 Provider not found 失败，Agent 默认值预填整段跳过。
+    expect(sync).toBeGreaterThanOrEqual(0)
+    expect(reload).toBeGreaterThan(sync)
+    expect(refresh).toBeGreaterThan(reload)
+    expect(reload).toBeLessThan(migrate)
+  })
+
   it('keeps managed config sync from blocking startup on device info failures', async () => {
     const { readFileSync } = await vi.importActual<typeof import('node:fs')>('node:fs')
     const compositionSource = readFileSync(

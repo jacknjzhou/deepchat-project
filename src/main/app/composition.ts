@@ -2967,6 +2967,9 @@ export async function createMainProcessControl(dependencies: {
     // 内置 Agent「模型默认值」四项：无启动期消费者，后台并行刷新模型后按 id 匹配预填（契约 §1.4）
     if (managedResult?.config) {
       const managedConfig = managedResult.config
+      // 托管 provider 由 writer 直接写入 provider 存储，不经过运行时；先让运行时重建实例表，
+      // 否则紧随其后的模型刷新会因 Provider not found 失败，Agent 默认值预填也会整段跳过。
+      providerRuntime.reloadProvidersFromSettings()
       void (async () => {
         const refreshResults = await Promise.allSettled(
           managedConfig.providers.map((provider) => providerRuntime.refreshModels(provider.id))
