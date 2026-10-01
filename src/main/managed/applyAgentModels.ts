@@ -47,7 +47,9 @@ function orderedProviderIds(config: ManagedConfigPayload): string[] {
 
 /**
  * 按「模型列表匹配 + 默认值跟随、用户优先」把托管模型默认值写入内置 Agent 配置。
- * 匹配不到的 id 被跳过并记入 warnings，保持用户当前值。
+ * 首次下发某项（applied 中尚无记录）直接写入托管值（覆盖用户已有值）；之后仅在用户未改动
+ * （当前值仍等于上次写入的托管值）时跟随新的托管值；只有在我们设置之后用户又改动过，
+ * 才保留用户值不再覆盖。匹配不到的 id 被跳过并记入 warnings，保持用户当前值。
  */
 export async function applyManagedAgentModels(
   config: ManagedConfigPayload,
@@ -106,12 +108,13 @@ export async function applyManagedAgentModels(
     const currentValue = current[field]
     const lastApplied = applied[key]
 
-    if (!currentValue || sameRef(currentValue, lastApplied)) {
+    if (!currentValue || lastApplied === undefined || sameRef(currentValue, lastApplied)) {
       // 合并写入，保留用户在同一 provider/model 上设置的其它参数（如 temperature）。
       patch[field] = { ...(currentValue as Record<string, unknown> | null | undefined), ...target }
       applied[key] = target
     }
-    // 用户改过（currentValue 存在且与上次写入的托管值不同）：保留用户值，且不修改 applied。
+    // 只有在我们设置之后用户又改动过（applied 已有记录，且 currentValue 与上次写入的托管值不同）：
+    // 才保留用户值，且不修改 applied。
     // applied 始终记录「上一次成功写入的托管值」，否则下次同步 sameRef 会误命中而覆盖用户值。
   }
 

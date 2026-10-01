@@ -115,6 +115,25 @@ describe('applyManagedAgentModels', () => {
     })
   })
 
+  it('overwrites an existing user value on the first sync for that key', async () => {
+    const userPick = { providerId: 'my-newapi', modelId: 'my-model' }
+    const agent = createAgentSettings({ defaultModelPreset: userPick })
+    const store = createStore()
+    const lookup = createLookup({ 'managed-a': ['deepseek-v3'], 'managed-b': [] })
+    await applyManagedAgentModels(
+      config({ agentModels: { chat: 'deepseek-v3' } }),
+      agent.api as never,
+      store.api as never,
+      lookup as never,
+      'deepchat'
+    )
+    expect(agent.getCurrent().defaultModelPreset).toEqual({
+      providerId: 'managed-a',
+      modelId: 'deepseek-v3'
+    })
+    expect(store.getApplied().chat).toEqual({ providerId: 'managed-a', modelId: 'deepseek-v3' })
+  })
+
   it('skips ids no managed provider offers and keeps the user value', async () => {
     const userPick = { providerId: 'my-newapi', modelId: 'my-model' }
     const agent = createAgentSettings({ visionModel: userPick })
