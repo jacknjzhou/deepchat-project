@@ -20,6 +20,7 @@ const status = (overrides: Record<string, unknown> = {}) => ({
   username: 'zhangsan',
   endpoint: 'https://cfg',
   fetchedAt: 1,
+  documents: null,
   ...overrides
 })
 
@@ -30,13 +31,21 @@ describe('managedStore', () => {
   })
 
   it('loads the cached status into state', async () => {
-    getStatusMock.mockResolvedValue(status())
+    const documents = {
+      textModel: { providerId: 'managed-corp-gw', modelId: 'deepseek-v3', endpointType: 'openai' },
+      visionModel: { providerId: 'managed-corp-gw', modelId: 'gpt-4o' },
+      concurrency: 8,
+      temperature: 0.7,
+      maxTokens: 2048
+    }
+    getStatusMock.mockResolvedValue(status({ documents }))
     const store = useManagedStore()
     await store.load()
     expect(getStatusMock).toHaveBeenCalledTimes(1)
     expect(refreshMock).not.toHaveBeenCalled()
     expect(store.managed).toBe(true)
     expect(store.documentsLocked).toBe(true)
+    expect(store.documents).toEqual(documents)
     expect(store.username).toBe('zhangsan')
     expect(store.endpoint).toBe('https://cfg')
     expect(store.loading).toBe(false)

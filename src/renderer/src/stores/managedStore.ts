@@ -7,6 +7,7 @@ export const useManagedStore = defineStore('managed', () => {
   const managed = ref(false)
   const providerIds = ref<string[]>([])
   const documentsLocked = ref(false)
+  const documents = ref<ManagedConfigStatus['documents']>(null)
   const username = ref('')
   const endpoint = ref('')
   const loading = ref(false)
@@ -21,6 +22,7 @@ export const useManagedStore = defineStore('managed', () => {
       managed.value = status.managed
       providerIds.value = status.providerIds
       documentsLocked.value = status.documentsLocked
+      documents.value = status.documents
       username.value = status.username
       endpoint.value = status.endpoint
     } catch (error) {
@@ -48,6 +50,7 @@ export const useManagedStore = defineStore('managed', () => {
     managed,
     providerIds,
     documentsLocked,
+    documents,
     username,
     endpoint,
     loading,

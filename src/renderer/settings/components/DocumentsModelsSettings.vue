@@ -337,13 +337,38 @@ onMounted(async () => {
       configClient.getSetting('documents.maxTokens')
     ])
 
-  draftTextModel.value = textModel ?? null
-  draftVisionModel.value = visionModel ?? null
-  savedTextModel.value = textModel ?? null
-  savedVisionModel.value = visionModel ?? null
-  concurrency.value = typeof savedConcurrency === 'number' ? clampConcurrency(savedConcurrency) : 4
-  temperatureInput.value = typeof savedTemperature === 'number' ? String(savedTemperature) : ''
-  maxTokensInput.value = typeof savedMaxTokens === 'number' ? String(savedMaxTokens) : ''
+  const userTextModel = textModel ?? null
+  const userVisionModel = visionModel ?? null
+  const userConcurrency =
+    typeof savedConcurrency === 'number' ? clampConcurrency(savedConcurrency) : 4
+  const userTemperature = typeof savedTemperature === 'number' ? String(savedTemperature) : ''
+  const userMaxTokens = typeof savedMaxTokens === 'number' ? String(savedMaxTokens) : ''
+
+  savedTextModel.value = userTextModel
+  savedVisionModel.value = userVisionModel
+
+  // 托管锁定态：展示真正生效的托管文档模型值（与 resolveDocumentsModelSettings 叠加语义一致：
+  // 模型/并发托管值优先、null 回退用户值；temperature/maxTokens 以托管值为准，null 表示不传参）。
+  // 非托管或托管无 documents 段时回退到用户键值，行为与现状完全一致。
+  const managedDocuments = locked.value ? managedStore.documents : null
+  if (managedDocuments) {
+    draftTextModel.value = managedDocuments.textModel ?? userTextModel
+    draftVisionModel.value = managedDocuments.visionModel ?? userVisionModel
+    concurrency.value =
+      typeof managedDocuments.concurrency === 'number'
+        ? clampConcurrency(managedDocuments.concurrency)
+        : userConcurrency
+    temperatureInput.value =
+      typeof managedDocuments.temperature === 'number' ? String(managedDocuments.temperature) : ''
+    maxTokensInput.value =
+      typeof managedDocuments.maxTokens === 'number' ? String(managedDocuments.maxTokens) : ''
+  } else {
+    draftTextModel.value = userTextModel
+    draftVisionModel.value = userVisionModel
+    concurrency.value = userConcurrency
+    temperatureInput.value = userTemperature
+    maxTokensInput.value = userMaxTokens
+  }
 })
 
 defineExpose({

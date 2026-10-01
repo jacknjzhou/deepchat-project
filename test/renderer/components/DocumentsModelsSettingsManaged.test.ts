@@ -12,10 +12,25 @@ vi.mock('@api/ConfigClient', () => ({
   })
 }))
 
-const managedStatus = reactive({
+type ManagedModelRefLike = { providerId: string; modelId: string; endpointType?: string }
+type ManagedDocuments = {
+  textModel: ManagedModelRefLike | null
+  visionModel: ManagedModelRefLike | null
+  concurrency: number | null
+  temperature: number | null
+  maxTokens: number | null
+}
+
+const managedStatus = reactive<{
+  documentsLocked: boolean
+  providerIds: string[]
+  loading: boolean
+  documents: ManagedDocuments | null
+}>({
   documentsLocked: true,
   providerIds: ['managed-corp-gw'],
-  loading: false
+  loading: false,
+  documents: null
 })
 
 let pendingLoad: { promise: Promise<void>; resolve: () => void } | null = null
@@ -33,6 +48,9 @@ vi.mock('@/stores/managedStore', () => ({
   useManagedStore: () => ({
     get documentsLocked() {
       return managedStatus.documentsLocked
+    },
+    get documents() {
+      return managedStatus.documents
     },
     get loading() {
       return managedStatus.loading
@@ -104,6 +122,7 @@ describe('DocumentsModelsSettings (managed)', () => {
     managedStatus.documentsLocked = true
     managedStatus.providerIds = ['managed-corp-gw']
     managedStatus.loading = false
+    managedStatus.documents = null
     pendingLoad = null
     getSettingMock.mockImplementation((key: string) => {
       if (key === 'documents.textModel') {
@@ -195,5 +214,75 @@ describe('DocumentsModelsSettings (managed)', () => {
     ).toBeUndefined()
     expect(wrapper.find('[data-testid="documents-models-save"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="documents-models-managed-badge"]').exists()).toBe(false)
+  })
+
+  it('shows the effective managed documents values when locked', async () => {
+    // 用户键（A）与托管值（B）刻意不同：锁定态只读页必须展示托管生效值 B
+    managedStatus.documents = {
+      textModel: { providerId: 'managed-corp-gw', modelId: 'gpt-4o' },
+      visionModel: { providerId: 'managed-corp-gw', modelId: 'gpt-4o' },
+      concurrency: 8,
+      temperature: 0.7,
+      maxTokens: 2048
+    }
+    getSettingMock.mockImplementation((key: string) => {
+      if (key === 'documents.textModel') {
+        return { providerId: 'managed-corp-gw', modelId: 'deepseek-v3' }
+      }
+      if (key === 'documents.visionModel') {
+        return { providerId: 'managed-corp-gw', modelId: 'deepseek-v3' }
+      }
+      if (key === 'documents.concurrency') return 2
+      if (key === 'documents.temperature') return 1.5
+      if (key === 'documents.maxTokens') return 999
+      return undefined
+    })
+
+    const wrapper = mountPage()
+    await flushPromises()
+
+    // 标签解析对托管 provider 的模型生效（企业网关 / GPT-4o）
+    expect(wrapper.get('[data-testid="documents-text-model-trigger"]').text()).toContain('GPT-4o')
+    expect(wrapper.get('[data-testid="documents-vision-model-trigger"]').text()).toContain('GPT-4o')
+
+    expect(
+      (wrapper.get('[data-testid="documents-concurrency-input"]').element as HTMLInputElement).value
+    ).toBe('8')
+    expect(
+      (wrapper.get('[data-testid="documents-temperature-input"]').element as HTMLInputElement).value
+    ).toBe('0.7')
+    expect(
+      (wrapper.get('[data-testid="documents-max-tokens-input"]').element as HTMLInputElement).value
+    ).toBe('2048')
+
+    // 锁定态下展示用的托管值不会被写回用户键
+    expect(setSettingMock).not.toHaveBeenCalled()
+  })
+
+  it('falls back to user keys when the managed documents section is absent', async () => {
+    managedStatus.documents = null
+    getSettingMock.mockImplementation((key: string) => {
+      if (key === 'documents.textModel') {
+        return { providerId: 'managed-corp-gw', modelId: 'deepseek-v3' }
+      }
+      if (key === 'documents.visionModel') {
+        return { providerId: 'managed-corp-gw', modelId: 'deepseek-v3' }
+      }
+      if (key === 'documents.concurrency') return 2
+      return undefined
+    })
+
+    const wrapper = mountPage()
+    await flushPromises()
+
+    expect(wrapper.get('[data-testid="documents-text-model-trigger"]').text()).toContain(
+      'DeepSeek V3'
+    )
+    expect(wrapper.get('[data-testid="documents-vision-model-trigger"]').text()).toContain(
+      'DeepSeek V3'
+    )
+    expect(
+      (wrapper.get('[data-testid="documents-concurrency-input"]').element as HTMLInputElement).value
+    ).toBe('2')
   })
 })

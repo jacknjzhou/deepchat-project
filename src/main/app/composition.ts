@@ -3350,13 +3350,34 @@ export async function createMainProcessControl(dependencies: {
       const meta = managedStore.readMeta()
       const config = managedStore.readConfig()
       const providerIds = managedStore.readProviderIds()
+      // 只回传托管 documents 原始配置（形状安全映射，缺字段以 null 兜底）；
+      // 与用户值叠加的语义保留在渲染端锁定态下按需处理。
+      const mapManagedDocuments = (documents: ManagedConfigPayload['documents']) => {
+        if (!documents) return null
+        const mapRef = (ref: NonNullable<ManagedConfigPayload['documents']>['textModel']) =>
+          ref
+            ? {
+                providerId: ref.providerId,
+                modelId: ref.modelId,
+                endpointType: ref.endpointType
+              }
+            : null
+        return {
+          textModel: mapRef(documents.textModel),
+          visionModel: mapRef(documents.visionModel),
+          concurrency: typeof documents.concurrency === 'number' ? documents.concurrency : null,
+          temperature: typeof documents.temperature === 'number' ? documents.temperature : null,
+          maxTokens: typeof documents.maxTokens === 'number' ? documents.maxTokens : null
+        }
+      }
       return {
         managed: providerIds.length > 0,
         username: meta?.username ?? '',
         endpoint: meta?.endpoint ?? '',
         fetchedAt: meta?.fetchedAt ?? null,
         providerIds,
-        documentsLocked: Boolean(config?.documents)
+        documentsLocked: Boolean(config?.documents),
+        documents: mapManagedDocuments(config?.documents ?? null)
       }
     }
     const refreshManagedConfig = (): Promise<ManagedConfigStatus> => {
