@@ -243,7 +243,7 @@ describe('fetchManagedConfig', () => {
     expect(result.warnings.some((w) => w.includes('not-a-real-type'))).toBe(true)
   })
 
-  it('ignores documents refs whose providerKey is unknown', async () => {
+  it('drops the whole documents section when a ref references an unknown providerKey', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(
       jsonResponse({
         version: 1,
@@ -257,11 +257,9 @@ describe('fetchManagedConfig', () => {
       })
     )
     const result = await fetchManagedConfig({ ...base, fetchImpl })
-    expect(result.config?.documents?.textModel).toBeNull()
-    expect(result.config?.documents?.visionModel).toEqual({
-      providerId: 'managed-ok',
-      modelId: 'm2'
-    })
+    // 只有一个模型可用 → 整段作废（视作未锁定），用户仍可补配缺失的模型
+    expect(result.config?.documents).toBeNull()
+    expect(result.warnings.some((w) => w.includes('unknown providerKey: missing'))).toBe(true)
   })
 
   it('drops invalid endpointType from a model ref', async () => {
@@ -329,7 +327,7 @@ describe('fetchManagedConfig', () => {
     expect(dropped.some((w) => w.includes('apiType'))).toBe(true)
   })
 
-  it('drops malformed documents model refs individually', async () => {
+  it('drops the documents section when a model ref is malformed', async () => {
     const providers = [
       { key: 'ok', name: 'OK', apiType: 'new-api', baseUrl: 'https://a', apiKey: 'k' }
     ]
@@ -359,11 +357,11 @@ describe('fetchManagedConfig', () => {
       )
     })
     expect(badFields.status).toBe('applied')
-    expect(badFields.config?.documents?.textModel).toBeNull()
-    expect(badFields.config?.documents?.visionModel).toEqual({
-      providerId: 'managed-ok',
-      modelId: 'm2'
-    })
+    // textModel 非法 → 只有一个模型可用 → 整段作废，用户仍可补配 textModel
+    expect(badFields.config?.documents).toBeNull()
+    expect(
+      badFields.warnings.some((w) => w.includes('providerKey and modelId must be strings'))
+    ).toBe(true)
   })
 
   it('unlocks the documents section when only non-model parameters are delivered', async () => {
@@ -382,7 +380,81 @@ describe('fetchManagedConfig', () => {
     expect(result.status).toBe('applied')
     // 没有可用模型引用 → 整段为 null，用户仍可自行配置提取模型，不会被只读锁死
     expect(result.config?.documents).toBeNull()
-    expect(result.warnings.some((w) => w.startsWith('documents dropped'))).toBe(true)
+    expect(result.warnings.some((w) => w.startsWith('documents section ignored'))).toBe(true)
+  })
+
+  it('keeps the documents section when both textModel and visionModel are delivered', async () => {
+    const result = await fetchManagedConfig({
+      ...base,
+      fetchImpl: vi.fn().mockResolvedValue(
+        jsonResponse({
+          version: 1,
+          providers: [
+            { key: 'ok', name: 'OK', apiType: 'new-api', baseUrl: 'https://a', apiKey: 'k' }
+          ],
+          documents: {
+            textModel: { providerKey: 'ok', modelId: 'm' },
+            visionModel: { providerKey: 'ok', modelId: 'm2' }
+          }
+        })
+      )
+    })
+    expect(result.status).toBe('applied')
+    expect(result.config?.documents?.textModel).toEqual({ providerId: 'managed-ok', modelId: 'm' })
+    expect(result.config?.documents?.visionModel).toEqual({
+      providerId: 'managed-ok',
+      modelId: 'm2'
+    })
+    expect(result.warnings.some((w) => w.startsWith('documents section ignored'))).toBe(false)
+  })
+
+  it('ignores the documents section when only textModel is delivered', async () => {
+    const result = await fetchManagedConfig({
+      ...base,
+      fetchImpl: vi.fn().mockResolvedValue(
+        jsonResponse({
+          version: 1,
+          providers: [
+            { key: 'ok', name: 'OK', apiType: 'new-api', baseUrl: 'https://a', apiKey: 'k' }
+          ],
+          documents: {
+            textModel: { providerKey: 'ok', modelId: 'm' },
+            concurrency: 3
+          }
+        })
+      )
+    })
+    expect(result.status).toBe('applied')
+    expect(result.config?.documents).toBeNull()
+    expect(
+      result.warnings.some(
+        (w) => w.startsWith('documents section ignored') && w.includes('textModel and visionModel')
+      )
+    ).toBe(true)
+  })
+
+  it('ignores the documents section when only visionModel is delivered', async () => {
+    const result = await fetchManagedConfig({
+      ...base,
+      fetchImpl: vi.fn().mockResolvedValue(
+        jsonResponse({
+          version: 1,
+          providers: [
+            { key: 'ok', name: 'OK', apiType: 'new-api', baseUrl: 'https://a', apiKey: 'k' }
+          ],
+          documents: {
+            visionModel: { providerKey: 'ok', modelId: 'm2' }
+          }
+        })
+      )
+    })
+    expect(result.status).toBe('applied')
+    expect(result.config?.documents).toBeNull()
+    expect(
+      result.warnings.some(
+        (w) => w.startsWith('documents section ignored') && w.includes('textModel and visionModel')
+      )
+    ).toBe(true)
   })
 
   it('url-encodes non-ascii username and domain', async () => {

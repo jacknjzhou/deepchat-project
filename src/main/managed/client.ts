@@ -91,11 +91,11 @@ function normalizeDocuments(
   if (!raw) return null
   const textModel = normalizeModelRef(raw.textModel, localIdByKey, warnings)
   const visionModel = normalizeModelRef(raw.visionModel, localIdByKey, warnings)
-  if (!textModel && !visionModel) {
-    // 仅下发参数（如 concurrency）而没有可用模型：运行时模型是逐字段回退到用户值的，
-    // 若仍视为锁定会让用户既拿不到托管模型也无法配置，故整段作废（视作未锁定）
+  if (!textModel || !visionModel) {
+    // 运行时模型是逐字段回退到用户值的：若只下发其中一个模型仍视为锁定，用户将无法配置
+    // 缺失的另一个模型，形成配置死锁。故要求两个模型同时有效，否则整段作废（视作未锁定）。
     warnings.push(
-      'documents dropped: no usable text/vision model ref, section left unlocked for user configuration'
+      'documents section ignored: both textModel and visionModel are required, section left unlocked for user configuration'
     )
     return null
   }
