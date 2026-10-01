@@ -191,6 +191,22 @@ describe('syncManagedConfig', () => {
     expect(store.getMeta()).toBeNull()
   })
 
+  it('skips non-managed ids during absent cleanup and warns', async () => {
+    const store = createStore({ config: payload, ids: ['managed-a', 'my-newapi'] })
+    const writer = createWriter()
+    const result = await syncManagedConfig({
+      ...baseOptions,
+      store: store.store,
+      writer: writer as never,
+      fetchImpl: vi.fn().mockResolvedValue(new Response('', { status: 404 }))
+    })
+    expect(result.status).toBe('absent')
+    expect(writer.removeProvider).toHaveBeenCalledWith('managed-a')
+    expect(writer.removeProvider).not.toHaveBeenCalledWith('my-newapi')
+    expect(result.warnings.some((w) => w.includes('my-newapi'))).toBe(true)
+    expect(store.getIds()).toEqual([])
+  })
+
   it('clears managed state on denied', async () => {
     const store = createStore({ config: payload, ids: ['managed-corp-gw'] })
     const writer = createWriter()

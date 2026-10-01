@@ -3393,6 +3393,9 @@ export async function createMainProcessControl(dependencies: {
           clientVersion: app.getVersion(),
           timeoutMs: 3000
         })
+        // 与启动期一致：拉取/应用阶段的告警统一打印（absent/denied 下含删除失败/跳过等），
+        // 使手动刷新也能看到告警，而非只有重启才可见。best-effort，不阻断刷新。
+        for (const warning of syncResult.warnings) console.warn(`[managed] ${warning}`)
         // 写入完成后（读到的是最新托管配置）后台重跑模型刷新 + Agent 预填；
         // absent/denied 时 config 为 null，不预填，与启动期语义一致。
         if (syncResult.config) {

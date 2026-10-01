@@ -1,7 +1,7 @@
 import { fetchManagedConfig, type ManagedDeviceInfo } from './client'
 import { applyManagedConfig, type ManagedProviderWriter } from './apply'
 import type { ManagedConfigStore } from './store'
-import type { SyncResult } from './types'
+import { MANAGED_PROVIDER_ID_PREFIX, type SyncResult } from './types'
 
 export { MANAGED_SETTINGS_KEYS, createManagedConfigStore } from './store'
 export { toLocalProviderId } from './types'
@@ -51,12 +51,18 @@ export async function syncManagedConfig(options: SyncManagedConfigOptions): Prom
   }
 
   if (result.status === 'absent' || result.status === 'denied') {
-    // 服务端明确「无配置/拒绝」：连同此前写入的托管痕迹一并清除。
+    // 「无配置/拒绝」：连同此前写入的托管痕迹一并清除。
     // 务必先读取托管 provider id（清除会把它清空），再逐个 best-effort 删除：
     // 单个失败不阻断其余，失败 id 记入 warnings；最后才清除托管态。
+    // 删除不可逆，只信任 MANAGED_PROVIDER_ID_PREFIX 前缀的 id；
+    // 其余（异常写入/历史遗留）一律跳过并告警，避免误删用户自有的 provider。
     const previousIds = store.readProviderIds()
     const warnings = [...result.warnings]
     for (const id of previousIds) {
+      if (!id.startsWith(MANAGED_PROVIDER_ID_PREFIX)) {
+        warnings.push(`skipped non-managed provider id ${id}`)
+        continue
+      }
       try {
         await writer.removeProvider(id)
       } catch (error) {
