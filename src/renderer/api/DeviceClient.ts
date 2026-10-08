@@ -2,6 +2,7 @@ import type { DeepchatBridge } from '@shared/contracts/bridge'
 import {
   deviceGetAppVersionRoute,
   deviceGetInfoRoute,
+  deviceManagedConfigEndpointRoute,
   deviceRestartAppRoute,
   deviceResetDataByTypeRoute,
   deviceSanitizeSvgRoute,
@@ -15,6 +16,11 @@ export function createDeviceClient(bridge: DeepchatBridge = getDeepchatBridge())
   async function getAppVersion() {
     const result = await bridge.invoke(deviceGetAppVersionRoute.name, {})
     return result.version
+  }
+
+  async function getManagedConfigEndpoint() {
+    const result = await bridge.invoke(deviceManagedConfigEndpointRoute.name, {})
+    return result
   }
 
   async function getDeviceInfo() {
@@ -60,6 +66,7 @@ export function createDeviceClient(bridge: DeepchatBridge = getDeepchatBridge())
 
   return {
     getAppVersion,
+    getManagedConfigEndpoint,
     getDeviceInfo,
     selectDirectory,
     selectFiles,

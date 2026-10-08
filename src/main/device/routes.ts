@@ -2,6 +2,7 @@ import type { DeviceServicePort } from '@shared/types/device'
 import {
   deviceGetAppVersionRoute,
   deviceGetInfoRoute,
+  deviceManagedConfigEndpointRoute,
   deviceRestartAppRoute,
   deviceResetDataByTypeRoute,
   deviceSanitizeSvgRoute,
@@ -12,6 +13,7 @@ import { createRouteMap, type DeepchatRouteMap } from '@/routes/routeRegistry'
 
 export function createDeviceRoutes(deps: {
   device: DeviceServicePort
+  managedEndpoint: () => { endpoint: string; source: 'env' | 'builtin' | 'none' }
   restartApplication(): Promise<void>
   resetDataByType(resetType: 'chat' | 'knowledge' | 'config' | 'all'): Promise<void>
 }): DeepchatRouteMap {
@@ -23,6 +25,13 @@ export function createDeviceRoutes(deps: {
         return deviceGetAppVersionRoute.output.parse({
           version: await deps.device.getAppVersion()
         })
+      }
+    ],
+    [
+      deviceManagedConfigEndpointRoute.name,
+      async (rawInput) => {
+        deviceManagedConfigEndpointRoute.input.parse(rawInput)
+        return deviceManagedConfigEndpointRoute.output.parse(deps.managedEndpoint())
       }
     ],
     [

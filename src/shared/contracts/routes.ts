@@ -180,6 +180,7 @@ import { dialogErrorRoute, dialogRespondRoute } from './routes/dialog.routes'
 import {
   deviceGetAppVersionRoute,
   deviceGetInfoRoute,
+  deviceManagedConfigEndpointRoute,
   deviceRestartAppRoute,
   deviceResetDataByTypeRoute,
   deviceSanitizeSvgRoute,
@@ -750,6 +751,7 @@ const DEEPCHAT_ROUTE_CATALOG_PART_1 = {
   [notificationAcknowledgePresentationRoute.name]: notificationAcknowledgePresentationRoute,
   [deviceGetAppVersionRoute.name]: deviceGetAppVersionRoute,
   [deviceGetInfoRoute.name]: deviceGetInfoRoute,
+  [deviceManagedConfigEndpointRoute.name]: deviceManagedConfigEndpointRoute,
   [deviceSelectDirectoryRoute.name]: deviceSelectDirectoryRoute,
   [deviceSelectFilesRoute.name]: deviceSelectFilesRoute,
   [deviceRestartAppRoute.name]: deviceRestartAppRoute,

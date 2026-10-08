@@ -59,6 +59,7 @@ import { createManagedConfigStore, syncManagedConfig, type ManagedConfigPayload 
 import { applyManagedAgentModels, revertManagedAgentModels } from '../managed/applyAgentModels'
 import { createManagedAgentSettingsWriter, createManagedProviderWriter } from '../managed/adapters'
 import type { ManagedDeviceInfo } from '../managed/client'
+import { resolveManagedEndpointInfo, type ManagedEndpointInfo } from '../managed/endpoint'
 import type { SettingsStore } from '../config/settingsStore'
 import type { SecretStore } from '../config/secretStore'
 import { providerDbLoader } from '../provider/providerDbLoader'
@@ -516,8 +517,11 @@ function createLivePort<T extends object>(resolve: () => T): T {
   })
 }
 
-function resolveManagedConfigEndpoint(): string {
-  return process.env.DEEPCHAT_MANAGED_CONFIG_URL ?? ''
+function managedEndpointInfo(): ManagedEndpointInfo {
+  return resolveManagedEndpointInfo(
+    process.env.DEEPCHAT_MANAGED_CONFIG_URL,
+    (import.meta.env as Record<string, string | undefined> | undefined)?.MAIN_VITE_MANAGED_CONFIG_URL
+  )
 }
 
 function toManagedDeviceInfo(
@@ -2946,7 +2950,7 @@ export async function createMainProcessControl(dependencies: {
     const managedDevice = await resolveManagedDevice(deviceService)
 
     const managedResult = await syncManagedConfig({
-      endpoint: resolveManagedConfigEndpoint(),
+      endpoint: managedEndpointInfo().endpoint,
       device: managedDevice,
       store: managedStore,
       writer: createManagedProviderWriter(providerSettings),
@@ -3300,6 +3304,7 @@ export async function createMainProcessControl(dependencies: {
     const acpRoutes = createAcpRoutes({ auth: acpAuthService })
     const deviceRoutes = createDeviceRoutes({
       device: deviceService,
+      managedEndpoint: managedEndpointInfo,
       restartApplication,
       resetDataByType: (resetType) => resetApplicationData(resetType)
     })
@@ -3384,7 +3389,7 @@ export async function createMainProcessControl(dependencies: {
       if (managedRefreshInFlight) return managedRefreshInFlight
       const run = async (): Promise<ManagedConfigStatus> => {
         const syncResult = await syncManagedConfig({
-          endpoint: resolveManagedConfigEndpoint(),
+          endpoint: managedEndpointInfo().endpoint,
           device: await resolveManagedDevice(deviceService),
           store: managedStore,
           writer: createManagedProviderWriter(providerSettings),
