@@ -40,6 +40,7 @@
   - [安装依赖](#安装依赖)
   - [开始开发](#开始开发)
   - [构建](#构建)
+  - [注入企业托管配置地址（可选）](#注入企业托管配置地址可选)
 - [👥 社区与贡献](#-社区与贡献)
 - [🙏🏻 致谢](#-致谢)
 - [📃 许可证](#-许可证)
@@ -468,6 +469,21 @@ $ pnpm run build:mac:arm64
 $ pnpm run build:linux:x64
 $ pnpm run build:linux:arm64
 ```
+
+### 注入企业托管配置地址（可选）
+
+企业批量部署时，可在打包的**同一 Shell** 中设置 `MAIN_VITE_MANAGED_CONFIG_URL`，将默认的企业托管配置服务地址打进安装包；客户端「设置 → 关于」页会显示该地址，来源为「内置配置」：
+
+```powershell
+# Windows (PowerShell)
+$env:MAIN_VITE_MANAGED_CONFIG_URL='https://example.com/managed/config'; pnpm run build:win
+```
+
+注意事项：
+
+- 地址在构建时替换进主进程 bundle，**更换地址需要重新打包**
+- 运行时环境变量 `DEEPCHAT_MANAGED_CONFIG_URL` 优先级更高，可作为应急覆盖手段
+- 未注入且无运行时变量时，托管配置视为未配置，客户端行为不变
 
 ## 👥 社区与贡献
 
