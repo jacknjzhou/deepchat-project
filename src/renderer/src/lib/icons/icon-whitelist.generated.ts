@@ -204,6 +204,7 @@ export const GENERATED_ICON_WHITELIST: Record<GeneratedIconCollectionKey, readon
     'quote',
     'radio',
     'radio-tower',
+    'receipt-text',
     'refresh-ccw',
     'refresh-cw',
     'refresh-cw-off',
