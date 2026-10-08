@@ -13,6 +13,8 @@
 | 超时 | 默认 8000 ms，超时即 abort（视为 `unavailable`） |
 | 触发时机 | ① 应用启动（provider 初始化之后、documents 迁移之前，**不阻塞启动**）② 用户手动刷新（设置页） |
 
+> **构建期注入**：打包时设置 `MAIN_VITE_MANAGED_CONFIG_URL` 可将默认地址内置进安装包（关于页可见，来源显示「内置配置」）。运行时环境变量 `DEEPCHAT_MANAGED_CONFIG_URL` 优先级更高，用于应急覆盖。
+
 ## 2. 请求
 
 ### 2.1 Query 参数
