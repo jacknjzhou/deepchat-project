@@ -35,11 +35,11 @@
     "sid": "SID"
   },
   "managedConfig": {
-    "title": "Managed Configuration",
-    "endpoint": "Config Service URL",
-    "sourceLabel": "Source",
-    "sourceEnv": "Environment variable",
-    "sourceBuiltin": "Built-in",
-    "notConfigured": "Not configured"
+    "title": "企業託管配置",
+    "endpoint": "配置服務地址",
+    "sourceLabel": "來源",
+    "sourceEnv": "環境變量",
+    "sourceBuiltin": "內建配置",
+    "notConfigured": "未配置企業託管"
   }
 }
