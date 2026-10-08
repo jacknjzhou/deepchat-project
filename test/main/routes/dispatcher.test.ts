@@ -1744,6 +1744,7 @@ function createRuntime() {
   const acpRoutes = createAcpRoutes({ auth: acpAuth as never })
   const deviceRoutes = createDeviceRoutes({
     device: deviceService,
+    managedEndpoint: () => ({ endpoint: '', source: 'none' }),
     resetDataByType: appDataReset.resetDataByType,
     restartApplication: deviceService.restartApp
   })

@@ -520,7 +520,8 @@ function createLivePort<T extends object>(resolve: () => T): T {
 function managedEndpointInfo(): ManagedEndpointInfo {
   return resolveManagedEndpointInfo(
     process.env.DEEPCHAT_MANAGED_CONFIG_URL,
-    (import.meta.env as Record<string, string | undefined> | undefined)?.MAIN_VITE_MANAGED_CONFIG_URL
+    (import.meta.env as Record<string, string | undefined> | undefined)
+      ?.MAIN_VITE_MANAGED_CONFIG_URL
   )
 }
 
