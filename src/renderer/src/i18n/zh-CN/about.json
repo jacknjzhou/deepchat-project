@@ -33,5 +33,13 @@
     "hostname": "主机名",
     "homeDir": "主目录",
     "sid": "SID"
+  },
+  "managedConfig": {
+    "title": "企业托管配置",
+    "endpoint": "配置服务地址",
+    "sourceLabel": "来源",
+    "sourceEnv": "环境变量",
+    "sourceBuiltin": "内置配置",
+    "notConfigured": "未配置企业托管"
   }
 }

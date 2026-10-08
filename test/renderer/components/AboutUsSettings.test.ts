@@ -40,6 +40,7 @@ const configClientMock = vi.hoisted(() => ({
 }))
 const deviceClientMock = vi.hoisted(() => ({
   getAppVersion: vi.fn(),
+  getManagedConfigEndpoint: vi.fn(),
   getDeviceInfo: vi.fn(),
   copyText: vi.fn()
 }))
@@ -151,6 +152,7 @@ describe('AboutUsSettings', () => {
     configClientMock.getUpdateChannel.mockReset()
     configClientMock.setUpdateChannel.mockReset()
     deviceClientMock.getAppVersion.mockReset()
+    deviceClientMock.getManagedConfigEndpoint.mockReset()
     deviceClientMock.getDeviceInfo.mockReset()
     deviceClientMock.copyText.mockReset()
     browserClientMock.openExternal.mockReset()
@@ -160,6 +162,10 @@ describe('AboutUsSettings', () => {
     configClientMock.getUpdateChannel.mockResolvedValue('stable')
     configClientMock.setUpdateChannel.mockResolvedValue('stable')
     deviceClientMock.getAppVersion.mockResolvedValue('1.0.0-beta.3')
+    deviceClientMock.getManagedConfigEndpoint.mockResolvedValue({
+      endpoint: '',
+      source: 'none'
+    })
     deviceClientMock.getDeviceInfo.mockResolvedValue({ winAccount: null })
     deviceClientMock.copyText.mockResolvedValue(undefined)
     browserClientMock.openExternal.mockResolvedValue(undefined)
