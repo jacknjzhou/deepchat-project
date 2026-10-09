@@ -50,6 +50,8 @@ export interface CategoryResolution {
   isOverride: boolean
 }
 
+// 顺序约定：buildReimbursementTree 的 tree 顺序跟随 config.categories 数组序；
+// sortOrder 仅用于 typeKey 映射冲突仲裁（最低者胜，并列时数组序靠前胜）。
 export function resolveDocumentCategoryId(
   document: Pick<DocumentRecord, 'typeKey' | 'reimbursementOverride'>,
   config: ReimbursementConfig
@@ -88,13 +90,16 @@ export function amountFor(
   const entry = extractFieldValue(document.fields, config.amountFieldKeys)
   if (!entry) return { amount: null, uncertain: false }
   const raw = entry.value
-  const numeric =
-    typeof raw === 'number'
-      ? raw
-      : typeof raw === 'string'
-        ? Number(raw.replace(/[,，\s元]/g, ''))
-        : NaN
-  return { amount: Number.isFinite(numeric) ? numeric : null, uncertain: entry.uncertain }
+  if (typeof raw === 'number') {
+    return { amount: Number.isFinite(raw) ? raw : null, uncertain: entry.uncertain }
+  }
+  if (typeof raw === 'string') {
+    const stripped = raw.replace(/[,，\s元]/g, '')
+    if (!stripped) return { amount: null, uncertain: entry.uncertain }
+    const numeric = Number(stripped)
+    return { amount: Number.isFinite(numeric) ? numeric : null, uncertain: entry.uncertain }
+  }
+  return { amount: null, uncertain: entry.uncertain }
 }
 
 export function uncertainCountFor(document: DocumentRecord): number {

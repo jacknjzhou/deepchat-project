@@ -76,6 +76,15 @@ describe('reimbursement contracts', () => {
       }).success
     ).toBe(false)
   })
+
+  it('rejects duplicate category ids', () => {
+    expect(
+      reimbursementConfigSchema.safeParse({
+        ...validConfig,
+        categories: [validConfig.categories[0], { ...validConfig.categories[0], name: '副本' }]
+      }).success
+    ).toBe(false)
+  })
 })
 
 const config = reimbursementConfigSchema.parse({
@@ -192,6 +201,15 @@ describe('field extraction', () => {
   it('amount: numeric string with separators', () => {
     const d = doc({ fields: { total_amount: { value: '1,234.50', uncertain: true } } as never })
     expect(amountFor(d, config)).toEqual({ amount: 1234.5, uncertain: true })
+  })
+
+  it('amount: full-width comma and symbols-only strings', () => {
+    const blank = doc({ fields: { total_amount: { value: '元 ， ', uncertain: true } } as never })
+    expect(amountFor(blank, config)).toEqual({ amount: null, uncertain: true })
+    const fullwidth = doc({
+      fields: { total_amount: { value: '1，234', uncertain: false } } as never
+    })
+    expect(amountFor(fullwidth, config)).toEqual({ amount: 1234, uncertain: false })
   })
 })
 

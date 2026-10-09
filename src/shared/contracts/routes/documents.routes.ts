@@ -340,14 +340,22 @@ export const reimbursementCategorySchema = z
     message: "category id 'unassigned' is reserved"
   })
 
-export const reimbursementConfigSchema = z.object({
-  version: z.literal(1),
-  categories: z.array(reimbursementCategorySchema).max(200),
-  personFieldKeys: z.array(z.string().min(1).max(64)).max(50),
-  dateFieldKeys: z.array(z.string().min(1).max(64)).max(50),
-  amountFieldKeys: z.array(z.string().min(1).max(64)).max(50),
-  dateGrouping: z.enum(['day', 'month'])
-})
+export const reimbursementConfigSchema = z
+  .object({
+    version: z.literal(1),
+    categories: z.array(reimbursementCategorySchema).max(200),
+    personFieldKeys: z.array(z.string().min(1).max(64)).max(50),
+    dateFieldKeys: z.array(z.string().min(1).max(64)).max(50),
+    amountFieldKeys: z.array(z.string().min(1).max(64)).max(50),
+    dateGrouping: z.enum(['day', 'month'])
+  })
+  .refine(
+    (config) => {
+      const ids = config.categories.map((c) => c.id)
+      return new Set(ids).size === ids.length
+    },
+    { message: 'duplicate category id' }
+  )
 
 export type ReimbursementConfig = z.infer<typeof reimbursementConfigSchema>
 
