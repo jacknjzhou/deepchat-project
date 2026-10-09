@@ -23,7 +23,7 @@
 
 | 参数 | 含义 | 示例 |
 | --- | --- | --- |
-| `username` | 登录用户名 | `zhouruijie` |
+| `username` | 登录用户名 | `xxxx` |
 | `domain` | 域 / 机器名 | `SRIBD` |
 | `hostname` | 主机名 | `PC-02-2023-0032` |
 | `sid` | 用户 / 机器 SID | `S-1-5-21-...` |
@@ -39,7 +39,7 @@
 ### 2.3 示例
 
 ```
-GET /managed/config?username=zhouruijie&domain=SRIBD&hostname=PC-02-2023-0032&sid=S-1-5-21-... HTTP/1.1
+GET /managed/config?username=xxxx&domain=SRIBD&hostname=PC-02-2023-0032&sid=S-1-5-21-... HTTP/1.1
 Accept: application/json
 X-DeepChat-Client: 1.0.1
 X-DeepChat-Device-Id: S-1-5-21-...
@@ -157,7 +157,7 @@ X-DeepChat-Device-Id: S-1-5-21-...
 **请求**
 
 ```
-GET https://gw.example.com/managed/config?username=zhouruijie&domain=SRIBD&hostname=PC-02-2023-0032&sid=S-1-5-21-...
+GET https://gw.example.com/managed/config?username=xxxx&domain=SRIBD&hostname=PC-02-2023-0032&sid=S-1-5-21-...
 ```
 
 **响应 `200`**

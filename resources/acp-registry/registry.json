@@ -179,7 +179,7 @@
     {
       "id": "cline",
       "name": "Cline",
-      "version": "3.0.69",
+      "version": "3.0.70",
       "description": "Autonomous coding agent CLI - capable of creating/editing files, running commands, using the browser, and more",
       "repository": "https://github.com/cline/cline",
       "website": "https://cline.bot/cli",
@@ -191,7 +191,7 @@
       "icon": "https://cdn.agentclientprotocol.com/registry/v1/latest/cline.svg",
       "distribution": {
         "npx": {
-          "package": "cline@3.0.69",
+          "package": "cline@3.0.70",
           "args": [
             "--acp"
           ]
@@ -576,7 +576,7 @@
     {
       "id": "factory-droid",
       "name": "Factory Droid",
-      "version": "0.235.0",
+      "version": "0.236.0",
       "description": "Factory Droid - AI coding agent powered by Factory AI",
       "website": "https://factory.ai/product/cli",
       "authors": [
@@ -586,7 +586,7 @@
       "license_url": "https://factory.ai/legal/terms",
       "distribution": {
         "npx": {
-          "package": "droid@0.235.0",
+          "package": "droid@0.236.0",
           "args": [
             "exec",
             "--output-format",
@@ -1163,7 +1163,7 @@
     {
       "id": "nova",
       "name": "Nova",
-      "version": "1.1.50",
+      "version": "1.1.51",
       "description": "Nova by Compass AI - a fully-fledged software engineer at your command",
       "repository": "https://github.com/Compass-Agentic-Platform/nova",
       "website": "https://www.compassap.ai/portfolio/nova.html",
@@ -1175,7 +1175,7 @@
       "icon": "https://cdn.agentclientprotocol.com/registry/v1/latest/nova.svg",
       "distribution": {
         "npx": {
-          "package": "@compass-ai/nova@1.1.50",
+          "package": "@compass-ai/nova@1.1.51",
           "args": [
             "acp"
           ]
