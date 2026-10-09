@@ -9,5 +9,9 @@
   "settingsBanner": {
     "required": "Document models are not configured, extraction tasks will fail. Configure them in Settings -> Agent -> Document Models.",
     "go": "Configure"
+  },
+  "reimbursement": {
+    "configSaved": "Catégories de remboursement enregistrées",
+    "configSaveFailed": "Échec de l’enregistrement des catégories de remboursement"
   }
 }

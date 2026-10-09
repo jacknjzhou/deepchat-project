@@ -9,5 +9,9 @@
   "settingsBanner": {
     "required": "Document models are not configured, extraction tasks will fail. Configure them in Settings -> Agent -> Document Models.",
     "go": "Configure"
+  },
+  "reimbursement": {
+    "configSaved": "경비 카테고리 설정이 저장되었습니다",
+    "configSaveFailed": "경비 카테고리 설정 저장 실패"
   }
 }

@@ -9,5 +9,9 @@
   "settingsBanner": {
     "required": "智能信息提取尚未配置模型，识别任务将无法运行。请在「设置 → Agent设置 → 智能信息提取模型」中完成配置。",
     "go": "去配置"
+  },
+  "reimbursement": {
+    "configSaved": "报销类别配置已保存",
+    "configSaveFailed": "报销类别配置保存失败"
   }
 }

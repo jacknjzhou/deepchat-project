@@ -9,5 +9,9 @@
   "settingsBanner": {
     "required": "Document models are not configured, extraction tasks will fail. Configure them in Settings -> Agent -> Document Models.",
     "go": "Configure"
+  },
+  "reimbursement": {
+    "configSaved": "経費カテゴリ設定を保存しました",
+    "configSaveFailed": "経費カテゴリ設定の保存に失敗しました"
   }
 }

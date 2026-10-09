@@ -15,6 +15,7 @@
   "settings-documents": "智能信息提取",
   "settings-documents-models": "智能信息提取模型",
   "settings-documents-template": "模板编辑器",
+  "settings-documents-reimbursement": "报销类别配置",
   "documents": "智能信息提取",
   "settings-knowledge-base": "知识库",
   "settings-prompt": "Prompt管理",
