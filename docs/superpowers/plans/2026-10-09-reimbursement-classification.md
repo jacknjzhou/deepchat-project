@@ -1264,8 +1264,15 @@ Expected: PASS（含既有 documentsRoutes.test.ts 无回归）
 
 ```bash
 git add src/main/documents/reimbursementExport.ts src/main/documents/routes.ts src/main/app/composition.ts test/main/documents/documentsRoutes.test.ts
-git commit -m "feat(documents): reimbursement IPC routes and export"
+git commit -m "feat(documents): reimbursement routes and export"
 ```
+
+> **实施记录（as-built）**：Task 4 以 d6ca888b + b202c5bd 交付。签名与现实修正：`createDocumentsRoutes` 第 4 参已被 csvDeps 占用，`configStore?` 落在第 5 参、`reimbursementDeps`（showOpenDialog）第 6 参，既有调用零改动；composition 在 csvDeps 位传 `undefined` 走默认。落实 Task 1 审查建议：setOverride fail-fast 校验 categoryId ∈ categories ∪ {'unassigned'} ∪ {null}，repository undefined → `?? null`。导出按 plan 1124 行以 `filesById` 注入源路径。质量审查修复：`sanitizeDirName` 消毒三级目录名（防路径穿越与 Windows 非法字符）；CSV 公式注入中和（`/^[=+\-@\t\r]/` 前缀 `'`，csvCell 复用 csv.ts 的 escapeCsvCell）。测试 251/251（含 reimbursementExport 单元 5 例）。
+>
+> **Task 4 质量审查跨 task 修订（后续 task 落实）：**
+> - Task 5-8（错误本地化）：渲染端 documentsTaskErrors.ts 用 `^\[documents\.xxx\]` 锚定前缀码匹配本地化；当前主进程报销路由错误（'Unknown reimbursement category: xxx'、'documents settings store is not configured'）为裸英文，渲染端将回退原文。接入 UI 时改主进程错误为 `[documents.reimbursement.*]` 稳定前缀码，并在渲染端与 i18n 登记。
+> - Task 6（导出交互）：导出 5000 上限内串行复制可达分钟级，导出按钮需 loading/进行中提示，完成后提示 exportedFiles。
+> - 可选（不强制本分支）：导出 `issues`（缺失/复制失败清单）未随 IPC 返回（契约无字段），如渲染端要展示失败明细需扩契约。
 
 ---
 
