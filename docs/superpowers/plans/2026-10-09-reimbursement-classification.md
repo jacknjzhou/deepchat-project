@@ -1974,6 +1974,8 @@ git add -A
 git commit -m "chore(documents): reimbursement regression fixes"
 ```
 
+> **实施记录（as-built）**：Task 9 以 1e85ce18 交付。format 仅 3 个未触碰文件出现 CRLF→LF 行尾漂移（electron-builder.yml、style.css、CliApprovalDialog.vue），已恢复，feature 文件零改动；lint 补 1 处 no-control-regex 抑制注释（reimbursementExport.ts:32，同 skill/sync/security.ts 惯例）后 0 warning / 0 error；typecheck 过。documents 主进程 251/251（含 documentsRoutes 43 例）；test/main 全量 653 文件 597 过 / 53 失败 / 3 跳过（低于 ~98 既有基线，全部为路径分隔/CRLF/工具链类环境性失败），触碰区域相关失败 0、新失败 0。spec 两处修正（导出路由输入、28 类别）核对后本就与实现一致，无 docs(spec) 提交。注：plan 9.5 的 `git add -A` 未采用（工作区有需保留的未跟踪 docs/finacial-helper/），改为显式列文件提交。
+
 ---
 
 ## Self-Review 记录
