@@ -153,6 +153,7 @@ describe('documents route contracts', () => {
       source: 'chat' as const,
       sessionId: 's1',
       status: 'draft' as const,
+      reimbursementOverride: null,
       createdAt: 1,
       updatedAt: 2
     }

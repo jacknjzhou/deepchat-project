@@ -85,6 +85,7 @@ export const documentRecordSchema = z.object({
   source: documentSourceSchema,
   sessionId: z.string().min(1).nullable(),
   status: documentStatusSchema,
+  reimbursementOverride: z.string().nullable(),
   createdAt: timestampMsSchema,
   updatedAt: timestampMsSchema
 })
@@ -315,7 +316,11 @@ export const documentsTasksClearFailedRoute = defineRouteContract({
   output: z.object({ removed: z.number().int().nonnegative() })
 })
 
-const reimbursementTypeKeySchema = z.string().min(1).max(64).regex(/^[a-z][a-z0-9_]*$/)
+const reimbursementTypeKeySchema = z
+  .string()
+  .min(1)
+  .max(64)
+  .regex(/^[a-z][a-z0-9_]*$/)
 
 export const reimbursementMaterialSchema = z.object({
   name: z.string().min(1).max(100),

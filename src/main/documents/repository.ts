@@ -120,6 +120,7 @@ const toRecord = (row: DocumentRow): DocumentRecord => ({
   source: row.source as DocumentRecord['source'],
   sessionId: row.session_id,
   status: row.status as DocumentRecord['status'],
+  reimbursementOverride: row.reimbursement_override ?? null,
   createdAt: row.created_at,
   updatedAt: row.updated_at
 })
@@ -254,6 +255,11 @@ export class DocumentsRepository {
       now: input.now
     })
     return row ? toRecord(row) : null
+  }
+
+  setReimbursementOverride(id: string, categoryId: string | null): DocumentRecord | undefined {
+    const row = this.database.documentsTable.setReimbursementOverride(id, categoryId)
+    return row ? toRecord(row) : undefined
   }
 
   deleteDocument(id: string): void {
