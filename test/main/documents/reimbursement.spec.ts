@@ -36,7 +36,7 @@ describe('reimbursement contracts', () => {
     expect(reimbursementConfigSchema.parse(validConfig)).toEqual(validConfig)
   })
 
-  it('rejects duplicate-empty category names and bad type keys', () => {
+  it('rejects invalid linked type keys', () => {
     expect(
       reimbursementConfigSchema.safeParse({
         ...validConfig,
