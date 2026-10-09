@@ -6,9 +6,10 @@ vi.unmock('node:fs')
 vi.unmock('path')
 vi.unmock('node:path')
 
+import { getSchemaCatalog } from '@/data/schemaCatalog'
 import { DocumentsTable } from '@/documents/data/tables/documents'
 
-describe('documents table reimbursement_override migration', () => {
+describe('documents table reimbursement_override schema repair', () => {
   let db: Database.Database
 
   beforeEach(() => {
@@ -24,7 +25,16 @@ describe('documents table reimbursement_override migration', () => {
     expect(columns).toContain('reimbursement_override')
   })
 
-  it('migrating an old v1 table adds the column', () => {
+  it('registers the column as repairable in the schema catalog', () => {
+    const spec = getSchemaCatalog().find((table) => table.name === 'documents')
+    expect(spec).toBeDefined()
+    const column = spec!.columns.find((c) => c.name === 'reimbursement_override')
+    expect(column).toBeDefined()
+    expect(column!.addColumnSql).toContain('reimbursement_override')
+  })
+
+  it('addColumnSql upgrades a legacy documents table', () => {
+    const spec = getSchemaCatalog().find((table) => table.name === 'documents')!
     db.exec(`CREATE TABLE documents (
       id TEXT PRIMARY KEY, template_id TEXT NOT NULL, type_key TEXT NOT NULL,
       template_snapshot_json TEXT NOT NULL DEFAULT '{}', fields_json TEXT NOT NULL DEFAULT '{}',
@@ -32,14 +42,10 @@ describe('documents table reimbursement_override migration', () => {
       session_id TEXT, status TEXT NOT NULL DEFAULT 'draft' CHECK(status IN ('draft','confirmed')),
       created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
     );`)
-    const table = new DocumentsTable(db)
-    const sql = table.getMigrationSQL(67)
-    expect(sql).toContain('reimbursement_override')
-    db.exec(sql!)
+    db.exec(spec.columns.find((c) => c.name === 'reimbursement_override')!.addColumnSql!)
     const columns = (
       db.prepare('PRAGMA table_info(documents)').all() as Array<{ name: string }>
     ).map((c) => c.name)
     expect(columns).toContain('reimbursement_override')
-    expect(table.getLatestVersion()).toBe(67)
   })
 })

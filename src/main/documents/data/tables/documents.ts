@@ -51,11 +51,6 @@ export interface DocumentListFilter {
 
 const LIST_DEFAULT_LIMIT = 100
 
-// 全局 schema_versions 高水位由主库各表 getLatestVersion 的最大值决定，当前为 66
-// （orchestration/liveDelegationEvents 的 LIVE_DELEGATION_EVALUATION_DATABASE_SCHEMA_VERSION），
-// documents 迁移占用下一个全局版本号，否则已有 DB（currentVersion=66）不会执行该 ALTER。
-export const DOCUMENTS_MIGRATION_VERSION = 67
-
 export class DocumentsTable extends BaseTable {
   constructor(db: Database.Database) {
     super(db, 'documents')
@@ -85,13 +80,10 @@ export class DocumentsTable extends BaseTable {
   }
 
   getLatestVersion(): number {
-    return DOCUMENTS_MIGRATION_VERSION
+    return 1
   }
 
-  getMigrationSQL(version: number): string | null {
-    if (version === DOCUMENTS_MIGRATION_VERSION) {
-      return 'ALTER TABLE documents ADD COLUMN reimbursement_override TEXT'
-    }
+  getMigrationSQL(_version: number): string | null {
     return null
   }
 
