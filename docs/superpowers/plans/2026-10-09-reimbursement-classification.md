@@ -1655,6 +1655,10 @@ git add src/renderer/src/pages/documents/ReimbursementView.vue src/renderer/src/
 git commit -m "feat(documents): reimbursement archive view"
 ```
 
+> **实施记录（as-built）**：Task 6 以 7167eb35 + fbc61cb8 交付，复审通过。plan 偏差：提示统一走 rendererNotificationManager（notifyTransient）替代 window.alert；设置页跳转走 configClient.openSettings({ routeName })（settings 为独立窗口，无共享 router）；按钮用 DcButton；'unassigned' 用 @shared/documents 的 REIMBURSEMENT_UNASSIGNED；初始选中首个分类（plan「初始选中未分类」与自身测试矛盾，以测试为准），userSelected ref 防自动选中覆盖用户选择。因 Task 7 未到，三处枚举预注册：system.routes.ts SettingsRouteNameSchema、settings.events.ts、settingsNavigation.ts 类型联合加入 'settings-documents-reimbursement'（导航条目与组件映射留给 Task 7）。质量审查修复：select 绑定改为分类组 isOverride→selectedCategoryId、未分类组 isOverride→'__unassigned__'（旧 '__override__' 无匹配 option 显示空白）；onMove 改 async+try/catch+notify；补 reimbursementLoadError 错误区（重试按钮 data-testid="reimbursement-retry"）与 reimbursementIsLoading loading 文案。测试：ReimbursementView 6 例 + DocumentsArchivePage 回归 13 例；typecheck/oxfmt 通过。注：DocumentsArchivePage 测试实际路径为 test/renderer/pages/documents/DocumentsArchivePage.test.ts。
+>
+> **Task 8 需补 i18n（notifyTransient 特性命名空间，无 settings. 前缀）**：`documents.reimbursement.moveFailed`、`documents.reimbursement.exportSuccess`、`documents.reimbursement.exportFailed`（t() 模板 key 均为 settings.documents.reimbursement.*，Task 8 清单已覆盖）。
+
 ---
 
 ### Task 7: 设置页 ReimbursementConfigPage + 导航注册
