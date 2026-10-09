@@ -951,6 +951,8 @@ git add src/main/documents/reimbursement.ts src/main/documents/reimbursementConf
 git commit -m "feat(documents): reimbursement classification core"
 ```
 
+> **实施记录（as-built）**：Task 3 以 38bc7787 + 7a7e3e2a 交付。落实 Task 1 审查建议：`REIMBURSEMENT_UNASSIGNED` 唯一定义放 `src/shared/documents.ts`（reimbursement.ts re-export），`reimbursementCategorySchema` refine 拒绝 `id === 'unassigned'`。树测试按修订 B 改为 4 文档（plan 原稿 d3 默认 typeKey 会映射 cat-a，与 summary/unassigned 断言矛盾）。质量审查修复：`reimbursementConfigSchema` refine 拒绝重复 category id；`amountFor` 剥离后空串返回 null（原先 `Number('') === 0` 静默归零）。约定：tree 顺序跟随 config.categories 数组序，sortOrder 仅用于 typeKey 映射冲突仲裁（最低者胜，并列时数组序靠前胜）。测试 20/20。
+
 ---
 
 ### Task 4: IPC 路由接线 + 导出整理包 + composition 注入
