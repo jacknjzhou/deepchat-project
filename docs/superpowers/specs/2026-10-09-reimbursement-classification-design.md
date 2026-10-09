@@ -79,7 +79,7 @@ interface ReimbursementConfig {
 
 首次使用时惰性初始化：`getConfig` 读取时若 settings 键不存在，写入默认配置并返回（写入后与用户自定义配置无异，不再被覆盖）：
 
-- 26 个报销类别源自 `报销制度中涉及的报销材料清单.csv`（同名类别合并，如业务招待费、培训费；材料清单保留 CSV 原文条目）；
+- 28 个报销类别源自 `报销制度中涉及的报销材料清单.csv`（同名行合并后 28 个唯一费用大类，如业务招待费、培训费各合并为一类；材料清单保留 CSV 原文条目）；
 - `linkedTypeKeys` 默认映射仅覆盖与内置模板用途明确对应的类别（如 城市交通费 ← 出租车/客运类模板、会议费 ← 会议类模板），完整映射表在实施 plan 阶段对照 presetTemplates.json 的 type_key 确定；无把握的类别留空映射，由用户手动调整或自行配置。
 
 ### documents 表加列迁移
@@ -118,7 +118,7 @@ tree: [{
 | `documents.reimbursement.setConfig` | `config`（zod：类别名非空且去重、材料 name 非空、字段 key 元素非空、dateGrouping 枚举） | `{ config }` |
 | `documents.reimbursement.tree` | `status?: 'draft'\|'confirmed'`、`dateFrom?/dateTo?` | `{ tree, unassigned[], summary }` |
 | `documents.reimbursement.setOverride` | `documentId`、`categoryId: string \| null`（null=清除覆盖恢复自动） | `{ document }` |
-| `documents.reimbursement.export` | `directory: string`、`status?/dateFrom?/dateTo?` | `{ canceled, path?, exportedFiles, summaryPath }` |
+| `documents.reimbursement.export` | `status?/dateFrom?/dateTo?`（目标目录由主进程 `dialog.showOpenDialog` 选择，与 `documentsExportCsvRoute` 模式一致） | `{ canceled, path?, exportedFiles, summaryPath }` |
 
 路由接线追加到 `src/main/documents/routes.ts`，导出使用 `dialog.showOpenDialog` 选择目标目录。
 
