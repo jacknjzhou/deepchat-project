@@ -4,7 +4,7 @@
       <h1 class="text-2xl font-semibold tracking-normal">
         {{ t('settings.documents.archive.title') }}
       </h1>
-      <div class="flex items-center gap-2">
+      <div v-if="viewMode === 'documents'" class="flex items-center gap-2">
         <DcButton
           variant="outline"
           data-testid="archive-export"
@@ -21,174 +21,201 @@
       </div>
     </header>
 
-    <div class="flex flex-wrap items-center gap-1 border-b px-6 py-2" data-testid="archive-tabs">
+    <div class="flex items-center gap-1 border-b px-6 py-2" data-testid="archive-view-switch">
       <DcButton
-        :variant="activeTab === ALL_TAB ? 'default' : 'ghost'"
+        :variant="viewMode === 'documents' ? 'default' : 'ghost'"
         size="sm"
-        data-testid="archive-tab-all"
-        @click="onTabChange(ALL_TAB)"
+        data-testid="archive-view-documents"
+        @click="viewMode = 'documents'"
       >
-        {{ t('settings.documents.archive.tabAll') }}
-        <DcBadge variant="outline" class="ml-1">{{ allStats.total }}</DcBadge>
+        {{ t('settings.documents.reimbursement.viewDocuments') }}
       </DcButton>
       <DcButton
-        v-for="tpl in store.templates"
-        :key="tpl.typeKey"
-        :variant="activeTab === tpl.typeKey ? 'default' : 'ghost'"
+        :variant="viewMode === 'reimbursement' ? 'default' : 'ghost'"
         size="sm"
-        :data-testid="`archive-tab-${tpl.typeKey}`"
-        @click="onTabChange(tpl.typeKey)"
+        data-testid="archive-view-reimbursement"
+        @click="viewMode = 'reimbursement'"
       >
-        {{ tpl.name }}
-        <DcBadge variant="outline" class="ml-1">{{ statsFor(tpl.typeKey).total }}</DcBadge>
+        {{ t('settings.documents.reimbursement.viewReimbursement') }}
       </DcButton>
     </div>
 
-    <div class="flex flex-wrap items-center gap-2 border-b px-6 py-3">
-      <DcButton
-        v-for="option in statusOptions"
-        :key="option.value"
-        size="sm"
-        :variant="store.archiveFilter.status === option.statusValue ? 'default' : 'outline'"
-        :data-testid="`archive-status-chip-${option.value}`"
-        @click="onStatusChip(option.statusValue)"
-      >
-        {{ option.label }}
-        <span class="ml-1 text-muted-foreground">{{ option.count }}</span>
-      </DcButton>
-      <Input
-        v-model="dateFromText"
-        type="date"
-        data-testid="archive-filter-date-from"
-        class="w-40"
-        :aria-label="t('settings.documents.archive.dateFrom')"
-      />
-      <span class="text-muted-foreground">~</span>
-      <Input
-        v-model="dateToText"
-        type="date"
-        data-testid="archive-filter-date-to"
-        class="w-40"
-        :aria-label="t('settings.documents.archive.dateTo')"
-      />
-      <Input
-        v-model="keywordText"
-        type="search"
-        data-testid="archive-filter-keyword"
-        class="w-52"
-        :placeholder="t('settings.documents.archive.keywordPlaceholder')"
-        @keydown.enter="applyFilters"
-      />
-    </div>
-
-    <DocumentTaskStrip
-      v-if="visibleTasks.length"
-      :tasks="visibleTasks"
-      :templates="store.templates"
-      :type-name-for="typeNameFor"
-      :retrying-task-ids="retryingTaskIds"
-      :clearing="clearingFailedTasks"
-      @retry="onRetryTask"
-      @clear-failed="onClearFailedTasks"
-    />
-
-    <div v-if="store.archiveLoadError" class="flex flex-col items-center gap-3 px-6 py-10">
-      <p class="text-sm text-destructive">{{ t(store.archiveLoadError) }}</p>
-      <DcButton variant="outline" data-testid="archive-retry" @click="retry">
-        {{ t('settings.documents.archive.retry') }}
-      </DcButton>
-    </div>
-
-    <div v-else class="min-h-0 flex-1 overflow-auto px-6 py-3">
-      <table v-if="store.archiveDocuments.length" class="w-full border-collapse text-sm">
-        <thead>
-          <tr class="border-b text-left text-muted-foreground">
-            <th v-if="!selectedTypeKey" class="px-2 py-2 font-medium">
-              {{ t('settings.documents.archive.colType') }}
-            </th>
-            <th v-for="column in tableFieldColumns" :key="column.key" class="px-2 py-2 font-medium">
-              {{ column.label }}
-            </th>
-            <th v-if="!selectedTypeKey" class="px-2 py-2 font-medium">
-              {{ t('settings.documents.archive.colSummary') }}
-            </th>
-            <th class="px-2 py-2 font-medium">{{ t('settings.documents.archive.colSource') }}</th>
-            <th class="px-2 py-2 font-medium">{{ t('settings.documents.archive.colStatus') }}</th>
-            <th class="px-2 py-2 font-medium">
-              {{ t('settings.documents.archive.colCreatedAt') }}
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="document in store.archiveDocuments"
-            :key="document.id"
-            data-testid="archive-row"
-            class="cursor-pointer border-b transition-colors hover:bg-accent/40"
-            @click="openDetail(document)"
-          >
-            <td v-if="!selectedTypeKey" class="px-2 py-2">
-              {{ templateNameById.get(document.templateId) ?? document.typeKey }}
-            </td>
-            <td
-              v-for="column in tableFieldColumns"
-              :key="column.key"
-              class="max-w-48 truncate px-2 py-2"
-              :title="formatDisplayValue(document.fields[column.key]?.value ?? null)"
-            >
-              {{ formatDisplayValue(document.fields[column.key]?.value ?? null) }}
-            </td>
-            <td
-              v-if="!selectedTypeKey"
-              class="max-w-64 truncate px-2 py-2"
-              :title="summarizeDocument(document)"
-            >
-              {{ summarizeDocument(document) }}
-            </td>
-            <td class="px-2 py-2">
-              {{ t(`settings.documents.archive.source${capitalize(document.source)}`) }}
-            </td>
-            <td class="px-2 py-2">
-              {{ t(`settings.documents.archive.status${capitalize(document.status)}`) }}
-            </td>
-            <td class="px-2 py-2">{{ new Date(document.createdAt).toLocaleString() }}</td>
-          </tr>
-        </tbody>
-      </table>
-      <p
-        v-else-if="!store.archiveIsLoading"
-        class="px-2 py-10 text-center text-sm text-muted-foreground"
-      >
-        {{ t('settings.documents.archive.empty') }}
-      </p>
-    </div>
-
-    <div class="flex items-center justify-between border-t px-6 py-2 text-sm">
-      <span class="text-muted-foreground">
-        {{ t('settings.documents.archive.totalCount', { total: store.archiveTotal }) }}
-      </span>
-      <div class="flex items-center gap-1">
+    <div v-if="viewMode === 'documents'" class="flex min-h-0 flex-1 flex-col">
+      <div class="flex flex-wrap items-center gap-1 border-b px-6 py-2" data-testid="archive-tabs">
         <DcButton
-          variant="outline"
+          :variant="activeTab === ALL_TAB ? 'default' : 'ghost'"
           size="sm"
-          data-testid="archive-page-prev"
-          :disabled="store.archivePage <= 1 || store.archiveIsLoading"
-          @click="goPage(store.archivePage - 1)"
+          data-testid="archive-tab-all"
+          @click="onTabChange(ALL_TAB)"
         >
-          ‹
+          {{ t('settings.documents.archive.tabAll') }}
+          <DcBadge variant="outline" class="ml-1">{{ allStats.total }}</DcBadge>
         </DcButton>
-        <span>{{ store.archivePage }} / {{ store.archiveTotalPages }}</span>
         <DcButton
-          variant="outline"
+          v-for="tpl in store.templates"
+          :key="tpl.typeKey"
+          :variant="activeTab === tpl.typeKey ? 'default' : 'ghost'"
           size="sm"
-          data-testid="archive-page-next"
-          :disabled="store.archivePage >= store.archiveTotalPages || store.archiveIsLoading"
-          @click="goPage(store.archivePage + 1)"
+          :data-testid="`archive-tab-${tpl.typeKey}`"
+          @click="onTabChange(tpl.typeKey)"
         >
-          ›
+          {{ tpl.name }}
+          <DcBadge variant="outline" class="ml-1">{{ statsFor(tpl.typeKey).total }}</DcBadge>
         </DcButton>
       </div>
+
+      <div class="flex flex-wrap items-center gap-2 border-b px-6 py-3">
+        <DcButton
+          v-for="option in statusOptions"
+          :key="option.value"
+          size="sm"
+          :variant="store.archiveFilter.status === option.statusValue ? 'default' : 'outline'"
+          :data-testid="`archive-status-chip-${option.value}`"
+          @click="onStatusChip(option.statusValue)"
+        >
+          {{ option.label }}
+          <span class="ml-1 text-muted-foreground">{{ option.count }}</span>
+        </DcButton>
+        <Input
+          v-model="dateFromText"
+          type="date"
+          data-testid="archive-filter-date-from"
+          class="w-40"
+          :aria-label="t('settings.documents.archive.dateFrom')"
+        />
+        <span class="text-muted-foreground">~</span>
+        <Input
+          v-model="dateToText"
+          type="date"
+          data-testid="archive-filter-date-to"
+          class="w-40"
+          :aria-label="t('settings.documents.archive.dateTo')"
+        />
+        <Input
+          v-model="keywordText"
+          type="search"
+          data-testid="archive-filter-keyword"
+          class="w-52"
+          :placeholder="t('settings.documents.archive.keywordPlaceholder')"
+          @keydown.enter="applyFilters"
+        />
+      </div>
+
+      <DocumentTaskStrip
+        v-if="visibleTasks.length"
+        :tasks="visibleTasks"
+        :templates="store.templates"
+        :type-name-for="typeNameFor"
+        :retrying-task-ids="retryingTaskIds"
+        :clearing="clearingFailedTasks"
+        @retry="onRetryTask"
+        @clear-failed="onClearFailedTasks"
+      />
+
+      <div v-if="store.archiveLoadError" class="flex flex-col items-center gap-3 px-6 py-10">
+        <p class="text-sm text-destructive">{{ t(store.archiveLoadError) }}</p>
+        <DcButton variant="outline" data-testid="archive-retry" @click="retry">
+          {{ t('settings.documents.archive.retry') }}
+        </DcButton>
+      </div>
+
+      <div v-else class="min-h-0 flex-1 overflow-auto px-6 py-3">
+        <table v-if="store.archiveDocuments.length" class="w-full border-collapse text-sm">
+          <thead>
+            <tr class="border-b text-left text-muted-foreground">
+              <th v-if="!selectedTypeKey" class="px-2 py-2 font-medium">
+                {{ t('settings.documents.archive.colType') }}
+              </th>
+              <th
+                v-for="column in tableFieldColumns"
+                :key="column.key"
+                class="px-2 py-2 font-medium"
+              >
+                {{ column.label }}
+              </th>
+              <th v-if="!selectedTypeKey" class="px-2 py-2 font-medium">
+                {{ t('settings.documents.archive.colSummary') }}
+              </th>
+              <th class="px-2 py-2 font-medium">{{ t('settings.documents.archive.colSource') }}</th>
+              <th class="px-2 py-2 font-medium">{{ t('settings.documents.archive.colStatus') }}</th>
+              <th class="px-2 py-2 font-medium">
+                {{ t('settings.documents.archive.colCreatedAt') }}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="document in store.archiveDocuments"
+              :key="document.id"
+              data-testid="archive-row"
+              class="cursor-pointer border-b transition-colors hover:bg-accent/40"
+              @click="openDetail(document)"
+            >
+              <td v-if="!selectedTypeKey" class="px-2 py-2">
+                {{ templateNameById.get(document.templateId) ?? document.typeKey }}
+              </td>
+              <td
+                v-for="column in tableFieldColumns"
+                :key="column.key"
+                class="max-w-48 truncate px-2 py-2"
+                :title="formatDisplayValue(document.fields[column.key]?.value ?? null)"
+              >
+                {{ formatDisplayValue(document.fields[column.key]?.value ?? null) }}
+              </td>
+              <td
+                v-if="!selectedTypeKey"
+                class="max-w-64 truncate px-2 py-2"
+                :title="summarizeDocument(document)"
+              >
+                {{ summarizeDocument(document) }}
+              </td>
+              <td class="px-2 py-2">
+                {{ t(`settings.documents.archive.source${capitalize(document.source)}`) }}
+              </td>
+              <td class="px-2 py-2">
+                {{ t(`settings.documents.archive.status${capitalize(document.status)}`) }}
+              </td>
+              <td class="px-2 py-2">{{ new Date(document.createdAt).toLocaleString() }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <p
+          v-else-if="!store.archiveIsLoading"
+          class="px-2 py-10 text-center text-sm text-muted-foreground"
+        >
+          {{ t('settings.documents.archive.empty') }}
+        </p>
+      </div>
+
+      <div class="flex items-center justify-between border-t px-6 py-2 text-sm">
+        <span class="text-muted-foreground">
+          {{ t('settings.documents.archive.totalCount', { total: store.archiveTotal }) }}
+        </span>
+        <div class="flex items-center gap-1">
+          <DcButton
+            variant="outline"
+            size="sm"
+            data-testid="archive-page-prev"
+            :disabled="store.archivePage <= 1 || store.archiveIsLoading"
+            @click="goPage(store.archivePage - 1)"
+          >
+            ‹
+          </DcButton>
+          <span>{{ store.archivePage }} / {{ store.archiveTotalPages }}</span>
+          <DcButton
+            variant="outline"
+            size="sm"
+            data-testid="archive-page-next"
+            :disabled="store.archivePage >= store.archiveTotalPages || store.archiveIsLoading"
+            @click="goPage(store.archivePage + 1)"
+          >
+            ›
+          </DcButton>
+        </div>
+      </div>
     </div>
+
+    <ReimbursementView v-else class="min-h-0 flex-1" />
 
     <DocumentDetailDialog
       v-model:open="detailOpen"
@@ -223,6 +250,7 @@ import { documentsApi, type DocumentsTaskItem } from '@api/documentTasks'
 import DocumentDetailDialog from './DocumentDetailDialog.vue'
 import DocumentRecognizeDialog from './DocumentRecognizeDialog.vue'
 import DocumentTaskStrip from './DocumentTaskStrip.vue'
+import ReimbursementView from './ReimbursementView.vue'
 
 const ALL_TAB = '__all__'
 
@@ -239,6 +267,7 @@ const dateFromText = ref(defaultRange.from)
 const dateToText = ref(defaultRange.to)
 const keywordText = ref('')
 const activeTab = ref(ALL_TAB)
+const viewMode = ref<'documents' | 'reimbursement'>('documents')
 
 const selectedTypeKey = computed(() => store.archiveFilter.typeKey ?? null)
 

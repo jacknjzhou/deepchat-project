@@ -25,6 +25,7 @@ export interface SettingsNavigationItem {
     | 'settings-documents'
     | 'settings-documents-template'
     | 'settings-documents-models'
+    | 'settings-documents-reimbursement'
   path: string
   titleKey: string
   icon: string
