@@ -386,6 +386,7 @@ export const LlmProviderSchema = z.looseObject({
   disabledModels: z.array(z.string()).optional(),
   custom: z.boolean().optional(),
   oauthToken: z.string().optional(),
+  managed: z.boolean().optional(),
   baseProviderId: z.string().optional(),
   instanceLabel: z.string().optional(),
   websites: z

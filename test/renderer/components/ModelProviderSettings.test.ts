@@ -167,6 +167,14 @@ const setup = async (options?: {
   vi.doMock('@/stores/modelStore', () => ({
     useModelStore: () => modelStore
   }))
+  vi.doMock('@/stores/managedStore', () => ({
+    useManagedStore: () => ({
+      load: vi.fn().mockResolvedValue(undefined),
+      refreshConfig: vi.fn().mockResolvedValue(undefined),
+      isManagedProvider: () => false,
+      providerIds: []
+    })
+  }))
   vi.doMock('@/stores/theme', () => ({
     useThemeStore: () => ({ isDark: false })
   }))

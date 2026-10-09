@@ -1,5 +1,11 @@
 <template>
   <div data-testid="documents-models-page" class="flex flex-col gap-4 p-6 text-sm">
+    <ProviderManagedBadge
+      :managed="locked"
+      label-key="settings.managed.documentsBadge"
+      test-id="documents-models-managed-badge"
+    />
+
     <div>
       <h2 class="text-base font-semibold">{{ t('settings.documentsModels.title') }}</h2>
       <p class="mt-1 text-xs text-muted-foreground">
@@ -20,6 +26,7 @@
               <DcButton
                 data-testid="documents-text-model-trigger"
                 variant="outline"
+                :disabled="locked"
                 :class="[
                   'h-8 w-[320px] justify-between text-sm',
                   textInvalidReason
@@ -59,6 +66,7 @@
               <DcButton
                 data-testid="documents-vision-model-trigger"
                 variant="outline"
+                :disabled="locked"
                 :class="[
                   'h-8 w-[320px] justify-between text-sm',
                   visionInvalidReason
@@ -106,6 +114,7 @@
         :max="10"
         :step="1"
         class="w-24"
+        :disabled="locked"
         :model-value="String(concurrency)"
         @update:model-value="onConcurrencyInput"
       />
@@ -131,6 +140,7 @@
             :max="2"
             :step="0.1"
             class="w-32"
+            :disabled="locked"
             :placeholder="defaultPlaceholder"
             :model-value="temperatureInput"
             @update:model-value="
@@ -149,6 +159,7 @@
             :min="1"
             :step="1"
             class="w-32"
+            :disabled="locked"
             :placeholder="defaultPlaceholder"
             :model-value="maxTokensInput"
             @update:model-value="(value: string | number) => (maxTokensInput = String(value ?? ''))"
@@ -157,7 +168,7 @@
       </div>
     </details>
 
-    <div class="flex items-center gap-2">
+    <div v-if="!locked" class="flex items-center gap-2">
       <DcButton data-testid="documents-models-save" :disabled="!canSave || saving" @click="save">
         {{
           saveState === 'saved'
@@ -180,8 +191,10 @@ import { DcButton } from '@dc-ui/components/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@shadcn/components/ui/popover'
 import { Input } from '@shadcn/components/ui/input'
 import ModelSelect from '@/components/ModelSelect.vue'
+import ProviderManagedBadge from './ProviderManagedBadge.vue'
 import { useProviderStore } from '@/stores/providerStore'
 import { useModelStore } from '@/stores/modelStore'
+import { useManagedStore } from '@/stores/managedStore'
 import { createConfigClient } from '@api/ConfigClient'
 import type { RENDERER_MODEL_META } from '@shared/types/provider'
 
@@ -193,6 +206,9 @@ const { t } = useI18n()
 const configClient = createConfigClient()
 const providerStore = useProviderStore()
 const modelStore = useModelStore()
+const managedStore = useManagedStore()
+
+const locked = computed(() => managedStore.loading || managedStore.documentsLocked)
 
 const draftTextModel = ref<ModelRef | null>(null)
 const draftVisionModel = ref<ModelRef | null>(null)
@@ -243,6 +259,7 @@ const textModelLabel = computed(() => modelLabel(draftTextModel.value))
 const visionModelLabel = computed(() => modelLabel(draftVisionModel.value))
 
 const selectTextModel = (model: RENDERER_MODEL_META, providerId: string) => {
+  if (locked.value) return
   draftTextModel.value = { providerId, modelId: model.id }
   savedTextModel.value = null
   textSelectOpen.value = false
@@ -250,6 +267,7 @@ const selectTextModel = (model: RENDERER_MODEL_META, providerId: string) => {
 }
 
 const selectVisionModel = (model: RENDERER_MODEL_META, providerId: string) => {
+  if (locked.value) return
   draftVisionModel.value = { providerId, modelId: model.id }
   savedVisionModel.value = null
   visionSelectOpen.value = false
@@ -284,6 +302,7 @@ const temperatureValue = computed(() =>
 const maxTokensValue = computed(() => parseOptionalNumber(maxTokensInput.value, { min: 1 }))
 
 const save = async (): Promise<void> => {
+  if (locked.value) return
   if (!canSave.value || saving.value) return
   saving.value = true
   saveState.value = 'idle'
@@ -307,6 +326,8 @@ const save = async (): Promise<void> => {
 }
 
 onMounted(async () => {
+  await managedStore.load()
+
   const [textModel, visionModel, savedConcurrency, savedTemperature, savedMaxTokens] =
     await Promise.all([
       configClient.getSetting('documents.textModel'),
@@ -316,13 +337,38 @@ onMounted(async () => {
       configClient.getSetting('documents.maxTokens')
     ])
 
-  draftTextModel.value = textModel ?? null
-  draftVisionModel.value = visionModel ?? null
-  savedTextModel.value = textModel ?? null
-  savedVisionModel.value = visionModel ?? null
-  concurrency.value = typeof savedConcurrency === 'number' ? clampConcurrency(savedConcurrency) : 4
-  temperatureInput.value = typeof savedTemperature === 'number' ? String(savedTemperature) : ''
-  maxTokensInput.value = typeof savedMaxTokens === 'number' ? String(savedMaxTokens) : ''
+  const userTextModel = textModel ?? null
+  const userVisionModel = visionModel ?? null
+  const userConcurrency =
+    typeof savedConcurrency === 'number' ? clampConcurrency(savedConcurrency) : 4
+  const userTemperature = typeof savedTemperature === 'number' ? String(savedTemperature) : ''
+  const userMaxTokens = typeof savedMaxTokens === 'number' ? String(savedMaxTokens) : ''
+
+  savedTextModel.value = userTextModel
+  savedVisionModel.value = userVisionModel
+
+  // 托管锁定态：展示真正生效的托管文档模型值（与 resolveDocumentsModelSettings 叠加语义一致：
+  // 模型/并发托管值优先、null 回退用户值；temperature/maxTokens 以托管值为准，null 表示不传参）。
+  // 非托管或托管无 documents 段时回退到用户键值，行为与现状完全一致。
+  const managedDocuments = locked.value ? managedStore.documents : null
+  if (managedDocuments) {
+    draftTextModel.value = managedDocuments.textModel ?? userTextModel
+    draftVisionModel.value = managedDocuments.visionModel ?? userVisionModel
+    concurrency.value =
+      typeof managedDocuments.concurrency === 'number'
+        ? clampConcurrency(managedDocuments.concurrency)
+        : userConcurrency
+    temperatureInput.value =
+      typeof managedDocuments.temperature === 'number' ? String(managedDocuments.temperature) : ''
+    maxTokensInput.value =
+      typeof managedDocuments.maxTokens === 'number' ? String(managedDocuments.maxTokens) : ''
+  } else {
+    draftTextModel.value = userTextModel
+    draftVisionModel.value = userVisionModel
+    concurrency.value = userConcurrency
+    temperatureInput.value = userTemperature
+    maxTokensInput.value = userMaxTokens
+  }
 })
 
 defineExpose({

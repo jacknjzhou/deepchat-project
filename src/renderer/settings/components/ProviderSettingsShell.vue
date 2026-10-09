@@ -7,6 +7,7 @@
             <div class="min-w-0">
               <div class="flex items-center gap-2">
                 <h2 class="truncate text-lg font-semibold">{{ title }}</h2>
+                <ProviderManagedBadge :managed="managed" />
                 <DcStatusPill
                   v-if="health"
                   data-testid="provider-health-pill"
@@ -43,7 +44,7 @@
                   data-testid="provider-enabled-toggle"
                   :aria-label="t('settings.provider.menu.enable')"
                   :model-value="enabled"
-                  :disabled="enabledUpdating"
+                  :disabled="enabledUpdating || managed"
                   @update:model-value="emit('enabled-change', Boolean($event))"
                 />
               </div>
@@ -118,6 +119,7 @@ import {
 } from '@shadcn/components/ui/collapsible'
 import { Switch } from '@shadcn/components/ui/switch'
 import type { ProviderHealthView } from '@/stores/providerStore'
+import ProviderManagedBadge from './ProviderManagedBadge.vue'
 
 const props = defineProps<{
   title: string
@@ -126,6 +128,8 @@ const props = defineProps<{
   enabled: boolean
   enabledUpdating?: boolean
   health?: ProviderHealthView | null
+  /** 企业托管配置的服务商：只读展示，禁止本地启停 */
+  managed?: boolean
 }>()
 
 const emit = defineEmits<{

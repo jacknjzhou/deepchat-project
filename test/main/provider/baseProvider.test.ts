@@ -4,7 +4,10 @@ import type { LLM_PROVIDER, MODEL_META, ModelConfig } from '@shared/types/provid
 import { TOOL_EXECUTION, type MCPToolDefinition } from '@shared/types/mcp'
 import type { ChatMessage } from '@shared/types/core/chat-message'
 import type { LLMResponse } from '@shared/types/provider'
-import { BaseLLMProvider } from '../../../src/main/provider/baseProvider'
+import {
+  BaseLLMProvider,
+  type ProviderGenerateTextOptions
+} from '../../../src/main/provider/baseProvider'
 
 class TestProvider extends BaseLLMProvider {
   constructor(
@@ -52,7 +55,7 @@ class TestProvider extends BaseLLMProvider {
     _modelId: string,
     _temperature?: number,
     _maxTokens?: number,
-    _tools?: MCPToolDefinition[]
+    _options?: ProviderGenerateTextOptions
   ): Promise<LLMResponse> {
     return { content: 'ok' }
   }
@@ -349,5 +352,45 @@ describe('BaseLLMProvider tool XML conversion', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+})
+
+describe('BaseLLMProvider automatic model enablement', () => {
+  const models = [
+    { id: 'managed-1', name: 'Managed 1', providerId: 'test-provider', group: 'default' },
+    { id: 'managed-2', name: 'Managed 2', providerId: 'test-provider', group: 'default' },
+    { id: 'managed-3', name: 'Managed 3', providerId: 'test-provider', group: 'default' }
+  ] as unknown as MODEL_META[]
+
+  const createSettings = (isManagedProvider: boolean, setModelStatus: ReturnType<typeof vi.fn>) =>
+    ({
+      getProviderModels: vi.fn().mockReturnValue([]),
+      getCustomModels: vi.fn().mockReturnValue([]),
+      getModelStatus: vi.fn().mockReturnValue(false),
+      setModelStatus,
+      setProviderModels: vi.fn(),
+      notifyModelsChanged: vi.fn(),
+      isManagedProvider: vi.fn().mockReturnValue(isManagedProvider)
+    }) as unknown as ProviderSettingsPort
+
+  it('enables every fetched model for a managed provider on refresh', async () => {
+    const setModelStatus = vi.fn()
+    const provider = new TestProvider(createSettings(true, setModelStatus), async () => models)
+
+    await provider.refreshModels()
+
+    expect(setModelStatus).toHaveBeenCalledTimes(models.length)
+    for (const model of models) {
+      expect(setModelStatus).toHaveBeenCalledWith('test-provider', model.id, true)
+    }
+  })
+
+  it('does not auto-enable models for a non-managed provider', async () => {
+    const setModelStatus = vi.fn()
+    const provider = new TestProvider(createSettings(false, setModelStatus), async () => models)
+
+    await provider.refreshModels()
+
+    expect(setModelStatus).not.toHaveBeenCalled()
   })
 })

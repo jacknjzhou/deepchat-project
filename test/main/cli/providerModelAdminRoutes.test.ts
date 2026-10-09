@@ -60,6 +60,7 @@ function createHarness(initialProviders: LLM_PROVIDER[] = []) {
     },
     recordSettingsActivity,
     createProviderId: () => 'provider-generated',
+    readManagedProviderIds: () => [],
     log
   })
   const invoke = async (method: string, input: unknown, context: RouteContext = { caller }) => {

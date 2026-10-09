@@ -41,6 +41,7 @@ import {
 } from '@/provider/providerModelHelper'
 import { stripDerivedProviderModelFields } from '@/provider/providerModelFacts'
 import { DEFAULT_SYSTEM_PROMPT } from '@/agent/promptSettings'
+import { MANAGED_SETTINGS_KEYS } from '@/managed/store'
 import type { ProviderDatabase } from './data/database'
 import type { SettingsKey, SettingsSnapshotValues } from '@shared/contracts/routes'
 import type { DeepchatEventPayload, DeepchatEventPublisher } from '@shared/contracts/events'
@@ -314,6 +315,8 @@ export interface ProviderSettingsPort {
   removeProviderAtomic(providerId: string): void
   reorderProvidersAtomic(providers: LLM_PROVIDER[]): void
   updateProvidersBatch(batchUpdate: ProviderBatchUpdate): void
+  /** 是否为企业托管 provider（由托管配置下发，模型需默认开启） */
+  isManagedProvider(providerId: string): boolean
 }
 
 export type ProviderModelResolutionPort = Pick<
@@ -1049,6 +1052,15 @@ export class ProviderSettings implements ProviderSettingsPort {
    */
   reorderProvidersAtomic(providers: LLM_PROVIDER[]): void {
     this.providerHelper.reorderProvidersAtomic(providers)
+  }
+
+  /**
+   * 是否为企业托管 provider（唯一权威来源：managed.providerIds）
+   */
+  isManagedProvider(providerId: string): boolean {
+    const ids = this.appSettings.get<unknown>(MANAGED_SETTINGS_KEYS.providerIds) ?? []
+    if (!Array.isArray(ids)) return false
+    return ids.some((id) => typeof id === 'string' && id === providerId)
   }
 
   getModelStatus(providerId: string, modelId: string): boolean {

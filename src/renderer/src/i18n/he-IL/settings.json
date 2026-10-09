@@ -1387,6 +1387,12 @@
     "selectLanguage": "בחר הגדרה מוגדרת מראש",
     "separatorsPreset": "טוען הגדרות מוגדרות מראש"
   },
+  "managed": {
+    "providerBadge": "Managed by your organization",
+    "providerHint": "This provider is configured by your organization and cannot be changed on this device.",
+    "documentsBadge": "Extraction models are configured by your organization and cannot be changed.",
+    "providerLocked": "This provider is configured by your organization and cannot be changed on this device."
+  },
   "mcp": {
     "title": "הגדרות MCP",
     "description": "ניהול והגדרה של שרתי וכלים של MCP (Model Context Protocol)",

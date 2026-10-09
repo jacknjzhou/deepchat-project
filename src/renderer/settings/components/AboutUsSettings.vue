@@ -102,6 +102,46 @@
       </div>
 
       <div
+        data-testid="managed-config-card"
+        class="mt-2 w-full max-w-xl rounded-xl border border-border/80 bg-card/70 p-4 shadow-sm"
+      >
+        <div class="text-sm font-medium">{{ t('about.managedConfig.title') }}</div>
+        <div class="mt-3 flex flex-col gap-1.5 text-sm">
+          <div class="flex items-center justify-between gap-2">
+            <span class="shrink-0 text-muted-foreground">{{
+              t('about.managedConfig.endpoint')
+            }}</span>
+            <span class="flex min-w-0 items-center gap-1">
+              <span
+                class="truncate font-mono text-xs"
+                :title="managedEndpoint || t('about.managedConfig.notConfigured')"
+              >
+                {{ managedEndpoint || t('about.managedConfig.notConfigured') }}
+              </span>
+              <button
+                v-if="managedEndpoint"
+                class="shrink-0 rounded p-0.5 text-muted-foreground hover:text-foreground"
+                :aria-label="t('about.managedConfig.endpoint')"
+                data-testid="managed-config-copy"
+                @click="copyManagedEndpoint"
+              >
+                <Icon
+                  :icon="managedEndpointCopied ? 'lucide:check' : 'lucide:copy'"
+                  class="h-3 w-3"
+                />
+              </button>
+            </span>
+          </div>
+          <div v-if="managedEndpoint" class="flex items-center justify-between gap-2">
+            <span class="shrink-0 text-muted-foreground">
+              {{ t('about.managedConfig.sourceLabel') }}
+            </span>
+            <span class="text-xs">{{ managedEndpointSourceLabel }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div
         v-if="upgrade.shouldShowUpdateNotes"
         class="mt-2 w-full max-w-xl rounded-xl border border-border/80 bg-card/70 p-4 shadow-sm"
       >
@@ -326,6 +366,30 @@ const copySystemInfo = (key: string, copyValue: string | null) => {
   }, 1500)
 }
 
+const managedEndpoint = ref('')
+const managedEndpointSource = ref<'env' | 'builtin' | 'none'>('none')
+const managedEndpointCopied = ref(false)
+let managedEndpointCopiedResetTimer: ReturnType<typeof setTimeout> | null = null
+const managedEndpointSourceLabel = computed(() =>
+  managedEndpointSource.value === 'env'
+    ? t('about.managedConfig.sourceEnv')
+    : t('about.managedConfig.sourceBuiltin')
+)
+
+const copyManagedEndpoint = () => {
+  if (!managedEndpoint.value) return
+  void navigator.clipboard.writeText(managedEndpoint.value).catch(() => {
+    deviceClient.copyText(managedEndpoint.value)
+  })
+  managedEndpointCopied.value = true
+  if (managedEndpointCopiedResetTimer) {
+    clearTimeout(managedEndpointCopiedResetTimer)
+  }
+  managedEndpointCopiedResetTimer = setTimeout(() => {
+    managedEndpointCopied.value = false
+  }, 1500)
+}
+
 const formattedUpdateVersion = computed(() => {
   const version = upgrade.updateInfo?.version ?? ''
   if (!version) return ''
@@ -486,6 +550,15 @@ onMounted(() => {
   void loadUpdateChannel()
   void syncUpdateStatus()
   void loadWinAccount()
+  deviceClient
+    .getManagedConfigEndpoint()
+    .then((info) => {
+      managedEndpoint.value = info.endpoint
+      managedEndpointSource.value = info.source
+    })
+    .catch((error) => {
+      console.error('[AboutUsSettings] Failed to load managed config endpoint', error)
+    })
 })
 
 watch(
@@ -503,6 +576,10 @@ onBeforeUnmount(() => {
   if (copiedResetTimer) {
     clearTimeout(copiedResetTimer)
     copiedResetTimer = null
+  }
+  if (managedEndpointCopiedResetTimer) {
+    clearTimeout(managedEndpointCopiedResetTimer)
+    managedEndpointCopiedResetTimer = null
   }
 })
 </script>

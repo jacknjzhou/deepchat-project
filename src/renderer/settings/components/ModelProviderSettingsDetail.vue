@@ -6,12 +6,14 @@
     :enabled="provider.enable"
     :enabled-updating="isProviderStatusUpdating"
     :health="providerHealth"
+    :managed="managed"
     @enabled-change="handleProviderEnabledChange"
   >
     <template #connection>
       <ProviderApiConfig
         :provider="provider"
         :provider-websites="providerWebsites"
+        :managed="managed"
         @api-host-change="handleApiHostChange"
         @api-key-change="handleApiKeyChange"
         @validate-key="openModelCheckDialog"
@@ -140,6 +142,8 @@ const valueToLevelMap: Record<SafetySettingValue, number> = {
 const props = defineProps<{
   provider: LLM_PROVIDER
   activeOnboardingStepId?: string | null
+  /** 企业托管配置的服务商：除模型启停外全部只读 */
+  managed?: boolean
 }>()
 
 const emit = defineEmits<{

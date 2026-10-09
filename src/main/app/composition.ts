@@ -28,6 +28,7 @@ import { DialogService } from '../desktop/dialog'
 import { app, ipcMain, webContents as electronWebContents } from 'electron'
 import { DEEPCHAT_EVENT_CHANNEL } from '@shared/contracts/channels'
 import { createDeepchatEventEnvelope, type DeepchatEventName } from '@shared/contracts/events'
+import type { ManagedConfigStatus } from '@shared/contracts/routes'
 import { optimizer } from '@electron-toolkit/utils'
 import { WindowPresenter } from '../desktop/window'
 import { PluginSettingsWindow } from '../desktop/pluginSettingsWindow'
@@ -53,6 +54,12 @@ import { ProviderImportService } from '../provider/providerImportService'
 import { ProviderDatabase } from '../provider/data/database'
 import { createProviderRoutes } from '../provider/routes'
 import { ProviderSettings } from '../provider/settings'
+import { DEFAULT_PROVIDERS } from '../provider/defaults'
+import { createManagedConfigStore, syncManagedConfig, type ManagedConfigPayload } from '../managed'
+import { applyManagedAgentModels, revertManagedAgentModels } from '../managed/applyAgentModels'
+import { createManagedAgentSettingsWriter, createManagedProviderWriter } from '../managed/adapters'
+import type { ManagedDeviceInfo } from '../managed/client'
+import { resolveManagedEndpointInfo, type ManagedEndpointInfo } from '../managed/endpoint'
 import type { SettingsStore } from '../config/settingsStore'
 import type { SecretStore } from '../config/secretStore'
 import { providerDbLoader } from '../provider/providerDbLoader'
@@ -117,6 +124,7 @@ import { createKnowledgeRoutes } from '../knowledge/routes'
 import { KnowledgeSettings } from '@/knowledge/settings'
 import { PromptSettings } from '@/agent/promptSettings'
 import { AgentSettings } from '@/agent/settings'
+import { BUILTIN_DEEPCHAT_AGENT_ID } from '@/agent/repository'
 import { AgentLifecycleGate } from '@/agent/lifecycleGate'
 import { SessionDeletionGate } from '@/session/deletionGate'
 import { emitAcpAgentModelsChanged, emitAgentCatalogChanged } from '@/app/agentEvents'
@@ -192,6 +200,7 @@ import {
   DocumentsModelConfigError,
   migrateDocumentsModelSettings,
   readDocumentsModelSettings,
+  resolveDocumentsModelSettings,
   validateDocumentsModelRef
 } from '@/documents/modelSettings'
 import { DocumentsRepository } from '@/documents/repository'
@@ -506,6 +515,52 @@ function createLivePort<T extends object>(resolve: () => T): T {
       return typeof value === 'function' ? value.bind(target) : value
     }
   })
+}
+
+function managedEndpointInfo(): ManagedEndpointInfo {
+  return resolveManagedEndpointInfo(
+    process.env.DEEPCHAT_MANAGED_CONFIG_URL,
+    (import.meta.env as Record<string, string | undefined> | undefined)
+      ?.MAIN_VITE_MANAGED_CONFIG_URL
+  )
+}
+
+function toManagedDeviceInfo(
+  info: Awaited<ReturnType<DeviceService['getDeviceInfo']>>
+): ManagedDeviceInfo {
+  return {
+    username: info.winAccount?.username ?? '',
+    domain: info.winAccount?.domain ?? '',
+    hostname: info.winAccount?.hostname ?? '',
+    sid: info.winAccount?.sid ?? ''
+  }
+}
+
+/**
+ * 解析当前设备身份；获取失败（权限/WMI 不可用等）回退空身份，绝不抛出。
+ * 启动同步与手动刷新都必须现场解析：复用启动期的结果会把陈旧（甚至空）身份带给服务端，
+ * 一旦被判为 absent/denied 就会清空托管缓存。
+ */
+async function resolveManagedDevice(deviceService: DeviceService): Promise<ManagedDeviceInfo> {
+  try {
+    return toManagedDeviceInfo(await deviceService.getDeviceInfo())
+  } catch (error) {
+    console.warn('[managed] device info unavailable, using empty identity', error)
+    return { username: '', domain: '', hostname: '', sid: '' }
+  }
+}
+
+/** 同一时刻只允许一次托管配置刷新在飞；并发调用复用同一结果，避免重复拉取与并发写盘 */
+let managedRefreshInFlight: Promise<ManagedConfigStatus> | null = null
+
+/** 允许的供应商类型 = 内置服务商注册表的 apiType 集合 */
+function getKnownProviderTypes(): string[] {
+  return DEFAULT_PROVIDERS.map((provider) => provider.apiType)
+}
+
+/** apiType → 内置 provider id，用于托管实例的 baseProviderId 归属 */
+function getBuiltinIdByApiType(): Record<string, string> {
+  return Object.fromEntries(DEFAULT_PROVIDERS.map((provider) => [provider.apiType, provider.id]))
 }
 
 export async function createMainProcessControl(dependencies: {
@@ -2836,21 +2891,29 @@ export async function createMainProcessControl(dependencies: {
     }
   }
 
-  function registerRoutes(): void {
+  async function registerRoutes(): Promise<void> {
     const providerQueryScheduler = createNodeScheduler()
+    // 企业托管配置：启动时按登录用户名拉取并固化（失败保留缓存）
+    const managedStore = createManagedConfigStore(dependencies.settingsStore)
     const providerRoutes = createProviderRoutes({
       providerSettings,
       providerRuntime,
       acpProviderAdminPort,
-      providerImportService: new ProviderImportService({
-        getProviders: () => providerSettings.getProviders(),
-        getDefaultProviders: () => providerSettings.getDefaultProviders(),
-        addCustomModel: (providerId, model) => providerSettings.addCustomModel(providerId, model),
-        updateProvidersBatch: (batchUpdate) => providerRuntime.updateProvidersBatch(batchUpdate)
-      }),
+      providerImportService: new ProviderImportService(
+        {
+          getProviders: () => providerSettings.getProviders(),
+          getDefaultProviders: () => providerSettings.getDefaultProviders(),
+          addCustomModel: (providerId, model) => providerSettings.addCustomModel(providerId, model),
+          updateProvidersBatch: (batchUpdate) => providerRuntime.updateProvidersBatch(batchUpdate)
+        },
+        {
+          readManagedProviderIds: () => managedStore.readProviderIds()
+        }
+      ),
       oauthService,
       scheduler: providerQueryScheduler,
-      recordSettingsActivity: (input) => settingsDatabase.recordSettingsActivity(input)
+      recordSettingsActivity: (input) => settingsDatabase.recordSettingsActivity(input),
+      readManagedProviderIds: () => managedStore.readProviderIds()
     })
     const toolRoutes = createToolRoutes(toolService)
     const pluginRoutes = createPluginRoutes(pluginService)
@@ -2883,22 +2946,119 @@ export async function createMainProcessControl(dependencies: {
     const schedulerRoutes = createSchedulerRoutes(cronJobs)
     const documentsMaxFileSize = () =>
       dependencies.settingsStore.get<number>('maxFileSize') ?? 30 * 1024 * 1024
+
+    // 启动链上的阻塞调用：设备信息获取失败（权限/WMI 不可用等）不得阻断启动
+    const managedDevice = await resolveManagedDevice(deviceService)
+
+    const managedResult = await syncManagedConfig({
+      endpoint: managedEndpointInfo().endpoint,
+      device: managedDevice,
+      store: managedStore,
+      writer: createManagedProviderWriter(providerSettings),
+      knownProviderTypes: getKnownProviderTypes(),
+      builtinIdByApiType: getBuiltinIdByApiType(),
+      clientVersion: app.getVersion(),
+      timeoutMs: 3000 // 启动链上的阻塞调用，收敛上限；失败即回退缓存
+    }).catch((error) => {
+      console.warn('[managed] sync failed, continuing with cached state', error)
+      return null
+    })
+
+    // 拉取/应用阶段的告警统一打印（即便没有 config 也要可见，便于排查托管预填未生效）
+    if (managedResult) {
+      for (const warning of managedResult.warnings) console.warn(`[managed] ${warning}`)
+    }
+
+    // 「刷新托管 provider 模型列表 → 按模型 id 匹配 → 预填内置 Agent 四项默认值」的共用编排：
+    // 启动期与手动刷新（managed.refresh）都走这里。自带 try/catch，调用方按后台任务触发即可，
+    // 不会产生 unhandled rejection。
+    async function runManagedModelRefreshAndAgentPrefill(
+      managedConfig: ManagedConfigPayload
+    ): Promise<void> {
+      try {
+        // 托管 provider 由 writer 直接写入 provider 存储，不经过运行时；先让运行时重建实例表，
+        // 否则紧随其后的模型刷新会因 Provider not found 失败，Agent 默认值预填也会整段跳过。
+        providerRuntime.reloadProvidersFromSettings()
+        const refreshResults = await Promise.allSettled(
+          managedConfig.providers.map((provider) => providerRuntime.refreshModels(provider.id))
+        )
+        const failed = refreshResults.filter(
+          (result): result is PromiseRejectedResult => result.status === 'rejected'
+        )
+        if (failed.length > 0) {
+          console.warn(
+            `[managed] model refresh failed for ${failed.length} provider(s):`,
+            failed.map((result) => result.reason)
+          )
+        }
+
+        const { warnings } = await applyManagedAgentModels(
+          managedConfig,
+          createManagedAgentSettingsWriter(agentSettings),
+          managedStore,
+          {
+            listModelIds: (providerId) =>
+              providerSettings.getProviderModels(providerId).map((model) => model.id)
+          },
+          BUILTIN_DEEPCHAT_AGENT_ID
+        )
+        for (const warning of warnings) console.warn(`[managed] ${warning}`)
+      } catch (error) {
+        console.warn('[managed] agent model prefill failed', error)
+      }
+    }
+
+    // 内置 Agent「模型默认值」四项：无启动期消费者，后台并行刷新模型后按 id 匹配预填（契约 §1.4）
+    if (managedResult?.config) {
+      void runManagedModelRefreshAndAgentPrefill(managedResult.config)
+    }
+
+    // 服务端明确「无配置/拒绝」：同步已删除托管 provider，这里再清除此前写入内置 Agent 的
+    // 托管模型默认值（用户改过的保留），best-effort 后台执行，不阻断启动。
+    if (managedResult && (managedResult.status === 'absent' || managedResult.status === 'denied')) {
+      void revertManagedAgentModels(
+        createManagedAgentSettingsWriter(agentSettings),
+        managedStore,
+        BUILTIN_DEEPCHAT_AGENT_ID
+      )
+        .then((cleared) => {
+          if (cleared.length > 0) {
+            console.warn(`[managed] reverted agent model defaults: ${cleared.join(', ')}`)
+          }
+        })
+        .catch((error) => console.warn('[managed] failed to revert agent model defaults', error))
+    }
+
     migrateDocumentsModelSettings(providerSettings)
     documentExtractor = new DocumentExtractor({
       repository: documentsRepository,
-      generateCompletion: ({ providerId, modelId, messages, temperature, maxTokens }) => {
-        const generation = readDocumentsModelSettings(providerSettings)
+      generateCompletion: ({
+        providerId,
+        modelId,
+        messages,
+        temperature,
+        maxTokens,
+        endpointType
+      }) => {
+        // 实时读取托管配置：temperature/maxTokens 需在每次调用时取最新值
+        const generation = resolveDocumentsModelSettings(
+          readDocumentsModelSettings(providerSettings),
+          managedStore.readConfig()
+        )
         return providerRuntime.generateCompletionStandalone(
           providerId,
           messages,
           modelId,
           generation.temperature ?? temperature,
           generation.maxTokens ?? maxTokens,
-          { swallowErrors: false }
+          { swallowErrors: false, ...(endpointType ? { endpointType } : {}) }
         )
       },
       resolveVisionTarget: async () => {
-        const ref = readDocumentsModelSettings(providerSettings).visionModel
+        const ref = resolveDocumentsModelSettings(
+          readDocumentsModelSettings(providerSettings),
+          managedStore.readConfig()
+        ).visionModel
         if (!ref) return null
         const reason = validateDocumentsModelRef(
           ref,
@@ -2912,7 +3072,10 @@ export async function createMainProcessControl(dependencies: {
         return ref
       },
       resolveTextTarget: async () => {
-        const ref = readDocumentsModelSettings(providerSettings).textModel
+        const ref = resolveDocumentsModelSettings(
+          readDocumentsModelSettings(providerSettings),
+          managedStore.readConfig()
+        ).textModel
         if (!ref) return null
         const reason = validateDocumentsModelRef(
           ref,
@@ -2966,7 +3129,10 @@ export async function createMainProcessControl(dependencies: {
     const recognitionTaskManager = new RecognitionTaskManager({
       repository: documentsRepository,
       extractor: documentExtractor,
-      concurrency: readDocumentsModelSettings(providerSettings).concurrency,
+      concurrency: resolveDocumentsModelSettings(
+        readDocumentsModelSettings(providerSettings),
+        managedStore.readConfig()
+      ).concurrency,
       publishTaskUpdated: ({ task, doneCount, totalCount }) =>
         publishDeepchatEvent('documents.task.updated', {
           ...task,
@@ -3139,6 +3305,7 @@ export async function createMainProcessControl(dependencies: {
     const acpRoutes = createAcpRoutes({ auth: acpAuthService })
     const deviceRoutes = createDeviceRoutes({
       device: deviceService,
+      managedEndpoint: managedEndpointInfo,
       restartApplication,
       resetDataByType: (resetType) => resetApplicationData(resetType)
     })
@@ -3184,6 +3351,86 @@ export async function createMainProcessControl(dependencies: {
       acknowledgePresentation: (episodeId, webContentsId) =>
         semanticNotificationRouter.acknowledgePresentation(episodeId, { webContentsId })
     })
+    // 托管配置状态：读取缓存快照；刷新时现场重解析设备身份，并复用进行中的刷新
+    const readManagedStatus = () => {
+      const meta = managedStore.readMeta()
+      const config = managedStore.readConfig()
+      const providerIds = managedStore.readProviderIds()
+      // 只回传托管 documents 原始配置（形状安全映射，缺字段以 null 兜底）；
+      // 与用户值叠加的语义保留在渲染端锁定态下按需处理。
+      const mapManagedDocuments = (documents: ManagedConfigPayload['documents']) => {
+        if (!documents) return null
+        const mapRef = (ref: NonNullable<ManagedConfigPayload['documents']>['textModel']) =>
+          ref
+            ? {
+                providerId: ref.providerId,
+                modelId: ref.modelId,
+                endpointType: ref.endpointType
+              }
+            : null
+        return {
+          textModel: mapRef(documents.textModel),
+          visionModel: mapRef(documents.visionModel),
+          concurrency: typeof documents.concurrency === 'number' ? documents.concurrency : null,
+          temperature: typeof documents.temperature === 'number' ? documents.temperature : null,
+          maxTokens: typeof documents.maxTokens === 'number' ? documents.maxTokens : null
+        }
+      }
+      return {
+        managed: providerIds.length > 0,
+        username: meta?.username ?? '',
+        endpoint: meta?.endpoint ?? '',
+        fetchedAt: meta?.fetchedAt ?? null,
+        providerIds,
+        documentsLocked: Boolean(config?.documents),
+        documents: mapManagedDocuments(config?.documents ?? null)
+      }
+    }
+    const refreshManagedConfig = (): Promise<ManagedConfigStatus> => {
+      if (managedRefreshInFlight) return managedRefreshInFlight
+      const run = async (): Promise<ManagedConfigStatus> => {
+        const syncResult = await syncManagedConfig({
+          endpoint: managedEndpointInfo().endpoint,
+          device: await resolveManagedDevice(deviceService),
+          store: managedStore,
+          writer: createManagedProviderWriter(providerSettings),
+          knownProviderTypes: getKnownProviderTypes(),
+          builtinIdByApiType: getBuiltinIdByApiType(),
+          clientVersion: app.getVersion(),
+          timeoutMs: 3000
+        })
+        // 与启动期一致：拉取/应用阶段的告警统一打印（absent/denied 下含删除失败/跳过等），
+        // 使手动刷新也能看到告警，而非只有重启才可见。best-effort，不阻断刷新。
+        for (const warning of syncResult.warnings) console.warn(`[managed] ${warning}`)
+        // 写入完成后（读到的是最新托管配置）后台重跑模型刷新 + Agent 预填；
+        // absent/denied 时 config 为 null，不预填，与启动期语义一致。
+        if (syncResult.config) {
+          void runManagedModelRefreshAndAgentPrefill(syncResult.config)
+        }
+        // absent/denied：同步已删除托管 provider，这里清除此前写入内置 Agent 的托管模型
+        // 默认值（用户改过的保留），best-effort 后台执行，不阻断刷新。
+        if (syncResult.status === 'absent' || syncResult.status === 'denied') {
+          void revertManagedAgentModels(
+            createManagedAgentSettingsWriter(agentSettings),
+            managedStore,
+            BUILTIN_DEEPCHAT_AGENT_ID
+          )
+            .then((cleared) => {
+              if (cleared.length > 0) {
+                console.warn(`[managed] reverted agent model defaults: ${cleared.join(', ')}`)
+              }
+            })
+            .catch((error) =>
+              console.warn('[managed] failed to revert agent model defaults', error)
+            )
+        }
+        return readManagedStatus()
+      }
+      managedRefreshInFlight = run().finally(() => {
+        managedRefreshInFlight = null
+      })
+      return managedRefreshInFlight
+    }
     const appSettingsRoutes = createAppSettingsRoutes({
       settings: dependencies.settingsStore,
       agentDefaults,
@@ -3202,7 +3449,11 @@ export async function createMainProcessControl(dependencies: {
           console.warn('[SettingsActivity] Failed to record settings activity:', error)
         })
       },
-      listActivities: (limit) => settingsDatabase.listSettingsActivity(limit)
+      listActivities: (limit) => settingsDatabase.listSettingsActivity(limit),
+      managed: {
+        getStatus: readManagedStatus,
+        refresh: refreshManagedConfig
+      }
     })
     const appRoutes = createAppRoutes({
       logging: loggingService,
@@ -3265,6 +3516,7 @@ export async function createMainProcessControl(dependencies: {
       providerSettings,
       providerRuntime,
       scheduler: providerQueryScheduler,
+      readManagedProviderIds: () => managedStore.readProviderIds(),
       recordSettingsActivity: (input) => {
         void settingsDatabase.recordSettingsActivity(input).catch((error) => {
           console.warn('[SettingsActivity] Failed to record CLI provider activity:', error)
@@ -3768,7 +4020,7 @@ export async function createMainProcessControl(dependencies: {
   }
 
   dependencies.bindControl(control)
-  registerRoutes()
+  await registerRoutes()
   deeplinkService.init()
   setupApplicationListeners()
   await runAcpRegistryMigration()

@@ -1958,6 +1958,12 @@
     "selectLanguage": "Wybierz ustawienie wstępne",
     "separatorsPreset": "Ładowanie ustawień wstępnych"
   },
+  "managed": {
+    "providerBadge": "Managed by your organization",
+    "providerHint": "This provider is configured by your organization and cannot be changed on this device.",
+    "documentsBadge": "Extraction models are configured by your organization and cannot be changed.",
+    "providerLocked": "This provider is configured by your organization and cannot be changed on this device."
+  },
   "mcp": {
     "title": "Ustawienia MCP",
     "description": "Zarządzaj i konfiguruj serwery i narzędzia MCP (Model Context Protocol).",

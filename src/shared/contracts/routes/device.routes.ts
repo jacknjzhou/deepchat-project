@@ -10,6 +10,15 @@ export const deviceGetAppVersionRoute = defineRouteContract({
   })
 })
 
+export const deviceManagedConfigEndpointRoute = defineRouteContract({
+  name: 'device.getManagedConfigEndpoint',
+  input: z.object({}).default({}),
+  output: z.object({
+    endpoint: z.string(),
+    source: z.enum(['env', 'builtin', 'none'])
+  })
+})
+
 export const deviceGetInfoRoute = defineRouteContract({
   name: 'device.getInfo',
   input: z.object({}).default({}),

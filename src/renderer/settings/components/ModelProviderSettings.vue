@@ -115,13 +115,14 @@
                     {{ provider.instanceLabel }}
                   </span>
                 </template>
+                <ProviderManagedBadge :managed="isManagedProvider(provider)" />
                 <span
                   v-if="!provider.enable"
                   class="shrink-0 rounded-full border border-border/60 px-1.5 text-[10px] text-muted-foreground"
                 >
                   {{ t('settings.provider.sidebar.disabledTag') }}
                 </span>
-                <DropdownMenu>
+                <DropdownMenu v-if="!isManagedProvider(provider)">
                   <DropdownMenuTrigger as-child>
                     <DcButton
                       :data-testid="`provider-menu-trigger-${provider.id}`"
@@ -226,6 +227,7 @@
           v-if="activeProvider.apiType === 'ollama'"
           :key="`ollama-${activeProvider.id}`"
           :provider="activeProvider"
+          :managed="isManagedProvider(activeProvider)"
           class="flex-1"
           @provider-configured="handleProviderConfigured"
           @provider-model-enabled="handleProviderModelEnabled"
@@ -234,6 +236,7 @@
           v-else-if="activeProvider.apiType === 'aws-bedrock'"
           :key="`bedrock-${activeProvider.id}`"
           :provider="activeProvider as AWS_BEDROCK_PROVIDER"
+          :managed="isManagedProvider(activeProvider)"
           class="flex-1"
           @provider-configured="handleProviderConfigured"
           @provider-model-enabled="handleProviderModelEnabled"
@@ -242,6 +245,7 @@
           v-else
           :key="`standard-${activeProvider.id}`"
           :provider="activeProvider"
+          :managed="isManagedProvider(activeProvider)"
           :active-onboarding-step-id="detailGuideStepId"
           class="flex-1"
           @provider-configured="handleProviderConfigured"
@@ -338,6 +342,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useProviderStore } from '@/stores/providerStore'
 import { useModelStore } from '@/stores/modelStore'
+import { useManagedStore } from '@/stores/managedStore'
 import { useRoute, useRouter } from 'vue-router'
 import { refDebounced } from '@vueuse/core'
 import ModelProviderSettingsDetail from './ModelProviderSettingsDetail.vue'
@@ -348,6 +353,7 @@ import ModelIcon from '@/components/icons/ModelIcon.vue'
 import { Icon } from '@iconify/vue'
 import AddProviderFlow from './AddProviderFlow.vue'
 import DuplicateProviderDialog from './DuplicateProviderDialog.vue'
+import ProviderManagedBadge from './ProviderManagedBadge.vue'
 import { useI18n } from 'vue-i18n'
 import type { AWS_BEDROCK_PROVIDER, LLM_PROVIDER } from '@shared/types/provider'
 import { Input } from '@shadcn/components/ui/input'
@@ -370,14 +376,26 @@ import GuidedOnboardingOverlay from '@/components/onboarding/GuidedOnboardingOve
 import { useGuidedOnboardingStep } from '@/composables/useGuidedOnboardingStep'
 import { createWindowClient } from '@api/WindowClient'
 import { continueGuidedOnboardingFromSettings } from '../lib/guidedOnboardingSettings'
+import { notifyRenderer } from '@renderer-notifications/rendererNotificationPort'
+import { formatManagedProviderError } from '@/lib/managedProviderErrors'
 
 const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
+
+const notifyProviderMutationFailure = (error: unknown) => {
+  notifyRenderer({
+    kind: 'error',
+    code: 'settings.provider.mutationFailed',
+    title: t('common.error.operationFailed'),
+    description: formatManagedProviderError(String(error), t) ?? String(error)
+  })
+}
 const windowClient = createWindowClient()
 const languageStore = useLanguageStore()
 const providerStore = useProviderStore()
 const modelStore = useModelStore()
+const managedStore = useManagedStore()
 const themeStore = useThemeStore()
 const guideRootRef = ref<HTMLElement | null>(null)
 const providerDetailRef = ref<HTMLElement | null>(null)
@@ -533,7 +551,20 @@ const editingProviderId = ref<string | null>(null)
 const editingName = ref('')
 const editInputRef = ref<HTMLInputElement | null>(null)
 
+// 企业托管实例只锁自身这一条：同一 baseProviderId 分组下的其它实例仍可编辑
+const isManagedProvider = (provider: LLM_PROVIDER | null | undefined): boolean => {
+  if (!provider) {
+    return false
+  }
+
+  return provider.managed === true || managedStore.isManagedProvider(provider.id)
+}
+
 const startEditingName = (provider: LLM_PROVIDER) => {
+  if (isManagedProvider(provider)) {
+    return
+  }
+
   editingProviderId.value = provider.id
   editingName.value = provider.name
   nextTick(() => {
@@ -739,6 +770,7 @@ const sidebarProviders = computed({
       .updateProvidersOrder([...reorderedConfigured, ...unconfigured])
       .catch((error) => {
         console.error('Failed to reorder providers:', error)
+        notifyProviderMutationFailure(error)
       })
   }
 })
@@ -803,6 +835,7 @@ const toggleProviderStatus = async (provider: LLM_PROVIDER) => {
     await providerStore.updateProviderStatus(provider.id, willEnable)
   } catch (error) {
     console.error('Failed to update provider status:', error)
+    notifyProviderMutationFailure(error)
     return
   }
   // 切换状态后，同时打开该服务商的详情页面
@@ -840,6 +873,7 @@ const handleDuplicateProviderConfirm = async (label: string) => {
     setActiveProvider(created.id)
   } catch (error) {
     console.error('Failed to duplicate provider:', error)
+    notifyProviderMutationFailure(error)
   }
 }
 
@@ -853,6 +887,7 @@ const confirmDeleteProvider = async () => {
     await providerStore.removeProvider(provider.id)
   } catch (error) {
     console.error('Failed to delete provider:', error)
+    notifyProviderMutationFailure(error)
     return
   }
   if (route.params.providerId === provider.id) {
@@ -903,6 +938,7 @@ const handleProviderAdded = (provider: LLM_PROVIDER) => {
 }
 
 onMounted(async () => {
+  await managedStore.load()
   await providerStore.ensureInitialized()
   if (!route.params.providerId && !route.query.view && configuredList.value.length > 0) {
     setActiveProvider(configuredList.value[0].id)

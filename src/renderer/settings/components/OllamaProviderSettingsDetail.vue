@@ -1,11 +1,18 @@
 <template>
   <section class="w-full h-full">
     <div class="w-full h-full p-2 flex flex-col gap-2 overflow-y-auto">
+      <p
+        v-if="managed"
+        data-testid="provider-managed-hint"
+        class="text-xs leading-5 text-muted-foreground"
+      >
+        {{ t('settings.managed.providerHint') }}
+      </p>
       <div class="flex flex-col items-start p-2 gap-2">
         <div class="flex justify-between items-center w-full">
           <Label :for="`${provider.id}-url`" class="flex-1">API URL</Label>
           <DcButton
-            v-if="provider.custom"
+            v-if="provider.custom && !managed"
             variant="destructive"
             size="sm"
             class="text-xs rounded-lg"
@@ -19,6 +26,7 @@
           :id="`${provider.id}-url`"
           v-model="apiHost"
           :placeholder="t('settings.provider.urlPlaceholder')"
+          :disabled="managed"
           @blur="handleApiHostChange(String($event.target.value))"
           @keyup.enter="handleApiHostChange(apiHost)"
         />
@@ -63,6 +71,7 @@
             v-model="apiKey"
             :type="showApiKey ? 'text' : 'password'"
             :placeholder="t('settings.provider.keyPlaceholder')"
+            :disabled="managed"
             style="padding-right: 2.5rem !important"
             @blur="handleApiKeyChange(String($event.target.value))"
             @keyup.enter="handleApiKeyEnter(apiKey)"
@@ -352,6 +361,8 @@ const { t } = useI18n()
 
 const props = defineProps<{
   provider: LLM_PROVIDER
+  /** 企业托管配置的服务商：地址与密钥只读 */
+  managed?: boolean
 }>()
 
 const emit = defineEmits<{
