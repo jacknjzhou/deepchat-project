@@ -1409,6 +1409,12 @@ git add src/renderer/api/DocumentsClient.ts src/renderer/src/stores/documents.ts
 git commit -m "feat(documents): renderer reimbursement client and store"
 ```
 
+> **实施记录（as-built）**：Task 5 以 1a39111a + c5b8b054 交付。落实 plan 449 行建议：`ReimbursementTreeResult` 以 `z.infer<typeof documentsReimbursementTreeRoute.output>` 导出到 shared 契约（渲染端零主进程 import）。store 测试去主进程依赖（内联 minimal config，28 类断言由主进程侧覆盖）。质量审查修复：`loadReimbursementTree` 补 seq 竞态守卫（对齐 archiveLoadSeq 模式）；tree/export 用例断言 archiveFilter 透传精确对象；新增乱序守卫与 export 透传用例。渲染端测试 5 例 + archive 回归 18 例全绿。
+>
+> **Task 5 质量审查跨 task 修订（后续 task 落实）：**
+> - Task 6：setOverride 每次强制整树重载（5000 文档级 IPC），连续归类会反复重建 + isLoading 抖动——接 UI 时给覆盖触发的刷新加尾沿防抖（复用 scheduleArchiveRefresh 300ms 模式）或乐观移动；同时确认报销视图是否需要独立筛选（当前树/导出绑定 archiveFilter）。
+> - Task 8：i18n key `settings.documents.reimbursement.loadFailed` 目前全部 locale 未定义（store 已引用），必须与 reimbursement 其余文案一并补齐 20 locale，否则界面显示裸 key（parity 检查脚本发现不了缺 key，需人工核对）。
+
 ---
 
 ### Task 6: ReimbursementView 组件 + 归档页视图切换
