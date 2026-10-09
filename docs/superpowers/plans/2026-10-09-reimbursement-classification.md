@@ -1942,6 +1942,8 @@ git add src/renderer/src/i18n
 git commit -m "feat(documents): reimbursement i18n locales"
 ```
 
+> **实施记录（as-built）**：Task 8 以 ff6cd4d7 + d994e494 交付，spec/质量审查通过。结构勘误：`settings.documents.*` 命名空间实际位于 settings.json（非本 plan 所写 documents.json），reimbursement 块（38 键/locale，20 locale 键序一致）插在 archive 与 test 块之间；routes.json 补 `settings-documents-reimbursement`；documents.json 补 `documents.errors.reimbursementStoreUnavailable/reimbursementCategoryUnknown`（随提交 1 进全部 20 locale 保 parity）。键清单相对 plan 增删：跳过未用的 `remove`；补 `retry`/`moveFailed`/`exportFailed`/`loading`/`errorTypeKeyInvalid`（消费方 t() grep 交叉核对）；notify code（documents.reimbursement.moveFailed/exportSuccess/exportFailed）为通知标识符、展示走已翻译 title，不入 i18n——真正入 i18n 的是 documents.json 的 `documents.reimbursement.configSaved/configSaveFailed`（ConfigPage toast 的 t() 键）。主进程错误改前缀码：`[documents.reimbursement.storeUnavailable]`、`[documents.reimbursement.categoryUnknown:<id>]`，documentsTaskErrors.ts 登记两映射（含 `{category}` 插值），documentsRoutes.test.ts 断言同步更新（43/43）。质量审查：60 个 JSON 零重复键（token 扫描 + JSON.parse 双通道）、占位符全保真、zh 系繁体无简体字形；Minor「zh-TW 配置/設定 术语」核实为误报（该文件本就混用且 配置 60 处在先），不修。验证：pnpm run i18n（20 locale / 4739 contracts 无缺失）、渲染端 32/32、主进程 43/43、typecheck 通过。
+
 ---
 
 ### Task 9: 全量回归与收尾
