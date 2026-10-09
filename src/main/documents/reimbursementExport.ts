@@ -29,6 +29,7 @@ const UNKNOWN_PERSON = '未知人员'
 const UNKNOWN_PERIOD = '未知期间'
 const CSV_HEADER = '类别,人员,期间,单据模板,文件名,金额,金额存疑,手动指定'
 
+// eslint-disable-next-line no-control-regex
 const DIR_NAME_UNSAFE_RE = /[\\/:*?"<>|\u0000-\u001f]/g
 
 // Windows 目录段消毒：非法字符与 C0 控制字符替换为 '_'，再去尾随点/空格（Windows 限制）
