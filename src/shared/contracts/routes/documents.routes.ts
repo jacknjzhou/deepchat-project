@@ -4,7 +4,8 @@ import {
   DOCUMENT_EXTRACTION_MODES,
   DOCUMENT_SOURCES,
   DOCUMENT_STATUSES,
-  DOCUMENT_FIELD_VALUE_TYPES
+  DOCUMENT_FIELD_VALUE_TYPES,
+  REIMBURSEMENT_UNASSIGNED
 } from '../../documents'
 
 const timestampMsSchema = z.number().int().nonnegative()
@@ -327,13 +328,17 @@ export const reimbursementMaterialSchema = z.object({
   linkedTypeKeys: z.array(reimbursementTypeKeySchema).max(50)
 })
 
-export const reimbursementCategorySchema = z.object({
-  id: z.string().min(1).max(64),
-  name: z.string().min(1).max(50),
-  requiredMaterials: z.array(reimbursementMaterialSchema).max(50),
-  linkedTypeKeys: z.array(reimbursementTypeKeySchema).max(50),
-  sortOrder: z.number().int().nonnegative()
-})
+export const reimbursementCategorySchema = z
+  .object({
+    id: z.string().min(1).max(64),
+    name: z.string().min(1).max(50),
+    requiredMaterials: z.array(reimbursementMaterialSchema).max(50),
+    linkedTypeKeys: z.array(reimbursementTypeKeySchema).max(50),
+    sortOrder: z.number().int().nonnegative()
+  })
+  .refine((category) => category.id !== REIMBURSEMENT_UNASSIGNED, {
+    message: "category id 'unassigned' is reserved"
+  })
 
 export const reimbursementConfigSchema = z.object({
   version: z.literal(1),

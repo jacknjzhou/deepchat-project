@@ -57,6 +57,9 @@ export interface DocumentFieldEntry {
   uncertain: boolean
 }
 
+/** 报销“未分类”哨兵：可写入 reimbursementOverride 强制不归类；报销类别 id 不得占用该值 */
+export const REIMBURSEMENT_UNASSIGNED = 'unassigned'
+
 export interface DocumentRecord {
   id: string
   templateId: string

@@ -13,6 +13,21 @@ import {
   documentsReimbursementTreeRoute,
   reimbursementConfigSchema
 } from '@shared/contracts/routes'
+import type { DocumentRecord } from '@shared/documents'
+import {
+  amountFor,
+  buildReimbursementTree,
+  parsePeriodValue,
+  periodFor,
+  personFor,
+  REIMBURSEMENT_UNASSIGNED,
+  resolveDocumentCategoryId
+} from '@/documents/reimbursement'
+import {
+  readReimbursementConfig,
+  writeReimbursementConfig,
+  REIMBURSEMENT_SETTINGS_KEY
+} from '@/documents/reimbursementConfig'
 
 const validConfig = {
   version: 1 as const,
@@ -51,5 +66,201 @@ describe('reimbursement contracts', () => {
     expect(documentsReimbursementTreeRoute.name).toBe('documents.reimbursement.tree')
     expect(documentsReimbursementSetOverrideRoute.name).toBe('documents.reimbursement.setOverride')
     expect(documentsReimbursementExportRoute.name).toBe('documents.reimbursement.export')
+  })
+
+  it('rejects the reserved unassigned category id', () => {
+    expect(
+      reimbursementConfigSchema.safeParse({
+        ...validConfig,
+        categories: [{ ...validConfig.categories[0], id: 'unassigned' }]
+      }).success
+    ).toBe(false)
+  })
+})
+
+const config = reimbursementConfigSchema.parse({
+  version: 1,
+  categories: [
+    {
+      id: 'cat-a',
+      name: '会议费',
+      requiredMaterials: [{ name: '发票', linkedTypeKeys: ['invoice_general'] }],
+      linkedTypeKeys: ['meeting_minutes'],
+      sortOrder: 1
+    },
+    {
+      id: 'cat-b',
+      name: '业务招待费',
+      requiredMaterials: [],
+      linkedTypeKeys: ['catering_receipt'],
+      sortOrder: 2
+    }
+  ],
+  personFieldKeys: ['buyer_name', 'guest_name'],
+  dateFieldKeys: ['invoice_date', 'consume_date'],
+  amountFieldKeys: ['total_amount', 'amount'],
+  dateGrouping: 'month'
+})
+
+const doc = (overrides: Partial<DocumentRecord> & { fields?: Record<string, unknown> }) =>
+  ({
+    id: 'd1',
+    templateId: 't',
+    typeKey: 'meeting_minutes',
+    templateSnapshot: {} as never,
+    fields: {},
+    fileUris: [],
+    source: 'manual',
+    sessionId: null,
+    status: 'confirmed',
+    reimbursementOverride: null,
+    createdAt: 0,
+    updatedAt: 0,
+    ...overrides
+  }) as DocumentRecord
+
+describe('resolveDocumentCategoryId', () => {
+  it('override wins', () => {
+    const d = doc({ typeKey: 'catering_receipt', reimbursementOverride: 'cat-a' })
+    expect(resolveDocumentCategoryId(d, config)).toEqual({ categoryId: 'cat-a', isOverride: true })
+  })
+
+  it('maps by typeKey (lowest sortOrder)', () => {
+    expect(resolveDocumentCategoryId(doc({ typeKey: 'meeting_minutes' }), config)).toEqual({
+      categoryId: 'cat-a',
+      isOverride: false
+    })
+  })
+
+  it('unassigned override forces null', () => {
+    expect(
+      resolveDocumentCategoryId(doc({ reimbursementOverride: REIMBURSEMENT_UNASSIGNED }), config)
+    ).toEqual({ categoryId: null, isOverride: true })
+  })
+
+  it('stale override (deleted category) falls back to auto mapping', () => {
+    expect(
+      resolveDocumentCategoryId(
+        doc({ typeKey: 'catering_receipt', reimbursementOverride: 'cat-gone' }),
+        config
+      )
+    ).toEqual({ categoryId: 'cat-b', isOverride: false })
+  })
+
+  it('no mapping → null', () => {
+    expect(resolveDocumentCategoryId(doc({ typeKey: 'resume' }), config)).toEqual({
+      categoryId: null,
+      isOverride: false
+    })
+  })
+})
+
+describe('field extraction', () => {
+  it('person: first configured key with non-empty value', () => {
+    const d = doc({
+      fields: {
+        buyer_name: { value: '张三', uncertain: false },
+        guest_name: { value: '李四', uncertain: false }
+      } as never
+    })
+    expect(personFor(d, config)).toBe('张三')
+  })
+
+  it('person: array value takes first non-empty element', () => {
+    const d = doc({ fields: { buyer_name: { value: ['', '王五'], uncertain: false } } as never })
+    expect(personFor(d, config)).toBe('王五')
+  })
+
+  it('period: parses and groups by month', () => {
+    const d = doc({ fields: { invoice_date: { value: '2026/9/5', uncertain: false } } as never })
+    expect(periodFor(d, config)).toBe('2026-09')
+  })
+
+  it('period: day grouping keeps the day', () => {
+    const d = doc({
+      fields: { invoice_date: { value: '2026-09-05 13:20', uncertain: false } } as never
+    })
+    expect(periodFor(d, { ...config, dateGrouping: 'day' })).toBe('2026-09-05')
+  })
+
+  it('parsePeriodValue handles dashes, slashes, dots and rejects garbage', () => {
+    expect(parsePeriodValue('2026-09-05')).toBe('2026-09-05')
+    expect(parsePeriodValue('2026.9.5')).toBe('2026-09-05')
+    expect(parsePeriodValue('无日期')).toBeNull()
+  })
+
+  it('amount: numeric string with separators', () => {
+    const d = doc({ fields: { total_amount: { value: '1,234.50', uncertain: true } } as never })
+    expect(amountFor(d, config)).toEqual({ amount: 1234.5, uncertain: true })
+  })
+})
+
+describe('buildReimbursementTree', () => {
+  const templateNameById = new Map([['t', '会议纪要']])
+
+  it('groups category → person → period desc, unknown last', () => {
+    const d1 = doc({
+      id: 'd1',
+      fields: {
+        buyer_name: { value: '张三', uncertain: false },
+        invoice_date: { value: '2026-09-01', uncertain: false },
+        total_amount: { value: 100, uncertain: false }
+      } as never
+    })
+    const d2 = doc({
+      id: 'd2',
+      fields: {
+        buyer_name: { value: '张三', uncertain: false },
+        invoice_date: { value: '2026-10-01', uncertain: false }
+      } as never
+    })
+    const d3 = doc({ id: 'd3', fields: {} as never })
+    const d4 = doc({ id: 'd4', typeKey: 'resume', fields: {} as never })
+    const result = buildReimbursementTree([d1, d2, d3, d4], config, templateNameById)
+    const catA = result.tree.find((n) => n.category.id === 'cat-a')!
+    expect(catA.groups.map((g) => g.person)).toEqual(['张三', null])
+    expect(catA.groups[0].buckets.map((b) => b.period)).toEqual(['2026-10', '2026-09'])
+    expect(catA.materials[0]).toEqual({
+      name: '发票',
+      linkedTypeKeys: ['invoice_general'],
+      count: 0
+    })
+    expect(result.unassigned.length).toBe(1)
+    expect(result.summary).toEqual([
+      { categoryId: 'cat-a', total: 3 },
+      { categoryId: 'cat-b', total: 0 },
+      { categoryId: null, total: 1 }
+    ])
+  })
+})
+
+function fakeStore() {
+  const map = new Map<string, unknown>()
+  return {
+    map,
+    getSetting: <T>(key: string) => map.get(key) as T | undefined,
+    setSetting: (key: string, value: unknown) => void map.set(key, value)
+  }
+}
+
+describe('reimbursementConfig', () => {
+  it('seeds defaults once and preserves user edits', () => {
+    const store = fakeStore()
+    const seeded = readReimbursementConfig(store)
+    expect(seeded.categories.length).toBe(28)
+    expect(readReimbursementConfig(store)).toEqual(seeded)
+    const edited = {
+      ...seeded,
+      categories: [{ ...seeded.categories[0], name: '改名' }, ...seeded.categories.slice(1)]
+    }
+    writeReimbursementConfig(store, edited)
+    expect(readReimbursementConfig(store)).toEqual(edited)
+    expect(store.map.get(REIMBURSEMENT_SETTINGS_KEY)).toEqual(edited)
+  })
+
+  it('repairs corrupted config with defaults', () => {
+    const store = fakeStore()
+    store.setSetting(REIMBURSEMENT_SETTINGS_KEY, { broken: true })
+    expect(readReimbursementConfig(store).version).toBe(1)
   })
 })
