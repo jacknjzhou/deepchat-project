@@ -30,7 +30,12 @@ import {
 } from '@shared/contracts/routes'
 import type { DeepchatRouteMap } from '@/routes/routeRegistry'
 import type { DocumentTemplate } from '@shared/documents'
+import type { ReimbursementTreeResult } from '@/documents/reimbursement'
 import { defaultReimbursementConfig } from '@/documents/reimbursementConfig'
+import {
+  exportReimbursementPackage,
+  type ReimbursementExportDeps
+} from '@/documents/reimbursementExport'
 import { createDocumentsRoutes } from '@/documents/routes'
 import { DocumentsRepository } from '@/documents/repository'
 import { DocumentsDatabase } from '@/documents/data/database'
@@ -1004,5 +1009,169 @@ describeIfSqlite('reimbursement routes', () => {
     expect(output.exportedFiles).toBe(0)
     expect(typeof output.path).toBe('string')
     await fs.rm(output.path as string, { recursive: true, force: true })
+  })
+})
+
+describe('reimbursementExport', () => {
+  const EXPORT_NOW = new Date('2026-01-02T03:04:00')
+
+  const makeEntry = (person: string | null) => ({
+    id: 'doc-1',
+    typeKey: 'meeting_minutes',
+    templateName: '会议纪要',
+    person,
+    period: '2026-09',
+    amount: 120.5,
+    amountUncertain: false,
+    uncertainCount: 0,
+    fileNames: ['a.jpg', 'b.jpg'],
+    isOverride: false
+  })
+
+  const makeTreeResult = (person: string | null): ReimbursementTreeResult => ({
+    tree: [
+      {
+        category: {
+          id: 'cat-1',
+          name: '会议费',
+          requiredMaterials: [],
+          linkedTypeKeys: [],
+          sortOrder: 1
+        },
+        total: 1,
+        materials: [],
+        groups: [{ person, buckets: [{ period: '2026-09', documents: [makeEntry(person)] }] }]
+      }
+    ],
+    unassigned: [
+      {
+        person: null,
+        buckets: [{ period: null, documents: [{ ...makeEntry(null), id: 'doc-2', fileNames: [] }] }]
+      }
+    ],
+    summary: []
+  })
+
+  const makeHarness = (options?: { existsMatches?: (target: string) => boolean }) => {
+    const mkdirs: string[] = []
+    const copied: Array<{ src: string; dest: string }> = []
+    const written: Array<{ file: string; data: string }> = []
+    const deps: ReimbursementExportDeps = {
+      copyFile: async (src, dest) => {
+        copied.push({ src, dest })
+      },
+      mkdir: async (dir) => {
+        mkdirs.push(dir)
+        return undefined
+      },
+      writeFile: async (file, data) => {
+        written.push({ file, data })
+      },
+      exists: async (target) => options?.existsMatches?.(target) ?? false
+    }
+    return { deps, mkdirs, copied, written }
+  }
+
+  type Harness = ReturnType<typeof makeHarness>
+
+  const runExport = async (
+    harness: Harness,
+    result: ReimbursementTreeResult,
+    filesById: Map<string, string[]>
+  ) =>
+    exportReimbursementPackage({
+      rootDir: 'export-root',
+      result,
+      filesById,
+      deps: harness.deps,
+      now: EXPORT_NOW
+    })
+
+  const summaryCsv = (harness: Harness, summaryPath: string): string => {
+    const entry = harness.written.find((item) => item.file === summaryPath)
+    if (!entry) {
+      throw new Error('summary csv not written')
+    }
+    return entry.data
+  }
+
+  it('copies mapped files and writes summary csv without issues', async () => {
+    const harness = makeHarness()
+    const output = await runExport(
+      harness,
+      makeTreeResult('张三'),
+      new Map([['doc-1', ['/src/a.jpg', '/src/b.jpg']]])
+    )
+    expect(output.exportedFiles).toBe(2)
+    expect(output.issues).toEqual([])
+    expect(harness.copied.map((item) => item.src)).toEqual(['/src/a.jpg', '/src/b.jpg'])
+    expect(harness.mkdirs[0]).toBe(output.path)
+    const csv = summaryCsv(harness, output.summaryPath)
+    expect(csv.startsWith('\uFEFF')).toBe(true)
+    expect(csv).toContain('类别,人员,期间,单据模板,文件名,金额,金额存疑,手动指定')
+    expect(csv).toContain('会议费,张三,2026-09,会议纪要,a.jpg,120.5,否,否')
+    expect(csv).toContain('会议费,张三,2026-09,会议纪要,b.jpg,120.5,否,否')
+  })
+
+  it('renames colliding file names with a -1 suffix', async () => {
+    const harness = makeHarness({ existsMatches: (target) => target.endsWith('a.jpg') })
+    const output = await runExport(
+      harness,
+      makeTreeResult('张三'),
+      new Map([['doc-1', ['/src/a.jpg', '/src/b.jpg']]])
+    )
+    expect(output.exportedFiles).toBe(2)
+    expect(harness.copied[0]?.dest.endsWith('a-1.jpg')).toBe(true)
+    expect(harness.copied[1]?.dest.endsWith('b.jpg')).toBe(true)
+  })
+
+  it('sanitizes person directory segments against traversal and illegal chars', async () => {
+    const harness = makeHarness()
+    const result = makeTreeResult('..\\evil')
+    const meetingNode = result.tree[0]
+    if (meetingNode) {
+      meetingNode.groups.push({
+        person: 'a/b:c',
+        buckets: [{ period: '2026-09', documents: [] }]
+      })
+    }
+    const output = await runExport(
+      harness,
+      result,
+      new Map([['doc-1', ['/src/a.jpg', '/src/b.jpg']]])
+    )
+    expect(output.issues).toEqual([])
+    for (const dir of harness.mkdirs) {
+      expect(dir).not.toContain('/')
+      expect(dir).not.toContain(':')
+      for (const segment of dir.split(/[\\/]/)) {
+        expect(segment).not.toBe('..')
+        expect(segment).not.toBe('.')
+      }
+    }
+    const segments = harness.mkdirs.flatMap((dir) => dir.split(/[\\/]/))
+    expect(segments).toContain('.._evil')
+    expect(segments).toContain('a_b_c')
+  })
+
+  it('neutralizes formula-like csv cells with a single-quote prefix', async () => {
+    const harness = makeHarness()
+    const output = await runExport(
+      harness,
+      makeTreeResult('=cmd'),
+      new Map([['doc-1', ['/src/a.jpg', '/src/b.jpg']]])
+    )
+    const csv = summaryCsv(harness, output.summaryPath)
+    expect(csv).toContain("'=cmd")
+    expect(csv).not.toMatch(/(^|,)=cmd/)
+  })
+
+  it('records missing sources without copying', async () => {
+    const harness = makeHarness()
+    const output = await runExport(harness, makeTreeResult('张三'), new Map())
+    expect(output.exportedFiles).toBe(0)
+    expect(output.issues).toEqual(['缺失:a.jpg', '缺失:b.jpg'])
+    const csv = summaryCsv(harness, output.summaryPath)
+    expect(csv).toContain('会议费,张三,2026-09,会议纪要,缺失:a.jpg,120.5,否,否')
   })
 })

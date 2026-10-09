@@ -1,4 +1,5 @@
 import path from 'node:path'
+import { escapeCsvCell } from './csv'
 import type { ReimbursementTreeResult } from './reimbursement'
 
 export interface ReimbursementExportDeps {
@@ -28,9 +29,23 @@ const UNKNOWN_PERSON = '未知人员'
 const UNKNOWN_PERIOD = '未知期间'
 const CSV_HEADER = '类别,人员,期间,单据模板,文件名,金额,金额存疑,手动指定'
 
+const DIR_NAME_UNSAFE_RE = /[\\/:*?"<>|\u0000-\u001f]/g
+
+// Windows 目录段消毒：非法字符与 C0 控制字符替换为 '_'，再去尾随点/空格（Windows 限制）
+// 并限长 80。空名、'.'、'..' 与纯空白经尾随剥离后均为空串，统一回落 '_'（防路径穿越）。
+const sanitizeDirName = (name: string): string => {
+  const stripped = name.replace(DIR_NAME_UNSAFE_RE, '_').replace(/[.\s]+$/g, '')
+  const truncated = stripped.slice(0, 80).replace(/[.\s]+$/g, '')
+  return truncated === '' ? '_' : truncated
+}
+
+// 引号规则直接复用 ./csv 的 escapeCsvCell，避免两处分叉；额外对以 = + - @ \t \r 开头的
+// 单元格前置单引号，避免 Excel/WPS 按公式求值（CSV 公式注入）。
+const FORMULA_PREFIX_RE = /^[=+\-@\t\r]/
+
 const csvCell = (value: string | number | null): string => {
   const text = value === null ? '' : String(value)
-  return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text
+  return escapeCsvCell(FORMULA_PREFIX_RE.test(text) ? `'${text}` : text)
 }
 
 async function uniqueDir(base: string, deps: ReimbursementExportDeps): Promise<string> {
@@ -78,9 +93,9 @@ export async function exportReimbursementPackage(
     categoryName: string,
     group: ReimbursementTreeResult['unassigned'][number]
   ) => {
-    const personDirName = group.person ?? UNKNOWN_PERSON
+    const personDirName = sanitizeDirName(group.person ?? UNKNOWN_PERSON)
     for (const bucket of group.buckets) {
-      const periodDirName = bucket.period ?? UNKNOWN_PERIOD
+      const periodDirName = sanitizeDirName(bucket.period ?? UNKNOWN_PERIOD)
       const targetDir = path.join(packageDir, categoryName, personDirName, periodDirName)
       await deps.mkdir(targetDir, { recursive: true })
       for (const entry of bucket.documents) {
@@ -136,11 +151,11 @@ export async function exportReimbursementPackage(
 
   for (const node of result.tree) {
     for (const group of node.groups) {
-      await writeGroup(node.category.name, group)
+      await writeGroup(sanitizeDirName(node.category.name), group)
     }
   }
   for (const group of result.unassigned) {
-    await writeGroup('未分类', group)
+    await writeGroup(sanitizeDirName('未分类'), group)
   }
 
   const summaryPath = path.join(packageDir, '汇总.csv')
