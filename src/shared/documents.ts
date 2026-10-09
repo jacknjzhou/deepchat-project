@@ -67,6 +67,8 @@ export interface DocumentRecord {
   source: DocumentSource
   sessionId: string | null
   status: DocumentStatus
+  /** 手动报销归类：null=自动；'unassigned'=强制未分类；其余=类别 id */
+  reimbursementOverride: string | null
   createdAt: number
   updatedAt: number
 }

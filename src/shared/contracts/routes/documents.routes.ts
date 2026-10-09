@@ -314,3 +314,123 @@ export const documentsTasksClearFailedRoute = defineRouteContract({
   input: z.object({}),
   output: z.object({ removed: z.number().int().nonnegative() })
 })
+
+const reimbursementTypeKeySchema = z.string().min(1).max(64).regex(/^[a-z][a-z0-9_]*$/)
+
+export const reimbursementMaterialSchema = z.object({
+  name: z.string().min(1).max(100),
+  linkedTypeKeys: z.array(reimbursementTypeKeySchema).max(50)
+})
+
+export const reimbursementCategorySchema = z.object({
+  id: z.string().min(1).max(64),
+  name: z.string().min(1).max(50),
+  requiredMaterials: z.array(reimbursementMaterialSchema).max(50),
+  linkedTypeKeys: z.array(reimbursementTypeKeySchema).max(50),
+  sortOrder: z.number().int().nonnegative()
+})
+
+export const reimbursementConfigSchema = z.object({
+  version: z.literal(1),
+  categories: z.array(reimbursementCategorySchema).max(200),
+  personFieldKeys: z.array(z.string().min(1).max(64)).max(50),
+  dateFieldKeys: z.array(z.string().min(1).max(64)).max(50),
+  amountFieldKeys: z.array(z.string().min(1).max(64)).max(50),
+  dateGrouping: z.enum(['day', 'month'])
+})
+
+export type ReimbursementConfig = z.infer<typeof reimbursementConfigSchema>
+
+export const reimbursementDocumentEntrySchema = z.object({
+  id: z.string().min(1),
+  typeKey: z.string().min(1),
+  templateName: z.string().min(1),
+  person: z.string().nullable(),
+  period: z.string().nullable(),
+  amount: z.number().nullable(),
+  amountUncertain: z.boolean(),
+  uncertainCount: z.number().int().nonnegative(),
+  fileNames: z.array(z.string()),
+  isOverride: z.boolean()
+})
+
+export const reimbursementBucketSchema = z.object({
+  period: z.string().nullable(),
+  documents: z.array(reimbursementDocumentEntrySchema)
+})
+
+export const reimbursementGroupSchema = z.object({
+  person: z.string().nullable(),
+  buckets: z.array(reimbursementBucketSchema)
+})
+
+export const reimbursementMaterialStatSchema = reimbursementMaterialSchema.extend({
+  count: z.number().int().nonnegative()
+})
+
+export const reimbursementCategoryNodeSchema = z.object({
+  category: reimbursementCategorySchema,
+  total: z.number().int().nonnegative(),
+  materials: z.array(reimbursementMaterialStatSchema),
+  groups: z.array(reimbursementGroupSchema)
+})
+
+export const documentsReimbursementGetConfigRoute = defineRouteContract({
+  name: 'documents.reimbursement.getConfig',
+  input: z.object({}),
+  output: z.object({ config: reimbursementConfigSchema })
+})
+
+export const documentsReimbursementSetConfigRoute = defineRouteContract({
+  name: 'documents.reimbursement.setConfig',
+  input: z.object({ config: reimbursementConfigSchema }),
+  output: z.object({ config: reimbursementConfigSchema })
+})
+
+export const documentsReimbursementTreeRoute = defineRouteContract({
+  name: 'documents.reimbursement.tree',
+  input: z.object({
+    status: documentStatusSchema.optional(),
+    dateFrom: timestampMsSchema.optional(),
+    dateTo: timestampMsSchema.optional()
+  }),
+  output: z.object({
+    tree: z.array(reimbursementCategoryNodeSchema),
+    unassigned: z.array(reimbursementGroupSchema),
+    summary: z.array(
+      z.object({
+        categoryId: z.string().min(1).nullable(),
+        total: z.number().int().nonnegative()
+      })
+    )
+  })
+})
+
+export const documentsReimbursementSetOverrideRoute = defineRouteContract({
+  name: 'documents.reimbursement.setOverride',
+  input: z.object({
+    documentId: z.string().min(1),
+    // category id | 'unassigned'（强制未分类）| null（清除覆盖，恢复自动归类）
+    categoryId: z.string().min(1).nullable()
+  }),
+  output: z.object({ document: documentRecordSchema.nullable() })
+})
+
+export const documentsReimbursementExportRoute = defineRouteContract({
+  name: 'documents.reimbursement.export',
+  input: z.object({
+    status: documentStatusSchema.optional(),
+    dateFrom: timestampMsSchema.optional(),
+    dateTo: timestampMsSchema.optional()
+  }),
+  output: z
+    .object({
+      canceled: z.boolean(),
+      path: z.string().min(1).optional(),
+      exportedFiles: z.number().int().nonnegative().optional(),
+      summaryPath: z.string().min(1).optional()
+    })
+    .refine((value) => value.canceled || typeof value.path === 'string', {
+      message: 'path is required when not canceled'
+    })
+})
