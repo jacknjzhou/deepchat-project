@@ -198,4 +198,32 @@ describe('ReimbursementConfigPage', () => {
       expect.objectContaining({ kind: 'error', code: 'documents.reimbursement.configSaveFailed' })
     )
   })
+
+  it('shows the load-error block and keeps save disabled when loading fails', async () => {
+    fakeClient.reimbursementGetConfig.mockRejectedValue(new Error('boom'))
+    const { wrapper } = await mountPage()
+    expect(wrapper.find('[data-testid="reimbursement-config-load-error"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="reimbursement-config-retry"]').exists()).toBe(true)
+    expect(
+      wrapper.get('[data-testid="reimbursement-config-save"]').attributes('disabled')
+    ).toBeDefined()
+    expect(
+      wrapper.get('[data-testid="reimbursement-config-reset"]').attributes('disabled')
+    ).toBeDefined()
+  })
+
+  it('recovers after a successful retry', async () => {
+    fakeClient.reimbursementGetConfig
+      .mockRejectedValueOnce(new Error('boom'))
+      .mockResolvedValue({ config: minimalConfig })
+    const { wrapper } = await mountPage()
+    expect(wrapper.find('[data-testid="reimbursement-config-load-error"]').exists()).toBe(true)
+    await wrapper.get('[data-testid="reimbursement-config-retry"]').trigger('click')
+    await flushPromises()
+    expect(fakeClient.reimbursementGetConfig).toHaveBeenCalledTimes(2)
+    expect(wrapper.find('[data-testid="reimbursement-config-load-error"]').exists()).toBe(false)
+    expect(
+      wrapper.get('[data-testid="reimbursement-config-save"]').attributes('disabled')
+    ).toBeUndefined()
+  })
 })

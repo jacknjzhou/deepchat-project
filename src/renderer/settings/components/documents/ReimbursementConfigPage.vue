@@ -4,6 +4,21 @@
     :eyebrow="t('routes.settings-documents-reimbursement')"
     data-testid="reimbursement-config-page"
   >
+    <Alert v-if="loadError" variant="destructive" data-testid="reimbursement-config-load-error">
+      <Icon icon="lucide:circle-alert" class="size-4" />
+      <AlertDescription class="flex flex-col items-start gap-3">
+        <span>{{ t('settings.documents.reimbursement.loadFailed') }}</span>
+        <DcButton
+          variant="outline"
+          size="sm"
+          data-testid="reimbursement-config-retry"
+          @click="retryLoad"
+        >
+          {{ t('settings.documents.reimbursement.retry') }}
+        </DcButton>
+      </AlertDescription>
+    </Alert>
+
     <SettingsSectionCard :title="t('settings.documents.reimbursement.categoriesTitle')">
       <DcButton
         variant="outline"
@@ -23,6 +38,7 @@
         <div class="flex flex-wrap items-center gap-2">
           <Input
             :model-value="category.name"
+            maxlength="50"
             data-testid="reimbursement-category-name"
             class="min-w-0 flex-1"
             @update:model-value="(value) => updateCategoryName(category, String(value))"
@@ -87,6 +103,7 @@
           >
             <Input
               :model-value="material.name"
+              maxlength="100"
               data-testid="reimbursement-material-name"
               class="min-w-0 flex-1"
               @update:model-value="
@@ -177,7 +194,7 @@
       <DcButton
         variant="outline"
         size="sm"
-        :disabled="isSaving"
+        :disabled="!isLoaded || isSaving"
         data-testid="reimbursement-config-reset"
         @click="onReset"
       >
@@ -185,10 +202,11 @@
       </DcButton>
       <DcButton
         size="sm"
-        :disabled="validationError !== null || isSaving"
+        :disabled="!!validationError || isSaving || !isLoaded"
         data-testid="reimbursement-config-save"
         @click="onSave"
       >
+        <Spinner v-if="isSaving" class="mr-2 size-4" />
         {{ t('settings.documents.reimbursement.save') }}
       </DcButton>
     </div>
@@ -201,6 +219,7 @@ import { useI18n } from 'vue-i18n'
 import { Icon } from '@iconify/vue'
 import { Input } from '@shadcn/components/ui/input'
 import { Alert, AlertDescription } from '@shadcn/components/ui/alert'
+import { Spinner } from '@shadcn/components/ui/spinner'
 import { DcButton } from '@dc-ui/components/button'
 import SettingsPageShell from '../control-center/SettingsPageShell.vue'
 import SettingsSectionCard from '../control-center/SettingsSectionCard.vue'
@@ -212,11 +231,18 @@ type ReimbursementCategory = ReimbursementConfig['categories'][number]
 
 // Must stay in sync with reimbursementTypeKeySchema in documents.routes.ts.
 const TYPE_KEY_PATTERN = /^[a-z][a-z0-9_]*$/
+const TYPE_KEY_MAX_LENGTH = 64
+
+function isInvalidTypeKey(typeKey: string): boolean {
+  return typeKey.length > TYPE_KEY_MAX_LENGTH || !TYPE_KEY_PATTERN.test(typeKey)
+}
 
 const { t } = useI18n()
 const store = useDocumentsStore()
 
 const isSaving = ref(false)
+const isLoaded = ref(false)
+const loadError = ref(false)
 
 const draft = reactive<ReimbursementConfig>({
   version: 1,
@@ -238,14 +264,14 @@ const validationError = computed<string | null>(() => {
       return 'settings.documents.reimbursement.errorNameDuplicate'
     }
     seenNames.add(name)
-    if (category.linkedTypeKeys.some((typeKey) => !TYPE_KEY_PATTERN.test(typeKey))) {
+    if (category.linkedTypeKeys.some(isInvalidTypeKey)) {
       return 'settings.documents.reimbursement.errorTypeKeyInvalid'
     }
     for (const material of category.requiredMaterials) {
       if (!material.name.trim()) {
         return 'settings.documents.reimbursement.errorMaterialName'
       }
-      if (material.linkedTypeKeys.some((typeKey) => !TYPE_KEY_PATTERN.test(typeKey))) {
+      if (material.linkedTypeKeys.some(isInvalidTypeKey)) {
         return 'settings.documents.reimbursement.errorTypeKeyInvalid'
       }
     }
@@ -253,10 +279,25 @@ const validationError = computed<string | null>(() => {
   return null
 })
 
-onMounted(async () => {
+onMounted(() => {
+  void retryLoad()
+})
+
+async function loadDraft() {
   const config = store.reimbursementConfig ?? (await store.loadReimbursementConfig())
   applyConfig(config)
-})
+}
+
+async function retryLoad() {
+  loadError.value = false
+  try {
+    await loadDraft()
+    isLoaded.value = true
+  } catch (error) {
+    console.error('[ReimbursementConfigPage] load failed', error)
+    loadError.value = true
+  }
+}
 
 function applyConfig(config: ReimbursementConfig) {
   // toRaw first: structuredClone cannot clone reactive proxies.
@@ -356,8 +397,13 @@ async function onReset() {
   if (isSaving.value) {
     return
   }
-  const config = await store.loadReimbursementConfig()
-  applyConfig(config)
+  try {
+    const config = await store.loadReimbursementConfig()
+    applyConfig(config)
+  } catch (error) {
+    console.error('[ReimbursementConfigPage] reset failed', error)
+    loadError.value = true
+  }
 }
 
 async function onSave() {
