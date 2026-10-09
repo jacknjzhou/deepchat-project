@@ -33,7 +33,7 @@ function setupStore() {
   return { pinia, store: useDocumentsStore() }
 }
 
-function makeTree() {
+function makeTree(firstEntryOverride = false) {
   return {
     tree: [
       {
@@ -63,7 +63,7 @@ function makeTree() {
                     amountUncertain: false,
                     uncertainCount: 0,
                     fileNames: ['a.pdf'],
-                    isOverride: false
+                    isOverride: firstEntryOverride
                   }
                 ]
               }
@@ -125,8 +125,91 @@ describe('ReimbursementView', () => {
     await flushPromises()
     expect(store.exportReimbursementPackage).toHaveBeenCalledTimes(1)
     expect(notifySpy).toHaveBeenCalledTimes(1)
-    const request = notifySpy.mock.calls[0][0] as { kind: string; title: string }
-    expect(request.kind).toBe('success')
-    expect(request.title).toContain('exportDone')
+    expect(notifySpy).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'success', code: 'documents.reimbursement.exportSuccess' })
+    )
+  })
+
+  it('mirrors the owning category on overridden selects', async () => {
+    const { pinia, store } = setupStore()
+    vi.spyOn(store, 'loadReimbursementTree').mockResolvedValue()
+    store.reimbursementTree = makeTree(true)
+    const wrapper = mountView(pinia)
+    await flushPromises()
+    // The view lands on the first category, so the overridden entry shows
+    // its owning category id instead of a blank native select.
+    const select = wrapper.get('[data-testid="reimbursement-entry-d1"] select')
+    expect((select.element as HTMLSelectElement).value).toBe('cat-a')
+  })
+
+  it('shows forced-unassigned and auto values in the unassigned view', async () => {
+    const { pinia, store } = setupStore()
+    vi.spyOn(store, 'loadReimbursementTree').mockResolvedValue()
+    store.reimbursementTree = {
+      tree: [],
+      unassigned: [
+        {
+          person: '张三',
+          buckets: [
+            {
+              period: '2026-09',
+              documents: [
+                {
+                  id: 'd1',
+                  typeKey: 'meeting_minutes',
+                  templateName: '会议纪要',
+                  person: '张三',
+                  period: '2026-09',
+                  amount: 100,
+                  amountUncertain: false,
+                  uncertainCount: 0,
+                  fileNames: ['a.pdf'],
+                  isOverride: true
+                },
+                {
+                  id: 'd2',
+                  typeKey: 'meeting_minutes',
+                  templateName: '会议纪要',
+                  person: '张三',
+                  period: '2026-09',
+                  amount: 100,
+                  amountUncertain: false,
+                  uncertainCount: 0,
+                  fileNames: ['b.pdf'],
+                  isOverride: false
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      summary: []
+    }
+    const wrapper = mountView(pinia)
+    await flushPromises()
+    // Empty tree keeps the view on unassigned: overridden entries map to the
+    // sentinel option while auto-classified ones keep the auto option.
+    const overridden = wrapper.get('[data-testid="reimbursement-entry-d1"] select')
+    expect((overridden.element as HTMLSelectElement).value).toBe('__unassigned__')
+    const automatic = wrapper.get('[data-testid="reimbursement-entry-d2"] select')
+    expect((automatic.element as HTMLSelectElement).value).toBe('__auto__')
+  })
+
+  it('notifies an error when moving fails', async () => {
+    const { pinia, store } = setupStore()
+    vi.spyOn(store, 'loadReimbursementTree').mockResolvedValue()
+    vi.spyOn(store, 'setReimbursementOverride').mockRejectedValue(new Error('boom'))
+    const notifySpy = vi
+      .spyOn(rendererNotificationManager, 'notify')
+      .mockImplementation(() => undefined)
+    store.reimbursementTree = makeTree()
+    const wrapper = mountView(pinia)
+    await flushPromises()
+    await wrapper.get('[data-testid="reimbursement-entry-d1"] select').setValue('cat-a')
+    await flushPromises()
+    expect(store.setReimbursementOverride).toHaveBeenCalledWith('d1', 'cat-a')
+    expect(notifySpy).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'error', code: 'documents.reimbursement.moveFailed' })
+    )
   })
 })

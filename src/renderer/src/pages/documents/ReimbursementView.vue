@@ -7,7 +7,7 @@
         class="flex w-full items-center justify-between rounded px-2 py-1.5 text-sm hover:bg-muted"
         :class="{ 'bg-muted font-medium': selectedCategoryId === node.category.id }"
         :data-testid="`reimbursement-category-${node.category.id}`"
-        @click="selectedCategoryId = node.category.id"
+        @click="selectCategory(node.category.id)"
       >
         <span class="truncate">{{ node.category.name }}</span>
         <DcBadge variant="outline" class="ml-2">{{ node.total }}</DcBadge>
@@ -16,7 +16,7 @@
         class="mt-1 flex w-full items-center justify-between rounded px-2 py-1.5 text-sm hover:bg-muted"
         :class="{ 'bg-muted font-medium': selectedCategoryId === null }"
         data-testid="reimbursement-category-unassigned"
-        @click="selectedCategoryId = null"
+        @click="selectUnassigned"
       >
         <span>{{ t('settings.documents.reimbursement.unassigned') }}</span>
         <DcBadge variant="outline" class="ml-2">{{ unassignedTotal }}</DcBadge>
@@ -31,6 +31,13 @@
       </div>
     </aside>
     <section class="min-w-0 flex-1 overflow-y-auto p-4">
+      <div v-if="store.reimbursementLoadError" class="flex flex-col items-center gap-3 py-6">
+        <p class="text-sm text-destructive">{{ t(store.reimbursementLoadError) }}</p>
+        <DcButton variant="outline" data-testid="reimbursement-retry" @click="retry">
+          {{ t('settings.documents.reimbursement.retry') }}
+        </DcButton>
+      </div>
+
       <div class="mb-3 flex items-center justify-between">
         <h2 class="text-base font-medium">{{ selectedName }}</h2>
         <DcButton
@@ -93,7 +100,13 @@
             </span>
             <select
               class="shrink-0 rounded border bg-transparent px-1 py-0.5 text-xs"
-              :value="entry.isOverride ? '__override__' : '__auto__'"
+              :value="
+                entry.isOverride
+                  ? selectedCategoryId === null
+                    ? '__unassigned__'
+                    : selectedCategoryId
+                  : '__auto__'
+              "
               @change="onMove(entry.id, ($event.target as HTMLSelectElement).value)"
             >
               <option value="__auto__">
@@ -114,7 +127,11 @@
         </div>
       </div>
       <p v-if="!selectedGroups.length" class="py-10 text-center text-sm text-muted-foreground">
-        {{ t('settings.documents.reimbursement.empty') }}
+        {{
+          store.reimbursementIsLoading
+            ? t('settings.documents.reimbursement.loading')
+            : t('settings.documents.reimbursement.empty')
+        }}
       </p>
     </section>
   </div>
@@ -135,14 +152,32 @@ const store = useDocumentsStore()
 const configClient = createConfigClient()
 
 const selectedCategoryId = ref<string | null>(null)
+const userSelected = ref(false)
 const exporting = ref(false)
 
 onMounted(async () => {
   await store.loadReimbursementTree()
   // Land on the first category so the main content is visible right away;
-  // the unassigned bucket stays one click away in the aside.
-  selectedCategoryId.value = store.reimbursementTree?.tree[0]?.category.id ?? null
+  // a selection made while loading wins, and the unassigned bucket stays
+  // one click away in the aside.
+  if (!userSelected.value) {
+    selectedCategoryId.value = store.reimbursementTree?.tree[0]?.category.id ?? null
+  }
 })
+
+function selectCategory(id: string) {
+  userSelected.value = true
+  selectedCategoryId.value = id
+}
+
+function selectUnassigned() {
+  userSelected.value = true
+  selectedCategoryId.value = null
+}
+
+function retry() {
+  void store.loadReimbursementTree()
+}
 
 const selectedNode = computed(
   () =>
@@ -172,15 +207,19 @@ function notifyTransient(kind: 'success' | 'error', code: string, title: string)
   }
 }
 
-function onMove(documentId: string, value: string) {
-  if (value === '__auto__') {
-    void store.setReimbursementOverride(documentId, null)
-    return
+async function onMove(documentId: string, value: string) {
+  const categoryId =
+    value === '__auto__' ? null : value === '__unassigned__' ? REIMBURSEMENT_UNASSIGNED : value
+  try {
+    await store.setReimbursementOverride(documentId, categoryId)
+  } catch (error) {
+    console.error('[ReimbursementView] set override failed', error)
+    notifyTransient(
+      'error',
+      'documents.reimbursement.moveFailed',
+      t('settings.documents.reimbursement.moveFailed')
+    )
   }
-  void store.setReimbursementOverride(
-    documentId,
-    value === '__unassigned__' ? REIMBURSEMENT_UNASSIGNED : value
-  )
 }
 
 function goConfig() {
