@@ -13,6 +13,11 @@ import {
   documentsGetRoute,
   documentsListRoute,
   documentsPreviewFileRoute,
+  documentsReimbursementExportRoute,
+  documentsReimbursementGetConfigRoute,
+  documentsReimbursementSetConfigRoute,
+  documentsReimbursementSetOverrideRoute,
+  documentsReimbursementTreeRoute,
   documentsStatsRoute,
   documentsTasksCreateRoute,
   documentsTasksClearFailedRoute,
@@ -20,17 +25,28 @@ import {
   documentsTasksRetryRoute,
   documentsUpsertRoute
 } from '@shared/contracts/routes'
+import { REIMBURSEMENT_UNASSIGNED } from '@shared/documents'
 import { dialog } from 'electron'
 import { createRouteMap, type DeepchatRouteMap } from '@/routes/routeRegistry'
 import { buildDocumentsCsv, CSV_EXPORT_MAX_ROWS } from './csv'
 import type { DocumentExtractor } from './extractor/documentExtractor'
+import type { DocumentsSettingsStore } from './modelSettings'
 import type { DocumentsRepository } from './repository'
+import { buildReimbursementTree, REIMBURSEMENT_TREE_MAX_DOCUMENTS } from './reimbursement'
+import { exportReimbursementPackage } from './reimbursementExport'
+import { readReimbursementConfig, writeReimbursementConfig } from './reimbursementConfig'
 import type { RecognitionTaskManager } from './taskManager'
 
 interface DocumentsCsvRouteDeps {
   showSaveDialog: (
     options: Electron.SaveDialogOptions
   ) => Promise<{ canceled: boolean; filePath?: string }>
+}
+
+interface ReimbursementRouteDeps {
+  showOpenDialog: (
+    options: Electron.OpenDialogOptions
+  ) => Promise<{ canceled: boolean; filePaths: string[] }>
 }
 
 const PREVIEW_MIME_BY_EXTENSION: Record<string, string> = {
@@ -48,6 +64,10 @@ const defaultCsvDeps: DocumentsCsvRouteDeps = {
   showSaveDialog: (options) => dialog.showSaveDialog(options)
 }
 
+const defaultReimbursementDeps: ReimbursementRouteDeps = {
+  showOpenDialog: (options) => dialog.showOpenDialog(options)
+}
+
 function resolvePreviewMimeType(filePath: string): string {
   const extension = path.extname(filePath).toLowerCase()
   const mimeType = PREVIEW_MIME_BY_EXTENSION[extension]
@@ -61,8 +81,16 @@ export function createDocumentsRoutes(
   repository: DocumentsRepository,
   extractor: DocumentExtractor,
   taskManager: RecognitionTaskManager,
-  csvDeps: DocumentsCsvRouteDeps = defaultCsvDeps
+  csvDeps: DocumentsCsvRouteDeps = defaultCsvDeps,
+  configStore?: DocumentsSettingsStore,
+  reimbursementDeps: ReimbursementRouteDeps = defaultReimbursementDeps
 ): DeepchatRouteMap {
+  const requireConfigStore = (): DocumentsSettingsStore => {
+    if (!configStore) {
+      throw new Error('documents settings store is not configured')
+    }
+    return configStore
+  }
   return createRouteMap([
     [
       documentTemplatesListRoute.name,
@@ -305,6 +333,113 @@ export function createDocumentsRoutes(
           dataBase64: data.toString('base64'),
           mimeType,
           name: path.basename(uri)
+        })
+      }
+    ],
+    [
+      documentsReimbursementGetConfigRoute.name,
+      async (rawInput) => {
+        documentsReimbursementGetConfigRoute.input.parse(rawInput)
+        const store = requireConfigStore()
+        return documentsReimbursementGetConfigRoute.output.parse({
+          config: readReimbursementConfig(store)
+        })
+      }
+    ],
+    [
+      documentsReimbursementSetConfigRoute.name,
+      async (rawInput) => {
+        const input = documentsReimbursementSetConfigRoute.input.parse(rawInput)
+        const store = requireConfigStore()
+        return documentsReimbursementSetConfigRoute.output.parse({
+          config: writeReimbursementConfig(store, input.config)
+        })
+      }
+    ],
+    [
+      documentsReimbursementTreeRoute.name,
+      async (rawInput) => {
+        const input = documentsReimbursementTreeRoute.input.parse(rawInput)
+        const store = requireConfigStore()
+        const config = readReimbursementConfig(store)
+        const documents = repository.listDocuments({
+          status: input.status,
+          dateFrom: input.dateFrom,
+          dateTo: input.dateTo,
+          limit: REIMBURSEMENT_TREE_MAX_DOCUMENTS
+        })
+        const templateNameById = new Map(repository.listTemplates().map((t) => [t.id, t.name]))
+        return documentsReimbursementTreeRoute.output.parse(
+          buildReimbursementTree(documents, config, templateNameById)
+        )
+      }
+    ],
+    [
+      documentsReimbursementSetOverrideRoute.name,
+      async (rawInput) => {
+        const input = documentsReimbursementSetOverrideRoute.input.parse(rawInput)
+        const store = requireConfigStore()
+        // fail-fast：陈旧的 categoryId 若静默降级为未分类，会丢失用户的手动归类意图
+        if (
+          input.categoryId !== null &&
+          input.categoryId !== REIMBURSEMENT_UNASSIGNED &&
+          !readReimbursementConfig(store).categories.some(
+            (category) => category.id === input.categoryId
+          )
+        ) {
+          throw new Error(`Unknown reimbursement category: ${input.categoryId}`)
+        }
+        return documentsReimbursementSetOverrideRoute.output.parse({
+          document: repository.setReimbursementOverride(input.documentId, input.categoryId) ?? null
+        })
+      }
+    ],
+    [
+      documentsReimbursementExportRoute.name,
+      async (rawInput) => {
+        const input = documentsReimbursementExportRoute.input.parse(rawInput)
+        const store = requireConfigStore()
+        const { canceled, filePaths } = await reimbursementDeps.showOpenDialog({
+          properties: ['openDirectory', 'createDirectory'],
+          title: '选择报销整理包导出目录'
+        })
+        const rootDir = canceled ? undefined : filePaths[0]
+        if (!rootDir) {
+          return documentsReimbursementExportRoute.output.parse({ canceled: true })
+        }
+        const config = readReimbursementConfig(store)
+        const documents = repository.listDocuments({
+          status: input.status,
+          dateFrom: input.dateFrom,
+          dateTo: input.dateTo,
+          limit: REIMBURSEMENT_TREE_MAX_DOCUMENTS
+        })
+        const templateNameById = new Map(repository.listTemplates().map((t) => [t.id, t.name]))
+        const treeResult = buildReimbursementTree(documents, config, templateNameById)
+        const filesById = new Map(documents.map((document) => [document.id, document.fileUris]))
+        const output = await exportReimbursementPackage({
+          rootDir,
+          result: treeResult,
+          filesById,
+          deps: {
+            copyFile: (src, dest) => fsp.copyFile(src, dest),
+            mkdir: (dir, options) => fsp.mkdir(dir, options),
+            writeFile: (file, data, encoding) => fsp.writeFile(file, data, encoding),
+            exists: async (target) => {
+              try {
+                await fsp.access(target)
+                return true
+              } catch {
+                return false
+              }
+            }
+          }
+        })
+        return documentsReimbursementExportRoute.output.parse({
+          canceled: false,
+          path: output.path,
+          exportedFiles: output.exportedFiles,
+          summaryPath: output.summaryPath
         })
       }
     ]

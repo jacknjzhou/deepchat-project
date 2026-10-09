@@ -3144,7 +3144,9 @@ export async function createMainProcessControl(dependencies: {
     const documentsRoutes = createDocumentsRoutes(
       documentsRepository,
       documentExtractor,
-      recognitionTaskManager
+      recognitionTaskManager,
+      undefined, // csvDeps 走默认值（dialog.showSaveDialog）
+      providerSettings
     )
     // Resume interrupted recognition tasks from the previous run.
     void recognitionTaskManager.resumePending()

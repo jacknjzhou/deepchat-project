@@ -15,6 +15,11 @@ import {
   documentsGetRoute,
   documentsListRoute,
   documentsPreviewFileRoute,
+  documentsReimbursementExportRoute,
+  documentsReimbursementGetConfigRoute,
+  documentsReimbursementSetConfigRoute,
+  documentsReimbursementSetOverrideRoute,
+  documentsReimbursementTreeRoute,
   documentsStatsRoute,
   documentsTasksClearFailedRoute,
   documentsTasksCreateRoute,
@@ -25,6 +30,7 @@ import {
 } from '@shared/contracts/routes'
 import type { DeepchatRouteMap } from '@/routes/routeRegistry'
 import type { DocumentTemplate } from '@shared/documents'
+import { defaultReimbursementConfig } from '@/documents/reimbursementConfig'
 import { createDocumentsRoutes } from '@/documents/routes'
 import { DocumentsRepository } from '@/documents/repository'
 import { DocumentsDatabase } from '@/documents/data/database'
@@ -830,5 +836,173 @@ describeIfSqlite('documents stats and tasks route handlers', () => {
     )
     expect(remaining.tasks).toHaveLength(1)
     expect(remaining.tasks[0]).toMatchObject({ filePath: 'C:\\b.png', status: 'pending' })
+  })
+})
+
+describeIfSqlite('reimbursement routes', () => {
+  const makeRepository = () => {
+    const db = new DatabaseCtor(':memory:')
+    new DocumentTemplatesTableCtor(db).createTable()
+    new DocumentsTableCtor(db).createTable()
+    const database = new DocumentsDatabaseCtor({ getDatabase: () => db })
+    return new DocumentsRepository(database)
+  }
+
+  const makeStore = () => {
+    const map = new Map<string, unknown>()
+    return {
+      map,
+      getSetting: <T>(key: string) => map.get(key) as T | undefined,
+      setSetting: (key: string, value: unknown) => {
+        map.set(key, value)
+      }
+    }
+  }
+
+  const template: DocumentTemplate = {
+    id: 'tpl-meeting',
+    typeKey: 'meeting_minutes',
+    name: '会议纪要',
+    icon: null,
+    category: '会议类',
+    fields: [],
+    extractionMode: 'auto',
+    promptPreset: null,
+    isBuiltin: true,
+    builtinSourceId: null,
+    version: 1,
+    createdAt: 1,
+    updatedAt: 1
+  }
+
+  const insertMeetingDocument = (
+    repository: ReturnType<typeof makeRepository>,
+    fileUris: string[] = []
+  ) => {
+    repository.upsertTemplate(template)
+    return repository.insertDocument({
+      templateId: template.id,
+      typeKey: template.typeKey,
+      templateSnapshot: template,
+      fields: {},
+      fileUris,
+      source: 'manual',
+      sessionId: null,
+      status: 'draft',
+      now: 1000
+    })
+  }
+
+  it('getConfig returns seeded defaults', async () => {
+    const routes = createDocumentsRoutes(
+      makeRepository(),
+      fakeExtractor,
+      fakeTaskManager,
+      undefined,
+      makeStore()
+    )
+    const handler = getRouteHandler(routes, documentsReimbursementGetConfigRoute.name)
+    const output = documentsReimbursementGetConfigRoute.output.parse(await handler({}))
+    expect(output.config.version).toBe(1)
+    expect(output.config.categories.length).toBeGreaterThan(0)
+  })
+
+  it('setConfig persists and returns normalized config', async () => {
+    const store = makeStore()
+    const routes = createDocumentsRoutes(
+      makeRepository(),
+      fakeExtractor,
+      fakeTaskManager,
+      undefined,
+      store
+    )
+    const handler = getRouteHandler(routes, documentsReimbursementSetConfigRoute.name)
+    const config = defaultReimbursementConfig()
+    const output = documentsReimbursementSetConfigRoute.output.parse(await handler({ config }))
+    expect(output.config).toEqual(config)
+    expect(store.map.get('documents.reimbursementConfig')).toEqual(config)
+  })
+
+  it('setOverride validates and updates document', async () => {
+    const repository = makeRepository()
+    const document = insertMeetingDocument(repository)
+    const routes = createDocumentsRoutes(
+      repository,
+      fakeExtractor,
+      fakeTaskManager,
+      undefined,
+      makeStore()
+    )
+    const handler = getRouteHandler(routes, documentsReimbursementSetOverrideRoute.name)
+    const output = documentsReimbursementSetOverrideRoute.output.parse(
+      await handler({ documentId: document.id, categoryId: 'cat-meeting' })
+    )
+    expect(output.document).not.toBeNull()
+    expect(output.document?.reimbursementOverride).toBe('cat-meeting')
+  })
+
+  it('setOverride rejects unknown category id', async () => {
+    const repository = makeRepository()
+    const document = insertMeetingDocument(repository)
+    const routes = createDocumentsRoutes(
+      repository,
+      fakeExtractor,
+      fakeTaskManager,
+      undefined,
+      makeStore()
+    )
+    const handler = getRouteHandler(routes, documentsReimbursementSetOverrideRoute.name)
+    await expect(handler({ documentId: document.id, categoryId: 'cat-gone' })).rejects.toThrow(
+      'Unknown reimbursement category: cat-gone'
+    )
+  })
+
+  it('tree returns category nodes with mapped documents', async () => {
+    const repository = makeRepository()
+    insertMeetingDocument(repository)
+    const routes = createDocumentsRoutes(
+      repository,
+      fakeExtractor,
+      fakeTaskManager,
+      undefined,
+      makeStore()
+    )
+    const handler = getRouteHandler(routes, documentsReimbursementTreeRoute.name)
+    const output = documentsReimbursementTreeRoute.output.parse(await handler({}))
+    const meeting = output.tree.find((node) => node.category.id === 'cat-meeting')
+    expect(meeting?.total).toBe(1)
+    expect(output.unassigned).toHaveLength(0)
+  })
+
+  it('export canceled returns canceled only', async () => {
+    const routes = createDocumentsRoutes(
+      makeRepository(),
+      fakeExtractor,
+      fakeTaskManager,
+      undefined,
+      makeStore(),
+      { showOpenDialog: async () => ({ canceled: true, filePaths: [] }) }
+    )
+    const handler = getRouteHandler(routes, documentsReimbursementExportRoute.name)
+    expect(await handler({})).toEqual({ canceled: true })
+  })
+
+  it('export with missing files completes with zero copied files', async () => {
+    const repository = makeRepository()
+    insertMeetingDocument(repository, ['/nonexistent/a.jpg'])
+    const routes = createDocumentsRoutes(
+      repository,
+      fakeExtractor,
+      fakeTaskManager,
+      undefined,
+      makeStore(),
+      { showOpenDialog: async () => ({ canceled: false, filePaths: [tmpdir()] }) }
+    )
+    const handler = getRouteHandler(routes, documentsReimbursementExportRoute.name)
+    const output = documentsReimbursementExportRoute.output.parse(await handler({}))
+    expect(output.canceled).toBe(false)
+    expect(output.exportedFiles).toBe(0)
+    expect(typeof output.path).toBe('string')
+    await fs.rm(output.path as string, { recursive: true, force: true })
   })
 })
