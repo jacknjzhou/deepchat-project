@@ -19,7 +19,8 @@ src/shared/contracts/routes/documents.routes.ts   # +5 路由 + zod schema（修
 src/shared/documents.ts                            # DocumentRecord +reimbursementOverride（修改）
 src/shared/contracts/routes/system.routes.ts       # SettingsRouteNameSchema +1（修改）
 src/shared/settingsNavigation.ts                   # 导航项 +1（修改）
-src/main/documents/data/tables/documents.ts        # 加列迁移 v51（修改）
+src/main/documents/data/tables/documents.ts        # 加列 reimbursement_override（修改）
+src/main/data/schemaCatalog.ts                     # documents repairableColumns（修改）
 src/main/documents/repository.ts                   # override 映射 + setReimbursementOverride（修改）
 src/main/documents/presetReimbursementConfig.json  # 新增：seed 默认配置（28 类别）
 src/main/documents/reimbursementConfig.ts          # 新增：配置读写/规范化
@@ -44,7 +45,7 @@ test/renderer/components/ReimbursementView.test.ts # 新增
 
 **关键既有事实（实现者必读）：**
 
-- 迁移机制：`src/main/data/mainDatabase.ts` 的 `migrate()` 使用**全局** `schema_versions` 高水位（当前最大 50，`AGENT_MEMORY_DIRECTIVE_SCHEMA_VERSION`）。新增迁移必须：`getLatestVersion()` 提到 **51**、`getMigrationSQL(51)` 返回 ALTER 语句，**且** `getCreateTableSQL()` 同步加列（全新库走 createTable 短路，不执行 getMigrationSQL）。重复加列错误已被 `shouldIgnoreMigrationStatementError` 容忍。
+- 迁移机制（Task 2 实施后修正）：documents 三表**不在** `createMainSchemaCatalog().migrationTables` 中，`migrate()`/`getMigrationSQL` 对 documents 是死代码；agent.db 即 MainDatabase。既有表加列的真实机制是 `CATALOG_DEFINITIONS`（schemaCatalog.ts）的 `repairableColumns` → `getSchemaCatalog()` 生成 `columns[].addColumnSql` → 启动诊断 missing_column（repairable）→ 一次性 `repairStartupSchema` 执行 ALTER。先例：`agent_memory_audit.memory_ref_id`。全局 `schema_versions` 高水位实测 69（deepchatUsageStats），67 已被 deepchatPendingInputs 占用——**documents 表禁止占用版本号**。
 - 渲染端 IPC：`src/renderer/api/DocumentsClient.ts` 的 `invokeRoute(bridge, route.name, input)` 模式。
 - 设置 KV 接口：`DocumentsSettingsStore { getSetting, setSetting }`（见 `modelSettings.ts`）；composition.ts 中实例为 `providerSettings`。
 - 主进程测试运行方式（better-sqlite3 需要 Electron ABI）：
@@ -58,6 +59,7 @@ test/renderer/components/ReimbursementView.test.ts # 新增
 
 **Files:**
 - Modify: `src/shared/contracts/routes/documents.routes.ts`
+- Modify: `src/shared/contracts/routes.ts`（路由 catalog 注册）
 - Modify: `src/shared/documents.ts`（DocumentRecord 接口）
 - Test: `test/main/documents/reimbursement.spec.ts`（本 task 仅契约解析用例，纯函数放 Task 3）
 
@@ -187,7 +189,23 @@ export const documentsReimbursementExportRoute = defineRouteContract({
 })
 ```
 
-- [ ] **Step 1.2: DocumentRecord 扩展**
+- [ ] **Step 1.2: routes.ts 注册 5 条路由**
+
+`src/shared/contracts/routes.ts`：
+1. 在 `from './routes/documents.routes'` 的命名 import 块（约 379-398 行）中追加导入 5 条新路由常量。
+2. 在 `DEEPCHAT_ROUTE_CATALOG_PART_1` 的 `documentsTasksClearFailedRoute` 条目（约 841 行）后追加：
+
+```ts
+  [documentsReimbursementGetConfigRoute.name]: documentsReimbursementGetConfigRoute,
+  [documentsReimbursementSetConfigRoute.name]: documentsReimbursementSetConfigRoute,
+  [documentsReimbursementTreeRoute.name]: documentsReimbursementTreeRoute,
+  [documentsReimbursementSetOverrideRoute.name]: documentsReimbursementSetOverrideRoute,
+  [documentsReimbursementExportRoute.name]: documentsReimbursementExportRoute,
+```
+
+（运行时 `getRouteContract` 依赖 catalog 查找，未注册则 IPC 不可达。）
+
+- [ ] **Step 1.3: DocumentRecord 扩展**
 
 `src/shared/documents.ts` 中找到 `interface DocumentRecord`，在 `status` 字段后加：
 
@@ -196,7 +214,7 @@ export const documentsReimbursementExportRoute = defineRouteContract({
   reimbursementOverride: string | null
 ```
 
-- [ ] **Step 1.3: 契约解析测试**
+- [ ] **Step 1.4: 契约解析测试**
 
 `test/main/documents/reimbursement.spec.ts`：
 
@@ -258,15 +276,15 @@ describe('reimbursement contracts', () => {
 })
 ```
 
-- [ ] **Step 1.4: 运行测试**
+- [ ] **Step 1.5: 运行测试**
 
 Run: `$env:ELECTRON_RUN_AS_NODE='1'; pnpm exec electron ./node_modules/vitest/vitest.mjs run test/main/documents/reimbursement.spec.ts --config vitest.config.ts`
 Expected: PASS（此时仅契约用例，纯函数用例 Task 3 补充）
 
-- [ ] **Step 1.5: Commit**
+- [ ] **Step 1.6: Commit**
 
 ```bash
-git add src/shared/contracts/routes/documents.routes.ts src/shared/documents.ts test/main/documents/reimbursement.spec.ts
+git add src/shared/contracts/routes/documents.routes.ts src/shared/contracts/routes.ts src/shared/documents.ts test/main/documents/reimbursement.spec.ts
 git commit -m "feat(documents): reimbursement route contracts"
 ```
 
@@ -276,8 +294,12 @@ git commit -m "feat(documents): reimbursement route contracts"
 
 **Files:**
 - Modify: `src/main/documents/data/tables/documents.ts`
+- Modify: `src/main/data/schemaCatalog.ts`（repairableColumns，见 Step 2.3a）
 - Modify: `src/main/documents/repository.ts`
+- Modify: `src/shared/contracts/routes/documents.routes.ts`（documentRecordSchema 同步补字段，见 Step 2.4a）
 - Test: `test/main/documents/documentsTableMigration.test.ts`
+
+> **Task 1 质量审查强制修订项：** `interface DocumentRecord` 已有必填 `reimbursementOverride`，但 zod `documentRecordSchema`（documents.routes.ts:78-90）没有。zod object 默认 strip 未知键，若不同步补字段，Task 2 起所有经 `output.parse` 的 IPC 响应（list/get/upsert/setOverride）都会静默丢弃 `reimbursementOverride`，渲染端 `as DocumentRecord` 强转后将拿到 `undefined` 却被类型声称 `string | null`——必须在本 task 中一并修复。
 
 - [ ] **Step 2.1: 写迁移测试（先失败）**
 
@@ -310,7 +332,16 @@ describe('documents table reimbursement_override migration', () => {
     expect(columns).toContain('reimbursement_override')
   })
 
-  it('migrating an old v1 table adds the column', () => {
+  it('registers the column as repairable in the schema catalog', () => {
+    const spec = getSchemaCatalog().find((table) => table.name === 'documents')
+    expect(spec).toBeDefined()
+    const column = spec!.columns.find((c) => c.name === 'reimbursement_override')
+    expect(column).toBeDefined()
+    expect(column!.addColumnSql).toContain('reimbursement_override')
+  })
+
+  it('addColumnSql upgrades a legacy documents table', () => {
+    const spec = getSchemaCatalog().find((table) => table.name === 'documents')!
     db.exec(`CREATE TABLE documents (
       id TEXT PRIMARY KEY, template_id TEXT NOT NULL, type_key TEXT NOT NULL,
       template_snapshot_json TEXT NOT NULL DEFAULT '{}', fields_json TEXT NOT NULL DEFAULT '{}',
@@ -318,49 +349,27 @@ describe('documents table reimbursement_override migration', () => {
       session_id TEXT, status TEXT NOT NULL DEFAULT 'draft' CHECK(status IN ('draft','confirmed')),
       created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
     );`)
-    const table = new DocumentsTable(db)
-    const sql = table.getMigrationSQL(51)
-    expect(sql).toContain('reimbursement_override')
-    db.exec(sql!)
+    db.exec(spec.columns.find((c) => c.name === 'reimbursement_override')!.addColumnSql!)
     const columns = (db.prepare('PRAGMA table_info(documents)').all() as Array<{ name: string }>).map(
       (c) => c.name
     )
     expect(columns).toContain('reimbursement_override')
-    expect(table.getLatestVersion()).toBe(51)
   })
 })
 ```
+
+（import 追加 `import { getSchemaCatalog } from '@/data/schemaCatalog'`；describe 名 `documents table reimbursement_override schema repair`。）
 
 - [ ] **Step 2.2: 运行确认失败**
 
 Run: `$env:ELECTRON_RUN_AS_NODE='1'; pnpm exec electron ./node_modules/vitest/vitest.mjs run test/main/documents/documentsTableMigration.test.ts --config vitest.config.ts`
 Expected: FAIL（getLatestVersion 返回 1、无该列）
 
-- [ ] **Step 2.3: 修改 documents.ts 表**
+- [ ] **Step 2.3: 修改 documents.ts 表（不改版本方法）**
 
 1. `DocumentRow` 接口 `session_id` 后加 `reimbursement_override: string | null`。
 2. `getCreateTableSQL()` 中 `session_id TEXT,` 后加一行 `reimbursement_override TEXT,`。
-3. 新增常量与方法（替换 `getLatestVersion`/`getMigrationSQL`）：
-
-```ts
-// 全局 schema_versions 高水位当前为 50（AGENT_MEMORY_DIRECTIVE_SCHEMA_VERSION），
-// documents 迁移占用下一个全局版本号。
-export const DOCUMENTS_MIGRATION_VERSION = 51
-```
-
-```ts
-  getLatestVersion(): number {
-    return DOCUMENTS_MIGRATION_VERSION
-  }
-
-  getMigrationSQL(version: number): string | null {
-    if (version === DOCUMENTS_MIGRATION_VERSION) {
-      return 'ALTER TABLE documents ADD COLUMN reimbursement_override TEXT'
-    }
-    return null
-  }
-```
-
+3. `getLatestVersion()`/`getMigrationSQL()` **保持原样**（documents 不在 migrationTables，版本机制对它是死代码；禁止占用全局版本号）。
 4. `DocumentTableInsertInput` 加 `reimbursementOverride?: string | null`；`insert()` 的 INSERT 列与值各加一项（`reimbursement_override` / `input.reimbursementOverride ?? null`）。
 5. 新方法：
 
@@ -374,6 +383,22 @@ export const DOCUMENTS_MIGRATION_VERSION = 51
     return this.get(id)
   }
 ```
+
+- [ ] **Step 2.3a（关键）: schemaCatalog 注册 repairableColumns**
+
+`src/main/data/schemaCatalog.ts` 的 `CATALOG_DEFINITIONS` documents 条目（约 404-407 行）改为：
+
+```ts
+  {
+    name: 'documents',
+    createTable: (db) => new DocumentsTable(db),
+    repairableColumns: {
+      reimbursement_override: 'ALTER TABLE documents ADD COLUMN reimbursement_override TEXT;'
+    }
+  },
+```
+
+这是存量 v1.2.7 用户数据库获得新列的唯一路径（启动诊断 missing_column → 一次性 repair 执行 addColumnSql）。
 
 - [ ] **Step 2.4: repository.ts 映射与方法**
 
@@ -394,6 +419,16 @@ export const DOCUMENTS_MIGRATION_VERSION = 51
 
 （`toDocumentRecord` 为既有私有映射方法名；若实际名称不同，复用实际名称。）
 
+**Step 2.4a（强制）: documentRecordSchema 同步补字段**
+
+`src/shared/contracts/routes/documents.routes.ts` 的 `documentRecordSchema` 中 `status: documentStatusSchema,` 后加：
+
+```ts
+  reimbursementOverride: z.string().nullable(),
+```
+
+（必须与 repository 行映射同 commit 落地：先有 DB 字段而 schema 无此键 → output.parse 静默 strip；先有 schema 必填键而 repository 不产出 → parse 直接抛错。本 task 两者同时就位，顺序安全。）
+
 - [ ] **Step 2.5: 运行测试确认通过**
 
 Run: `$env:ELECTRON_RUN_AS_NODE='1'; pnpm exec electron ./node_modules/vitest/vitest.mjs run test/main/documents/documentsTableMigration.test.ts --config vitest.config.ts`
@@ -402,9 +437,16 @@ Expected: PASS
 - [ ] **Step 2.6: Commit**
 
 ```bash
-git add src/main/documents/data/tables/documents.ts src/main/documents/repository.ts test/main/documents/documentsTableMigration.test.ts
+git add src/main/documents/data/tables/documents.ts src/main/data/schemaCatalog.ts src/main/documents/repository.ts src/shared/contracts/routes/documents.routes.ts test/main/documents/documentsTableMigration.test.ts
 git commit -m "feat(documents): reimbursement_override column"
 ```
+
+> **实施记录（as-built）**：初版实施（d6b931b0）误按全局版本迁移机制实现（v67），复审发现 documents 表不在 migrationTables、迁移为死代码且 67 已被占用，返工（f37dc5f2）改为 repairableColumns 机制并还原版本方法。复审通过：存量库升级路径闭环（诊断→一次性 repair→ALTER）。
+
+> **Task 1 质量审查建议项（后续 task 落实）：**
+> - Task 3：`REIMBURSEMENT_UNASSIGNED = 'unassigned'` 常量放 `src/shared/documents.ts`（渲染端复用，避免魔法字符串跨 IPC）；规范化时拒绝 `id === 'unassigned'` 的类别，消除与哨兵值碰撞（`resolveDocumentCategoryId` 先查哨兵，真实类别 id 为 'unassigned' 时会被误判）。
+> - Task 4：`setOverride` handler 对 `categoryId` 做 fail-fast 校验（须 ∈ config.categories ∪ {'unassigned'} ∪ {null}），避免陈旧 id 静默降级丢失用户意图。
+> - Task 5：从 `@shared/contracts/routes` 导出 `export type ReimbursementTreeResult = z.infer<typeof documentsReimbursementTreeRoute.output>`，满足「类型优先放 shared」的诉求，避免届时再动契约文件。
 
 ---
 
@@ -1913,4 +1955,4 @@ git commit -m "chore(documents): reimbursement regression fixes"
 
 1. **Spec 覆盖**：配置 KV+惰性 seed（Task 3）、表加列迁移（Task 2）、归类优先级/字段映射/分组树（Task 3）、5 条 IPC 路由（Task 1/4）、导出整理包+汇总 CSV（Task 4）、归档页视图+手动调整+材料统计（Task 6）、设置配置页（Task 7）、i18n 20 locale（Task 8）、测试策略（各 Task TDD + Task 9 回归）——全覆盖。
 2. **占位符**：无 TBD；两处「以实际文件为准」的说明均为精确定位指引而非功能占位。
-3. **类型一致性**：`ReimbursementConfig`/`ReimbursementTreeResult` 等以 `@shared/contracts/routes` 为单一来源；`exportReimbursementPackage` 输入以 Step 4.2 注释中的 `filesById` 版本为准（代码块中 `entry.files` 已被该注释取代）。
+3. **类型一致性**：`ReimbursementConfig`/`Reimburseme
