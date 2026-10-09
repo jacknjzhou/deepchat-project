@@ -13,7 +13,9 @@ import type {
 import type { z } from 'zod'
 import type {
   documentsStatsEntrySchema,
-  documentsTemplateUpsertInputSchema
+  documentsTemplateUpsertInputSchema,
+  ReimbursementConfig,
+  ReimbursementTreeResult
 } from '@shared/contracts/routes'
 import type { documentsTaskUpdatedEvent } from '@shared/contracts/events'
 import { documentsApi, type DocumentsTaskItem } from '@api/documentTasks'
@@ -319,6 +321,60 @@ export const useDocumentsStore = defineStore('documents', () => {
     return client.previewFile({ documentId, uriIndex })
   }
 
+  const reimbursementConfig = ref<ReimbursementConfig | null>(null)
+  const reimbursementTree = ref<ReimbursementTreeResult | null>(null)
+  const reimbursementIsLoading = ref(false)
+  const reimbursementLoadError = ref<string | null>(null)
+
+  async function loadReimbursementConfig(client: DocumentsClient = defaultClient) {
+    const result = await client.reimbursementGetConfig()
+    reimbursementConfig.value = result.config
+    return result.config
+  }
+
+  async function saveReimbursementConfig(
+    config: ReimbursementConfig,
+    client: DocumentsClient = defaultClient
+  ) {
+    const result = await client.reimbursementSetConfig(config)
+    reimbursementConfig.value = result.config
+    return result.config
+  }
+
+  async function loadReimbursementTree(client: DocumentsClient = defaultClient) {
+    reimbursementIsLoading.value = true
+    reimbursementLoadError.value = null
+    try {
+      reimbursementTree.value = await client.reimbursementTree({
+        status: archiveFilter.status,
+        dateFrom: archiveFilter.dateFrom,
+        dateTo: archiveFilter.dateTo
+      })
+    } catch (error) {
+      console.error('[DocumentsStore] loadReimbursementTree failed', error)
+      reimbursementLoadError.value = 'settings.documents.reimbursement.loadFailed'
+    } finally {
+      reimbursementIsLoading.value = false
+    }
+  }
+
+  async function setReimbursementOverride(
+    documentId: string,
+    categoryId: string | null,
+    client: DocumentsClient = defaultClient
+  ) {
+    await client.reimbursementSetOverride(documentId, categoryId)
+    await loadReimbursementTree(client)
+  }
+
+  async function exportReimbursementPackage(client: DocumentsClient = defaultClient) {
+    return client.reimbursementExport({
+      status: archiveFilter.status,
+      dateFrom: archiveFilter.dateFrom,
+      dateTo: archiveFilter.dateTo
+    })
+  }
+
   return {
     templates,
     isLoading,
@@ -350,6 +406,15 @@ export const useDocumentsStore = defineStore('documents', () => {
     removeArchiveDocument,
     recognizeDocument,
     exportArchiveCsv,
-    previewArchiveFile
+    previewArchiveFile,
+    reimbursementConfig,
+    reimbursementTree,
+    reimbursementIsLoading,
+    reimbursementLoadError,
+    loadReimbursementConfig,
+    saveReimbursementConfig,
+    loadReimbursementTree,
+    setReimbursementOverride,
+    exportReimbursementPackage
   }
 })

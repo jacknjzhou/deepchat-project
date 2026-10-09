@@ -424,6 +424,8 @@ export const documentsReimbursementTreeRoute = defineRouteContract({
   })
 })
 
+export type ReimbursementTreeResult = z.infer<typeof documentsReimbursementTreeRoute.output>
+
 export const documentsReimbursementSetOverrideRoute = defineRouteContract({
   name: 'documents.reimbursement.setOverride',
   input: z.object({

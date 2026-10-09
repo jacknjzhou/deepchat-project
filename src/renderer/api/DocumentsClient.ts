@@ -12,6 +12,11 @@ import {
   documentsGetRoute,
   documentsListRoute,
   documentsPreviewFileRoute,
+  documentsReimbursementExportRoute,
+  documentsReimbursementGetConfigRoute,
+  documentsReimbursementSetConfigRoute,
+  documentsReimbursementSetOverrideRoute,
+  documentsReimbursementTreeRoute,
   documentsStatsRoute,
   documentsTasksCreateRoute,
   documentsTasksClearFailedRoute,
@@ -23,7 +28,8 @@ import {
   type documentsUpsertInputSchema,
   type DeepchatRouteInput,
   type DeepchatRouteName,
-  type DeepchatRouteOutput
+  type DeepchatRouteOutput,
+  type ReimbursementConfig
 } from '@shared/contracts/routes'
 import { documentsTaskUpdatedEvent } from '@shared/contracts/events'
 import type { z } from 'zod'
@@ -95,6 +101,16 @@ export function createDocumentsClient(bridge: DeepchatBridge = getDeepchatBridge
         ...(templateId ? { templateId } : {})
       }),
     clearFailedTasks: () => invokeRoute(bridge, documentsTasksClearFailedRoute.name, {}),
+    reimbursementGetConfig: () =>
+      invokeRoute(bridge, documentsReimbursementGetConfigRoute.name, {}),
+    reimbursementSetConfig: (config: ReimbursementConfig) =>
+      invokeRoute(bridge, documentsReimbursementSetConfigRoute.name, { config }),
+    reimbursementTree: (input: z.input<typeof documentsReimbursementTreeRoute.input> = {}) =>
+      invokeRoute(bridge, documentsReimbursementTreeRoute.name, input),
+    reimbursementSetOverride: (documentId: string, categoryId: string | null) =>
+      invokeRoute(bridge, documentsReimbursementSetOverrideRoute.name, { documentId, categoryId }),
+    reimbursementExport: (input: z.input<typeof documentsReimbursementExportRoute.input> = {}) =>
+      invokeRoute(bridge, documentsReimbursementExportRoute.name, input),
     onTaskUpdated: (
       listener: (payload: z.infer<typeof documentsTaskUpdatedEvent.payload>) => void
     ) => bridge.on(documentsTaskUpdatedEvent.name, listener)
