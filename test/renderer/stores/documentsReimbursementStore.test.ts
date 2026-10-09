@@ -34,8 +34,9 @@ describe('documents store reimbursement actions', () => {
     const config = await store.loadReimbursementConfig(client as never)
     expect(config.categories.length).toBe(1)
     expect(store.reimbursementConfig).toEqual(minimalConfig)
-    await store.saveReimbursementConfig(config, client as never)
-    expect(client.reimbursementSetConfig).toHaveBeenCalled()
+    const saved = await store.saveReimbursementConfig(config, client as never)
+    expect(saved).toEqual(config)
+    expect(client.reimbursementSetConfig).toHaveBeenCalledWith(config)
     expect(store.reimbursementConfig).toEqual(config)
   })
 
@@ -43,12 +44,36 @@ describe('documents store reimbursement actions', () => {
     setActivePinia(createPinia())
     const store = useDocumentsStore()
     const client = makeFakeClient()
+    store.archiveFilter.status = 'confirmed'
+    store.archiveFilter.dateFrom = 100
+    store.archiveFilter.dateTo = 200
     await store.loadReimbursementTree(client as never)
+    expect(client.reimbursementTree).toHaveBeenCalledWith({
+      status: 'confirmed',
+      dateFrom: 100,
+      dateTo: 200
+    })
     expect(store.reimbursementTree).toEqual({ tree: [], unassigned: [], summary: [] })
     expect(store.reimbursementIsLoading).toBe(false)
     await store.setReimbursementOverride('doc-1', 'cat-a', client as never)
     expect(client.reimbursementSetOverride).toHaveBeenCalledWith('doc-1', 'cat-a')
     expect(client.reimbursementTree).toHaveBeenCalledTimes(2)
+  })
+
+  it('exportReimbursementPackage passes the archive filter through', async () => {
+    setActivePinia(createPinia())
+    const store = useDocumentsStore()
+    const client = makeFakeClient()
+    store.archiveFilter.status = 'confirmed'
+    store.archiveFilter.dateFrom = 100
+    store.archiveFilter.dateTo = 200
+    const result = await store.exportReimbursementPackage(client as never)
+    expect(client.reimbursementExport).toHaveBeenCalledWith({
+      status: 'confirmed',
+      dateFrom: 100,
+      dateTo: 200
+    })
+    expect(result).toEqual({ canceled: true })
   })
 
   it('sets load error key when tree request fails', async () => {
@@ -59,5 +84,31 @@ describe('documents store reimbursement actions', () => {
     await store.loadReimbursementTree(client as never)
     expect(store.reimbursementLoadError).toBe('settings.documents.reimbursement.loadFailed')
     expect(store.reimbursementIsLoading).toBe(false)
+  })
+
+  it('loadReimbursementTree drops stale responses and keeps the latest tree', async () => {
+    setActivePinia(createPinia())
+    const store = useDocumentsStore()
+    const client = makeFakeClient()
+    let resolveSlow!: (value: unknown) => void
+    client.reimbursementTree.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveSlow = resolve
+        })
+    )
+    client.reimbursementTree.mockResolvedValueOnce({
+      tree: [{ total: 1 }],
+      unassigned: [],
+      summary: []
+    })
+    const stale = store.loadReimbursementTree(client as never)
+    const fresh = store.loadReimbursementTree(client as never)
+    await fresh
+    resolveSlow({ tree: [{ total: 99 }], unassigned: [], summary: [] })
+    await stale
+    expect(store.reimbursementTree).toEqual({ tree: [{ total: 1 }], unassigned: [], summary: [] })
+    expect(store.reimbursementIsLoading).toBe(false)
+    expect(store.reimbursementLoadError).toBe(null)
   })
 })

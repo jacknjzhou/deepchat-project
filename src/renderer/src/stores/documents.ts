@@ -341,20 +341,34 @@ export const useDocumentsStore = defineStore('documents', () => {
     return result.config
   }
 
+  // Guards against out-of-order reimbursement responses: only the latest
+  // loadReimbursementTree call may commit results or manage isLoading.
+  let reimbursementLoadSeq = 0
+
   async function loadReimbursementTree(client: DocumentsClient = defaultClient) {
+    const seq = ++reimbursementLoadSeq
     reimbursementIsLoading.value = true
     reimbursementLoadError.value = null
     try {
-      reimbursementTree.value = await client.reimbursementTree({
+      const result = await client.reimbursementTree({
         status: archiveFilter.status,
         dateFrom: archiveFilter.dateFrom,
         dateTo: archiveFilter.dateTo
       })
+      if (seq !== reimbursementLoadSeq) {
+        return
+      }
+      reimbursementTree.value = result
     } catch (error) {
+      if (seq !== reimbursementLoadSeq) {
+        return
+      }
       console.error('[DocumentsStore] loadReimbursementTree failed', error)
       reimbursementLoadError.value = 'settings.documents.reimbursement.loadFailed'
     } finally {
-      reimbursementIsLoading.value = false
+      if (seq === reimbursementLoadSeq) {
+        reimbursementIsLoading.value = false
+      }
     }
   }
 
