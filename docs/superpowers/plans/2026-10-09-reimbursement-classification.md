@@ -1864,6 +1864,10 @@ git add src/renderer/settings/components/documents/ReimbursementConfigPage.vue s
 git commit -m "feat(documents): reimbursement config settings page"
 ```
 
+> **实施记录（as-built）**：Task 7 以 e8301070 + a2e75a02 交付，spec 审查与复审通过。plan 偏差：页面骨架弃用 plan 的裸 div/button/input，改用仓库设置页规范（SettingsPageShell/SettingsSectionCard/DcButton/Input/Alert，参照 TemplateEditorPage.vue）；plan 的 linkedText/chipsText（函数内 computed 返回 .value 配 v-model）不可用，改为 `:model-value` + `@update:model-value` 处理函数（split(/[,\s]+/)+trim+filter(Boolean)，全局 chips splice 原数组）；新增 linkedTypeKeys 正则校验 `^[a-z][a-z0-9_]*$`（契约 zod 强制，新 key `errorTypeKeyInvalid`）；保存走 isSaving+try/catch+Spinner+rendererNotificationManager.notify（notifyTransient 方法名不存在，本地 helper 包装），新增 notify key `documents.reimbursement.configSaved/configSaveFailed`；`structuredClone(toRaw())` 因 reactive proxy 不可 clone；删除按钮为图标式，plan 的 `remove` key 未用。质量审查修复（a2e75a02）：isLoaded/loadError 门禁——加载完成或失败前 save/reset 禁用（防空配置覆盖已存配置），错误区 Alert+重试按钮（data-testid="reimbursement-config-retry"），onReset try/catch；类别名 maxlength=50、材料名 maxlength=100，isInvalidTypeKey 补 length>64。不修（已知取舍）：材料行 index key、parseKeyList 实时切分光标跳动。测试 8 例 + typecheck 通过。
+>
+> **Task 8 key 修订**：在 plan 清单基础上——跳过未使用的 `remove`；补 `retry`（ReimbursementView 与 ReimbursementConfigPage 错误区重试按钮共用）；补 notify 特性命名空间 key（t(code) 直用）：`documents.reimbursement.moveFailed` / `exportSuccess` / `exportFailed` / `configSaved` / `configSaveFailed`。主进程报销路由错误改 `[documents.reimbursement.*]` 稳定前缀码并登记 documentsTaskErrors.ts（见 Task 4 审查修订项）。
+
 ---
 
 ### Task 8: i18n（20 locale）+ 渲染端回归
