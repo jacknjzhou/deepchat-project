@@ -19,5 +19,14 @@ export function formatDocumentsTaskError(raw: string, t: Translate): string | nu
   if (modelMatch) {
     return t('documents.errors.modelMissing', { model: modelMatch[2] })
   }
+  // 报销整理依赖的设置存储不可用（功能未就绪）
+  if (raw.startsWith('[documents.reimbursement.storeUnavailable]')) {
+    return t('documents.errors.reimbursementStoreUnavailable')
+  }
+  // setOverride 收到陈旧/未知 categoryId，携带具体类别便于定位
+  const categoryMatch = raw.match(/^\[documents\.reimbursement\.categoryUnknown:([^\]]*)\]/)
+  if (categoryMatch) {
+    return t('documents.errors.reimbursementCategoryUnknown', { category: categoryMatch[1] })
+  }
   return null
 }

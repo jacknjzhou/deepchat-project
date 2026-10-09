@@ -2,7 +2,9 @@
   "errors": {
     "modelRequired": "智能信息提取尚未配置模型，请先在 设置 → Agent设置 → 智能信息提取模型 中完成配置",
     "modelProviderMissing": "智能信息提取模型配置无效：模型服务商 {provider} 已被删除或停用，请重新配置",
-    "modelMissing": "智能信息提取模型配置无效：模型 {model} 不存在或已被移除，请重新配置"
+    "modelMissing": "智能信息提取模型配置无效：模型 {model} 不存在或已被移除，请重新配置",
+    "reimbursementStoreUnavailable": "单据功能尚未就绪，请稍后重试",
+    "reimbursementCategoryUnknown": "未知的报销类别：{category}"
   },
   "settingsBanner": {
     "required": "智能信息提取尚未配置模型，识别任务将无法运行。请在「设置 → Agent设置 → 智能信息提取模型」中完成配置。",

@@ -87,7 +87,7 @@ export function createDocumentsRoutes(
 ): DeepchatRouteMap {
   const requireConfigStore = (): DocumentsSettingsStore => {
     if (!configStore) {
-      throw new Error('documents settings store is not configured')
+      throw new Error('[documents.reimbursement.storeUnavailable]')
     }
     return configStore
   }
@@ -387,7 +387,7 @@ export function createDocumentsRoutes(
             (category) => category.id === input.categoryId
           )
         ) {
-          throw new Error(`Unknown reimbursement category: ${input.categoryId}`)
+          throw new Error(`[documents.reimbursement.categoryUnknown:${input.categoryId}]`)
         }
         return documentsReimbursementSetOverrideRoute.output.parse({
           document: repository.setReimbursementOverride(input.documentId, input.categoryId) ?? null

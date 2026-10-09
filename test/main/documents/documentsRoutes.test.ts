@@ -958,7 +958,7 @@ describeIfSqlite('reimbursement routes', () => {
     )
     const handler = getRouteHandler(routes, documentsReimbursementSetOverrideRoute.name)
     await expect(handler({ documentId: document.id, categoryId: 'cat-gone' })).rejects.toThrow(
-      'Unknown reimbursement category: cat-gone'
+      '[documents.reimbursement.categoryUnknown:cat-gone]'
     )
   })
 

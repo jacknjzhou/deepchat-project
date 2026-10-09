@@ -2,7 +2,9 @@
   "errors": {
     "modelRequired": "Document extraction models are not configured. Open Settings -> Agent -> Document Models to configure them first",
     "modelProviderMissing": "Invalid document model configuration: provider {provider} has been removed or disabled. Please reconfigure",
-    "modelMissing": "Invalid document model configuration: model {model} no longer exists. Please reconfigure"
+    "modelMissing": "Invalid document model configuration: model {model} no longer exists. Please reconfigure",
+    "reimbursementStoreUnavailable": "문서 기능이 아직 준비되지 않았습니다. 잠시 후 다시 시도해 주세요",
+    "reimbursementCategoryUnknown": "알 수 없는 경비 카테고리: {category}"
   },
   "settingsBanner": {
     "required": "Document models are not configured, extraction tasks will fail. Configure them in Settings -> Agent -> Document Models.",
