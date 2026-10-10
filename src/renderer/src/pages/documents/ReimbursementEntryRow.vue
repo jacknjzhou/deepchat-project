@@ -7,6 +7,13 @@
     <span class="min-w-0 flex-1 truncate text-muted-foreground">
       {{ entry.fileNames.join('、') }}
     </span>
+    <span
+      v-if="entry.amount !== null"
+      class="shrink-0 tabular-nums"
+      :class="{ 'text-amber-600': entry.amountUncertain }"
+    >
+      ¥{{ entry.amount }}
+    </span>
     <select
       v-if="showGroupSelect"
       class="shrink-0 rounded border bg-transparent px-1 py-0.5 text-xs"
@@ -19,13 +26,6 @@
       <option value="__none__">{{ t('settings.documents.reimbursement.groupNone') }}</option>
       <option v-for="group in groups" :key="group.id" :value="group.id">{{ group.name }}</option>
     </select>
-    <span
-      v-if="entry.amount !== null"
-      class="shrink-0 tabular-nums"
-      :class="{ 'text-amber-600': entry.amountUncertain }"
-    >
-      ¥{{ entry.amount }}
-    </span>
     <select
       class="shrink-0 rounded border bg-transparent px-1 py-0.5 text-xs"
       :value="entry.isOverride ? (categoryId ?? '__unassigned__') : '__auto__'"
