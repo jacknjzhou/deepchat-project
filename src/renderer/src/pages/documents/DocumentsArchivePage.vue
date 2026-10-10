@@ -556,7 +556,7 @@ void store.loadTemplates()
 void store.loadArchiveDocuments(1)
 void store.loadArchiveStats()
 void store.loadArchiveTasks()
-void store.loadReimbursementConfig()
+void store.loadReimbursementConfig().catch(() => {})
 
 // Start the OCR helper ahead of the first recognition so scanned PDFs skip
 // the cold start. Failures surface naturally when a real extraction runs.

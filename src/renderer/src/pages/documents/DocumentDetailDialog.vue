@@ -475,7 +475,7 @@ watch(
   () => props.open,
   (open) => {
     if (open && store.reimbursementConfig === null) {
-      void store.loadReimbursementConfig()
+      void store.loadReimbursementConfig().catch(() => {})
     }
   },
   { immediate: true }
