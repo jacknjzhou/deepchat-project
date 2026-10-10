@@ -279,6 +279,16 @@ export const useDocumentsStore = defineStore('documents', () => {
     }
   }
 
+  // In-place-only sibling of replaceArchiveDocument: never prepends, so
+  // reimbursement calls made from views without the archive list loaded cannot
+  // inject orphan rows into an unloaded/filtered list.
+  function replaceArchiveDocumentInPlace(document: DocumentRecord) {
+    const index = archiveDocuments.value.findIndex((d) => d.id === document.id)
+    if (index >= 0) {
+      archiveDocuments.value[index] = document
+    }
+  }
+
   async function saveArchiveDocument(
     id: string,
     fields: Record<string, DocumentFieldEntry>,
@@ -394,18 +404,28 @@ export const useDocumentsStore = defineStore('documents', () => {
     documentId: string,
     categoryId: string | null,
     client: DocumentsClient = defaultClient
-  ) {
-    await client.reimbursementSetOverride(documentId, categoryId)
+  ): Promise<DocumentRecord | null> {
+    const result = await client.reimbursementSetOverride(documentId, categoryId)
+    const document = result.document as DocumentRecord | null
+    if (document) {
+      replaceArchiveDocumentInPlace(document)
+    }
     await loadReimbursementTree(client)
+    return document
   }
 
   async function setReimbursementGroupOverride(
     documentId: string,
     groupId: string | null,
     client: DocumentsClient = defaultClient
-  ) {
-    await client.reimbursementSetGroupOverride(documentId, groupId)
+  ): Promise<DocumentRecord | null> {
+    const result = await client.reimbursementSetGroupOverride(documentId, groupId)
+    const document = result.document as DocumentRecord | null
+    if (document) {
+      replaceArchiveDocumentInPlace(document)
+    }
     await loadReimbursementTree(client)
+    return document
   }
 
   async function exportReimbursementPackage(client: DocumentsClient = defaultClient) {

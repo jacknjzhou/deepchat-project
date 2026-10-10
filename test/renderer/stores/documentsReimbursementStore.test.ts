@@ -1,7 +1,9 @@
 import { flushPromises } from '@vue/test-utils'
+import { toRaw } from 'vue'
 import { describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useDocumentsStore } from '@/stores/documents'
+import type { DocumentRecord } from '@shared/documents'
 
 // The renderer setup mocks a lightweight pinia without setActivePinia; restore the real one.
 vi.mock('pinia', async () => vi.importActual<typeof import('pinia')>('pinia'))
@@ -36,6 +38,15 @@ function makeFakeClient() {
     reimbursementExport: vi.fn(async () => ({ canceled: true }))
   }
 }
+
+// Minimal archive row: the reimbursement set actions only match rows by id.
+const archiveRecord = (id: string, overrides: Partial<DocumentRecord> = {}): DocumentRecord =>
+  ({
+    id,
+    reimbursementOverride: null,
+    reimbursementGroupOverride: null,
+    ...overrides
+  }) as DocumentRecord
 
 describe('documents store reimbursement actions', () => {
   it('loads and saves config', async () => {
@@ -88,6 +99,57 @@ describe('documents store reimbursement actions', () => {
     await store.setReimbursementGroupOverride('doc-1', null, client as never)
     expect(client.reimbursementSetGroupOverride).toHaveBeenCalledWith('doc-1', null)
     expect(client.reimbursementTree).toHaveBeenCalledTimes(1)
+  })
+
+  it('setReimbursementOverride returns the record and replaces the archive row in place', async () => {
+    setActivePinia(createPinia())
+    const store = useDocumentsStore()
+    const client = makeFakeClient()
+    const other = archiveRecord('doc-1')
+    const stale = archiveRecord('doc-2')
+    const updated = archiveRecord('doc-2', { reimbursementOverride: 'cat-a' })
+    client.reimbursementSetOverride.mockResolvedValueOnce({ document: updated })
+    store.archiveDocuments.push(other, stale)
+    const result = await store.setReimbursementOverride('doc-2', 'cat-a', client as never)
+    expect(result).toBe(updated)
+    expect(store.archiveDocuments).toHaveLength(2)
+    expect(toRaw(store.archiveDocuments[0])).toBe(other)
+    expect(toRaw(store.archiveDocuments[1])).toBe(updated)
+  })
+
+  it('setReimbursementGroupOverride returns the record and replaces the archive row in place', async () => {
+    setActivePinia(createPinia())
+    const store = useDocumentsStore()
+    const client = makeFakeClient()
+    const other = archiveRecord('doc-1')
+    const stale = archiveRecord('doc-2')
+    const updated = archiveRecord('doc-2', { reimbursementGroupOverride: 'grp-1' })
+    client.reimbursementSetGroupOverride.mockResolvedValueOnce({ document: updated })
+    store.archiveDocuments.push(other, stale)
+    const result = await store.setReimbursementGroupOverride('doc-2', 'grp-1', client as never)
+    expect(result).toBe(updated)
+    expect(store.archiveDocuments).toHaveLength(2)
+    expect(toRaw(store.archiveDocuments[0])).toBe(other)
+    expect(toRaw(store.archiveDocuments[1])).toBe(updated)
+  })
+
+  it('reimbursement set actions never insert rows absent from archiveDocuments', async () => {
+    setActivePinia(createPinia())
+    const store = useDocumentsStore()
+    const client = makeFakeClient()
+    const other = archiveRecord('doc-1')
+    client.reimbursementSetOverride.mockResolvedValueOnce({
+      document: archiveRecord('doc-x', { reimbursementOverride: 'cat-a' })
+    })
+    client.reimbursementSetGroupOverride.mockResolvedValueOnce({
+      document: archiveRecord('doc-x', { reimbursementGroupOverride: 'grp-1' })
+    })
+    store.archiveDocuments.push(other)
+    const overrideResult = await store.setReimbursementOverride('doc-x', 'cat-a', client as never)
+    const groupResult = await store.setReimbursementGroupOverride('doc-x', 'grp-1', client as never)
+    expect(overrideResult?.id).toBe('doc-x')
+    expect(groupResult?.id).toBe('doc-x')
+    expect(store.archiveDocuments).toEqual([other])
   })
 
   it('exportReimbursementPackage passes the archive filter through', async () => {
