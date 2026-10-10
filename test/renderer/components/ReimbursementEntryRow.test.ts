@@ -55,7 +55,7 @@ describe('ReimbursementEntryRow', () => {
     expect(wrapper.find('[data-testid="reimbursement-group-d1"]').exists()).toBe(false)
   })
 
-  it('emits moveGroup with null for __none__', async () => {
+  it('emits the raw __none__ sentinel for clearing', async () => {
     const wrapper = mount(ReimbursementEntryRow, {
       props: { entry, groups, categories: [], showGroupSelect: true }
     })

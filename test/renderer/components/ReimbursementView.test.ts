@@ -482,6 +482,21 @@ describe('ReimbursementView', () => {
     expect(store.setReimbursementGroupOverride).toHaveBeenCalledWith('d2', 'grp-a')
   })
 
+  it('moveGroup maps the __none__ sentinel to a null group override', async () => {
+    const { pinia, store } = setupStore()
+    vi.spyOn(store, 'loadReimbursementTree').mockResolvedValue()
+    vi.spyOn(store, 'setReimbursementGroupOverride').mockResolvedValue()
+    store.reimbursementTree = makeTreeFixture({
+      ungroupedDocuments: [makeEntry('d2')],
+      customGroups: [{ group: { id: 'grp-a', name: '分组一', sortOrder: 0 }, buckets: [] }]
+    })
+    const wrapper = mountView(pinia)
+    await flushPromises()
+    await wrapper.get('[data-testid="reimbursement-group-d2"]').setValue('__none__')
+    await flushPromises()
+    expect(store.setReimbursementGroupOverride).toHaveBeenCalledWith('d2', null)
+  })
+
   it('unassigned view hides group select', async () => {
     const { pinia, store } = setupStore()
     vi.spyOn(store, 'loadReimbursementTree').mockResolvedValue()
