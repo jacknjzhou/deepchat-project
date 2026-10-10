@@ -233,7 +233,11 @@ describe('ReimbursementView', () => {
     await flushPromises()
     expect(wrapper.text()).toContain('会议费')
     await wrapper.get('[data-testid="reimbursement-unassigned-only"]').trigger('click')
-    expect(wrapper.text()).not.toContain('会议费')
+    // category rows are hidden but entry selects keep category options for inline reclassification
+    expect(wrapper.find('[data-testid="reimbursement-toggle-cat:cat-a"]').exists()).toBe(false)
+    expect(
+      wrapper.get('[data-testid="reimbursement-entry-d2"] select option[value="cat-a"]')
+    ).toBeTruthy()
     expect(wrapper.text()).toContain('b.pdf')
   })
 

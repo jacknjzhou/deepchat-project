@@ -156,7 +156,8 @@ describe('ReimbursementTree', () => {
 
   it('showUnassignedOnly hides the category branch', () => {
     const wrapper = mountTree({ showUnassignedOnly: true })
-    expect(wrapper.text()).not.toContain('会议费')
+    // category rows are hidden but entry selects keep category options for inline reclassification
+    expect(wrapper.find('[data-testid="reimbursement-toggle-cat:cat-a"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="reimbursement-toggle-unassigned"]').exists()).toBe(true)
   })
 

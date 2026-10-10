@@ -125,13 +125,9 @@
             <option value="__unassigned__">
               {{ t('settings.documents.reimbursement.forceUnassigned') }}
             </option>
-            <!-- The unassigned-only filter hides every category affordance,
-                 including category names leaked through native option text. -->
-            <template v-if="!showUnassignedOnly">
-              <option v-for="node in tree" :key="node.category.id" :value="node.category.id">
-                {{ node.category.name }}
-              </option>
-            </template>
+            <option v-for="node in tree" :key="node.category.id" :value="node.category.id">
+              {{ node.category.name }}
+            </option>
           </select>
         </div>
       </div>
