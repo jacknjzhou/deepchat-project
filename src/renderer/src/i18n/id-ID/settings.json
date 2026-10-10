@@ -345,7 +345,7 @@
       "unknownPeriod": "Periode tidak diketahui",
       "autoCategory": "Otomatis",
       "forceUnassigned": "Paksa tidak terklasifikasi",
-      "showUnassignedOnly": "Tampilkan belum diklasifikasi",
+      "showUnassignedOnly": "Tampilkan yang tidak terklasifikasi saja",
       "treeEmpty": "Belum ada catatan dokumen",
       "empty": "Tidak ada catatan di kategori ini",
       "loading": "Memuat…",

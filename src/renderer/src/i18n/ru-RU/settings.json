@@ -2852,7 +2852,7 @@
       "unknownPeriod": "Неизвестный период",
       "autoCategory": "Авто",
       "forceUnassigned": "Принудительно без категории",
-      "showUnassignedOnly": "Только нераспределённые",
+      "showUnassignedOnly": "Только без категории",
       "treeEmpty": "Записей документов пока нет",
       "empty": "В этой категории нет записей",
       "loading": "Загрузка…",
