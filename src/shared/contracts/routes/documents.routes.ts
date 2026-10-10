@@ -386,8 +386,8 @@ export const reimbursementDocumentEntrySchema = z.object({
   uncertainCount: z.number().int().nonnegative(),
   fileNames: z.array(z.string()),
   isOverride: z.boolean(),
-  // 条目当前归属的自定义分组 id，未分组为 null；buildReimbursementTree 产出该字段前缺省为 null
-  groupId: z.string().min(1).nullable().default(null)
+  // 条目当前归属的自定义分组 id；未分组或分组 id 已失效时为 null
+  groupId: z.string().min(1).nullable()
 })
 
 export const reimbursementBucketSchema = z.object({
@@ -409,16 +409,13 @@ export const reimbursementCategoryNodeSchema = z.object({
   total: z.number().int().nonnegative(),
   materials: z.array(reimbursementMaterialStatSchema),
   groups: z.array(reimbursementGroupSchema),
-  // 与 category.customGroups 同因缺省：buildReimbursementTree 尚未产出该字段前保持可解析
-  customGroups: z
-    .array(
-      z.object({
-        group: reimbursementCustomGroupSchema,
-        buckets: z.array(reimbursementBucketSchema)
-      })
-    )
-    .max(50)
-    .default([])
+  // 类别节点的自定义分组视图：与 category.customGroups 一一对应，每组携带独立的期间桶列表
+  customGroups: z.array(
+    z.object({
+      group: reimbursementCustomGroupSchema,
+      buckets: z.array(reimbursementBucketSchema)
+    })
+  )
 })
 
 export const documentsReimbursementGetConfigRoute = defineRouteContract({

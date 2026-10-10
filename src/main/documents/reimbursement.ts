@@ -117,6 +117,8 @@ export interface ReimbursementDocumentEntry {
   uncertainCount: number
   fileNames: string[]
   isOverride: boolean
+  /** 条目归属的自定义分组 id；未分组或分组 id 已失效时为 null */
+  groupId: string | null
 }
 
 export interface ReimbursementBucket {
@@ -129,11 +131,17 @@ export interface ReimbursementGroup {
   buckets: ReimbursementBucket[]
 }
 
+export interface ReimbursementCustomGroupNode {
+  group: ReimbursementConfig['categories'][number]['customGroups'][number]
+  buckets: ReimbursementBucket[]
+}
+
 export interface ReimbursementCategoryNode {
   category: ReimbursementConfig['categories'][number]
   total: number
   materials: Array<{ name: string; linkedTypeKeys: string[]; count: number }>
   groups: ReimbursementGroup[]
+  customGroups: ReimbursementCustomGroupNode[]
 }
 
 export interface ReimbursementTreeResult {
@@ -151,7 +159,8 @@ const toEntry = (
   document: DocumentRecord,
   config: ReimbursementConfig,
   templateNameById: Map<string, string>,
-  isOverride: boolean
+  isOverride: boolean,
+  groupId: string | null
 ): ReimbursementDocumentEntry => {
   const amount = amountFor(document, config)
   return {
@@ -164,11 +173,28 @@ const toEntry = (
     amountUncertain: amount.uncertain,
     uncertainCount: uncertainCountFor(document),
     fileNames: document.fileUris.map(basename),
-    isOverride
+    isOverride,
+    groupId
   }
 }
 
 const PERSON_UNKNOWN = null
+
+function groupByPeriod(entries: ReimbursementDocumentEntry[]): ReimbursementBucket[] {
+  const byPeriod = new Map<string | null, ReimbursementDocumentEntry[]>()
+  for (const entry of entries) {
+    const bucket = byPeriod.get(entry.period) ?? []
+    bucket.push(entry)
+    byPeriod.set(entry.period, bucket)
+  }
+  return [...byPeriod.entries()]
+    .map(([period, docs]) => ({ period, documents: docs }))
+    .sort((a, b) => {
+      if (a.period === null) return 1
+      if (b.period === null) return -1
+      return b.period.localeCompare(a.period)
+    })
+}
 
 function groupByPersonAndPeriod(entries: ReimbursementDocumentEntry[]): ReimbursementGroup[] {
   const byPerson = new Map<string | null, ReimbursementDocumentEntry[]>()
@@ -179,20 +205,7 @@ function groupByPersonAndPeriod(entries: ReimbursementDocumentEntry[]): Reimburs
   }
   const groups: ReimbursementGroup[] = []
   for (const [person, list] of byPerson) {
-    const byPeriod = new Map<string | null, ReimbursementDocumentEntry[]>()
-    for (const entry of list) {
-      const bucket = byPeriod.get(entry.period) ?? []
-      bucket.push(entry)
-      byPeriod.set(entry.period, bucket)
-    }
-    const buckets: ReimbursementBucket[] = [...byPeriod.entries()]
-      .map(([period, docs]) => ({ period, documents: docs }))
-      .sort((a, b) => {
-        if (a.period === null) return 1
-        if (b.period === null) return -1
-        return b.period.localeCompare(a.period)
-      })
-    groups.push({ person, buckets })
+    groups.push({ person, buckets: groupByPeriod(list) })
   }
   return groups.sort((a, b) => {
     if (a.person === PERSON_UNKNOWN) return 1
@@ -208,23 +221,45 @@ export function buildReimbursementTree(
 ): ReimbursementTreeResult {
   const unassignedEntries: ReimbursementDocumentEntry[] = []
   const entriesByCategory = new Map<string, ReimbursementDocumentEntry[]>()
+  // 分组 id 按 类别→分组 两级 Map 存放，防止不同类别下同名分组 id 串桶
+  const groupedByCategory = new Map<string, Map<string, ReimbursementDocumentEntry[]>>()
   const summary = new Map<string | null, number>()
 
   for (const document of documents) {
     const { categoryId, isOverride } = resolveDocumentCategoryId(document, config)
-    const entry = toEntry(document, config, templateNameById, isOverride)
+    const category =
+      categoryId === null
+        ? null
+        : (config.categories.find((candidate) => candidate.id === categoryId) ?? null)
+    const requestedGroup = document.reimbursementGroupOverride
+    const groupId =
+      category !== null &&
+      requestedGroup !== null &&
+      category.customGroups.some((group) => group.id === requestedGroup)
+        ? requestedGroup
+        : null
+    const entry = toEntry(document, config, templateNameById, isOverride, groupId)
     summary.set(categoryId, (summary.get(categoryId) ?? 0) + 1)
     if (categoryId === null) {
       unassignedEntries.push(entry)
-    } else {
-      const list = entriesByCategory.get(categoryId) ?? []
-      list.push(entry)
-      entriesByCategory.set(categoryId, list)
+      continue
+    }
+    const list = entriesByCategory.get(categoryId) ?? []
+    list.push(entry)
+    entriesByCategory.set(categoryId, list)
+    if (groupId !== null) {
+      const byGroup = groupedByCategory.get(categoryId) ?? new Map()
+      const groupList = byGroup.get(groupId) ?? []
+      groupList.push(entry)
+      byGroup.set(groupId, groupList)
+      groupedByCategory.set(categoryId, byGroup)
     }
   }
 
   const tree: ReimbursementCategoryNode[] = config.categories.map((category) => {
     const entries = entriesByCategory.get(category.id) ?? []
+    const normalEntries = entries.filter((entry) => entry.groupId === null)
+    const groupEntries = groupedByCategory.get(category.id)
     return {
       category,
       total: entries.length,
@@ -233,7 +268,11 @@ export function buildReimbursementTree(
         linkedTypeKeys: material.linkedTypeKeys,
         count: entries.filter((entry) => material.linkedTypeKeys.includes(entry.typeKey)).length
       })),
-      groups: groupByPersonAndPeriod(entries)
+      customGroups: category.customGroups.map((group) => ({
+        group,
+        buckets: groupByPeriod(groupEntries?.get(group.id) ?? [])
+      })),
+      groups: groupByPersonAndPeriod(normalEntries)
     }
   })
 

@@ -1026,7 +1026,8 @@ describe('reimbursementExport', () => {
     amountUncertain: false,
     uncertainCount: 0,
     fileNames: ['a.jpg', 'b.jpg'],
-    isOverride: false
+    isOverride: false,
+    groupId: null
   })
 
   const makeTreeResult = (person: string | null): ReimbursementTreeResult => ({
@@ -1037,11 +1038,13 @@ describe('reimbursementExport', () => {
           name: '会议费',
           requiredMaterials: [],
           linkedTypeKeys: [],
+          customGroups: [],
           sortOrder: 1
         },
         total: 1,
         materials: [],
-        groups: [{ person, buckets: [{ period: '2026-09', documents: [makeEntry(person)] }] }]
+        groups: [{ person, buckets: [{ period: '2026-09', documents: [makeEntry(person)] }] }],
+        customGroups: []
       }
     ],
     unassigned: [
@@ -1109,9 +1112,9 @@ describe('reimbursementExport', () => {
     expect(harness.mkdirs[0]).toBe(output.path)
     const csv = summaryCsv(harness, output.summaryPath)
     expect(csv.startsWith('\uFEFF')).toBe(true)
-    expect(csv).toContain('类别,人员,期间,单据模板,文件名,金额,金额存疑,手动指定')
-    expect(csv).toContain('会议费,张三,2026-09,会议纪要,a.jpg,120.5,否,否')
-    expect(csv).toContain('会议费,张三,2026-09,会议纪要,b.jpg,120.5,否,否')
+    expect(csv).toContain('类别,分组,人员,期间,单据模板,文件名,金额,金额存疑,手动指定')
+    expect(csv).toContain('会议费,,张三,2026-09,会议纪要,a.jpg,120.5,否,否')
+    expect(csv).toContain('会议费,,张三,2026-09,会议纪要,b.jpg,120.5,否,否')
   })
 
   it('renames colliding file names with a -1 suffix', async () => {
@@ -1173,6 +1176,31 @@ describe('reimbursementExport', () => {
     expect(output.exportedFiles).toBe(0)
     expect(output.issues).toEqual(['缺失:a.jpg', '缺失:b.jpg'])
     const csv = summaryCsv(harness, output.summaryPath)
-    expect(csv).toContain('会议费,张三,2026-09,会议纪要,缺失:a.jpg,120.5,否,否')
+    expect(csv).toContain('会议费,,张三,2026-09,会议纪要,缺失:a.jpg,120.5,否,否')
+  })
+
+  it('writes custom group entries under group dirs and labels csv rows', async () => {
+    const harness = makeHarness()
+    const result = makeTreeResult('张三')
+    const node = result.tree[0]
+    if (!node) throw new Error('missing tree node')
+    node.customGroups = [
+      {
+        group: { id: 'grp-1', name: '分组一', sortOrder: 0 },
+        buckets: [
+          {
+            period: '2026-10',
+            documents: [
+              { ...makeEntry('李四'), id: 'doc-3', fileNames: ['c.jpg'], groupId: 'grp-1' }
+            ]
+          }
+        ]
+      }
+    ]
+    const output = await runExport(harness, result, new Map([['doc-3', ['/src/c.jpg']]]))
+    // 目录为 类别/分组名/年月/（分组目录不再按人员分层，人员只体现在 CSV 列）
+    expect(harness.mkdirs).toContain(join(output.path, '会议费', '分组一', '2026-10'))
+    const csv = summaryCsv(harness, output.summaryPath)
+    expect(csv).toContain('会议费,分组一,李四,2026-10,会议纪要,c.jpg,120.5,否,否')
   })
 })

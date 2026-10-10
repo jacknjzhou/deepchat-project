@@ -217,6 +217,61 @@ describe('field extraction', () => {
 describe('buildReimbursementTree', () => {
   const templateNameById = new Map([['t', '会议纪要']])
 
+  it('splits group-assigned entries into category customGroups by period', () => {
+    const groupedConfig = reimbursementConfigSchema.parse({
+      version: 1,
+      categories: [
+        {
+          id: 'cat-meeting',
+          name: '会议费',
+          requiredMaterials: [],
+          linkedTypeKeys: ['meeting_minutes'],
+          customGroups: [
+            { id: 'grp-a', name: '分组一', sortOrder: 0 },
+            { id: 'grp-b', name: '分组二', sortOrder: 1 }
+          ],
+          sortOrder: 1
+        }
+      ],
+      personFieldKeys: ['buyer_name'],
+      dateFieldKeys: ['meeting_date'],
+      amountFieldKeys: ['total_amount'],
+      dateGrouping: 'month'
+    })
+    const grouped = doc({
+      id: 'd-grouped',
+      typeKey: 'meeting_minutes',
+      reimbursementOverride: 'cat-meeting',
+      reimbursementGroupOverride: 'grp-a',
+      fields: { meeting_date: { value: '2026-04-01', uncertain: false } }
+    })
+    const ungrouped = doc({
+      id: 'd-ungrouped',
+      typeKey: 'meeting_minutes',
+      reimbursementOverride: 'cat-meeting',
+      fields: { meeting_date: { value: '2026-03-01', uncertain: false } }
+    })
+    const stale = doc({
+      id: 'd-stale',
+      typeKey: 'meeting_minutes',
+      reimbursementOverride: 'cat-meeting',
+      reimbursementGroupOverride: 'grp-gone',
+      fields: { meeting_date: { value: '2026-03-02', uncertain: false } }
+    })
+    const result = buildReimbursementTree([grouped, ungrouped, stale], groupedConfig, new Map())
+    const node = result.tree[0]!
+    expect(node.total).toBe(3)
+    expect(node.customGroups[0]?.group.id).toBe('grp-a')
+    expect(node.customGroups[0]?.buckets[0]?.documents.map((d) => d.id)).toEqual([grouped.id])
+    expect(node.customGroups[1]?.buckets).toEqual([])
+    // 未分组 + 陈旧分组 id 一律留在 人员→年月 列表
+    const normalDocs = node.groups.flatMap((g) =>
+      g.buckets.flatMap((b) => b.documents.map((d) => d.id))
+    )
+    expect(normalDocs).toEqual(expect.arrayContaining([ungrouped.id, stale.id]))
+    expect(normalDocs).not.toContain(grouped.id)
+  })
+
   it('groups category → person → period desc, unknown last', () => {
     const d1 = doc({
       id: 'd1',

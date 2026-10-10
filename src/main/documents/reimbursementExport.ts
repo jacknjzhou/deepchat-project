@@ -27,7 +27,7 @@ export interface ReimbursementExportOutput {
 
 const UNKNOWN_PERSON = '未知人员'
 const UNKNOWN_PERIOD = '未知期间'
-const CSV_HEADER = '类别,人员,期间,单据模板,文件名,金额,金额存疑,手动指定'
+const CSV_HEADER = '类别,分组,人员,期间,单据模板,文件名,金额,金额存疑,手动指定'
 
 // eslint-disable-next-line no-control-regex
 const DIR_NAME_UNSAFE_RE = /[\\/:*?"<>|\u0000-\u001f]/g
@@ -90,16 +90,21 @@ export async function exportReimbursementPackage(
   const issues: string[] = []
   let exportedFiles = 0
 
-  const writeGroup = async (
+  // 普通 人员→年月 与自定义 分组→年月 共用同一写入路径：
+  // 子目录名决定目录层级，groupName 写入 CSV 第 2 列（普通分组为空串），
+  // 人员列取条目自身人员（自定义分组桶内可跨人员）。
+  const writeEntries = async (
     categoryName: string,
-    group: ReimbursementTreeResult['unassigned'][number]
+    subDirName: string,
+    buckets: ReimbursementTreeResult['tree'][number]['customGroups'][number]['buckets'],
+    groupName: string
   ) => {
-    const personDirName = sanitizeDirName(group.person ?? UNKNOWN_PERSON)
-    for (const bucket of group.buckets) {
+    for (const bucket of buckets) {
       const periodDirName = sanitizeDirName(bucket.period ?? UNKNOWN_PERIOD)
-      const targetDir = path.join(packageDir, categoryName, personDirName, periodDirName)
+      const targetDir = path.join(packageDir, categoryName, subDirName, periodDirName)
       await deps.mkdir(targetDir, { recursive: true })
       for (const entry of bucket.documents) {
+        const personCell = entry.person ?? UNKNOWN_PERSON
         const files = filesById.get(entry.id) ?? []
         for (let index = 0; index < entry.fileNames.length; index += 1) {
           const source = files[index]
@@ -108,7 +113,8 @@ export async function exportReimbursementPackage(
             issues.push(`缺失:${originalName}`)
             rows.push([
               categoryName,
-              personDirName,
+              groupName,
+              personCell,
               periodDirName,
               entry.templateName,
               `缺失:${originalName}`,
@@ -124,7 +130,8 @@ export async function exportReimbursementPackage(
             exportedFiles += 1
             rows.push([
               categoryName,
-              personDirName,
+              groupName,
+              personCell,
               periodDirName,
               entry.templateName,
               fileName,
@@ -136,7 +143,8 @@ export async function exportReimbursementPackage(
             issues.push(`复制失败:${originalName}`)
             rows.push([
               categoryName,
-              personDirName,
+              groupName,
+              personCell,
               periodDirName,
               entry.templateName,
               `缺失:${originalName}`,
@@ -151,12 +159,32 @@ export async function exportReimbursementPackage(
   }
 
   for (const node of result.tree) {
+    const categoryName = sanitizeDirName(node.category.name)
+    // 与视图顺序一致：先普通 人员→年月 列表，后自定义分组
     for (const group of node.groups) {
-      await writeGroup(sanitizeDirName(node.category.name), group)
+      await writeEntries(
+        categoryName,
+        sanitizeDirName(group.person ?? UNKNOWN_PERSON),
+        group.buckets,
+        ''
+      )
+    }
+    for (const customGroup of node.customGroups) {
+      await writeEntries(
+        categoryName,
+        sanitizeDirName(customGroup.group.name),
+        customGroup.buckets,
+        customGroup.group.name
+      )
     }
   }
   for (const group of result.unassigned) {
-    await writeGroup(sanitizeDirName('未分类'), group)
+    await writeEntries(
+      sanitizeDirName('未分类'),
+      sanitizeDirName(group.person ?? UNKNOWN_PERSON),
+      group.buckets,
+      ''
+    )
   }
 
   const summaryPath = path.join(packageDir, '汇总.csv')
