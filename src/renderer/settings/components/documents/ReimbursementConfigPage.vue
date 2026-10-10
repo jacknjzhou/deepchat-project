@@ -74,14 +74,11 @@
           <label class="text-sm font-medium">
             {{ t('settings.documents.reimbursement.linkedTypeKeys') }}
           </label>
-          <ReimbursementKeyPicker
-            class="mt-1"
-            :model-value="category.linkedTypeKeys"
-            :options="typeKeyOptions"
-            :notice="pickerNotice"
+          <Input
+            :model-value="category.linkedTypeKeys.join(', ')"
             data-testid="reimbursement-category-linked"
-            @update:model-value="(value) => updateCategoryLinkedKeys(category, value)"
-            @retry="loadTemplatesOnce"
+            class="mt-1"
+            @update:model-value="(value) => updateCategoryLinkedKeys(category, String(value))"
           />
         </div>
         <div class="mt-3 border-t pt-3">
@@ -113,16 +110,14 @@
                 (value) => updateMaterialName(category, materialIndex, String(value))
               "
             />
-            <ReimbursementKeyPicker
-              class="min-w-0 flex-1"
-              :model-value="material.linkedTypeKeys"
-              :options="typeKeyOptions"
-              :notice="pickerNotice"
+            <Input
+              :model-value="material.linkedTypeKeys.join(', ')"
+              :placeholder="t('settings.documents.reimbursement.materialLinkedPlaceholder')"
               data-testid="reimbursement-material-linked"
+              class="min-w-0 flex-1"
               @update:model-value="
-                (value) => updateMaterialLinkedKeys(category, materialIndex, value)
+                (value) => updateMaterialLinkedKeys(category, materialIndex, String(value))
               "
-              @retry="loadTemplatesOnce"
             />
             <DcButton
               variant="ghost"
@@ -143,42 +138,33 @@
           <label class="text-sm font-medium">
             {{ t('settings.documents.reimbursement.personFieldKeys') }}
           </label>
-          <ReimbursementKeyPicker
-            class="mt-1"
-            :model-value="draft.personFieldKeys"
-            :options="fieldKeyOptions"
-            :notice="pickerNotice"
+          <Input
+            :model-value="draft.personFieldKeys.join(', ')"
             data-testid="reimbursement-global-person"
-            @update:model-value="(value) => updateGlobalKeys(draft.personFieldKeys, value)"
-            @retry="loadTemplatesOnce"
+            class="mt-1"
+            @update:model-value="(value) => updateGlobalKeys(draft.personFieldKeys, String(value))"
           />
         </div>
         <div>
           <label class="text-sm font-medium">
             {{ t('settings.documents.reimbursement.dateFieldKeys') }}
           </label>
-          <ReimbursementKeyPicker
-            class="mt-1"
-            :model-value="draft.dateFieldKeys"
-            :options="fieldKeyOptions"
-            :notice="pickerNotice"
+          <Input
+            :model-value="draft.dateFieldKeys.join(', ')"
             data-testid="reimbursement-global-date"
-            @update:model-value="(value) => updateGlobalKeys(draft.dateFieldKeys, value)"
-            @retry="loadTemplatesOnce"
+            class="mt-1"
+            @update:model-value="(value) => updateGlobalKeys(draft.dateFieldKeys, String(value))"
           />
         </div>
         <div>
           <label class="text-sm font-medium">
             {{ t('settings.documents.reimbursement.amountFieldKeys') }}
           </label>
-          <ReimbursementKeyPicker
-            class="mt-1"
-            :model-value="draft.amountFieldKeys"
-            :options="fieldKeyOptions"
-            :notice="pickerNotice"
+          <Input
+            :model-value="draft.amountFieldKeys.join(', ')"
             data-testid="reimbursement-global-amount"
-            @update:model-value="(value) => updateGlobalKeys(draft.amountFieldKeys, value)"
-            @retry="loadTemplatesOnce"
+            class="mt-1"
+            @update:model-value="(value) => updateGlobalKeys(draft.amountFieldKeys, String(value))"
           />
         </div>
       </div>
@@ -237,7 +223,6 @@ import { Spinner } from '@shadcn/components/ui/spinner'
 import { DcButton } from '@dc-ui/components/button'
 import SettingsPageShell from '../control-center/SettingsPageShell.vue'
 import SettingsSectionCard from '../control-center/SettingsSectionCard.vue'
-import ReimbursementKeyPicker, { type ReimbursementKeyOption } from './ReimbursementKeyPicker.vue'
 import { rendererNotificationManager } from '@renderer-notifications/rendererNotificationRuntime'
 import type { ReimbursementConfig } from '@shared/contracts/routes'
 import { useDocumentsStore } from '@/stores/documents'
@@ -258,7 +243,6 @@ const store = useDocumentsStore()
 const isSaving = ref(false)
 const isLoaded = ref(false)
 const loadError = ref(false)
-const templatesLoadError = ref(false)
 
 const draft = reactive<ReimbursementConfig>({
   version: 1,
@@ -267,35 +251,6 @@ const draft = reactive<ReimbursementConfig>({
   dateFieldKeys: [],
   amountFieldKeys: [],
   dateGrouping: 'month'
-})
-
-const typeKeyOptions = computed<ReimbursementKeyOption[]>(() =>
-  store.templates
-    .filter((tpl) => tpl.typeKey !== 'unassigned' && !isInvalidTypeKey(tpl.typeKey))
-    .map((tpl) => ({ value: tpl.typeKey, label: tpl.name, hint: tpl.typeKey }))
-)
-
-const fieldKeyOptions = computed<ReimbursementKeyOption[]>(() => {
-  const seen = new Map<string, ReimbursementKeyOption>()
-  for (const tpl of store.templates) {
-    for (const field of tpl.fields) {
-      if (isInvalidTypeKey(field.key) || seen.has(field.key)) {
-        continue
-      }
-      seen.set(field.key, { value: field.key, label: field.label, hint: field.key })
-    }
-  }
-  return [...seen.values()]
-})
-
-const pickerNotice = computed<'empty' | 'error' | null>(() => {
-  if (templatesLoadError.value) {
-    return 'error'
-  }
-  if (!store.templates.length) {
-    return 'empty'
-  }
-  return null
 })
 
 const validationError = computed<string | null>(() => {
@@ -326,7 +281,6 @@ const validationError = computed<string | null>(() => {
 
 onMounted(() => {
   void retryLoad()
-  void loadTemplatesOnce()
 })
 
 async function loadDraft() {
@@ -345,35 +299,29 @@ async function retryLoad() {
   }
 }
 
-async function loadTemplatesOnce() {
-  templatesLoadError.value = false
-  try {
-    if (!store.templates.length) {
-      await store.loadTemplates()
-    }
-  } catch (error) {
-    console.error('[ReimbursementConfigPage] load templates failed', error)
-  }
-  // store.loadTemplates() swallows failures into store.loadError instead of throwing,
-  // so failure detection has to go through the store flag.
-  templatesLoadError.value = !store.templates.length && store.loadError !== null
-}
-
 function applyConfig(config: ReimbursementConfig) {
   // toRaw first: structuredClone cannot clone reactive proxies.
   Object.assign(draft, structuredClone(toRaw(config)))
+}
+
+function parseKeyList(value: string): string[] {
+  return value
+    .split(/[,\s]+/)
+    .map((item) => item.trim())
+    .filter(Boolean)
 }
 
 function updateCategoryName(category: ReimbursementCategory, value: string) {
   category.name = value
 }
 
-function updateCategoryLinkedKeys(category: ReimbursementCategory, value: string[]) {
-  category.linkedTypeKeys = value
+function updateCategoryLinkedKeys(category: ReimbursementCategory, value: string) {
+  category.linkedTypeKeys = parseKeyList(value)
 }
 
-function updateGlobalKeys(target: string[], value: string[]) {
-  target.splice(0, target.length, ...value)
+function updateGlobalKeys(target: string[], value: string) {
+  const parsed = parseKeyList(value)
+  target.splice(0, target.length, ...parsed)
 }
 
 function updateMaterialName(category: ReimbursementCategory, materialIndex: number, value: string) {
@@ -386,11 +334,11 @@ function updateMaterialName(category: ReimbursementCategory, materialIndex: numb
 function updateMaterialLinkedKeys(
   category: ReimbursementCategory,
   materialIndex: number,
-  value: string[]
+  value: string
 ) {
   const material = category.requiredMaterials[materialIndex]
   if (material) {
-    material.linkedTypeKeys = value
+    material.linkedTypeKeys = parseKeyList(value)
   }
 }
 
