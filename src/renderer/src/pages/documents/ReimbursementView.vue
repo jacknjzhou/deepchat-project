@@ -40,14 +40,41 @@
 
       <div class="mb-3 flex items-center justify-between">
         <h2 class="text-base font-medium">{{ selectedName }}</h2>
-        <DcButton
-          variant="outline"
-          size="sm"
-          data-testid="reimbursement-export"
-          :disabled="exporting"
-          @click="onExport"
-        >
-          {{ t('settings.documents.reimbursement.export') }}
+        <div class="flex items-center gap-2">
+          <DcButton
+            v-if="selectedCategoryId !== null"
+            variant="outline"
+            size="sm"
+            data-testid="reimbursement-add-group"
+            @click="showGroupForm = !showGroupForm"
+          >
+            {{ t('settings.documents.reimbursement.addGroup') }}
+          </DcButton>
+          <DcButton
+            variant="outline"
+            size="sm"
+            data-testid="reimbursement-export"
+            :disabled="exporting"
+            @click="onExport"
+          >
+            {{ t('settings.documents.reimbursement.export') }}
+          </DcButton>
+        </div>
+      </div>
+
+      <div v-if="showGroupForm" class="mb-3 flex items-center gap-2">
+        <input
+          v-model="newGroupName"
+          class="w-48 rounded border px-2 py-1 text-sm"
+          :placeholder="t('settings.documents.reimbursement.groupNamePlaceholder')"
+          data-testid="reimbursement-new-group-name"
+          @keydown.enter="addGroup"
+        />
+        <DcButton size="sm" data-testid="reimbursement-add-group-confirm" @click="addGroup">
+          {{ t('settings.documents.reimbursement.confirm') }}
+        </DcButton>
+        <DcButton size="sm" variant="outline" @click="showGroupForm = false">
+          {{ t('settings.documents.reimbursement.cancel') }}
         </DcButton>
       </div>
 
@@ -81,58 +108,104 @@
           <div class="mb-1 text-xs text-muted-foreground">
             {{ bucket.period ?? t('settings.documents.reimbursement.unknownPeriod') }}
           </div>
-          <div
+          <ReimbursementEntryRow
             v-for="entry in bucket.documents"
             :key="entry.id"
-            class="flex items-center gap-2 rounded border px-2 py-1.5 text-sm"
-            :data-testid="`reimbursement-entry-${entry.id}`"
-          >
-            <span class="w-40 shrink-0 truncate">{{ entry.templateName }}</span>
-            <span class="min-w-0 flex-1 truncate text-muted-foreground">
-              {{ entry.fileNames.join('、') }}
-            </span>
-            <span
-              v-if="entry.amount !== null"
-              class="shrink-0 tabular-nums"
-              :class="{ 'text-amber-600': entry.amountUncertain }"
-            >
-              ¥{{ entry.amount }}
-            </span>
-            <select
-              class="shrink-0 rounded border bg-transparent px-1 py-0.5 text-xs"
-              :value="
-                entry.isOverride
-                  ? selectedCategoryId === null
-                    ? '__unassigned__'
-                    : selectedCategoryId
-                  : '__auto__'
-              "
-              @change="onMove(entry.id, ($event.target as HTMLSelectElement).value)"
-            >
-              <option value="__auto__">
-                {{ t('settings.documents.reimbursement.autoCategory') }}
-              </option>
-              <option value="__unassigned__">
-                {{ t('settings.documents.reimbursement.forceUnassigned') }}
-              </option>
-              <option
-                v-for="node in store.reimbursementTree?.tree ?? []"
-                :key="node.category.id"
-                :value="node.category.id"
-              >
-                {{ node.category.name }}
-              </option>
-            </select>
-          </div>
+            :entry="entry"
+            :groups="selectedCategoryGroups"
+            :categories="store.reimbursementTree?.tree ?? []"
+            :category-id="selectedCategoryId"
+            :show-group-select="selectedCategoryId !== null"
+            @move="onMove"
+            @move-group="onMoveGroup"
+          />
         </div>
       </div>
-      <p v-if="!selectedGroups.length" class="py-10 text-center text-sm text-muted-foreground">
+      <p
+        v-if="!selectedGroups.length && !selectedCustomGroups.some((node) => node.buckets.length)"
+        class="py-10 text-center text-sm text-muted-foreground"
+      >
         {{
           store.reimbursementIsLoading
             ? t('settings.documents.reimbursement.loading')
             : t('settings.documents.reimbursement.empty')
         }}
       </p>
+
+      <div v-if="selectedCategoryId !== null" class="mt-6 border-t pt-4">
+        <h3 class="mb-3 text-sm font-medium">
+          {{ t('settings.documents.reimbursement.customGroupsTitle') }}
+        </h3>
+        <p v-if="!selectedCustomGroups.length" class="text-xs text-muted-foreground">
+          {{ t('settings.documents.reimbursement.customGroupsEmpty') }}
+        </p>
+        <div
+          v-for="node in selectedCustomGroups"
+          :key="node.group.id"
+          class="mb-4 rounded border p-3"
+          :data-testid="`reimbursement-custom-group-${node.group.id}`"
+        >
+          <div class="mb-2 flex items-center justify-between gap-2">
+            <template v-if="editingGroupId === node.group.id">
+              <input
+                v-model="editingGroupName"
+                class="w-48 rounded border px-2 py-1 text-sm"
+                data-testid="reimbursement-group-name-input"
+                @keydown.enter="confirmRename"
+              />
+              <DcButton size="sm" @click="confirmRename">
+                {{ t('settings.documents.reimbursement.confirm') }}
+              </DcButton>
+              <DcButton size="sm" variant="outline" @click="editingGroupId = null">
+                {{ t('settings.documents.reimbursement.cancel') }}
+              </DcButton>
+            </template>
+            <template v-else>
+              <span class="flex items-center gap-2 text-sm font-medium">
+                {{ node.group.name }}
+                <DcBadge variant="outline">{{ groupEntryCount(node) }}</DcBadge>
+              </span>
+              <div class="flex gap-1">
+                <DcButton
+                  size="sm"
+                  variant="outline"
+                  :data-testid="`reimbursement-group-rename-${node.group.id}`"
+                  @click="startRename(node.group.id, node.group.name)"
+                >
+                  {{ t('settings.documents.reimbursement.renameGroup') }}
+                </DcButton>
+                <DcButton
+                  size="sm"
+                  variant="outline"
+                  :data-testid="`reimbursement-group-delete-${node.group.id}`"
+                  @click="removeGroup(node.group.id)"
+                >
+                  {{ t('settings.documents.reimbursement.deleteGroup') }}
+                </DcButton>
+              </div>
+            </template>
+          </div>
+          <div v-for="bucket in node.buckets" :key="bucket.period ?? '__unknown__'" class="mb-3">
+            <div class="mb-1 text-xs text-muted-foreground">
+              {{ bucket.period ?? t('settings.documents.reimbursement.unknownPeriod') }}
+            </div>
+            <ReimbursementEntryRow
+              v-for="entry in bucket.documents"
+              :key="entry.id"
+              :entry="entry"
+              :groups="selectedCategoryGroups"
+              :categories="store.reimbursementTree?.tree ?? []"
+              :category-id="selectedCategoryId"
+              :show-group-select="true"
+              @move="onMove"
+              @move-group="onMoveGroup"
+            />
+          </div>
+          <p v-if="!node.buckets.length" class="text-xs text-muted-foreground">
+            {{ t('settings.documents.reimbursement.groupEmpty') }}
+          </p>
+        </div>
+      </div>
     </section>
   </div>
 </template>
@@ -145,7 +218,9 @@ import { DcButton } from '@dc-ui/components/button'
 import { rendererNotificationManager } from '@renderer-notifications/rendererNotificationRuntime'
 import { createConfigClient } from '@api/ConfigClient'
 import { REIMBURSEMENT_UNASSIGNED } from '@shared/documents'
+import type { ReimbursementConfig } from '@shared/contracts/routes'
 import { useDocumentsStore } from '@/stores/documents'
+import ReimbursementEntryRow from './ReimbursementEntryRow.vue'
 
 const { t } = useI18n()
 const store = useDocumentsStore()
@@ -154,8 +229,17 @@ const configClient = createConfigClient()
 const selectedCategoryId = ref<string | null>(null)
 const userSelected = ref(false)
 const exporting = ref(false)
+const showGroupForm = ref(false)
+const newGroupName = ref('')
+const editingGroupId = ref<string | null>(null)
+const editingGroupName = ref('')
 
 onMounted(async () => {
+  // Custom-group management needs the saved config; fetch it alongside the
+  // tree without blocking the initial category selection on it.
+  void store.loadReimbursementConfig().catch((error: unknown) => {
+    console.error('[ReimbursementView] load reimbursement config failed', error)
+  })
   await store.loadReimbursementTree()
   // Land on the first category so the main content is visible right away;
   // a selection made while loading wins, and the unassigned bucket stays
@@ -192,6 +276,8 @@ const selectedGroups = computed(() =>
     ? (store.reimbursementTree?.unassigned ?? [])
     : (selectedNode.value?.groups ?? [])
 )
+const selectedCustomGroups = computed(() => selectedNode.value?.customGroups ?? [])
+const selectedCategoryGroups = computed(() => selectedNode.value?.category.customGroups ?? [])
 const selectedMaterials = computed(() => selectedNode.value?.materials ?? [])
 const unassignedTotal = computed(() =>
   (store.reimbursementTree?.unassigned ?? []).reduce((sum, group) => {
@@ -207,6 +293,74 @@ function notifyTransient(kind: 'success' | 'error', code: string, title: string)
   }
 }
 
+async function updateSelectedCategory(
+  mutate: (
+    category: ReimbursementConfig['categories'][number]
+  ) => ReimbursementConfig['categories'][number]
+) {
+  const config = store.reimbursementConfig ?? (await store.loadReimbursementConfig())
+  if (!config || selectedCategoryId.value === null) return
+  try {
+    await store.saveReimbursementConfig({
+      ...config,
+      categories: config.categories.map((category) =>
+        category.id === selectedCategoryId.value ? mutate(category) : category
+      )
+    })
+    await store.loadReimbursementTree()
+  } catch (error) {
+    console.error('[ReimbursementView] update custom groups failed', error)
+    notifyTransient(
+      'error',
+      'documents.reimbursement.groupSaveFailed',
+      t('settings.documents.reimbursement.groupSaveFailed')
+    )
+  }
+}
+
+async function addGroup() {
+  const name = newGroupName.value.trim()
+  if (!name || selectedCategoryId.value === null) return
+  await updateSelectedCategory((category) => ({
+    ...category,
+    customGroups: [
+      ...category.customGroups,
+      {
+        id: `grp-${crypto.randomUUID().slice(0, 8)}`,
+        name,
+        sortOrder: category.customGroups.length
+      }
+    ]
+  }))
+  newGroupName.value = ''
+  showGroupForm.value = false
+}
+
+function startRename(groupId: string, name: string) {
+  editingGroupId.value = groupId
+  editingGroupName.value = name
+}
+
+async function confirmRename() {
+  const groupId = editingGroupId.value
+  const name = editingGroupName.value.trim()
+  if (!groupId || !name) return
+  await updateSelectedCategory((category) => ({
+    ...category,
+    customGroups: category.customGroups.map((group) =>
+      group.id === groupId ? { ...group, name } : group
+    )
+  }))
+  editingGroupId.value = null
+}
+
+async function removeGroup(groupId: string) {
+  await updateSelectedCategory((category) => ({
+    ...category,
+    customGroups: category.customGroups.filter((group) => group.id !== groupId)
+  }))
+}
+
 async function onMove(documentId: string, value: string) {
   const categoryId =
     value === '__auto__' ? null : value === '__unassigned__' ? REIMBURSEMENT_UNASSIGNED : value
@@ -220,6 +374,24 @@ async function onMove(documentId: string, value: string) {
       t('settings.documents.reimbursement.moveFailed')
     )
   }
+}
+
+async function onMoveGroup(documentId: string, value: string) {
+  const groupId = value === '__none__' ? null : value
+  try {
+    await store.setReimbursementGroupOverride(documentId, groupId)
+  } catch (error) {
+    console.error('[ReimbursementView] set group override failed', error)
+    notifyTransient(
+      'error',
+      'documents.reimbursement.moveGroupFailed',
+      t('settings.documents.reimbursement.moveGroupFailed')
+    )
+  }
+}
+
+function groupEntryCount(node: { buckets: Array<{ documents: unknown[] }> }) {
+  return node.buckets.reduce((sum, bucket) => sum + bucket.documents.length, 0)
 }
 
 function goConfig() {
