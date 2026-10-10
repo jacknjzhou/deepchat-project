@@ -225,10 +225,9 @@ export const useDocumentsStore = defineStore('documents', () => {
     }
     if (payload.status === 'done' || payload.status === 'failed') {
       scheduleArchiveRefresh()
-      // Keep the reimbursement tree live while the view is open. Guarded by
-      // reimbursementLoadSeq; skipped entirely when the tree was never loaded.
+      // Once loaded, keep the reimbursement tree fresh for the session.
       if (reimbursementTree.value !== null) {
-        void loadReimbursementTree()
+        scheduleReimbursementRefresh()
       }
     }
   }
@@ -349,6 +348,20 @@ export const useDocumentsStore = defineStore('documents', () => {
   // Guards against out-of-order reimbursement responses: only the latest
   // loadReimbursementTree call may commit results or manage isLoading.
   let reimbursementLoadSeq = 0
+  // Trailing-edge debounce so batch completion events refresh the tree once,
+  // mirroring scheduleArchiveRefresh; guarded by reimbursementLoadSeq.
+  const REIMBURSEMENT_REFRESH_DEBOUNCE_MS = 300
+  let reimbursementRefreshTimer: ReturnType<typeof setTimeout> | null = null
+
+  function scheduleReimbursementRefresh() {
+    if (reimbursementRefreshTimer !== null) {
+      clearTimeout(reimbursementRefreshTimer)
+    }
+    reimbursementRefreshTimer = setTimeout(() => {
+      reimbursementRefreshTimer = null
+      void loadReimbursementTree()
+    }, REIMBURSEMENT_REFRESH_DEBOUNCE_MS)
+  }
 
   async function loadReimbursementTree(client: DocumentsClient = defaultClient) {
     const seq = ++reimbursementLoadSeq
