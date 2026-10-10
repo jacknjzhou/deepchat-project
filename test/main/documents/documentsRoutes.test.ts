@@ -18,6 +18,7 @@ import {
   documentsReimbursementExportRoute,
   documentsReimbursementGetConfigRoute,
   documentsReimbursementSetConfigRoute,
+  documentsReimbursementSetGroupOverrideRoute,
   documentsReimbursementSetOverrideRoute,
   documentsReimbursementTreeRoute,
   documentsStatsRoute,
@@ -960,6 +961,44 @@ describeIfSqlite('reimbursement routes', () => {
     const handler = getRouteHandler(routes, documentsReimbursementSetOverrideRoute.name)
     await expect(handler({ documentId: document.id, categoryId: 'cat-gone' })).rejects.toThrow(
       '[documents.reimbursement.categoryUnknown:cat-gone]'
+    )
+  })
+
+  it('setGroupOverride persists assignment when the group id exists', async () => {
+    const repository = makeRepository()
+    const document = insertMeetingDocument(repository)
+    const store = makeStore()
+    const config = defaultReimbursementConfig()
+    config.categories[0].customGroups.push({ id: 'grp-a', name: '测试分组', sortOrder: 0 })
+    store.map.set('documents.reimbursementConfig', config)
+    const routes = createDocumentsRoutes(
+      repository,
+      fakeExtractor,
+      fakeTaskManager,
+      undefined,
+      store
+    )
+    const handler = getRouteHandler(routes, documentsReimbursementSetGroupOverrideRoute.name)
+    const output = documentsReimbursementSetGroupOverrideRoute.output.parse(
+      await handler({ documentId: document.id, groupId: 'grp-a' })
+    )
+    expect(output.document).not.toBeNull()
+    expect(output.document?.reimbursementGroupOverride).toBe('grp-a')
+  })
+
+  it('setGroupOverride rejects unknown group id', async () => {
+    const repository = makeRepository()
+    const document = insertMeetingDocument(repository)
+    const routes = createDocumentsRoutes(
+      repository,
+      fakeExtractor,
+      fakeTaskManager,
+      undefined,
+      makeStore()
+    )
+    const handler = getRouteHandler(routes, documentsReimbursementSetGroupOverrideRoute.name)
+    await expect(handler({ documentId: document.id, groupId: 'grp-gone' })).rejects.toThrow(
+      '[documents.reimbursement.groupUnknown:grp-gone]'
     )
   })
 
