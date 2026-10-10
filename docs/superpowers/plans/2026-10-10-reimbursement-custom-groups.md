@@ -1084,4 +1084,47 @@ git commit -m "feat(documents): custom groups i18n locales"
 
 ## As-built 记录
 
-（执行后回填：提交链、计划偏差、遗留问题。）
+执行方式：Subagent-Driven（每 Task 独立子代理实现 + spec 合规审查 + 代码质量审查，审查发现的阻塞项由实现者修复并复审）。分支 `20261009classifier-docs-content`（本地未推送）。
+
+### 提交链
+
+| SHA | 说明 |
+| --- | --- |
+| `a3683bf9` | feat(documents): custom group schema and storage（Task 1） |
+| `3cd455dd` | fix(documents): mirror group override in record schema（Task 1 修复） |
+| `ec2623bc` | feat(documents): group-aware tree and export（Task 2） |
+| `78e48abe` | feat(documents): setGroupOverride ipc and store（Task 3） |
+| `8b246254` | test(documents): setGroupOverride route fail-fast（Task 3 修复） |
+| `9491fed3` | feat(documents): reimbursement custom groups（Task 4） |
+| `74c19192` | fix(documents): group form error feedback（Task 4 修复） |
+| `b2f976e5` | fix(documents): rename error gate and tests（Task 5 Part A） |
+| `3066e9cb` | feat(documents): custom groups i18n locales（Task 5 Part B） |
+| `d67ad690` | fix(documents): align groupEmpty wording（Task 5 修复） |
+| `b4f09f5b` | test(documents): cover group none sentinel（终审修复） |
+
+（另：`fcca0b11 feat(md)modify` 为计划文档中测试人名的隐私处理，系计划文档所有者自行提交，不属功能实现链。）
+
+### 计划偏差（均经审查确认合理）
+
+1. **documentRecordSchema 补镜像 `reimbursementGroupOverride`**（`3cd455dd`）：计划未列，但 TS 类型必填而 zod 缺省会在 IPC `output.parse` 静默剥离该字段，造成类型/运行时分叉。
+2. **过渡性 default 的引入与移除**：Task 1 给 entry `groupId`（`.default(null)`）与节点级 `customGroups`（`.default([])`）加过渡 default 以保持 Task 1→2 之间树路由可解析；Task 2 树构建器恒产出后移除、恢复强契约（节点级 `.max(50)` 随之移除——数组恒由 config 级上限 50 的列表派生，语义等价）。
+3. **导出测试位置**：计划列的 `test/main/documents/reimbursementExport.spec.ts` 不存在，导出覆盖实际在 `documentsRoutes.test.ts` 底部 `reimbursementExport` describe（按 9 列表头更新并新增分组目录/CSV 用例）。
+4. **ReimbursementEntryRow 的 `categoryId` prop 实现为可选**（`withDefaults` 默认 null）：计划为必填，但计划自带的 Row 测试用例未传该 prop。
+5. **ReimbursementConfigPage.addCategory 显式补 `customGroups: []`**：zod output 类型必填所致（Task 1 连锁适配）。
+6. **Task 4 修复（`74c19192`）**：`updateSelectedCategory` 返回布尔门控表单清理（保存失败保留输入）、config 获取移入 try（失败走 groupSaveFailed toast）、切换类别统一重置分组表单态；Task 5 顺带 confirmRename 对称门控（`b2f976e5`）并补 rename/空态测试。
+7. **风格等价适配**：onMoveGroup/onMounted 等按 View 现有代码风格调整（async/try-catch）；提交主题因 ≤50 字符约束缩短。
+8. **i18n confirm/cancel**：约 10 个 locale 的既有值为词典形不适合按钮文案，改用各 locale 标准按钮形（en Confirm、ja 確認する 等）；en-US/es-ES `groupEmpty` 用 "records" 对齐块内既有术语（`d67ad690`）。
+
+### 已知局限（记录不修）
+
+- IPC fail-fast 分组校验为**全局**范围（任一类别含该 groupId 即放行），树构建为**类别内**校验：跨类别同名 id 的指派可写入后静默降级为未分组；UI 下拉只提供当前类别分组，不可触达。
+- 自定义分组名与人员名同名时，导出目录 `类别/<同名>/年月` 合并（CSV「分组」列仍可区分，uniqueFileName 兜底）。
+- id-ID 既有 `globalTitle` 的 "pengelompokan" 与新键 "grup" 词族漂移（继承既有文案，非本次引入）。
+- `updateSelectedCategory` 中 config 加载期间切换类别的窄窗口：rename/delete 为幂等 no-op，addGroup 理论上可能追加到新选中类别（可在函数入口捕获 categoryId 快照，后续迭代）。
+
+### 验证状态（终审实测）
+
+- 渲染层定向套件 15 文件 163 tests PASS（View 17、EntryRow 4、store 9、ConfigPage 9 等）
+- 主进程定向套件 4 文件 102 tests PASS（reimbursement.spec 23、documentsRoutes 46、documentsTables 28、documentsTableMigration 6；ELECTRON_RUN_AS_NODE 方式）
+- `pnpm run typecheck`（node+web）、`pnpm run i18n`（20 locales / 4752 contracts）、`pnpm exec oxlint` 全绿；改动文件 oxfmt 合规
+- 终审结论：Ready to merge（唯一 Important 项为计划文档所有者自行提交 `fcca0b11` 的提交信息格式，不属本功能链，未改动）
