@@ -611,7 +611,7 @@ const entry = {
   id: 'd1',
   typeKey: 'meeting_minutes',
   templateName: '会议纪要',
-  person: '孙若愚',
+  person: 'XXX',
   period: '2026-03',
   amount: 1083.88,
   amountUncertain: false,
