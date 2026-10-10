@@ -100,6 +100,66 @@
           <p v-if="fieldError" class="text-xs text-destructive" data-testid="detail-field-error">
             {{ fieldError }}
           </p>
+          <div class="rounded border p-3" data-testid="detail-manual-grouping">
+            <h3 class="mb-2 text-sm font-medium">
+              {{ t('settings.documents.archive.manualGroupingTitle') }}
+            </h3>
+            <div class="grid grid-cols-1 gap-x-4 gap-y-3 md:grid-cols-2">
+              <div data-testid="detail-reimbursement-category">
+                <label class="mb-1 block text-sm font-medium" for="detail-reimbursement-category">
+                  {{ t('settings.documents.archive.colReimbursement') }}
+                </label>
+                <Select
+                  :id="`detail-reimbursement-category`"
+                  :model-value="reimbursementCategory"
+                  :disabled="categorySelectDisabled"
+                  @update:model-value="(value) => onReimbursementCategoryChange(String(value))"
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem :value="AUTO_CATEGORY">
+                      {{ t('settings.documents.reimbursement.autoCategory') }}
+                    </SelectItem>
+                    <SelectItem :value="UNASSIGNED_CATEGORY">
+                      {{ t('settings.documents.reimbursement.forceUnassigned') }}
+                    </SelectItem>
+                    <SelectItem
+                      v-for="category in sortedReimbursementCategories"
+                      :key="category.id"
+                      :value="category.id"
+                    >
+                      {{ category.name }}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div :title="groupSelectTitle" data-testid="detail-reimbursement-group">
+                <label class="mb-1 block text-sm font-medium" for="detail-reimbursement-group">
+                  {{ t('settings.documents.archive.colGroup') }}
+                </label>
+                <Select
+                  :id="`detail-reimbursement-group`"
+                  :model-value="reimbursementGroup"
+                  :disabled="groupSelectDisabled"
+                  @update:model-value="(value) => onReimbursementGroupChange(String(value))"
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem :value="NO_GROUP">
+                      {{ t('settings.documents.reimbursement.groupNone') }}
+                    </SelectItem>
+                    <SelectItem
+                      v-for="group in selectedReimbursementGroups"
+                      :key="group.id"
+                      :value="group.id"
+                    >
+                      {{ group.name }}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
         </section>
 
         <section v-else class="h-[min(70vh,calc(100vh-16rem))] space-y-2 overflow-y-auto">
@@ -258,7 +318,11 @@ import {
 } from '@shadcn/components/ui/alert-dialog'
 import { DcButton } from '@dc-ui/components/button'
 import { useDocumentsStore } from '@/stores/documents'
-import type { DocumentFieldEntry, DocumentRecord } from '@shared/documents'
+import {
+  REIMBURSEMENT_UNASSIGNED,
+  type DocumentFieldEntry,
+  type DocumentRecord
+} from '@shared/documents'
 import { buildFieldEditStates, parseFieldEditState, type FieldEditState } from './documentArchive'
 
 interface PreviewPayload {
@@ -304,7 +368,64 @@ const activeTab = ref<'fields' | 'files'>('fields')
 // be switched before re-running extraction.
 const reRecognizeTemplateId = ref('')
 
-const busy = computed(() => saving.value || recognizing.value || deleting.value)
+// 手工分组 select values are local-only while the dialog is open: they are
+// seeded from the document snapshot and only re-submitted from the record
+// returned by the store actions, never from concurrent store row updates.
+const AUTO_CATEGORY = '__auto__'
+const UNASSIGNED_CATEGORY = '__unassigned__'
+const NO_GROUP = '__none__'
+const reimbursementCategory = ref<'__auto__' | '__unassigned__' | string>(AUTO_CATEGORY)
+const reimbursementGroup = ref<string>(NO_GROUP)
+const reimbursementPending = ref(false)
+
+// Effective category for the locally selected value (not the stored override):
+// auto resolves through typeKey linkage, sentinels resolve to none. Mirrors
+// resolveEffectiveReimbursement but keyed off the pending select value so the
+// group options follow what the user is about to save.
+const effectiveReimbursementCategory = computed(() => {
+  const config = store.reimbursementConfig
+  const doc = props.document
+  if (!config || !doc) {
+    return null
+  }
+  if (reimbursementCategory.value === UNASSIGNED_CATEGORY) {
+    return null
+  }
+  if (reimbursementCategory.value === AUTO_CATEGORY) {
+    return (
+      config.categories
+        .filter((category) => category.linkedTypeKeys.includes(doc.typeKey))
+        .sort((a, b) => a.sortOrder - b.sortOrder)[0] ?? null
+    )
+  }
+  return config.categories.find((category) => category.id === reimbursementCategory.value) ?? null
+})
+const sortedReimbursementCategories = computed(() =>
+  [...(store.reimbursementConfig?.categories ?? [])].sort((a, b) => a.sortOrder - b.sortOrder)
+)
+const selectedReimbursementGroups = computed(() =>
+  [...(effectiveReimbursementCategory.value?.customGroups ?? [])].sort(
+    (a, b) => a.sortOrder - b.sortOrder
+  )
+)
+const categorySelectDisabled = computed(
+  () => reimbursementPending.value || store.reimbursementConfig === null
+)
+const groupSelectDisabled = computed(
+  () =>
+    categorySelectDisabled.value ||
+    effectiveReimbursementCategory.value === null ||
+    selectedReimbursementGroups.value.length === 0
+)
+const groupSelectTitle = computed(() =>
+  effectiveReimbursementCategory.value !== null && selectedReimbursementGroups.value.length === 0
+    ? t('settings.documents.reimbursement.noGroupsHint')
+    : undefined
+)
+
+const busy = computed(
+  () => saving.value || recognizing.value || deleting.value || reimbursementPending.value
+)
 const statusText = computed(() =>
   props.document?.status === 'draft'
     ? t('settings.documents.archive.statusDraft')
@@ -329,6 +450,8 @@ watch(
     fieldError.value = null
     activeTab.value = 'fields'
     reRecognizeTemplateId.value = doc?.templateId ?? ''
+    reimbursementCategory.value = overrideToCategoryValue(doc?.reimbursementOverride ?? null)
+    reimbursementGroup.value = doc?.reimbursementGroupOverride ?? NO_GROUP
   },
   { immediate: true }
 )
@@ -415,6 +538,83 @@ async function runSave(id: string, fields: Record<string, DocumentFieldEntry>) {
     showFeedback('error', t('settings.documents.archive.saveFailed'))
   } finally {
     saving.value = false
+  }
+}
+
+function overrideToCategoryValue(override: string | null) {
+  if (override === null) {
+    return AUTO_CATEGORY
+  }
+  return override === REIMBURSEMENT_UNASSIGNED ? UNASSIGNED_CATEGORY : override
+}
+
+// Category writes clear the stored group override unconditionally, so both
+// select values are re-submitted from the returned record instead of being
+// patched locally.
+function applyReimbursementRecord(record: DocumentRecord) {
+  reimbursementCategory.value = overrideToCategoryValue(record.reimbursementOverride)
+  reimbursementGroup.value = record.reimbursementGroupOverride ?? NO_GROUP
+}
+
+async function onReimbursementCategoryChange(value: string) {
+  const doc = props.document
+  if (!doc || reimbursementPending.value) {
+    return
+  }
+  const previousCategory = reimbursementCategory.value
+  const previousGroup = reimbursementGroup.value
+  reimbursementCategory.value = value
+  const categoryId =
+    value === AUTO_CATEGORY
+      ? null
+      : value === UNASSIGNED_CATEGORY
+        ? REIMBURSEMENT_UNASSIGNED
+        : value
+  reimbursementPending.value = true
+  try {
+    const record = await store.setReimbursementOverride(doc.id, categoryId)
+    if (record) {
+      applyReimbursementRecord(record)
+    } else {
+      showFeedback('error', t('settings.documents.archive.reimbursementSetFailed'))
+      reimbursementCategory.value = previousCategory
+      reimbursementGroup.value = previousGroup
+    }
+  } catch (error) {
+    console.error('[DocumentDetailDialog] set reimbursement override failed', error)
+    showFeedback('error', t('settings.documents.archive.reimbursementSetFailed'))
+    reimbursementCategory.value = previousCategory
+    reimbursementGroup.value = previousGroup
+  } finally {
+    reimbursementPending.value = false
+  }
+}
+
+async function onReimbursementGroupChange(value: string) {
+  const doc = props.document
+  if (!doc || reimbursementPending.value) {
+    return
+  }
+  const previousGroup = reimbursementGroup.value
+  reimbursementGroup.value = value
+  reimbursementPending.value = true
+  try {
+    const record = await store.setReimbursementGroupOverride(
+      doc.id,
+      value === NO_GROUP ? null : value
+    )
+    if (record) {
+      reimbursementGroup.value = record.reimbursementGroupOverride ?? NO_GROUP
+    } else {
+      showFeedback('error', t('settings.documents.archive.reimbursementSetFailed'))
+      reimbursementGroup.value = previousGroup
+    }
+  } catch (error) {
+    console.error('[DocumentDetailDialog] set reimbursement group override failed', error)
+    showFeedback('error', t('settings.documents.archive.reimbursementSetFailed'))
+    reimbursementGroup.value = previousGroup
+  } finally {
+    reimbursementPending.value = false
   }
 }
 

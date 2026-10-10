@@ -330,7 +330,11 @@
       "filesSelected": "{count} file(s) selected",
       "autoClassify": "Auto classify",
       "taskQueuedToast": "Submitted {count} recognition task(s)",
-      "filesLimit": "You can select up to 20 files"
+      "filesLimit": "You can select up to 20 files",
+      "colReimbursement": "Reimbursement Type",
+      "colGroup": "Group",
+      "manualGroupingTitle": "Manual Grouping",
+      "reimbursementSetFailed": "Failed to update reimbursement classification"
     },
     "reimbursement": {
       "viewDocuments": "Documents View",
