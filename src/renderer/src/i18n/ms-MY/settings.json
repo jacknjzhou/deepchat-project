@@ -345,6 +345,8 @@
       "unknownPeriod": "Tempoh tidak diketahui",
       "autoCategory": "Auto",
       "forceUnassigned": "Paksa tidak dikelaskan",
+      "showUnassignedOnly": "Tunjuk belum dikelaskan sahaja",
+      "treeEmpty": "Tiada rekod dokumen lagi",
       "empty": "Tiada rekod dalam kategori ini",
       "loading": "Memuatkan…",
       "loadFailed": "Gagal memuatkan data",

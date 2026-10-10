@@ -2852,6 +2852,8 @@
       "unknownPeriod": "תקופה לא מוכרת",
       "autoCategory": "אוטומטי",
       "forceUnassigned": "כפה לא מסווג",
+      "showUnassignedOnly": "הצג לא מסווגים בלבד",
+      "treeEmpty": "אין עדיין רשומות מסמכים",
       "empty": "אין רשומות בקטגוריה זו",
       "loading": "טוען…",
       "loadFailed": "טעינת הנתונים נכשלה",

@@ -345,6 +345,8 @@
       "unknownPeriod": "Kỳ không xác định",
       "autoCategory": "Tự động phân loại",
       "forceUnassigned": "Buộc chưa phân loại",
+      "showUnassignedOnly": "Chỉ xem chưa phân loại",
+      "treeEmpty": "Chưa có bản ghi tài liệu",
       "empty": "Không có bản ghi trong danh mục này",
       "loading": "Đang tải…",
       "loadFailed": "Tải dữ liệu hoàn ứng thất bại",

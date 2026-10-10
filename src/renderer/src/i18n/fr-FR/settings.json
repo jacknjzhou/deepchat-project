@@ -2852,6 +2852,8 @@
       "unknownPeriod": "Période inconnue",
       "autoCategory": "Auto",
       "forceUnassigned": "Forcer « non classé »",
+      "showUnassignedOnly": "Afficher uniquement les non-classés",
+      "treeEmpty": "Aucun enregistrement de document",
       "empty": "Aucun enregistrement dans cette catégorie",
       "loading": "Chargement…",
       "loadFailed": "Échec du chargement",

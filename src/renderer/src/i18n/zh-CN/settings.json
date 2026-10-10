@@ -345,6 +345,8 @@
       "unknownPeriod": "未知期间",
       "autoCategory": "自动归类",
       "forceUnassigned": "强制未分类",
+      "showUnassignedOnly": "只看未分类",
+      "treeEmpty": "暂无单据记录",
       "empty": "该类别下暂无单据记录",
       "loading": "加载中…",
       "loadFailed": "报销整理数据加载失败",
