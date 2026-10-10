@@ -225,6 +225,11 @@ export const useDocumentsStore = defineStore('documents', () => {
     }
     if (payload.status === 'done' || payload.status === 'failed') {
       scheduleArchiveRefresh()
+      // Keep the reimbursement tree live while the view is open. Guarded by
+      // reimbursementLoadSeq; skipped entirely when the tree was never loaded.
+      if (reimbursementTree.value !== null) {
+        void loadReimbursementTree()
+      }
     }
   }
 

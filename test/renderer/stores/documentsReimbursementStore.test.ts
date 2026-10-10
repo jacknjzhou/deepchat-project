@@ -1,9 +1,17 @@
+import { flushPromises } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useDocumentsStore } from '@/stores/documents'
 
 // The renderer setup mocks a lightweight pinia without setActivePinia; restore the real one.
 vi.mock('pinia', async () => vi.importActual<typeof import('pinia')>('pinia'))
+
+// handleTaskUpdated triggers loadReimbursementTree() without an explicit client,
+// which resolves to documentsApi from '@api/documentTasks'; mock it here.
+const defaultApi = vi.hoisted(() => ({
+  reimbursementTree: vi.fn(async () => ({ tree: [], unassigned: [], summary: [] }))
+}))
+vi.mock('@api/documentTasks', () => ({ documentsApi: defaultApi }))
 
 const minimalConfig = {
   version: 1 as const,
@@ -110,5 +118,25 @@ describe('documents store reimbursement actions', () => {
     expect(store.reimbursementTree).toEqual({ tree: [{ total: 1 }], unassigned: [], summary: [] })
     expect(store.reimbursementIsLoading).toBe(false)
     expect(store.reimbursementLoadError).toBe(null)
+  })
+
+  it('refreshes the reimbursement tree on task completion when already loaded', async () => {
+    setActivePinia(createPinia())
+    const store = useDocumentsStore()
+    const client = makeFakeClient()
+    await store.loadReimbursementTree(client as never)
+    expect(client.reimbursementTree).toHaveBeenCalledTimes(1)
+    store.handleTaskUpdated({ id: 't1', status: 'done' } as never)
+    await flushPromises()
+    expect(defaultApi.reimbursementTree).toHaveBeenCalledTimes(1)
+    expect(store.reimbursementTree).toEqual({ tree: [], unassigned: [], summary: [] })
+  })
+
+  it('does not load the reimbursement tree on task completion when never loaded', async () => {
+    setActivePinia(createPinia())
+    const store = useDocumentsStore()
+    store.handleTaskUpdated({ id: 't2', status: 'done' } as never)
+    await flushPromises()
+    expect(defaultApi.reimbursementTree).not.toHaveBeenCalled()
   })
 })
