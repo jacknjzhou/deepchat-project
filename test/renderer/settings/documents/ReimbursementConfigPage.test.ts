@@ -18,7 +18,8 @@ const fakeClient = vi.hoisted(() => ({
   reimbursementSetConfig: vi.fn(),
   reimbursementTree: vi.fn(),
   reimbursementSetOverride: vi.fn(),
-  reimbursementExport: vi.fn()
+  reimbursementExport: vi.fn(),
+  listTemplates: vi.fn()
 }))
 vi.mock('@api/DocumentsClient', () => ({ createDocumentsClient: () => fakeClient }))
 
@@ -63,10 +64,29 @@ const minimalConfig: ReimbursementConfig = {
   dateGrouping: 'month'
 }
 
+const fakeTemplates = [
+  {
+    id: 'tpl-1',
+    typeKey: 'meeting_minutes',
+    name: '会议纪要',
+    fields: [{ key: 'attendee', label: '参会人' }]
+  },
+  {
+    id: 'tpl-2',
+    typeKey: 'invoice',
+    name: '发票',
+    fields: [
+      { key: 'buyer_name', label: '购买方' },
+      { key: 'total_amount', label: '金额' }
+    ]
+  }
+] as never
+
 let notifySpy: MockInstance
 
 beforeEach(() => {
   notifySpy = vi.spyOn(rendererNotificationManager, 'notify').mockImplementation(() => undefined)
+  fakeClient.listTemplates.mockResolvedValue({ templates: fakeTemplates })
 })
 
 async function mountPage() {
@@ -101,14 +121,48 @@ describe('ReimbursementConfigPage', () => {
     expect((names[0].element as HTMLInputElement).value).toBe('会议费')
     expect((names[1].element as HTMLInputElement).value).toBe('交通费')
     expect(
-      (wrapper.get('[data-testid="reimbursement-global-person"]').element as HTMLInputElement).value
-    ).toBe('buyer_name')
+      wrapper
+        .get('[data-testid="reimbursement-global-person"]')
+        .find('[data-testid="reimbursement-key-remove-buyer_name"]')
+        .exists()
+    ).toBe(true)
     expect(
       (
         wrapper.get('select[data-testid="reimbursement-date-grouping"]')
           .element as HTMLSelectElement
       ).value
     ).toBe('month')
+  })
+
+  it('type key options come from templates and toggling updates linkedTypeKeys', async () => {
+    fakeClient.reimbursementGetConfig.mockResolvedValue({ config: minimalConfig })
+    const { wrapper } = await mountPage()
+    const option = (key: string) =>
+      `[data-testid="reimbursement-category-linked"] [data-testid="reimbursement-key-option-${key}"]`
+    const remove = (key: string) =>
+      `[data-testid="reimbursement-category-linked"] [data-testid="reimbursement-key-remove-${key}"]`
+    expect(wrapper.find(option('meeting_minutes')).exists()).toBe(true)
+    await wrapper.get(option('meeting_minutes')).setValue(true)
+    expect(wrapper.find(remove('meeting_minutes')).exists()).toBe(true)
+    expect(wrapper.find('[data-testid="reimbursement-config-error"]').exists()).toBe(false)
+    expect(
+      wrapper.get('[data-testid="reimbursement-config-save"]').attributes('disabled')
+    ).toBeUndefined()
+  })
+
+  it('stale keys render a marker and do not block save', async () => {
+    fakeClient.reimbursementGetConfig.mockResolvedValue({ config: minimalConfig })
+    const { wrapper } = await mountPage()
+    // cat-b material linkedTypeKeys=['trip_date'] is not offered by fakeTemplates → stale
+    const materialPicker = wrapper.get('[data-testid="reimbursement-material-linked"]')
+    expect(
+      materialPicker.get('[data-testid="reimbursement-key-remove-trip_date"]').exists()
+    ).toBe(true)
+    expect(materialPicker.find('.stale-key').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="reimbursement-config-error"]').exists()).toBe(false)
+    expect(
+      wrapper.get('[data-testid="reimbursement-config-save"]').attributes('disabled')
+    ).toBeUndefined()
   })
 
   it('shows validation error and blocks save when a category name is blank', async () => {
@@ -124,23 +178,37 @@ describe('ReimbursementConfigPage', () => {
     expect(fakeClient.reimbursementSetConfig).not.toHaveBeenCalled()
   })
 
-  it('flags invalid type keys and recovers once every key is valid', async () => {
-    fakeClient.reimbursementGetConfig.mockResolvedValue({ config: minimalConfig })
+  it('invalid saved keys still trigger validation (no free-text input anymore)', async () => {
+    fakeClient.reimbursementGetConfig.mockResolvedValue({
+      config: {
+        ...minimalConfig,
+        categories: [
+          {
+            id: 'cat-x',
+            name: '餐费',
+            requiredMaterials: [],
+            linkedTypeKeys: ['Bad Key'],
+            sortOrder: 1
+          }
+        ]
+      }
+    })
     const { wrapper } = await mountPage()
-    await wrapper
-      .findAll('[data-testid="reimbursement-category-linked"]')[0]
-      .setValue('trip_date, TRIP')
     expect(wrapper.find('[data-testid="reimbursement-config-error"]').exists()).toBe(true)
     expect(
       wrapper.get('[data-testid="reimbursement-config-save"]').attributes('disabled')
     ).toBeDefined()
-    await wrapper
-      .findAll('[data-testid="reimbursement-category-linked"]')[0]
-      .setValue('trip_date, hotel_invoice')
-    expect(wrapper.find('[data-testid="reimbursement-config-error"]').exists()).toBe(false)
-    expect(
-      wrapper.get('[data-testid="reimbursement-config-save"]').attributes('disabled')
-    ).toBeUndefined()
+  })
+
+  it('template load failure shows error with retry that reloads', async () => {
+    fakeClient.listTemplates.mockRejectedValueOnce(new Error('boom'))
+    fakeClient.reimbursementGetConfig.mockResolvedValue({ config: minimalConfig })
+    const { wrapper } = await mountPage()
+    expect(wrapper.find('[data-testid="reimbursement-picker-error"]').exists()).toBe(true)
+    fakeClient.listTemplates.mockResolvedValue({ templates: fakeTemplates })
+    await wrapper.get('[data-testid="reimbursement-picker-retry"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="reimbursement-picker-error"]').exists()).toBe(false)
   })
 
   it('renumbers sortOrder to 1..n after remove and move', async () => {
