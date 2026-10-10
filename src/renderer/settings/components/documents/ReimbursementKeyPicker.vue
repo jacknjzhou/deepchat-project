@@ -15,7 +15,7 @@
           type="button"
           class="rounded-full p-0.5 hover:bg-accent"
           :data-testid="`reimbursement-key-remove-${item.value}`"
-          :aria-label="item.value"
+          :aria-label="t('settings.documents.reimbursement.removeKey', { key: item.value })"
           @click="remove(item.value)"
         >
           <Icon icon="lucide:x" class="size-3" />

@@ -11,12 +11,6 @@ const dcButtonStub = defineComponent({
   template: '<button :disabled="disabled" @click="$emit(\'click\')"><slot /></button>'
 })
 
-const dcBadgeStub = defineComponent({
-  name: 'DcBadgeStub',
-  props: ['variant'],
-  template: '<span :class="variant"><slot /></span>'
-})
-
 const options = [
   { value: 'meeting_minutes', label: '会议纪要', hint: 'meeting_minutes' },
   { value: 'invoice', label: '发票', hint: 'invoice' }
@@ -25,7 +19,7 @@ const options = [
 function mountPicker(props: Record<string, unknown> = {}) {
   return mount(ReimbursementKeyPicker, {
     props: { modelValue: [], options, notice: null, ...props },
-    global: { stubs: { DcButton: dcButtonStub, DcBadge: dcBadgeStub, Icon: true } }
+    global: { stubs: { DcButton: dcButtonStub, Icon: true } }
   })
 }
 
