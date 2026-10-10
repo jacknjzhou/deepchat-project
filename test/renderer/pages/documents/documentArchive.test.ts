@@ -283,6 +283,22 @@ describe('resolveEffectiveReimbursement', () => {
     })
   })
 
+  it('同一 typeKey 多类别联动时取 sortOrder 最小者，且不改原数组序', () => {
+    // 数组序故意让 sortOrder 大者靠前：find（数组序）会选中 cat-late，
+    // sortOrder 仲裁（与主进程一致）应选中 cat-early
+    const config = makeConfig([
+      category('cat-late', { linkedTypeKeys: ['invoice_special'], sortOrder: 5 }),
+      category('cat-early', { linkedTypeKeys: ['invoice_special'], sortOrder: 1 }),
+      category('cat-b')
+    ])
+    expect(resolveEffectiveReimbursement(record(), config)).toEqual({
+      categoryId: 'cat-early',
+      groupId: null
+    })
+    // config.categories 是 store 状态引用：filter 产生新数组，sort 不得原地重排
+    expect(config.categories.map((c) => c.id)).toEqual(['cat-late', 'cat-early', 'cat-b'])
+  })
+
   it('无联动类别返回 null', () => {
     const unlinkedConfig = makeConfig([category('cat-b')])
     expect(resolveEffectiveReimbursement(record(), unlinkedConfig)).toEqual({

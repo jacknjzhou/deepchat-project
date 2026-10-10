@@ -232,9 +232,13 @@ export function resolveEffectiveReimbursement(
   } else if (override !== null && config.categories.some((c) => c.id === override)) {
     categoryId = override
   } else {
-    categoryId =
-      config.categories.find((category) => category.linkedTypeKeys.includes(document.typeKey))
-        ?.id ?? null
+    // Mirror the main process' resolveDocumentCategoryId: typeKey conflicts
+    // arbitrate by lowest sortOrder (ties keep array order). filter already
+    // yields a fresh array, so sort never mutates store state.
+    const mapped = config.categories
+      .filter((category) => category.linkedTypeKeys.includes(document.typeKey))
+      .sort((a, b) => a.sortOrder - b.sortOrder)[0]
+    categoryId = mapped?.id ?? null
   }
   const category =
     categoryId === null
