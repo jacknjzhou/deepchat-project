@@ -87,6 +87,7 @@ export const documentRecordSchema = z.object({
   sessionId: z.string().min(1).nullable(),
   status: documentStatusSchema,
   reimbursementOverride: z.string().nullable(),
+  reimbursementGroupOverride: z.string().nullable(),
   createdAt: timestampMsSchema,
   updatedAt: timestampMsSchema
 })

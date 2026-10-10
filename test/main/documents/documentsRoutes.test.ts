@@ -165,6 +165,7 @@ describe('documents route contracts', () => {
       sessionId: 's1',
       status: 'draft' as const,
       reimbursementOverride: null,
+      reimbursementGroupOverride: null,
       createdAt: 1,
       updatedAt: 2
     }

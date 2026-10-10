@@ -336,6 +336,27 @@ describeIfSqlite('DocumentsTable', () => {
     expect(recategorized?.reimbursement_group_override).toBeNull()
     db.close()
   })
+
+  it('setReimbursementGroupOverride refreshes updated_at and rejects unknown id', () => {
+    const db = makeDb()
+    const table = new DocumentsTableCtor(db)
+    const row = table.insert({
+      templateId: 't1',
+      typeKey: 'contract',
+      templateSnapshot: {},
+      fields: {},
+      fileUris: [],
+      source: 'manual',
+      sessionId: null,
+      status: 'draft',
+      now: 1
+    })
+    const grouped = table.setReimbursementGroupOverride(row.id, 'grp-a')
+    expect(grouped?.reimbursement_group_override).toBe('grp-a')
+    expect(grouped?.updated_at).toBeGreaterThan(row.updated_at)
+    expect(table.setReimbursementGroupOverride('missing', 'grp-a')).toBeUndefined()
+    db.close()
+  })
 })
 
 describeIfSqlite('documentsTable count and stats', () => {
