@@ -136,6 +136,10 @@
               <th v-if="!selectedTypeKey" class="px-2 py-2 font-medium">
                 {{ t('settings.documents.archive.colSummary') }}
               </th>
+              <th class="px-2 py-2 font-medium">
+                {{ t('settings.documents.archive.colReimbursement') }}
+              </th>
+              <th class="px-2 py-2 font-medium">{{ t('settings.documents.archive.colGroup') }}</th>
               <th class="px-2 py-2 font-medium">{{ t('settings.documents.archive.colSource') }}</th>
               <th class="px-2 py-2 font-medium">{{ t('settings.documents.archive.colStatus') }}</th>
               <th class="px-2 py-2 font-medium">
@@ -168,6 +172,18 @@
                 :title="summarizeDocument(document)"
               >
                 {{ summarizeDocument(document) }}
+              </td>
+              <td
+                class="max-w-32 truncate px-2 py-2"
+                :title="reimbursementCellsById.get(document.id)?.category ?? undefined"
+              >
+                {{ reimbursementCellsById.get(document.id)?.category ?? '—' }}
+              </td>
+              <td
+                class="max-w-32 truncate px-2 py-2"
+                :title="reimbursementCellsById.get(document.id)?.group ?? undefined"
+              >
+                {{ reimbursementCellsById.get(document.id)?.group ?? '—' }}
               </td>
               <td class="px-2 py-2">
                 {{ t(`settings.documents.archive.source${capitalize(document.source)}`) }}
@@ -236,13 +252,18 @@ import { DcBadge } from '@dc-ui/components/badge'
 import { rendererNotificationManager } from '@renderer-notifications/rendererNotificationRuntime'
 import { createOcrClient } from '@api/OcrClient'
 import { useDocumentsStore } from '@/stores/documents'
-import type { DocumentRecord, DocumentStatus } from '@shared/documents'
+import {
+  REIMBURSEMENT_UNASSIGNED,
+  type DocumentRecord,
+  type DocumentStatus
+} from '@shared/documents'
 import {
   buildDefaultDateRangeTexts,
   buildMoneyColumns,
   formatDateRangeToMs,
   formatDisplayValue,
   orderedSnapshotFields,
+  resolveEffectiveReimbursement,
   type MoneyColumn
 } from './documentArchive'
 import { summarizeDocument } from './documentSummary'
@@ -272,6 +293,31 @@ const viewMode = ref<'documents' | 'reimbursement'>('documents')
 const selectedTypeKey = computed(() => store.archiveFilter.typeKey ?? null)
 
 const templateNameById = computed(() => new Map(store.templates.map((tpl) => [tpl.id, tpl.name])))
+
+// Reimbursement column cells: one resolver pass per row, both cells reuse the
+// resolved labels through this map. Stale ids degrade to '—' via the resolver.
+const reimbursementCellsById = computed(() => {
+  const config = store.reimbursementConfig
+  const cells = new Map<string, { category: string | null; group: string | null }>()
+  for (const document of store.archiveDocuments) {
+    const effective = resolveEffectiveReimbursement(document, config)
+    let category: string | null = null
+    if (document.reimbursementOverride === REIMBURSEMENT_UNASSIGNED) {
+      category = t('settings.documents.reimbursement.unassigned')
+    } else if (effective.categoryId !== null) {
+      category =
+        config?.categories.find((candidate) => candidate.id === effective.categoryId)?.name ?? null
+    }
+    const group =
+      effective.groupId !== null && config !== null
+        ? (config.categories
+            .find((candidate) => candidate.id === effective.categoryId)
+            ?.customGroups.find((candidate) => candidate.id === effective.groupId)?.name ?? null)
+        : null
+    cells.set(document.id, { category, group })
+  }
+  return cells
+})
 
 const moneyColumns = computed<MoneyColumn[]>(() => buildMoneyColumns(store.archiveDocuments))
 
@@ -510,6 +556,7 @@ void store.loadTemplates()
 void store.loadArchiveDocuments(1)
 void store.loadArchiveStats()
 void store.loadArchiveTasks()
+void store.loadReimbursementConfig()
 
 // Start the OCR helper ahead of the first recognition so scanned PDFs skip
 // the cold start. Failures surface naturally when a real extraction runs.
