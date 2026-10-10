@@ -336,6 +336,46 @@ describe('ReimbursementView', () => {
     expect(category?.customGroups[0]?.id).toMatch(/^grp-/)
   })
 
+  it('keeps the add-group form input when saving fails', async () => {
+    const { pinia, store } = setupStore()
+    vi.spyOn(store, 'loadReimbursementTree').mockResolvedValue()
+    const config = makeConfig([])
+    store.reimbursementConfig = config
+    vi.spyOn(store, 'loadReimbursementConfig').mockResolvedValue(config)
+    vi.spyOn(store, 'saveReimbursementConfig').mockRejectedValue(new Error('boom'))
+    const notifySpy = vi
+      .spyOn(rendererNotificationManager, 'notify')
+      .mockImplementation(() => undefined)
+    store.reimbursementTree = makeTree()
+    const wrapper = mountView(pinia)
+    await flushPromises()
+    await wrapper.get('[data-testid="reimbursement-add-group"]').trigger('click')
+    await wrapper.get('[data-testid="reimbursement-new-group-name"]').setValue('差旅')
+    await wrapper.get('[data-testid="reimbursement-add-group-confirm"]').trigger('click')
+    await flushPromises()
+    expect(notifySpy).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'error', code: 'documents.reimbursement.groupSaveFailed' })
+    )
+    const input = wrapper.get('[data-testid="reimbursement-new-group-name"]')
+    expect((input.element as HTMLInputElement).value).toBe('差旅')
+  })
+
+  it('resets the add-group form when switching categories', async () => {
+    const { pinia, store } = setupStore()
+    vi.spyOn(store, 'loadReimbursementTree').mockResolvedValue()
+    store.reimbursementTree = makeTree()
+    const wrapper = mountView(pinia)
+    await flushPromises()
+    await wrapper.get('[data-testid="reimbursement-add-group"]').trigger('click')
+    await wrapper.get('[data-testid="reimbursement-new-group-name"]').setValue('差旅')
+    await wrapper.get('[data-testid="reimbursement-category-unassigned"]').trigger('click')
+    expect(wrapper.find('[data-testid="reimbursement-new-group-name"]').exists()).toBe(false)
+    await wrapper.get('[data-testid="reimbursement-category-cat-a"]').trigger('click')
+    await wrapper.get('[data-testid="reimbursement-add-group"]').trigger('click')
+    const input = wrapper.get('[data-testid="reimbursement-new-group-name"]')
+    expect((input.element as HTMLInputElement).value).toBe('')
+  })
+
   it('delete group removes it from config', async () => {
     const { pinia, store } = setupStore()
     vi.spyOn(store, 'loadReimbursementTree').mockResolvedValue()

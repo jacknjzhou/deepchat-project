@@ -249,13 +249,22 @@ onMounted(async () => {
   }
 })
 
+function resetGroupFormState() {
+  showGroupForm.value = false
+  newGroupName.value = ''
+  editingGroupId.value = null
+  editingGroupName.value = ''
+}
+
 function selectCategory(id: string) {
   userSelected.value = true
+  resetGroupFormState()
   selectedCategoryId.value = id
 }
 
 function selectUnassigned() {
   userSelected.value = true
+  resetGroupFormState()
   selectedCategoryId.value = null
 }
 
@@ -297,10 +306,10 @@ async function updateSelectedCategory(
   mutate: (
     category: ReimbursementConfig['categories'][number]
   ) => ReimbursementConfig['categories'][number]
-) {
-  const config = store.reimbursementConfig ?? (await store.loadReimbursementConfig())
-  if (!config || selectedCategoryId.value === null) return
+): Promise<boolean> {
   try {
+    const config = store.reimbursementConfig ?? (await store.loadReimbursementConfig())
+    if (!config || selectedCategoryId.value === null) return false
     await store.saveReimbursementConfig({
       ...config,
       categories: config.categories.map((category) =>
@@ -308,6 +317,7 @@ async function updateSelectedCategory(
       )
     })
     await store.loadReimbursementTree()
+    return true
   } catch (error) {
     console.error('[ReimbursementView] update custom groups failed', error)
     notifyTransient(
@@ -315,13 +325,14 @@ async function updateSelectedCategory(
       'documents.reimbursement.groupSaveFailed',
       t('settings.documents.reimbursement.groupSaveFailed')
     )
+    return false
   }
 }
 
 async function addGroup() {
   const name = newGroupName.value.trim()
   if (!name || selectedCategoryId.value === null) return
-  await updateSelectedCategory((category) => ({
+  const saved = await updateSelectedCategory((category) => ({
     ...category,
     customGroups: [
       ...category.customGroups,
@@ -332,6 +343,7 @@ async function addGroup() {
       }
     ]
   }))
+  if (!saved) return
   newGroupName.value = ''
   showGroupForm.value = false
 }
