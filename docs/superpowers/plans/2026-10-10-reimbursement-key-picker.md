@@ -77,16 +77,16 @@ describe('ReimbursementKeyPicker', () => {
   it('checking an option emits the appended array; unchecking emits the filtered array', async () => {
     const wrapper = mountPicker()
     await wrapper.get('[data-testid="reimbursement-key-option-invoice"]').setValue(true)
-    expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual(['invoice'])
+    expect(wrapper.emitted('update:modelValue')?.at(-1)?.[0]).toEqual(['invoice'])
     await wrapper.setProps({ modelValue: ['invoice'] })
     await wrapper.get('[data-testid="reimbursement-key-option-invoice"]').setValue(false)
-    expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([])
+    expect(wrapper.emitted('update:modelValue')?.at(-1)?.[0]).toEqual([])
   })
 
   it('the × remove button emits the array without that value', async () => {
     const wrapper = mountPicker({ modelValue: ['meeting_minutes', 'invoice'] })
     await wrapper.get('[data-testid="reimbursement-key-remove-meeting_minutes"]').trigger('click')
-    expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual(['invoice'])
+    expect(wrapper.emitted('update:modelValue')?.at(-1)?.[0]).toEqual(['invoice'])
   })
 
   it('marks selected values missing from options as stale and keeps them removable', () => {
