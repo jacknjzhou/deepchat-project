@@ -314,6 +314,22 @@ describe('ReimbursementView', () => {
     expect((groupedSelect.element as HTMLSelectElement).value).toBe('grp-a')
   })
 
+  it('hides the empty-state hint when custom groups hold entries', async () => {
+    const { pinia, store } = setupStore()
+    vi.spyOn(store, 'loadReimbursementTree').mockResolvedValue()
+    store.reimbursementTree = makeTreeFixture({
+      groupedDocuments: [makeEntry('d-grouped', { groupId: 'grp-a' })]
+    })
+    const wrapper = mountView(pinia)
+    await flushPromises()
+    // Every entry lives in the custom group, so the main empty-state paragraph
+    // must stay hidden while the custom-groups section stays visible.
+    expect(wrapper.find('[data-testid="reimbursement-custom-group-grp-a"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('settings.documents.reimbursement.customGroupsTitle')
+    expect(wrapper.text()).not.toContain('settings.documents.reimbursement.empty')
+    expect(wrapper.text()).not.toContain('settings.documents.reimbursement.loading')
+  })
+
   it('add group saves config with appended customGroup', async () => {
     const { pinia, store } = setupStore()
     vi.spyOn(store, 'loadReimbursementTree').mockResolvedValue()
@@ -358,6 +374,60 @@ describe('ReimbursementView', () => {
     )
     const input = wrapper.get('[data-testid="reimbursement-new-group-name"]')
     expect((input.element as HTMLInputElement).value).toBe('差旅')
+  })
+
+  it('rename group saves config with updated name and closes the input', async () => {
+    const { pinia, store } = setupStore()
+    vi.spyOn(store, 'loadReimbursementTree').mockResolvedValue()
+    const config = makeConfig([{ id: 'grp-a', name: '分组一', sortOrder: 0 }])
+    store.reimbursementConfig = config
+    vi.spyOn(store, 'loadReimbursementConfig').mockResolvedValue(config)
+    vi.spyOn(store, 'saveReimbursementConfig').mockResolvedValue(config)
+    store.reimbursementTree = makeTreeFixture({
+      ungroupedDocuments: [makeEntry('d1')],
+      customGroups: [{ group: { id: 'grp-a', name: '分组一', sortOrder: 0 }, buckets: [] }]
+    })
+    const wrapper = mountView(pinia)
+    await flushPromises()
+    await wrapper.get('[data-testid="reimbursement-group-rename-grp-a"]').trigger('click')
+    const input = wrapper.get('[data-testid="reimbursement-group-name-input"]')
+    await input.setValue('  新分组名  ')
+    await input.trigger('keydown.enter')
+    await flushPromises()
+    expect(store.saveReimbursementConfig).toHaveBeenCalledTimes(1)
+    const sent = vi.mocked(store.saveReimbursementConfig).mock.calls[0]![0]
+    const category = sent.categories.find((item) => item.id === 'cat-a')
+    expect(category?.customGroups).toHaveLength(1)
+    expect(category?.customGroups[0]?.name).toBe('新分组名')
+    expect(wrapper.find('[data-testid="reimbursement-group-name-input"]').exists()).toBe(false)
+  })
+
+  it('keeps the rename input open when saving fails', async () => {
+    const { pinia, store } = setupStore()
+    vi.spyOn(store, 'loadReimbursementTree').mockResolvedValue()
+    const config = makeConfig([{ id: 'grp-a', name: '分组一', sortOrder: 0 }])
+    store.reimbursementConfig = config
+    vi.spyOn(store, 'loadReimbursementConfig').mockResolvedValue(config)
+    vi.spyOn(store, 'saveReimbursementConfig').mockRejectedValue(new Error('boom'))
+    const notifySpy = vi
+      .spyOn(rendererNotificationManager, 'notify')
+      .mockImplementation(() => undefined)
+    store.reimbursementTree = makeTreeFixture({
+      ungroupedDocuments: [makeEntry('d1')],
+      customGroups: [{ group: { id: 'grp-a', name: '分组一', sortOrder: 0 }, buckets: [] }]
+    })
+    const wrapper = mountView(pinia)
+    await flushPromises()
+    await wrapper.get('[data-testid="reimbursement-group-rename-grp-a"]').trigger('click')
+    const input = wrapper.get('[data-testid="reimbursement-group-name-input"]')
+    await input.setValue('新分组名')
+    await input.trigger('keydown.enter')
+    await flushPromises()
+    expect(notifySpy).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'error', code: 'documents.reimbursement.groupSaveFailed' })
+    )
+    const stillOpen = wrapper.get('[data-testid="reimbursement-group-name-input"]')
+    expect((stillOpen.element as HTMLInputElement).value).toBe('新分组名')
   })
 
   it('resets the add-group form when switching categories', async () => {

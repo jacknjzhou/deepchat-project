@@ -357,13 +357,15 @@ async function confirmRename() {
   const groupId = editingGroupId.value
   const name = editingGroupName.value.trim()
   if (!groupId || !name) return
-  await updateSelectedCategory((category) => ({
+  const saved = await updateSelectedCategory((category) => ({
     ...category,
     customGroups: category.customGroups.map((group) =>
       group.id === groupId ? { ...group, name } : group
     )
   }))
+  if (!saved) return
   editingGroupId.value = null
+  editingGroupName.value = ''
 }
 
 async function removeGroup(groupId: string) {
