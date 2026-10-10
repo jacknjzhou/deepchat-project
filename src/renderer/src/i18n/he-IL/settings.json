@@ -2857,7 +2857,7 @@
       "loadFailed": "טעינת הנתונים נכשלה",
       "retry": "נסה שוב",
       "staleKey": "מיושן",
-      "noTemplatesHint": "יש להגדיר תבניות בזיהוי החכם תחילה",
+      "noTemplatesHint": "יש להגדיר תבניות בזיהוי מסמכים תחילה",
       "templatesLoadFailed": "טעינת התבניות נכשלה",
       "removeKey": "הסר {key}",
       "moveFailed": "שינוי הסיווג נכשל",

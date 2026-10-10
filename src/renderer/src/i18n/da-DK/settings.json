@@ -2857,7 +2857,7 @@
       "loadFailed": "Indlæsning mislykkedes",
       "retry": "Prøv igen",
       "staleKey": "Forældet",
-      "noTemplatesHint": "Konfigurer skabeloner i Smart genkendelse først",
+      "noTemplatesHint": "Konfigurer skabeloner i Dokumentgenkendelse først",
       "templatesLoadFailed": "Kunne ikke indlæse skabeloner",
       "removeKey": "Fjern {key}",
       "moveFailed": "Justering af kategori mislykkedes",

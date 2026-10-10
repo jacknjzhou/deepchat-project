@@ -350,7 +350,7 @@
       "loadFailed": "Caricamento non riuscito",
       "retry": "Riprova",
       "staleKey": "Obsoleto",
-      "noTemplatesHint": "Configura prima i modelli nel riconoscimento intelligente",
+      "noTemplatesHint": "Configura prima i modelli nel Riconoscimento documenti",
       "templatesLoadFailed": "Caricamento dei modelli non riuscito",
       "removeKey": "Rimuovi {key}",
       "moveFailed": "Modifica categoria non riuscita",

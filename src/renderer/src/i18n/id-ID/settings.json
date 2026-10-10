@@ -350,7 +350,7 @@
       "loadFailed": "Gagal memuat data",
       "retry": "Coba lagi",
       "staleKey": "Kedaluwarsa",
-      "noTemplatesHint": "Konfigurasikan templat di Pengenalan Cerdas terlebih dahulu",
+      "noTemplatesHint": "Konfigurasikan templat di Pengenalan Dokumen terlebih dahulu",
       "templatesLoadFailed": "Gagal memuat templat",
       "removeKey": "Hapus {key}",
       "moveFailed": "Gagal menyesuaikan kategori",

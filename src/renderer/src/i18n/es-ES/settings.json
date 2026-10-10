@@ -350,7 +350,7 @@
       "loadFailed": "Error al cargar",
       "retry": "Reintentar",
       "staleKey": "Obsoleto",
-      "noTemplatesHint": "Configure primero plantillas en el reconocimiento inteligente",
+      "noTemplatesHint": "Configure primero plantillas en el Reconocimiento de documentos",
       "templatesLoadFailed": "Error al cargar las plantillas",
       "removeKey": "Eliminar {key}",
       "moveFailed": "Error al ajustar la categoría",

@@ -350,7 +350,7 @@
       "loadFailed": "报销整理数据加载失败",
       "retry": "重试",
       "staleKey": "已失效",
-      "noTemplatesHint": "请先在「智能信息识别」中配置模板",
+      "noTemplatesHint": "请先在「智能信息提取」中配置模板",
       "templatesLoadFailed": "模板加载失败",
       "removeKey": "移除 {key}",
       "moveFailed": "调整归类失败",

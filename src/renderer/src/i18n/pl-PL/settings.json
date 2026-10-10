@@ -350,7 +350,7 @@
       "loadFailed": "Nie udało się załadować danych",
       "retry": "Ponów",
       "staleKey": "Nieaktualny",
-      "noTemplatesHint": "Najpierw skonfiguruj szablony w inteligentnym rozpoznawaniu",
+      "noTemplatesHint": "Najpierw skonfiguruj szablony w Rozpoznawaniu dokumentów",
       "templatesLoadFailed": "Nie udało się załadować szablonów",
       "removeKey": "Usuń {key}",
       "moveFailed": "Nie udało się zmienić kategorii",

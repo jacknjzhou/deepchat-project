@@ -350,7 +350,7 @@
       "loadFailed": "Failed to load",
       "retry": "Retry",
       "staleKey": "Outdated",
-      "noTemplatesHint": "Configure templates in Smart Document Recognition first.",
+      "noTemplatesHint": "Configure templates in Document Recognition first.",
       "templatesLoadFailed": "Failed to load templates.",
       "removeKey": "Remove {key}",
       "moveFailed": "Failed to adjust category",

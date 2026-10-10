@@ -350,7 +350,7 @@
       "loadFailed": "Tải dữ liệu hoàn ứng thất bại",
       "retry": "Thử lại",
       "staleKey": "Đã lỗi thời",
-      "noTemplatesHint": "Hãy cấu hình mẫu trong Nhận diện thông tin trước",
+      "noTemplatesHint": "Hãy cấu hình mẫu trong Nhận dạng chứng từ trước",
       "templatesLoadFailed": "Tải mẫu thất bại",
       "removeKey": "Xóa {key}",
       "moveFailed": "Điều chỉnh phân loại thất bại",

@@ -2857,7 +2857,7 @@
       "loadFailed": "경비 정리 데이터를 불러오지 못했습니다",
       "retry": "다시 시도",
       "staleKey": "만료됨",
-      "noTemplatesHint": "먼저 「스마트 정보 인식」에서 템플릿을 설정하세요",
+      "noTemplatesHint": "먼저 「문서 인식」에서 템플릿을 설정하세요",
       "templatesLoadFailed": "템플릿 로드에 실패했습니다",
       "removeKey": "{key} 제거",
       "moveFailed": "분류 변경 실패",

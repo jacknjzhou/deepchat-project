@@ -350,7 +350,7 @@
       "loadFailed": "Yükleme başarısız",
       "retry": "Yeniden dene",
       "staleKey": "Eski",
-      "noTemplatesHint": "Önce Akıllı Bilgi Tanıma'da şablon yapılandırın",
+      "noTemplatesHint": "Önce Belge tanıma'da şablon yapılandırın",
       "templatesLoadFailed": "Şablonlar yüklenemedi",
       "removeKey": "{key} kaldır",
       "moveFailed": "Kategori ayarlama başarısız",

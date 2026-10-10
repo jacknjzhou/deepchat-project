@@ -350,7 +350,7 @@
       "loadFailed": "Gagal memuatkan data",
       "retry": "Cuba semula",
       "staleKey": "Lapuk",
-      "noTemplatesHint": "Konfigurasikan templat dalam Pengecaman Pintar dahulu",
+      "noTemplatesHint": "Konfigurasikan templat dalam Pengecaman Dokumen dahulu",
       "templatesLoadFailed": "Gagal memuatkan templat",
       "removeKey": "Buang {key}",
       "moveFailed": "Gagal melaraskan kategori",

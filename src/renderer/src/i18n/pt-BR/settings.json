@@ -2857,7 +2857,7 @@
       "loadFailed": "Falha ao carregar",
       "retry": "Tentar novamente",
       "staleKey": "Obsoleto",
-      "noTemplatesHint": "Configure primeiro modelos no reconhecimento inteligente",
+      "noTemplatesHint": "Configure primeiro modelos no Reconhecimento de documentos",
       "templatesLoadFailed": "Falha ao carregar os modelos",
       "removeKey": "Remover {key}",
       "moveFailed": "Falha ao ajustar categoria",

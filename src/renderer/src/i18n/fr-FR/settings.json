@@ -2857,7 +2857,7 @@
       "loadFailed": "Échec du chargement",
       "retry": "Réessayer",
       "staleKey": "Obsolète",
-      "noTemplatesHint": "Configurez d'abord un modèle dans la reconnaissance intelligente",
+      "noTemplatesHint": "Configurez d'abord un modèle dans la Reconnaissance de documents",
       "templatesLoadFailed": "Échec du chargement des modèles",
       "removeKey": "Supprimer {key}",
       "moveFailed": "Échec du changement de catégorie",

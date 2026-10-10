@@ -350,7 +350,7 @@
       "loadFailed": "Laden fehlgeschlagen",
       "retry": "Erneut versuchen",
       "staleKey": "Veraltet",
-      "noTemplatesHint": "Bitte zuerst Vorlagen in der intelligenten Erkennung konfigurieren",
+      "noTemplatesHint": "Bitte zuerst Vorlagen in der Belegerkennung konfigurieren",
       "templatesLoadFailed": "Vorlagen konnten nicht geladen werden",
       "removeKey": "{key} entfernen",
       "moveFailed": "Kategorieänderung fehlgeschlagen",

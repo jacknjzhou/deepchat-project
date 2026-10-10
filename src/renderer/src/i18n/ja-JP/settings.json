@@ -2857,7 +2857,7 @@
       "loadFailed": "経費整理データの読み込みに失敗しました",
       "retry": "再試行",
       "staleKey": "期限切れ",
-      "noTemplatesHint": "先に「スマート情報認識」でテンプレートを設定してください",
+      "noTemplatesHint": "先に「帳票認識」でテンプレートを設定してください",
       "templatesLoadFailed": "テンプレートの読み込みに失敗しました",
       "removeKey": "{key} を削除",
       "moveFailed": "分類の変更に失敗しました",

@@ -2857,7 +2857,7 @@
       "loadFailed": "報銷整理資料載入失敗",
       "retry": "重試",
       "staleKey": "已失效",
-      "noTemplatesHint": "請先在「智慧資訊辨識」中設定範本",
+      "noTemplatesHint": "請先在「單據識別」中設定範本",
       "templatesLoadFailed": "範本載入失敗",
       "removeKey": "移除 {key}",
       "moveFailed": "調整歸類失敗",
