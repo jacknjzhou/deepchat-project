@@ -680,6 +680,10 @@ git commit -m "feat(documents): refresh tree on task completion"
 
 各 locale 文件在 `"reimbursement"` 对象内 `"retry"` 键后插入：
 
+Task 2 质量审查补充（随本任务一并处理）：
+- **删除孤儿键 `materialLinkedPlaceholder`**：其唯一消费者（材料 linked Input）已在 Task 2 被替换，20 locale 一并移除。
+- **补 notice='empty' 用例**：`ReimbursementConfigPage.test.ts` 加一条 `listTemplates` 返回 `{ templates: [] }` 时显示空态提示（`[data-testid="reimbursement-picker-empty"]` 存在）且不显示错误区的用例。
+
 | locale | staleKey | noTemplatesHint | templatesLoadFailed |
 | --- | --- | --- | --- |
 | en-US | Outdated | Configure templates in Smart Document Recognition first. | Failed to load templates. |
@@ -737,3 +741,11 @@ git commit -m "feat(documents): i18n for reimbursement picker"
 - Spec 覆盖：组件（Task 1）、4 处接线 + 空态/失败态（Task 2）、自动刷新（Task 3）、i18n 3 键 20 locale（Task 4）、验收 4 条分别由 Task 2 用例（1/2）、Task 3 用例（3）、Task 4 Step 2（4）覆盖。无缺口。
 - 占位符扫描：无 TBD/TODO；所有代码块完整。
 - 类型一致性：`ReimbursementKeyOption` 在 Task 1 定义、Task 2 import 使用；testid 约定在 Task 1 开头统一声明并在 Task 2/复用一致；`handleTaskUpdated`/`loadReimbursementTree`/`reimbursementTree` 名称与 store 现状一致（已核对源码 219/325/348 行）。
+
+## 实施记录（as-built）
+
+- **Task 1**（`00e8c160` + `88260589`，spec ✅ + 质量 ✅）：计划勘误 `be8e0f02`——VTU emitted 断言需 `.at(-1)?.[0]` 取参（计划原文多包一层）；提交信息精简至 41 字符；质量审查修复（`88260589`）：移除按钮 aria-label 改 `removeKey` 插值（计划同步 `ff566d1f`，第 4 个 i18n 键随 Task 4 落地）、删除死代码 `dcBadgeStub`。其余照计划。
+- **Task 2**（`1034a6fa`，spec ✅ + 质量 ✅）：4 处 picker 追加 `@retry="loadTemplatesOnce"`（计划代码块遗漏，retry 用例要求，属 spec §2 既定行为）；`templatesLoadError` 判定改为 `!store.templates.length && store.loadError !== null`（store `loadTemplates` 内部吞错不 rethrow，计划的 try/catch 捕不到；保留 try/catch 防御）；stale 用例失效键 taxi→trip_date（计划 fixture 笔误，cat-b 材料实为 `['trip_date']`）；长选择器提取 `option()`/`remove()` 辅助（Oxfmt 100 列）；既有用例 `flags invalid type keys...` 整替为「invalid saved keys still trigger validation」。质量审查通过，无阻塞；两条跟进项（删孤儿键、补 empty 用例）移交 Task 4。
+- **Task 3**（`52e691cf` + `23f86e31`，spec ✅ + 质量 ✅）：实现照计划；质量审查修复（`23f86e31`）：树刷新改 300ms trailing 防抖（新增 `scheduleReimbursementRefresh`，镜像 `scheduleArchiveRefresh`，批量完成只刷一次）、注释改 "Once loaded, keep the reimbursement tree fresh for the session."、测试改假时钟（双事件→`advanceTimersByTimeAsync(300)`→断言仅 1 次刷新）+ `defaultApi` 补 `stats`/`listDocuments`。
+- **Task 4**（`3b80d45c` + `830ebafc`，spec ✅ + 质量 ✅）：20 locale × 4 键（`removeKey` 为 Task 1 质量审查补充）+ 删除孤儿键 `materialLinkedPlaceholder` + 补 notice='empty' 用例。质量审查修复（`830ebafc`）：`noTemplatesHint` 功能名对齐各 locale `routes.json` 的 `settings-documents` 既有命名（20 locale 全量替换，pl-PL 为方位格变格）；zh-HK「範本」→「模板」对齐文件既有词汇。
+- **回归终态**：`pnpm run i18n` 通过（20 locales / 4742 contracts）；`pnpm typecheck` 0 错误；定点测试 31 例全绿（KeyPicker 6 + ConfigPage 12 + store 7 + ReimbursementView 6）。
