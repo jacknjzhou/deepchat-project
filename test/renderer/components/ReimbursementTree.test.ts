@@ -12,7 +12,11 @@ const dcBadgeStub = defineComponent({
 // jsdom has no layout: render all items and forward the scoped slot.
 const recycleScrollerStub = defineComponent({
   name: 'RecycleScrollerStub',
-  props: { items: { type: Array, default: () => [] }, itemSize: { type: null }, minItemSize: { type: Number } },
+  props: {
+    items: { type: Array, default: () => [] },
+    itemSize: { type: null },
+    minItemSize: { type: Number }
+  },
   template: `
     <div>
       <div v-for="(item, index) in items" :key="item.key">
@@ -174,21 +178,18 @@ describe('ReimbursementTree', () => {
     const wrapper = mountTree(props)
     expect(wrapper.text()).toContain('settings.documents.reimbursement.unknownPerson')
     expect(wrapper.text()).toContain('settings.documents.reimbursement.unknownPeriod')
+    expect(wrapper.find('[data-testid="reimbursement-toggle-cat:cat-a:p:unknown"]').exists()).toBe(
+      true
+    )
     expect(
-      wrapper.find('[data-testid="reimbursement-toggle-cat:cat-a:p:unknown"]').exists()
-    ).toBe(true)
-    expect(
-      wrapper
-        .find('[data-testid="reimbursement-toggle-cat:cat-a:p:unknown:b:unknown"]')
-        .exists()
+      wrapper.find('[data-testid="reimbursement-toggle-cat:cat-a:p:unknown:b:unknown"]').exists()
     ).toBe(true)
   })
 
   it('renders count badges and hides material badge without linked type keys', async () => {
     const wrapper = mountTree()
-    const categoryHeader = wrapper.get(
-      '[data-testid="reimbursement-toggle-cat:cat-a"]'
-    ).element.parentElement
+    const categoryHeader = wrapper.get('[data-testid="reimbursement-toggle-cat:cat-a"]').element
+      .parentElement
     expect(categoryHeader?.textContent).toContain('1')
 
     const props = makeProps()
@@ -197,9 +198,7 @@ describe('ReimbursementTree', () => {
     await materialsWrapper.get('[data-testid="reimbursement-materials-cat-a"]').trigger('click')
     expect(materialsWrapper.text()).toContain('收据')
     // Empty linkedTypeKeys hides the materialCount badge; the i18n mock renders keys.
-    expect(materialsWrapper.text()).not.toContain(
-      'settings.documents.reimbursement.materialCount'
-    )
+    expect(materialsWrapper.text()).not.toContain('settings.documents.reimbursement.materialCount')
   })
 
   it('hides the amount for entries without one', () => {
