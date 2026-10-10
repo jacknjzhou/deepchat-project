@@ -348,6 +348,7 @@ function addCategory() {
     name: '',
     requiredMaterials: [],
     linkedTypeKeys: [],
+    customGroups: [],
     sortOrder: draft.categories.length + 1
   })
 }

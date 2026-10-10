@@ -405,7 +405,9 @@ const CATALOG_DEFINITIONS: CatalogDefinition[] = [
     name: 'documents',
     createTable: (db) => new DocumentsTable(db),
     repairableColumns: {
-      reimbursement_override: 'ALTER TABLE documents ADD COLUMN reimbursement_override TEXT;'
+      reimbursement_override: 'ALTER TABLE documents ADD COLUMN reimbursement_override TEXT;',
+      reimbursement_group_override:
+        'ALTER TABLE documents ADD COLUMN reimbursement_group_override TEXT;'
     }
   },
   {

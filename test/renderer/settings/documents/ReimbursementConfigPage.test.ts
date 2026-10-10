@@ -48,12 +48,20 @@ const dcButtonStub = defineComponent({
 const minimalConfig: ReimbursementConfig = {
   version: 1,
   categories: [
-    { id: 'cat-a', name: '会议费', requiredMaterials: [], linkedTypeKeys: [], sortOrder: 1 },
+    {
+      id: 'cat-a',
+      name: '会议费',
+      requiredMaterials: [],
+      linkedTypeKeys: [],
+      customGroups: [],
+      sortOrder: 1
+    },
     {
       id: 'cat-b',
       name: '交通费',
       requiredMaterials: [{ name: '出租车票', linkedTypeKeys: ['trip_date'] }],
       linkedTypeKeys: ['taxi'],
+      customGroups: [],
       sortOrder: 2
     }
   ],
@@ -147,9 +155,30 @@ describe('ReimbursementConfigPage', () => {
     const config: ReimbursementConfig = {
       version: 1,
       categories: [
-        { id: 'cat-a', name: '会议费', requiredMaterials: [], linkedTypeKeys: [], sortOrder: 1 },
-        { id: 'cat-b', name: '交通费', requiredMaterials: [], linkedTypeKeys: [], sortOrder: 2 },
-        { id: 'cat-c', name: '住宿费', requiredMaterials: [], linkedTypeKeys: [], sortOrder: 3 }
+        {
+          id: 'cat-a',
+          name: '会议费',
+          requiredMaterials: [],
+          linkedTypeKeys: [],
+          customGroups: [],
+          sortOrder: 1
+        },
+        {
+          id: 'cat-b',
+          name: '交通费',
+          requiredMaterials: [],
+          linkedTypeKeys: [],
+          customGroups: [],
+          sortOrder: 2
+        },
+        {
+          id: 'cat-c',
+          name: '住宿费',
+          requiredMaterials: [],
+          linkedTypeKeys: [],
+          customGroups: [],
+          sortOrder: 3
+        }
       ],
       personFieldKeys: [],
       dateFieldKeys: [],
@@ -186,6 +215,43 @@ describe('ReimbursementConfigPage', () => {
     expect(notifySpy).toHaveBeenCalledWith(
       expect.objectContaining({ kind: 'success', code: 'documents.reimbursement.configSaved' })
     )
+  })
+
+  it('preserves category customGroups through load and save', async () => {
+    const config: ReimbursementConfig = {
+      version: 1,
+      categories: [
+        {
+          id: 'cat-a',
+          name: '会议费',
+          requiredMaterials: [],
+          linkedTypeKeys: [],
+          customGroups: [
+            { id: 'grp-1', name: '项目组', sortOrder: 1 },
+            { id: 'grp-2', name: '后勤组', sortOrder: 2 }
+          ],
+          sortOrder: 1
+        }
+      ],
+      personFieldKeys: [],
+      dateFieldKeys: [],
+      amountFieldKeys: [],
+      dateGrouping: 'month'
+    }
+    fakeClient.reimbursementGetConfig.mockResolvedValue({ config })
+    fakeClient.reimbursementSetConfig.mockImplementation(async (sent: ReimbursementConfig) => ({
+      config: sent
+    }))
+    const { wrapper } = await mountPage()
+    await wrapper.get('[data-testid="reimbursement-config-save"]').trigger('click')
+    await flushPromises()
+    expect(fakeClient.reimbursementSetConfig).toHaveBeenCalledTimes(1)
+    const sent = fakeClient.reimbursementSetConfig.mock.calls[0][0] as ReimbursementConfig
+    // 保存 payload 是 ...category 展开，customGroups 必须原样保留
+    expect(sent.categories[0].customGroups).toEqual([
+      { id: 'grp-1', name: '项目组', sortOrder: 1 },
+      { id: 'grp-2', name: '后勤组', sortOrder: 2 }
+    ])
   })
 
   it('notifies an error when saving fails', async () => {

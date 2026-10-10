@@ -328,17 +328,32 @@ export const reimbursementMaterialSchema = z.object({
   linkedTypeKeys: z.array(reimbursementTypeKeySchema).max(50)
 })
 
+export const reimbursementCustomGroupSchema = z.object({
+  id: z.string().min(1).max(64),
+  name: z.string().min(1).max(50),
+  sortOrder: z.number().int().nonnegative()
+})
+
 export const reimbursementCategorySchema = z
   .object({
     id: z.string().min(1).max(64),
     name: z.string().min(1).max(50),
     requiredMaterials: z.array(reimbursementMaterialSchema).max(50),
     linkedTypeKeys: z.array(reimbursementTypeKeySchema).max(50),
+    // 存量业务配置 JSON 无该字段时可解析：zod input 可缺省、output 恒为数组
+    customGroups: z.array(reimbursementCustomGroupSchema).max(50).default([]),
     sortOrder: z.number().int().nonnegative()
   })
   .refine((category) => category.id !== REIMBURSEMENT_UNASSIGNED, {
     message: "category id 'unassigned' is reserved"
   })
+  .refine(
+    (category) => {
+      const ids = category.customGroups.map((group) => group.id)
+      return new Set(ids).size === ids.length
+    },
+    { message: 'duplicate custom group id' }
+  )
 
 export const reimbursementConfigSchema = z
   .object({
@@ -369,7 +384,9 @@ export const reimbursementDocumentEntrySchema = z.object({
   amountUncertain: z.boolean(),
   uncertainCount: z.number().int().nonnegative(),
   fileNames: z.array(z.string()),
-  isOverride: z.boolean()
+  isOverride: z.boolean(),
+  // 条目当前归属的自定义分组 id，未分组为 null；buildReimbursementTree 产出该字段前缺省为 null
+  groupId: z.string().min(1).nullable().default(null)
 })
 
 export const reimbursementBucketSchema = z.object({
@@ -390,7 +407,17 @@ export const reimbursementCategoryNodeSchema = z.object({
   category: reimbursementCategorySchema,
   total: z.number().int().nonnegative(),
   materials: z.array(reimbursementMaterialStatSchema),
-  groups: z.array(reimbursementGroupSchema)
+  groups: z.array(reimbursementGroupSchema),
+  // 与 category.customGroups 同因缺省：buildReimbursementTree 尚未产出该字段前保持可解析
+  customGroups: z
+    .array(
+      z.object({
+        group: reimbursementCustomGroupSchema,
+        buckets: z.array(reimbursementBucketSchema)
+      })
+    )
+    .max(50)
+    .default([])
 })
 
 export const documentsReimbursementGetConfigRoute = defineRouteContract({
@@ -432,6 +459,16 @@ export const documentsReimbursementSetOverrideRoute = defineRouteContract({
     documentId: z.string().min(1),
     // category id | 'unassigned'（强制未分类）| null（清除覆盖，恢复自动归类）
     categoryId: z.string().min(1).nullable()
+  }),
+  output: z.object({ document: documentRecordSchema.nullable() })
+})
+
+export const documentsReimbursementSetGroupOverrideRoute = defineRouteContract({
+  name: 'documents.reimbursement.setGroupOverride',
+  input: z.object({
+    documentId: z.string().min(1),
+    // 自定义分组 id | null（清除分组，条目回到 人员→年月 列表）
+    groupId: z.string().min(1).nullable()
   }),
   output: z.object({ document: documentRecordSchema.nullable() })
 })

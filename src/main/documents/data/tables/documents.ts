@@ -12,6 +12,7 @@ export interface DocumentRow {
   source: string
   session_id: string | null
   reimbursement_override: string | null
+  reimbursement_group_override: string | null
   status: string
   created_at: number
   updated_at: number
@@ -68,6 +69,7 @@ export class DocumentsTable extends BaseTable {
         source TEXT NOT NULL CHECK(source IN ('chat', 'manual')),
         session_id TEXT,
         reimbursement_override TEXT,
+        reimbursement_group_override TEXT,
         status TEXT NOT NULL DEFAULT 'draft' CHECK(status IN ('draft', 'confirmed')),
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL
@@ -204,9 +206,21 @@ export class DocumentsTable extends BaseTable {
   setReimbursementOverride(id: string, value: string | null): DocumentRow | undefined {
     const existing = this.get(id)
     if (!existing) return undefined
+    // 调整类别 = 分组从属于旧类别，必须复位
     this.db
-      .prepare('UPDATE documents SET reimbursement_override = ?, updated_at = ? WHERE id = ?')
+      .prepare(
+        'UPDATE documents SET reimbursement_override = ?, reimbursement_group_override = NULL, updated_at = ? WHERE id = ?'
+      )
       .run(value, Date.now(), id)
+    return this.get(id)
+  }
+
+  setReimbursementGroupOverride(id: string, groupId: string | null): DocumentRow | undefined {
+    const existing = this.get(id)
+    if (!existing) return undefined
+    this.db
+      .prepare('UPDATE documents SET reimbursement_group_override = ?, updated_at = ? WHERE id = ?')
+      .run(groupId, Date.now(), id)
     return this.get(id)
   }
 

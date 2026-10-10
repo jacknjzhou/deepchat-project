@@ -37,6 +37,7 @@ const validConfig = {
       name: '会议费',
       requiredMaterials: [{ name: '发票', linkedTypeKeys: ['invoice_general'] }],
       linkedTypeKeys: ['meeting_minutes'],
+      customGroups: [],
       sortOrder: 1
     }
   ],

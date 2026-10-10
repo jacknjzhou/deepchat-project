@@ -72,6 +72,8 @@ export interface DocumentRecord {
   status: DocumentStatus
   /** 手动报销归类：null=自动；'unassigned'=强制未分类；其余=类别 id */
   reimbursementOverride: string | null
+  /** 手动报销细分项分组：null=未分组；其余=所属类别下自定义分组 id */
+  reimbursementGroupOverride: string | null
   createdAt: number
   updatedAt: number
 }

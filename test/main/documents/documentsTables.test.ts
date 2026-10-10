@@ -313,6 +313,29 @@ describeIfSqlite('DocumentsTable', () => {
     expect(updated?.updated_at).toBe(40)
     db.close()
   })
+
+  it('setReimbursementOverride clears the group override', () => {
+    const db = makeDb()
+    const table = new DocumentsTableCtor(db)
+    const row = table.insert({
+      templateId: 't1',
+      typeKey: 'contract',
+      templateSnapshot: {},
+      fields: {},
+      fileUris: [],
+      source: 'manual',
+      sessionId: null,
+      status: 'draft',
+      now: 1
+    })
+    const grouped = table.setReimbursementGroupOverride(row.id, 'grp-a')
+    expect(grouped?.reimbursement_group_override).toBe('grp-a')
+    // 调整类别 = 分组从属于旧类别，必须复位
+    const recategorized = table.setReimbursementOverride(row.id, 'cat-other')
+    expect(recategorized?.reimbursement_override).toBe('cat-other')
+    expect(recategorized?.reimbursement_group_override).toBeNull()
+    db.close()
+  })
 })
 
 describeIfSqlite('documentsTable count and stats', () => {
