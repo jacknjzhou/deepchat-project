@@ -1,4 +1,6 @@
 import type { DocumentFieldEntry, DocumentRecord } from '@shared/documents'
+import type { ReimbursementConfig } from '@shared/contracts/routes'
+import { REIMBURSEMENT_UNASSIGNED } from '@shared/documents'
 
 const MONEY_FIELD_RE = /amount|total|tax|price|金额|合计|税|价格|价税/i
 
@@ -211,4 +213,40 @@ export function parseFieldEditState(
     return { ok: false, error: 'json' }
   }
   return { ok: true, value: text }
+}
+
+// Renderer-side mirror of the main process' effective category/group resolution
+// (src/main/documents/reimbursement.ts), kept free of main-process imports so
+// the detail dialog can derive optimistic state from an updated record.
+export function resolveEffectiveReimbursement(
+  document: DocumentRecord,
+  config: ReimbursementConfig | null
+): { categoryId: string | null; groupId: string | null } {
+  if (config === null) {
+    return { categoryId: null, groupId: null }
+  }
+  const override = document.reimbursementOverride
+  let categoryId: string | null = null
+  if (override === REIMBURSEMENT_UNASSIGNED) {
+    categoryId = null
+  } else if (override !== null && config.categories.some((c) => c.id === override)) {
+    categoryId = override
+  } else {
+    categoryId =
+      config.categories.find((category) => category.linkedTypeKeys.includes(document.typeKey))
+        ?.id ?? null
+  }
+  const category =
+    categoryId === null
+      ? null
+      : (config.categories.find((candidate) => candidate.id === categoryId) ?? null)
+  const requestedGroup = document.reimbursementGroupOverride
+  // Stale group ids (group removed from the category) degrade to ungrouped.
+  const groupId =
+    category !== null &&
+    requestedGroup !== null &&
+    category.customGroups.some((group) => group.id === requestedGroup)
+      ? requestedGroup
+      : null
+  return { categoryId, groupId }
 }

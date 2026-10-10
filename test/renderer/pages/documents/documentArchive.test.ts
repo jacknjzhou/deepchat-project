@@ -7,9 +7,11 @@ import {
   formatDisplayValue,
   formatFieldValue,
   orderedSnapshotFields,
-  parseFieldEditState
+  parseFieldEditState,
+  resolveEffectiveReimbursement
 } from '@/pages/documents/documentArchive'
-import type { DocumentRecord } from '@shared/documents'
+import { REIMBURSEMENT_UNASSIGNED, type DocumentRecord } from '@shared/documents'
+import type { ReimbursementConfig } from '@shared/contracts/routes'
 
 const field = (key: string, label: string, order: number) => ({
   key,
@@ -48,6 +50,8 @@ const record = (overrides: Partial<DocumentRecord> = {}): DocumentRecord => ({
   source: 'manual',
   sessionId: null,
   status: 'draft',
+  reimbursementOverride: null,
+  reimbursementGroupOverride: null,
   createdAt: 1,
   updatedAt: 1,
   ...overrides
@@ -215,5 +219,94 @@ describe('buildFieldEditStates / parseFieldEditState', () => {
     const enumState = { ...states[0], valueType: 'enum' as const, enumOptions: ['甲', '乙'] }
     expect(parseFieldEditState({ ...enumState, raw: '丙' })).toEqual({ ok: false, error: 'json' })
     expect(parseFieldEditState({ ...enumState, raw: '' })).toEqual({ ok: true, value: null })
+  })
+})
+
+describe('resolveEffectiveReimbursement', () => {
+  const group = (id: string) => ({ id, name: `分组-${id}`, sortOrder: 0 })
+  const category = (
+    id: string,
+    overrides: Partial<ReimbursementConfig['categories'][number]> = {}
+  ) => ({
+    id,
+    name: `类别-${id}`,
+    requiredMaterials: [],
+    linkedTypeKeys: [],
+    customGroups: [],
+    sortOrder: 0,
+    ...overrides
+  })
+  const makeConfig = (categories: ReimbursementConfig['categories']): ReimbursementConfig => ({
+    version: 1,
+    categories,
+    personFieldKeys: ['buyer_name'],
+    dateFieldKeys: ['invoice_date'],
+    amountFieldKeys: ['total_amount'],
+    dateGrouping: 'month'
+  })
+  // cat-a 联动 invoice_special 且带自定义分组 grp-1；cat-b 无联动
+  const linkedConfig = makeConfig([
+    category('cat-a', { linkedTypeKeys: ['invoice_special'], customGroups: [group('grp-1')] }),
+    category('cat-b')
+  ])
+
+  it('config 为 null 返回全 null', () => {
+    expect(resolveEffectiveReimbursement(record(), null)).toEqual({
+      categoryId: null,
+      groupId: null
+    })
+  })
+
+  it("override 'unassigned' 强制未分类，分组一并失效", () => {
+    const document = record({
+      reimbursementOverride: REIMBURSEMENT_UNASSIGNED,
+      reimbursementGroupOverride: 'grp-1'
+    })
+    expect(resolveEffectiveReimbursement(document, linkedConfig)).toEqual({
+      categoryId: null,
+      groupId: null
+    })
+  })
+
+  it('有效 override 直接生效', () => {
+    const document = record({ reimbursementOverride: 'cat-b' })
+    expect(resolveEffectiveReimbursement(document, linkedConfig)).toEqual({
+      categoryId: 'cat-b',
+      groupId: null
+    })
+  })
+
+  it('无 override 时按 typeKey 联动自动解析', () => {
+    expect(resolveEffectiveReimbursement(record(), linkedConfig)).toEqual({
+      categoryId: 'cat-a',
+      groupId: null
+    })
+  })
+
+  it('无联动类别返回 null', () => {
+    const unlinkedConfig = makeConfig([category('cat-b')])
+    expect(resolveEffectiveReimbursement(record(), unlinkedConfig)).toEqual({
+      categoryId: null,
+      groupId: null
+    })
+  })
+
+  it('分组存在于生效类别 customGroups 时返回分组 id', () => {
+    const document = record({ reimbursementOverride: 'cat-a', reimbursementGroupOverride: 'grp-1' })
+    expect(resolveEffectiveReimbursement(document, linkedConfig)).toEqual({
+      categoryId: 'cat-a',
+      groupId: 'grp-1'
+    })
+  })
+
+  it('分组陈旧（不在生效类别 customGroups）时降级为 null', () => {
+    const document = record({
+      reimbursementOverride: 'cat-a',
+      reimbursementGroupOverride: 'grp-stale'
+    })
+    expect(resolveEffectiveReimbursement(document, linkedConfig)).toEqual({
+      categoryId: 'cat-a',
+      groupId: null
+    })
   })
 })
