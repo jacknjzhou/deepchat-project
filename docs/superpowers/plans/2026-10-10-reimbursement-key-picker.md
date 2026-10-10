@@ -136,7 +136,7 @@ Expected: FAIL（组件不存在，import 报错）。
           type="button"
           class="rounded-full p-0.5 hover:bg-accent"
           :data-testid="`reimbursement-key-remove-${item.value}`"
-          :aria-label="item.value"
+          :aria-label="t('settings.documents.reimbursement.removeKey', { key: item.value })"
           @click="remove(item.value)"
         >
           <Icon icon="lucide:x" class="size-3" />
@@ -702,6 +702,8 @@ git commit -m "feat(documents): refresh tree on task completion"
 | da-DK | Forældet | Konfigurer skabeloner i Smart genkendelse først | Kunne ikke indlæse skabeloner |
 | fa-IR | منقضی | ابتدا قالب‌ها را در تشخیص هوشمند پیکربندی کنید | بارگذاری قالب‌ها ناموفق بود |
 | he-IL | מיושן | יש להגדיר תבניות בזיהוי החכם תחילה | טעינת התבניות נכשלה |
+
+质量审查补充第 4 键 `removeKey`（组件移除按钮 aria-label，插在 `templatesLoadFailed` 之后）——en-US `Remove {key}`、zh-CN/zh-TW/zh-HK `移除 {key}`、ja-JP `{key} を削除`、ko-KR `{key} 제거`、de-DE `{key} entfernen`、fr-FR `Supprimer {key}`、es-ES `Eliminar {key}`、pt-BR `Remover {key}`、it-IT `Rimuovi {key}`、ru-RU `Удалить {key}`、pl-PL `Usuń {key}`、tr-TR `{key} kaldır`、vi-VN `Xóa {key}`、id-ID `Hapus {key}`、ms-MY `Buang {key}`、da-DK `Fjern {key}`、fa-IR `حذف {key}`、he-IL `הסר {key}`。即本任务每 locale 共插入 4 键。
 
 - [ ] **Step 2: 校验 i18n + 定点回归**
 
