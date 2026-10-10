@@ -345,8 +345,6 @@
       "unknownPeriod": "Unknown period",
       "autoCategory": "Auto",
       "forceUnassigned": "Force unclassified",
-      "showUnassignedOnly": "Show unclassified only",
-      "treeEmpty": "No document records yet",
       "empty": "No records in this category",
       "loading": "Loading…",
       "loadFailed": "Failed to load",

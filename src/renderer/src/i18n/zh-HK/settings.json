@@ -2852,8 +2852,6 @@
       "unknownPeriod": "未知期間",
       "autoCategory": "自動歸類",
       "forceUnassigned": "強制未分類",
-      "showUnassignedOnly": "只睇未分類",
-      "treeEmpty": "暫無單據記錄",
       "empty": "該類別下暫無單據記錄",
       "loading": "載入中…",
       "loadFailed": "報銷整理資料載入失敗",

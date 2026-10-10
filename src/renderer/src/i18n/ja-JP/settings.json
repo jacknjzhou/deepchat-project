@@ -2852,8 +2852,6 @@
       "unknownPeriod": "不明な期間",
       "autoCategory": "自動分類",
       "forceUnassigned": "強制的に未分類",
-      "showUnassignedOnly": "未分類のみ表示",
-      "treeEmpty": "ドキュメント記録はまだありません",
       "empty": "このカテゴリにはレコードがありません",
       "loading": "読み込み中…",
       "loadFailed": "経費整理データの読み込みに失敗しました",

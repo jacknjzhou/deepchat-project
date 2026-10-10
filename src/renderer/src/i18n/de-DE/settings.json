@@ -345,8 +345,6 @@
       "unknownPeriod": "Unbekannter Zeitraum",
       "autoCategory": "Automatisch",
       "forceUnassigned": "Nicht zugeordnet erzwingen",
-      "showUnassignedOnly": "Nur nicht zugeordnete anzeigen",
-      "treeEmpty": "Keine Belegdatensätze vorhanden",
       "empty": "Keine Einträge in dieser Kategorie",
       "loading": "Wird geladen…",
       "loadFailed": "Laden fehlgeschlagen",

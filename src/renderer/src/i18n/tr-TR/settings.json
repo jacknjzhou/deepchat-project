@@ -345,8 +345,6 @@
       "unknownPeriod": "Bilinmeyen dönem",
       "autoCategory": "Otomatik",
       "forceUnassigned": "Sınıflandırılmamışa zorla",
-      "showUnassignedOnly": "Yalnızca sınıflandırılmamışı göster",
-      "treeEmpty": "Henüz belge kaydı yok",
       "empty": "Bu kategoride kayıt yok",
       "loading": "Yükleniyor…",
       "loadFailed": "Yükleme başarısız",

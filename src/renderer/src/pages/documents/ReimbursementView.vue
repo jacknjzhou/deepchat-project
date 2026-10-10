@@ -1,27 +1,45 @@
 <template>
-  <div class="flex h-full min-h-0 flex-col" data-testid="reimbursement-view">
-    <div class="flex items-center justify-between border-b px-4 py-2">
-      <h2 class="text-base font-medium">
-        {{ t('settings.documents.reimbursement.viewReimbursement') }}
-      </h2>
-      <div class="flex items-center gap-2">
-        <DcButton
-          :variant="showUnassignedOnly ? 'default' : 'outline'"
-          size="sm"
-          :aria-pressed="showUnassignedOnly"
-          data-testid="reimbursement-unassigned-only"
-          @click="showUnassignedOnly = !showUnassignedOnly"
-        >
-          {{ t('settings.documents.reimbursement.showUnassignedOnly') }}
-        </DcButton>
-        <DcButton
-          variant="outline"
-          size="sm"
-          data-testid="reimbursement-manage-categories"
+  <div class="flex h-full min-h-0" data-testid="reimbursement-view">
+    <aside class="w-56 shrink-0 overflow-y-auto border-r p-3">
+      <button
+        v-for="node in store.reimbursementTree?.tree ?? []"
+        :key="node.category.id"
+        class="flex w-full items-center justify-between rounded px-2 py-1.5 text-sm hover:bg-muted"
+        :class="{ 'bg-muted font-medium': selectedCategoryId === node.category.id }"
+        :data-testid="`reimbursement-category-${node.category.id}`"
+        @click="selectCategory(node.category.id)"
+      >
+        <span class="truncate">{{ node.category.name }}</span>
+        <DcBadge variant="outline" class="ml-2">{{ node.total }}</DcBadge>
+      </button>
+      <button
+        class="mt-1 flex w-full items-center justify-between rounded px-2 py-1.5 text-sm hover:bg-muted"
+        :class="{ 'bg-muted font-medium': selectedCategoryId === null }"
+        data-testid="reimbursement-category-unassigned"
+        @click="selectUnassigned"
+      >
+        <span>{{ t('settings.documents.reimbursement.unassigned') }}</span>
+        <DcBadge variant="outline" class="ml-2">{{ unassignedTotal }}</DcBadge>
+      </button>
+      <div class="mt-3 border-t pt-3">
+        <button
+          class="w-full rounded px-2 py-1.5 text-sm text-muted-foreground hover:bg-muted"
           @click="goConfig"
         >
           {{ t('settings.documents.reimbursement.manageCategories') }}
+        </button>
+      </div>
+    </aside>
+    <section class="min-w-0 flex-1 overflow-y-auto p-4">
+      <div v-if="store.reimbursementLoadError" class="flex flex-col items-center gap-3 py-6">
+        <p class="text-sm text-destructive">{{ t(store.reimbursementLoadError) }}</p>
+        <DcButton variant="outline" data-testid="reimbursement-retry" @click="retry">
+          {{ t('settings.documents.reimbursement.retry') }}
         </DcButton>
+      </div>
+
+      <div class="mb-3 flex items-center justify-between">
+        <h2 class="text-base font-medium">{{ selectedName }}</h2>
         <DcButton
           variant="outline"
           size="sm"
@@ -32,80 +50,154 @@
           {{ t('settings.documents.reimbursement.export') }}
         </DcButton>
       </div>
-    </div>
 
-    <div
-      v-if="store.reimbursementLoadError && !hasTreeRows"
-      class="flex flex-col items-center gap-3 py-6"
-    >
-      <p class="text-sm text-destructive">{{ t(store.reimbursementLoadError) }}</p>
-      <DcButton variant="outline" data-testid="reimbursement-retry" @click="retry">
-        {{ t('settings.documents.reimbursement.retry') }}
-      </DcButton>
-    </div>
+      <details v-if="selectedMaterials.length" class="mb-3 rounded border p-2 text-sm">
+        <summary class="cursor-pointer">
+          {{ t('settings.documents.reimbursement.materialsTitle') }}
+        </summary>
+        <ul class="mt-2 space-y-1">
+          <li
+            v-for="material in selectedMaterials"
+            :key="material.name"
+            class="flex items-center justify-between"
+          >
+            <span>{{ material.name }}</span>
+            <DcBadge v-if="material.linkedTypeKeys.length" variant="outline">
+              {{ t('settings.documents.reimbursement.materialCount', { count: material.count }) }}
+            </DcBadge>
+          </li>
+        </ul>
+      </details>
 
-    <template v-else-if="hasTreeRows">
-      <div
-        v-if="store.reimbursementLoadError"
-        class="flex items-center justify-between gap-2 border-b bg-destructive/10 px-4 py-1.5 text-xs text-destructive"
-      >
-        <span>{{ t(store.reimbursementLoadError) }}</span>
-        <DcButton variant="outline" size="sm" data-testid="reimbursement-retry" @click="retry">
-          {{ t('settings.documents.reimbursement.retry') }}
-        </DcButton>
+      <div v-for="group in selectedGroups" :key="group.person ?? '__unknown__'" class="mb-5">
+        <h3 class="mb-2 text-sm font-medium">
+          {{ group.person ?? t('settings.documents.reimbursement.unknownPerson') }}
+        </h3>
+        <div
+          v-for="bucket in group.buckets"
+          :key="bucket.period ?? '__unknown_period__'"
+          class="mb-3"
+        >
+          <div class="mb-1 text-xs text-muted-foreground">
+            {{ bucket.period ?? t('settings.documents.reimbursement.unknownPeriod') }}
+          </div>
+          <div
+            v-for="entry in bucket.documents"
+            :key="entry.id"
+            class="flex items-center gap-2 rounded border px-2 py-1.5 text-sm"
+            :data-testid="`reimbursement-entry-${entry.id}`"
+          >
+            <span class="w-40 shrink-0 truncate">{{ entry.templateName }}</span>
+            <span class="min-w-0 flex-1 truncate text-muted-foreground">
+              {{ entry.fileNames.join('、') }}
+            </span>
+            <span
+              v-if="entry.amount !== null"
+              class="shrink-0 tabular-nums"
+              :class="{ 'text-amber-600': entry.amountUncertain }"
+            >
+              ¥{{ entry.amount }}
+            </span>
+            <select
+              class="shrink-0 rounded border bg-transparent px-1 py-0.5 text-xs"
+              :value="
+                entry.isOverride
+                  ? selectedCategoryId === null
+                    ? '__unassigned__'
+                    : selectedCategoryId
+                  : '__auto__'
+              "
+              @change="onMove(entry.id, ($event.target as HTMLSelectElement).value)"
+            >
+              <option value="__auto__">
+                {{ t('settings.documents.reimbursement.autoCategory') }}
+              </option>
+              <option value="__unassigned__">
+                {{ t('settings.documents.reimbursement.forceUnassigned') }}
+              </option>
+              <option
+                v-for="node in store.reimbursementTree?.tree ?? []"
+                :key="node.category.id"
+                :value="node.category.id"
+              >
+                {{ node.category.name }}
+              </option>
+            </select>
+          </div>
+        </div>
       </div>
-      <ReimbursementTree
-        class="min-h-0 flex-1"
-        :tree="store.reimbursementTree?.tree ?? []"
-        :unassigned="store.reimbursementTree?.unassigned ?? []"
-        :show-unassigned-only="showUnassignedOnly"
-        @move="onMove"
-      />
-    </template>
-
-    <p v-else class="flex-1 py-10 text-center text-sm text-muted-foreground">
-      {{
-        store.reimbursementIsLoading
-          ? t('settings.documents.reimbursement.loading')
-          : t('settings.documents.reimbursement.treeEmpty')
-      }}
-    </p>
+      <p v-if="!selectedGroups.length" class="py-10 text-center text-sm text-muted-foreground">
+        {{
+          store.reimbursementIsLoading
+            ? t('settings.documents.reimbursement.loading')
+            : t('settings.documents.reimbursement.empty')
+        }}
+      </p>
+    </section>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { DcBadge } from '@dc-ui/components/badge'
 import { DcButton } from '@dc-ui/components/button'
 import { rendererNotificationManager } from '@renderer-notifications/rendererNotificationRuntime'
 import { createConfigClient } from '@api/ConfigClient'
 import { REIMBURSEMENT_UNASSIGNED } from '@shared/documents'
 import { useDocumentsStore } from '@/stores/documents'
-import ReimbursementTree from './ReimbursementTree.vue'
 
 const { t } = useI18n()
 const store = useDocumentsStore()
 const configClient = createConfigClient()
 
-const showUnassignedOnly = ref(false)
+const selectedCategoryId = ref<string | null>(null)
+const userSelected = ref(false)
 const exporting = ref(false)
 
-const hasTreeRows = computed(() => {
-  const data = store.reimbursementTree
-  return (
-    !!data &&
-    (data.tree.length > 0 ||
-      data.unassigned.some((group) => group.buckets.some((bucket) => bucket.documents.length > 0)))
-  )
+onMounted(async () => {
+  await store.loadReimbursementTree()
+  // Land on the first category so the main content is visible right away;
+  // a selection made while loading wins, and the unassigned bucket stays
+  // one click away in the aside.
+  if (!userSelected.value) {
+    selectedCategoryId.value = store.reimbursementTree?.tree[0]?.category.id ?? null
+  }
 })
 
-onMounted(() => {
-  void store.loadReimbursementTree()
-})
+function selectCategory(id: string) {
+  userSelected.value = true
+  selectedCategoryId.value = id
+}
+
+function selectUnassigned() {
+  userSelected.value = true
+  selectedCategoryId.value = null
+}
 
 function retry() {
   void store.loadReimbursementTree()
 }
+
+const selectedNode = computed(
+  () =>
+    store.reimbursementTree?.tree.find((node) => node.category.id === selectedCategoryId.value) ??
+    null
+)
+const selectedName = computed(
+  () => selectedNode.value?.category.name ?? t('settings.documents.reimbursement.unassigned')
+)
+const selectedGroups = computed(() =>
+  selectedCategoryId.value === null
+    ? (store.reimbursementTree?.unassigned ?? [])
+    : (selectedNode.value?.groups ?? [])
+)
+const selectedMaterials = computed(() => selectedNode.value?.materials ?? [])
+const unassignedTotal = computed(() =>
+  (store.reimbursementTree?.unassigned ?? []).reduce((sum, group) => {
+    return sum + group.buckets.reduce((total, bucket) => total + bucket.documents.length, 0)
+  }, 0)
+)
 
 function notifyTransient(kind: 'success' | 'error', code: string, title: string) {
   try {
@@ -115,17 +207,19 @@ function notifyTransient(kind: 'success' | 'error', code: string, title: string)
   }
 }
 
-function onMove(documentId: string, value: string) {
+async function onMove(documentId: string, value: string) {
   const categoryId =
     value === '__auto__' ? null : value === '__unassigned__' ? REIMBURSEMENT_UNASSIGNED : value
-  void store.setReimbursementOverride(documentId, categoryId).catch((error: unknown) => {
+  try {
+    await store.setReimbursementOverride(documentId, categoryId)
+  } catch (error) {
     console.error('[ReimbursementView] set override failed', error)
     notifyTransient(
       'error',
       'documents.reimbursement.moveFailed',
       t('settings.documents.reimbursement.moveFailed')
     )
-  })
+  }
 }
 
 function goConfig() {

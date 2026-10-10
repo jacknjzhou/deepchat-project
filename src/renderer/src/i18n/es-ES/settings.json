@@ -345,8 +345,6 @@
       "unknownPeriod": "Período desconocido",
       "autoCategory": "Automático",
       "forceUnassigned": "Forzar sin clasificar",
-      "showUnassignedOnly": "Mostrar solo sin clasificar",
-      "treeEmpty": "Aún no hay registros de documentos",
       "empty": "No hay registros en esta categoría",
       "loading": "Cargando…",
       "loadFailed": "Error al cargar",

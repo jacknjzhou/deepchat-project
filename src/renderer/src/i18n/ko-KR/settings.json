@@ -2852,8 +2852,6 @@
       "unknownPeriod": "알 수 없는 기간",
       "autoCategory": "자동 분류",
       "forceUnassigned": "강제 미분류",
-      "showUnassignedOnly": "미분류만 보기",
-      "treeEmpty": "문서 기록이 아직 없습니다",
       "empty": "이 카테고리에는 기록이 없습니다",
       "loading": "불러오는 중…",
       "loadFailed": "경비 정리 데이터를 불러오지 못했습니다",
