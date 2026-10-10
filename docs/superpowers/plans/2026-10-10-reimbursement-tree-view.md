@@ -1076,3 +1076,29 @@ git commit -m "feat(documents): tree view i18n and regression"
 - Spec 覆盖：全宽树 + 折叠/计数（Task 1）、材料行（Task 1）、条目下拉 + move 转发（Task 1+2）、工具条三项（Task 2）、未分类置底/只看未分类（Task 1+2）、错误/加载/空态（Task 2）、i18n 2 键（Task 3）、验收 5 条各有对应任务与用例。无缺口。
 - 占位符扫描：无 TBD/TODO；全部代码块完整；DOM 约定在 Task 1 开头统一声明。
 - 类型一致性：TreeRow/行 key 规则/emit 签名在 Task 1 定义，Task 2 测试复用其 testid 约定；数据契约字段与 `documents.routes.ts:362-425` 逐字核对；`@api/ConfigClient` mock 与视图既有 import 一致。
+
+---
+
+## As-built 记录（2026-10-10，Subagent-Driven 执行）
+
+已全部交付，终审 **Ready to merge: Yes**（55 例定点测试 + i18n + 双端 typecheck 全绿）。提交链（0b4cd472 之后）：
+
+- `c5b0fafa` feat(documents): reimbursement tree component（Task 1）
+- `f0ec673e` fix(documents): tree empty state and edge tests
+- `90a8f993` style(documents): format tree tests
+- `eceb6136` feat(documents): reimbursement full tree view（Task 2）
+- `06b85b87` fix(documents): keep category options while filtering
+- `36cc1d8c` fix(documents): tree empty and error states
+- `60b5e2d6` feat(documents): tree view i18n and regression（Task 3）
+- `a774bb14` fix(i18n): align unassigned filter wording
+
+与计划的偏差（均经审查确认）：
+
+1. Task 1 计划代码块漏定义 `isMaterialsOpen`，已补；第 6 个 Tree 用例 fixture 修正（tree 分支 d1 也需 isOverride:true 才满足 cat-a 断言）；测试导入用 `@/` 别名（计划相对路径多退一级）。
+2. Tree 空态：未分类根改为仅在 `unassignedCount > 0 || tree.length > 0` 时渲染，全空数据时组件 empty 段落可达；补 4 个边界用例（null person/period、计数徽标、空 linkedTypeKeys、null 金额），Tree 测试共 11 例。折叠/材料按钮补 `:aria-expanded`。
+3. Task 2 测试环境事实：setup.renderer.ts 全局 mock `t(key) => key`，错误态断言 i18n key 而非中文；错误态用例用 resolved mock + 手动置 `reimbursementLoadError`，不 mockRejectedValue。
+4. 曾短暂在过滤态隐藏条目 select 的类别 option（eceb6136），经裁决回退（06b85b87）：「只看未分类」核心用途即就地归类，option 必须保留；测试断言收窄为类别行头 toggle 不存在而非 textContent 不含类别名。
+5. 容器增加 `hasTreeRows` computed：零数据加载结果落到 `treeEmpty` 空态（计划版 treeEmpty 实际不可达）；后台刷新失败且旧树存在时改为树上方非阻塞错误条（保留旧内容同屏，优于旧实现），无树时仍为居中错误区。过滤 toggle 补 `:aria-pressed`。View 测试共 12 例。
+6. Task 3 回归路径修正：DocumentsArchivePage 测试在 `test/renderer/pages/documents/`（计划误写 components/）。
+7. i18n 追加润色：da-DK/pl-PL/ru-RU/id-ID/en-US 的 showUnassignedOnly 与各 locale 既有「未分类」词根统一。
+8. 遗留（非阻塞，合并后真机走查）：RecycleScroller 高度链/变高测量与滚动位置、fr/de 长按钮文案窄宽目验、move 失败后 select 视觉停留、刷新后展开态重置为全展开（spec 明示取舍）。
