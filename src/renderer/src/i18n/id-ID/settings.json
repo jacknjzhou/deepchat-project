@@ -330,7 +330,11 @@
       "filesSelected": "{count} file dipilih",
       "autoClassify": "Klasifikasi otomatis",
       "taskQueuedToast": "Telah mengirim {count} tugas pengenalan",
-      "filesLimit": "Anda dapat memilih hingga 20 file"
+      "filesLimit": "Anda dapat memilih hingga 20 file",
+      "colReimbursement": "Tipe penggantian",
+      "colGroup": "Grup",
+      "manualGroupingTitle": "Pengelompokan manual",
+      "reimbursementSetFailed": "Gagal mengatur klasifikasi penggantian"
     },
     "reimbursement": {
       "viewDocuments": "Tampilan dokumen",

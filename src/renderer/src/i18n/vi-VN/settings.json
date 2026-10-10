@@ -330,7 +330,11 @@
       "filesSelected": "Đã chọn {count} tệp",
       "autoClassify": "Phân loại tự động",
       "taskQueuedToast": "Đã gửi {count} tác vụ nhận diện",
-      "filesLimit": "Bạn có thể chọn tối đa 20 tệp"
+      "filesLimit": "Bạn có thể chọn tối đa 20 tệp",
+      "colReimbursement": "Loại hoàn ứng",
+      "colGroup": "Nhóm",
+      "manualGroupingTitle": "Nhóm thủ công",
+      "reimbursementSetFailed": "Đặt phân loại hoàn ứng thất bại"
     },
     "reimbursement": {
       "viewDocuments": "Xem tài liệu",

@@ -330,7 +330,11 @@
       "filesSelected": "{count} Datei(en) ausgewählt",
       "autoClassify": "Automatisch klassifizieren",
       "taskQueuedToast": "{count} Erkennungsaufgabe(n) übermittelt",
-      "filesLimit": "Sie können bis zu 20 Dateien auswählen"
+      "filesLimit": "Sie können bis zu 20 Dateien auswählen",
+      "colReimbursement": "Erstattungsart",
+      "colGroup": "Gruppe",
+      "manualGroupingTitle": "Manuelle Gruppierung",
+      "reimbursementSetFailed": "Zuordnung der Erstattung fehlgeschlagen"
     },
     "reimbursement": {
       "viewDocuments": "Dokumentenansicht",

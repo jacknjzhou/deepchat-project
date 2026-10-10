@@ -330,7 +330,11 @@
       "filesSelected": "{count} dosya seçildi",
       "autoClassify": "Otomatik sınıflandırma",
       "taskQueuedToast": "{count} tanıma görevi gönderildi",
-      "filesLimit": "En fazla 20 dosya seçebilirsiniz"
+      "filesLimit": "En fazla 20 dosya seçebilirsiniz",
+      "colReimbursement": "Masraf türü",
+      "colGroup": "Grup",
+      "manualGroupingTitle": "Manuel gruplandırma",
+      "reimbursementSetFailed": "Masraf sınıflandırması ayarlanamadı"
     },
     "reimbursement": {
       "viewDocuments": "Belgeler görünümü",

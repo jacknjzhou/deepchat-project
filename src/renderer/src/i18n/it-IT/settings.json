@@ -330,7 +330,11 @@
       "filesSelected": "{count} file selezionati",
       "autoClassify": "Classificazione automatica",
       "taskQueuedToast": "{count} attività di riconoscimento inviate",
-      "filesLimit": "Puoi selezionare fino a 20 file"
+      "filesLimit": "Puoi selezionare fino a 20 file",
+      "colReimbursement": "Tipo di rimborso",
+      "colGroup": "Gruppo",
+      "manualGroupingTitle": "Raggruppamento manuale",
+      "reimbursementSetFailed": "Modifica della classificazione di rimborso non riuscita"
     },
     "reimbursement": {
       "viewDocuments": "Vista documenti",

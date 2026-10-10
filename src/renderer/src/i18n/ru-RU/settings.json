@@ -2837,7 +2837,11 @@
       "filesSelected": "Выбрано файлов: {count}",
       "autoClassify": "Автоматическая классификация",
       "taskQueuedToast": "Отправлено задач распознавания: {count}",
-      "filesLimit": "Можно выбрать не более 20 файлов"
+      "filesLimit": "Можно выбрать не более 20 файлов",
+      "colReimbursement": "Тип возмещения",
+      "colGroup": "Группа",
+      "manualGroupingTitle": "Ручная группировка",
+      "reimbursementSetFailed": "Не удалось изменить классификацию возмещения"
     },
     "reimbursement": {
       "viewDocuments": "Вид документов",

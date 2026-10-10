@@ -330,7 +330,11 @@
       "filesSelected": "Wybrano plików: {count}",
       "autoClassify": "Automatyczna klasyfikacja",
       "taskQueuedToast": "Wysłano zadań rozpoznawania: {count}",
-      "filesLimit": "Możesz wybrać maksymalnie 20 plików"
+      "filesLimit": "Możesz wybrać maksymalnie 20 plików",
+      "colReimbursement": "Typ rozliczenia",
+      "colGroup": "Grupa",
+      "manualGroupingTitle": "Ręczne grupowanie",
+      "reimbursementSetFailed": "Nie udało się zmienić klasyfikacji rozliczeń"
     },
     "reimbursement": {
       "viewDocuments": "Widok dokumentów",

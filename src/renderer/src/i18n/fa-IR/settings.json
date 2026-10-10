@@ -2837,7 +2837,11 @@
       "filesSelected": "{count} فایل انتخاب شد",
       "autoClassify": "دسته‌بندی خودکار",
       "taskQueuedToast": "{count} وظیفه شناسایی ارسال شد",
-      "filesLimit": "می‌توانید حداکثر 20 فایل انتخاب کنید"
+      "filesLimit": "می‌توانید حداکثر 20 فایل انتخاب کنید",
+      "colReimbursement": "نوع بازپرداخت",
+      "colGroup": "گروه",
+      "manualGroupingTitle": "گروه‌بندی دستی",
+      "reimbursementSetFailed": "تنظیم دسته‌بندی بازپرداخت ناموفق بود"
     },
     "reimbursement": {
       "viewDocuments": "نمای اسناد",

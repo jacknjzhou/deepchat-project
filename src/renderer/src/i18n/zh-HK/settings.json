@@ -2837,7 +2837,11 @@
       "filesSelected": "已選 {count} 個檔案",
       "autoClassify": "自動分類",
       "taskQueuedToast": "已提交 {count} 個識別任務",
-      "filesLimit": "最多選擇 20 個檔案"
+      "filesLimit": "最多選擇 20 個檔案",
+      "colReimbursement": "報銷類型",
+      "colGroup": "分組名稱",
+      "manualGroupingTitle": "手工分組",
+      "reimbursementSetFailed": "報銷歸類設定失敗"
     },
     "reimbursement": {
       "viewDocuments": "單據視圖",

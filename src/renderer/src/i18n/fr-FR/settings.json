@@ -2837,7 +2837,11 @@
       "filesSelected": "{count} fichier(s) sélectionné(s)",
       "autoClassify": "Classification automatique",
       "taskQueuedToast": "{count} tâche(s) de reconnaissance soumise(s)",
-      "filesLimit": "Vous pouvez sélectionner jusqu'à 20 fichiers"
+      "filesLimit": "Vous pouvez sélectionner jusqu'à 20 fichiers",
+      "colReimbursement": "Type de remboursement",
+      "colGroup": "Groupe",
+      "manualGroupingTitle": "Regroupement manuel",
+      "reimbursementSetFailed": "Échec de l'application de la classification de remboursement"
     },
     "reimbursement": {
       "viewDocuments": "Vue Documents",

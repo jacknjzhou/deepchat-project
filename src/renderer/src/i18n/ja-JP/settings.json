@@ -2837,7 +2837,11 @@
       "filesSelected": "{count} 個のファイルが選択されています",
       "autoClassify": "自動分類",
       "taskQueuedToast": "{count} 件の認識タスクを送信しました",
-      "filesLimit": "選択できるファイルは最大 20 個です"
+      "filesLimit": "選択できるファイルは最大 20 個です",
+      "colReimbursement": "経費タイプ",
+      "colGroup": "グループ",
+      "manualGroupingTitle": "手動グループ化",
+      "reimbursementSetFailed": "経費分類の設定に失敗しました"
     },
     "reimbursement": {
       "viewDocuments": "ドキュメントビュー",

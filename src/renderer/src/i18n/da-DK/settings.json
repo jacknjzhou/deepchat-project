@@ -2837,7 +2837,11 @@
       "filesSelected": "{count} fil(er) valgt",
       "autoClassify": "Automatisk klassificering",
       "taskQueuedToast": "Sendte {count} genkendelsesopgave(r)",
-      "filesLimit": "Du kan vælge op til 20 filer"
+      "filesLimit": "Du kan vælge op til 20 filer",
+      "colReimbursement": "Refusionstype",
+      "colGroup": "Gruppe",
+      "manualGroupingTitle": "Manuel gruppering",
+      "reimbursementSetFailed": "Kunne ikke anvende refusionsklassificering"
     },
     "reimbursement": {
       "viewDocuments": "Dokumentvisning",
