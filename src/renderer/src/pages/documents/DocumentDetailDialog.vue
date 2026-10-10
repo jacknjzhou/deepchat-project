@@ -323,7 +323,12 @@ import {
   type DocumentFieldEntry,
   type DocumentRecord
 } from '@shared/documents'
-import { buildFieldEditStates, parseFieldEditState, type FieldEditState } from './documentArchive'
+import {
+  buildFieldEditStates,
+  parseFieldEditState,
+  resolveEffectiveReimbursement,
+  type FieldEditState
+} from './documentArchive'
 
 interface PreviewPayload {
   dataBase64: string
@@ -379,26 +384,33 @@ const reimbursementGroup = ref<string>(NO_GROUP)
 const reimbursementPending = ref(false)
 
 // Effective category for the locally selected value (not the stored override):
-// auto resolves through typeKey linkage, sentinels resolve to none. Mirrors
-// resolveEffectiveReimbursement but keyed off the pending select value so the
-// group options follow what the user is about to save.
-const effectiveReimbursementCategory = computed(() => {
-  const config = store.reimbursementConfig
+// the group options follow what the user is about to save. The local select
+// value is mapped onto a synthetic override and run through the shared
+// resolver, so stale category ids keep the table's typeKey-linkage fallback.
+const effectiveReimbursementCategoryId = computed(() => {
   const doc = props.document
-  if (!config || !doc) {
+  if (!doc) {
     return null
   }
-  if (reimbursementCategory.value === UNASSIGNED_CATEGORY) {
+  const override =
+    reimbursementCategory.value === AUTO_CATEGORY
+      ? null
+      : reimbursementCategory.value === UNASSIGNED_CATEGORY
+        ? REIMBURSEMENT_UNASSIGNED
+        : reimbursementCategory.value
+  return resolveEffectiveReimbursement(
+    { ...doc, reimbursementOverride: override },
+    store.reimbursementConfig
+  ).categoryId
+})
+const effectiveReimbursementCategory = computed(() => {
+  const categoryId = effectiveReimbursementCategoryId.value
+  if (categoryId === null) {
     return null
   }
-  if (reimbursementCategory.value === AUTO_CATEGORY) {
-    return (
-      config.categories
-        .filter((category) => category.linkedTypeKeys.includes(doc.typeKey))
-        .sort((a, b) => a.sortOrder - b.sortOrder)[0] ?? null
-    )
-  }
-  return config.categories.find((category) => category.id === reimbursementCategory.value) ?? null
+  return (
+    store.reimbursementConfig?.categories.find((category) => category.id === categoryId) ?? null
+  )
 })
 const sortedReimbursementCategories = computed(() =>
   [...(store.reimbursementConfig?.categories ?? [])].sort((a, b) => a.sortOrder - b.sortOrder)
@@ -450,8 +462,21 @@ watch(
     fieldError.value = null
     activeTab.value = 'fields'
     reRecognizeTemplateId.value = doc?.templateId ?? ''
-    reimbursementCategory.value = overrideToCategoryValue(doc?.reimbursementOverride ?? null)
+    reimbursementCategory.value = seedReimbursementCategory(doc)
     reimbursementGroup.value = doc?.reimbursementGroupOverride ?? NO_GROUP
+  },
+  { immediate: true }
+)
+
+// The reimbursement config is normally loaded by ReimbursementView, but the
+// archive list is the default view: load it on first dialog open so manual
+// grouping is not silently disabled.
+watch(
+  () => props.open,
+  (open) => {
+    if (open && store.reimbursementConfig === null) {
+      void store.loadReimbursementConfig()
+    }
   },
   { immediate: true }
 )
@@ -546,6 +571,22 @@ function overrideToCategoryValue(override: string | null) {
     return AUTO_CATEGORY
   }
   return override === REIMBURSEMENT_UNASSIGNED ? UNASSIGNED_CATEGORY : override
+}
+
+// Stale override ids (category removed since) degrade to auto, matching the
+// archive table's effective-category semantics. Without the config loaded the
+// raw value is kept as-is since it cannot be validated yet.
+function seedReimbursementCategory(doc: DocumentRecord | null) {
+  const override = doc?.reimbursementOverride ?? null
+  if (
+    override !== null &&
+    override !== REIMBURSEMENT_UNASSIGNED &&
+    store.reimbursementConfig !== null &&
+    !store.reimbursementConfig.categories.some((category) => category.id === override)
+  ) {
+    return AUTO_CATEGORY
+  }
+  return overrideToCategoryValue(override)
 }
 
 // Category writes clear the stored group override unconditionally, so both

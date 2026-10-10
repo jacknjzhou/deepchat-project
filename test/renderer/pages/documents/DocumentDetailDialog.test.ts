@@ -94,6 +94,7 @@ const stubStore = reactive({
     name: 'a.png'
   })),
   reimbursementConfig: null as Record<string, unknown> | null,
+  loadReimbursementConfig: vi.fn(async (): Promise<null> => null),
   setReimbursementOverride: vi.fn(
     async (_id: string, _categoryId: string | null): Promise<unknown> => null
   ),
@@ -260,6 +261,7 @@ describe('DocumentDetailDialog', () => {
     stubStore.previewArchiveFile.mockClear()
     stubStore.setReimbursementOverride.mockClear()
     stubStore.setReimbursementGroupOverride.mockClear()
+    stubStore.loadReimbursementConfig.mockClear()
     stubStore.reimbursementConfig = null
   })
 
@@ -401,9 +403,10 @@ describe('DocumentDetailDialog', () => {
 
   it('重新识别前手动切换类别后按新模板提取', async () => {
     const { wrapper, record } = await setup()
-    // SelectTrigger is stubbed as a fragment; the two 手工分组 selects render
-    // first, so target the footer template select by position (index 2).
-    await wrapper.findAll('select')[2].setValue('tpl-2')
+    // SelectTrigger is stubbed as a fragment; the 手工分组 selects render
+    // before the footer, so target the footer template select as the last one.
+    const selects = wrapper.findAll('select')
+    await selects[selects.length - 1].setValue('tpl-2')
     await wrapper.get('[data-testid="detail-re-recognize"]').trigger('click')
     await flushPromises()
     expect(stubStore.recognizeDocument).toHaveBeenCalledWith({
@@ -594,6 +597,31 @@ describe('DocumentDetailDialog', () => {
       const { wrapper } = await setup()
       expect(categorySelectOf(wrapper).element.disabled).toBe(true)
       expect(groupSelectOf(wrapper).element.disabled).toBe(true)
+    })
+
+    it('弹窗打开且 config 为 null 时加载报销配置', async () => {
+      stubStore.reimbursementConfig = null
+      await setup()
+      expect(stubStore.loadReimbursementConfig).toHaveBeenCalledTimes(1)
+    })
+
+    it('config 已加载时打开弹窗不重复加载', async () => {
+      stubStore.reimbursementConfig = makeReimbursementConfig()
+      await setup()
+      expect(stubStore.loadReimbursementConfig).not.toHaveBeenCalled()
+    })
+
+    it('陈旧覆盖 id 播种为自动并按联动显示分组', async () => {
+      stubStore.reimbursementConfig = makeReimbursementConfig()
+      const { wrapper } = await setup({ reimbursementOverride: 'cat-stale' })
+      expect(categorySelectOf(wrapper).element.value).toBe('__auto__')
+      const group = groupSelectOf(wrapper)
+      expect(group.findAll('option').map((option) => option.element.value)).toEqual([
+        '__none__',
+        'grp-2',
+        'grp-1'
+      ])
+      expect(group.element.disabled).toBe(false)
     })
 
     it('强制未分类或 auto 未联动类别时分组禁用', async () => {
