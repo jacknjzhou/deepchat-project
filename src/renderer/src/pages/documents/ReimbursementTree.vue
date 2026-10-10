@@ -18,6 +18,7 @@
             type="button"
             class="flex min-w-0 flex-1 items-center gap-1 text-left"
             :data-testid="`reimbursement-toggle-${item.key}`"
+            :aria-expanded="isExpanded(item.key)"
             @click="toggleExpand(item.key)"
           >
             <Icon
@@ -32,6 +33,7 @@
             type="button"
             class="shrink-0 rounded px-1 text-xs text-muted-foreground hover:bg-muted"
             :data-testid="`reimbursement-materials-${item.categoryId}`"
+            :aria-expanded="isMaterialsOpen(item.key)"
             @click="toggleMaterials(item.key)"
           >
             {{ t('settings.documents.reimbursement.materialsTitle') }}
@@ -62,6 +64,7 @@
             type="button"
             class="flex min-w-0 flex-1 items-center gap-1 text-left"
             :data-testid="`reimbursement-toggle-${item.key}`"
+            :aria-expanded="isExpanded(item.key)"
             @click="toggleExpand(item.key)"
           >
             <Icon
@@ -82,6 +85,7 @@
             type="button"
             class="flex min-w-0 flex-1 items-center gap-1 text-left"
             :data-testid="`reimbursement-toggle-${item.key}`"
+            :aria-expanded="isExpanded(item.key)"
             @click="toggleExpand(item.key)"
           >
             <Icon
@@ -329,18 +333,23 @@ const visibleRows = computed<TreeRow[]>(() => {
       sum + group.buckets.reduce((total, bucket) => total + bucket.documents.length, 0),
     0
   )
-  rows.push({
-    key: 'unassigned',
-    kind: 'category',
-    depth: 0,
-    label: t('settings.documents.reimbursement.unassigned'),
-    count: unassignedCount,
-    materials: null,
-    categoryId: null,
-    entry: null
-  })
-  if (isExpanded('unassigned')) {
-    pushGroupRows(rows, 'un', 1, props.unassigned, null)
+  // With no configured categories and no documents, leave the list empty so the
+  // empty-state paragraph renders; otherwise keep the zero-count header for
+  // visual parity with the always-present configured category headers.
+  if (unassignedCount > 0 || props.tree.length > 0) {
+    rows.push({
+      key: 'unassigned',
+      kind: 'category',
+      depth: 0,
+      label: t('settings.documents.reimbursement.unassigned'),
+      count: unassignedCount,
+      materials: null,
+      categoryId: null,
+      entry: null
+    })
+    if (isExpanded('unassigned')) {
+      pushGroupRows(rows, 'un', 1, props.unassigned, null)
+    }
   }
   return rows
 })

@@ -155,4 +155,57 @@ describe('ReimbursementTree', () => {
     expect(wrapper.text()).not.toContain('会议费')
     expect(wrapper.find('[data-testid="reimbursement-toggle-unassigned"]').exists()).toBe(true)
   })
+
+  it('renders the empty state when neither categories nor documents exist', () => {
+    const wrapper = mountTree({ tree: [], unassigned: [] })
+    expect(wrapper.find('[data-testid="reimbursement-toggle-unassigned"]').exists()).toBe(false)
+    // The suite-wide vue-i18n mock renders message keys instead of translations.
+    expect(wrapper.text()).toContain('settings.documents.reimbursement.empty')
+  })
+
+  it('falls back to unknown labels and keys when person or period is null', () => {
+    const props = makeProps()
+    props.tree[0].groups = [
+      {
+        person: null,
+        buckets: [{ period: null, documents: [entry({ person: null, period: null })] }]
+      }
+    ]
+    const wrapper = mountTree(props)
+    expect(wrapper.text()).toContain('settings.documents.reimbursement.unknownPerson')
+    expect(wrapper.text()).toContain('settings.documents.reimbursement.unknownPeriod')
+    expect(
+      wrapper.find('[data-testid="reimbursement-toggle-cat:cat-a:p:unknown"]').exists()
+    ).toBe(true)
+    expect(
+      wrapper
+        .find('[data-testid="reimbursement-toggle-cat:cat-a:p:unknown:b:unknown"]')
+        .exists()
+    ).toBe(true)
+  })
+
+  it('renders count badges and hides material badge without linked type keys', async () => {
+    const wrapper = mountTree()
+    const categoryHeader = wrapper.get(
+      '[data-testid="reimbursement-toggle-cat:cat-a"]'
+    ).element.parentElement
+    expect(categoryHeader?.textContent).toContain('1')
+
+    const props = makeProps()
+    props.tree[0].materials = [{ name: '收据', linkedTypeKeys: [], count: 0 }]
+    const materialsWrapper = mountTree(props)
+    await materialsWrapper.get('[data-testid="reimbursement-materials-cat-a"]').trigger('click')
+    expect(materialsWrapper.text()).toContain('收据')
+    // Empty linkedTypeKeys hides the materialCount badge; the i18n mock renders keys.
+    expect(materialsWrapper.text()).not.toContain(
+      'settings.documents.reimbursement.materialCount'
+    )
+  })
+
+  it('hides the amount for entries without one', () => {
+    const props = makeProps()
+    props.tree[0].groups[0].buckets[0].documents[0].amount = null
+    const wrapper = mountTree(props)
+    expect(wrapper.get('[data-testid="reimbursement-entry-d1"]').text()).not.toContain('¥')
+  })
 })
