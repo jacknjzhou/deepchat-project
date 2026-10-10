@@ -357,7 +357,7 @@
       "deleteGroup": "Delete",
       "customGroupsTitle": "Custom groups",
       "customGroupsEmpty": "No custom groups yet",
-      "groupEmpty": "No entries in this group",
+      "groupEmpty": "No records in this group",
       "groupNone": "Ungrouped",
       "noGroupsHint": "Add a custom group first",
       "moveGroupFailed": "Failed to update group",

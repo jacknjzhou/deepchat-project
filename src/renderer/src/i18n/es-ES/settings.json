@@ -357,7 +357,7 @@
       "deleteGroup": "Eliminar",
       "customGroupsTitle": "Grupos personalizados",
       "customGroupsEmpty": "Aún no hay grupos personalizados",
-      "groupEmpty": "No hay entradas en este grupo",
+      "groupEmpty": "No hay registros en este grupo",
       "groupNone": "Sin grupo",
       "noGroupsHint": "Añade primero un grupo personalizado",
       "moveGroupFailed": "Error al ajustar el grupo",
