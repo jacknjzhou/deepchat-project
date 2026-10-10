@@ -211,6 +211,14 @@ describe('ReimbursementConfigPage', () => {
     expect(wrapper.find('[data-testid="reimbursement-picker-error"]').exists()).toBe(false)
   })
 
+  it('shows the empty hint instead of an error when no templates exist', async () => {
+    fakeClient.listTemplates.mockResolvedValue({ templates: [] })
+    fakeClient.reimbursementGetConfig.mockResolvedValue({ config: minimalConfig })
+    const { wrapper } = await mountPage()
+    expect(wrapper.find('[data-testid="reimbursement-picker-empty"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="reimbursement-picker-error"]').exists()).toBe(false)
+  })
+
   it('renumbers sortOrder to 1..n after remove and move', async () => {
     const config: ReimbursementConfig = {
       version: 1,
