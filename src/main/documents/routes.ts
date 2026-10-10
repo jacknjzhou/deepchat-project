@@ -16,6 +16,7 @@ import {
   documentsReimbursementExportRoute,
   documentsReimbursementGetConfigRoute,
   documentsReimbursementSetConfigRoute,
+  documentsReimbursementSetGroupOverrideRoute,
   documentsReimbursementSetOverrideRoute,
   documentsReimbursementTreeRoute,
   documentsStatsRoute,
@@ -391,6 +392,26 @@ export function createDocumentsRoutes(
         }
         return documentsReimbursementSetOverrideRoute.output.parse({
           document: repository.setReimbursementOverride(input.documentId, input.categoryId) ?? null
+        })
+      }
+    ],
+    [
+      documentsReimbursementSetGroupOverrideRoute.name,
+      async (rawInput) => {
+        const input = documentsReimbursementSetGroupOverrideRoute.input.parse(rawInput)
+        const store = requireConfigStore()
+        // fail-fast：陈旧的 groupId 若静默降级为未分组，会丢失用户的手动分组意图
+        if (
+          input.groupId !== null &&
+          !readReimbursementConfig(store).categories.some((category) =>
+            category.customGroups.some((group) => group.id === input.groupId)
+          )
+        ) {
+          throw new Error(`[documents.reimbursement.groupUnknown:${input.groupId}]`)
+        }
+        return documentsReimbursementSetGroupOverrideRoute.output.parse({
+          document:
+            repository.setReimbursementGroupOverride(input.documentId, input.groupId) ?? null
         })
       }
     ],

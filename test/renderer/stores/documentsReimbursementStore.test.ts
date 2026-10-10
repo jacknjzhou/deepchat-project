@@ -32,6 +32,7 @@ function makeFakeClient() {
     reimbursementSetConfig: vi.fn(async (config: unknown) => ({ config })),
     reimbursementTree: vi.fn(async () => ({ tree: [], unassigned: [], summary: [] })),
     reimbursementSetOverride: vi.fn(async () => ({ document: null })),
+    reimbursementSetGroupOverride: vi.fn(async () => ({ document: null })),
     reimbursementExport: vi.fn(async () => ({ canceled: true }))
   }
 }
@@ -68,6 +69,25 @@ describe('documents store reimbursement actions', () => {
     await store.setReimbursementOverride('doc-1', 'cat-a', client as never)
     expect(client.reimbursementSetOverride).toHaveBeenCalledWith('doc-1', 'cat-a')
     expect(client.reimbursementTree).toHaveBeenCalledTimes(2)
+  })
+
+  it('setReimbursementGroupOverride invokes client and reloads tree', async () => {
+    setActivePinia(createPinia())
+    const store = useDocumentsStore()
+    const client = makeFakeClient()
+    await store.loadReimbursementTree(client as never)
+    await store.setReimbursementGroupOverride('doc-1', 'grp-a', client as never)
+    expect(client.reimbursementSetGroupOverride).toHaveBeenCalledWith('doc-1', 'grp-a')
+    expect(client.reimbursementTree).toHaveBeenCalledTimes(2)
+  })
+
+  it('setReimbursementGroupOverride(null) clears grouping', async () => {
+    setActivePinia(createPinia())
+    const store = useDocumentsStore()
+    const client = makeFakeClient()
+    await store.setReimbursementGroupOverride('doc-1', null, client as never)
+    expect(client.reimbursementSetGroupOverride).toHaveBeenCalledWith('doc-1', null)
+    expect(client.reimbursementTree).toHaveBeenCalledTimes(1)
   })
 
   it('exportReimbursementPackage passes the archive filter through', async () => {

@@ -272,6 +272,64 @@ describe('buildReimbursementTree', () => {
     expect(normalDocs).not.toContain(grouped.id)
   })
 
+  it('keeps same-id custom groups in different categories separate', () => {
+    // 两个类别各自定义同 id 的分组，分组 id 校验必须限定在条目所属类别内
+    const sameIdConfig = reimbursementConfigSchema.parse({
+      version: 1,
+      categories: [
+        {
+          id: 'cat-a',
+          name: '会议费',
+          requiredMaterials: [],
+          linkedTypeKeys: ['meeting_minutes'],
+          customGroups: [{ id: 'grp-a', name: '会议分组', sortOrder: 0 }],
+          sortOrder: 1
+        },
+        {
+          id: 'cat-b',
+          name: '业务招待费',
+          requiredMaterials: [],
+          linkedTypeKeys: ['catering_receipt'],
+          customGroups: [{ id: 'grp-a', name: '招待分组', sortOrder: 0 }],
+          sortOrder: 2
+        }
+      ],
+      personFieldKeys: ['buyer_name'],
+      dateFieldKeys: ['invoice_date'],
+      amountFieldKeys: ['total_amount'],
+      dateGrouping: 'month'
+    })
+    const docA = doc({
+      id: 'd-a',
+      typeKey: 'meeting_minutes',
+      reimbursementOverride: 'cat-a',
+      reimbursementGroupOverride: 'grp-a',
+      fields: { invoice_date: { value: '2026-04-01', uncertain: false } }
+    })
+    const docB = doc({
+      id: 'd-b',
+      typeKey: 'catering_receipt',
+      reimbursementOverride: 'cat-b',
+      reimbursementGroupOverride: 'grp-a',
+      fields: { invoice_date: { value: '2026-05-01', uncertain: false } }
+    })
+    const result = buildReimbursementTree([docA, docB], sameIdConfig, new Map())
+    const nodeA = result.tree.find((n) => n.category.id === 'cat-a')!
+    const nodeB = result.tree.find((n) => n.category.id === 'cat-b')!
+    expect(nodeA.customGroups[0]?.group.name).toBe('会议分组')
+    expect(nodeA.customGroups[0]?.buckets[0]?.documents.map((d) => d.id)).toEqual(['d-a'])
+    expect(nodeB.customGroups[0]?.group.name).toBe('招待分组')
+    expect(nodeB.customGroups[0]?.buckets[0]?.documents.map((d) => d.id)).toEqual(['d-b'])
+    // 每个类别的 人员→年月 列表都不应包含任何被分组条目
+    for (const node of [nodeA, nodeB]) {
+      const normalDocs = node.groups.flatMap((g) =>
+        g.buckets.flatMap((b) => b.documents.map((d) => d.id))
+      )
+      expect(normalDocs).not.toContain('d-a')
+      expect(normalDocs).not.toContain('d-b')
+    }
+  })
+
   it('groups category → person → period desc, unknown last', () => {
     const d1 = doc({
       id: 'd1',

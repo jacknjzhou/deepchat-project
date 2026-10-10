@@ -15,6 +15,7 @@ import {
   documentsReimbursementExportRoute,
   documentsReimbursementGetConfigRoute,
   documentsReimbursementSetConfigRoute,
+  documentsReimbursementSetGroupOverrideRoute,
   documentsReimbursementSetOverrideRoute,
   documentsReimbursementTreeRoute,
   documentsStatsRoute,
@@ -109,6 +110,11 @@ export function createDocumentsClient(bridge: DeepchatBridge = getDeepchatBridge
       invokeRoute(bridge, documentsReimbursementTreeRoute.name, input),
     reimbursementSetOverride: (documentId: string, categoryId: string | null) =>
       invokeRoute(bridge, documentsReimbursementSetOverrideRoute.name, { documentId, categoryId }),
+    reimbursementSetGroupOverride: (documentId: string, groupId: string | null) =>
+      invokeRoute(bridge, documentsReimbursementSetGroupOverrideRoute.name, {
+        documentId,
+        groupId
+      }),
     reimbursementExport: (input: z.input<typeof documentsReimbursementExportRoute.input> = {}) =>
       invokeRoute(bridge, documentsReimbursementExportRoute.name, input),
     onTaskUpdated: (

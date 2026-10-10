@@ -399,6 +399,15 @@ export const useDocumentsStore = defineStore('documents', () => {
     await loadReimbursementTree(client)
   }
 
+  async function setReimbursementGroupOverride(
+    documentId: string,
+    groupId: string | null,
+    client: DocumentsClient = defaultClient
+  ) {
+    await client.reimbursementSetGroupOverride(documentId, groupId)
+    await loadReimbursementTree(client)
+  }
+
   async function exportReimbursementPackage(client: DocumentsClient = defaultClient) {
     return client.reimbursementExport({
       status: archiveFilter.status,
@@ -447,6 +456,7 @@ export const useDocumentsStore = defineStore('documents', () => {
     saveReimbursementConfig,
     loadReimbursementTree,
     setReimbursementOverride,
+    setReimbursementGroupOverride,
     exportReimbursementPackage
   }
 })
