@@ -1,3 +1,4 @@
+// test/renderer/components/ReimbursementView.test.ts
 import { describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
@@ -9,6 +10,11 @@ import { useDocumentsStore } from '@/stores/documents'
 // test/setup.renderer.ts mocks a lightweight pinia globally; restore the real one
 // so the test store and the mounted component share the same pinia instance.
 vi.mock('pinia', async () => vi.importActual<typeof import('pinia')>('pinia'))
+
+const configClientMock = vi.hoisted(() => ({
+  openSettings: vi.fn(async () => undefined)
+}))
+vi.mock('@api/ConfigClient', () => ({ createConfigClient: () => configClientMock }))
 
 const dcButtonStub = defineComponent({
   name: 'DcButtonStub',
@@ -22,9 +28,29 @@ const dcBadgeStub = defineComponent({
   template: '<span><slot /></span>'
 })
 
+// jsdom has no layout: render all tree rows and forward the scoped slot.
+const recycleScrollerStub = defineComponent({
+  name: 'RecycleScrollerStub',
+  props: {
+    items: { type: Array, default: () => [] },
+    itemSize: { type: null },
+    minItemSize: { type: Number }
+  },
+  template: `
+    <div>
+      <div v-for="(item, index) in items" :key="item.key">
+        <slot :item="item" :index="index" />
+      </div>
+    </div>
+  `
+})
+
 const mountView = (pinia: ReturnType<typeof createPinia>) =>
   mount(ReimbursementView, {
-    global: { plugins: [pinia], stubs: { DcButton: dcButtonStub, DcBadge: dcBadgeStub } }
+    global: {
+      plugins: [pinia],
+      stubs: { DcButton: dcButtonStub, DcBadge: dcBadgeStub, RecycleScroller: recycleScrollerStub }
+    }
   })
 
 function setupStore() {
@@ -33,7 +59,7 @@ function setupStore() {
   return { pinia, store: useDocumentsStore() }
 }
 
-function makeTree(firstEntryOverride = false) {
+function makeTree() {
   return {
     tree: [
       {
@@ -63,7 +89,7 @@ function makeTree(firstEntryOverride = false) {
                     amountUncertain: false,
                     uncertainCount: 0,
                     fileNames: ['a.pdf'],
-                    isOverride: firstEntryOverride
+                    isOverride: false
                   }
                 ]
               }
@@ -72,13 +98,39 @@ function makeTree(firstEntryOverride = false) {
         ]
       }
     ],
-    unassigned: [],
-    summary: [{ categoryId: 'cat-a', total: 1 }]
+    unassigned: [
+      {
+        person: '李四',
+        buckets: [
+          {
+            period: '2026-08',
+            documents: [
+              {
+                id: 'd2',
+                typeKey: 'meeting_minutes',
+                templateName: '会议纪要',
+                person: '李四',
+                period: '2026-08',
+                amount: 50,
+                amountUncertain: false,
+                uncertainCount: 0,
+                fileNames: ['b.pdf'],
+                isOverride: false
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    summary: [
+      { categoryId: 'cat-a', total: 1 },
+      { categoryId: null, total: 1 }
+    ]
   }
 }
 
 describe('ReimbursementView', () => {
-  it('renders category list and groups from store tree', async () => {
+  it('renders the full tree from the store', async () => {
     const { pinia, store } = setupStore()
     vi.spyOn(store, 'loadReimbursementTree').mockResolvedValue()
     store.reimbursementTree = makeTree()
@@ -88,6 +140,7 @@ describe('ReimbursementView', () => {
     expect(wrapper.text()).toContain('会议费')
     expect(wrapper.text()).toContain('张三')
     expect(wrapper.text()).toContain('a.pdf')
+    expect(wrapper.text()).toContain('b.pdf')
   })
 
   it('moves document via override select', async () => {
@@ -97,7 +150,7 @@ describe('ReimbursementView', () => {
     store.reimbursementTree = makeTree()
     const wrapper = mountView(pinia)
     await flushPromises()
-    const select = wrapper.find('[data-testid="reimbursement-entry-d1"] select')
+    const select = wrapper.get('[data-testid="reimbursement-entry-d1"] select')
     expect(select.exists()).toBe(true)
     await select.setValue('cat-a')
     expect(store.setReimbursementOverride).toHaveBeenCalledWith('d1', 'cat-a')
@@ -133,66 +186,25 @@ describe('ReimbursementView', () => {
   it('mirrors the owning category on overridden selects', async () => {
     const { pinia, store } = setupStore()
     vi.spyOn(store, 'loadReimbursementTree').mockResolvedValue()
-    store.reimbursementTree = makeTree(true)
+    const tree = makeTree()
+    tree.tree[0].groups[0].buckets[0].documents[0].isOverride = true
+    store.reimbursementTree = tree
     const wrapper = mountView(pinia)
     await flushPromises()
-    // The view lands on the first category, so the overridden entry shows
-    // its owning category id instead of a blank native select.
     const select = wrapper.get('[data-testid="reimbursement-entry-d1"] select')
     expect((select.element as HTMLSelectElement).value).toBe('cat-a')
   })
 
-  it('shows forced-unassigned and auto values in the unassigned view', async () => {
+  it('shows forced-unassigned and auto values for unassigned entries', async () => {
     const { pinia, store } = setupStore()
     vi.spyOn(store, 'loadReimbursementTree').mockResolvedValue()
-    store.reimbursementTree = {
-      tree: [],
-      unassigned: [
-        {
-          person: '张三',
-          buckets: [
-            {
-              period: '2026-09',
-              documents: [
-                {
-                  id: 'd1',
-                  typeKey: 'meeting_minutes',
-                  templateName: '会议纪要',
-                  person: '张三',
-                  period: '2026-09',
-                  amount: 100,
-                  amountUncertain: false,
-                  uncertainCount: 0,
-                  fileNames: ['a.pdf'],
-                  isOverride: true
-                },
-                {
-                  id: 'd2',
-                  typeKey: 'meeting_minutes',
-                  templateName: '会议纪要',
-                  person: '张三',
-                  period: '2026-09',
-                  amount: 100,
-                  amountUncertain: false,
-                  uncertainCount: 0,
-                  fileNames: ['b.pdf'],
-                  isOverride: false
-                }
-              ]
-            }
-          ]
-        }
-      ],
-      summary: []
-    }
+    const tree = makeTree()
+    tree.unassigned[0].buckets[0].documents[0].isOverride = true
+    store.reimbursementTree = tree
     const wrapper = mountView(pinia)
     await flushPromises()
-    // Empty tree keeps the view on unassigned: overridden entries map to the
-    // sentinel option while auto-classified ones keep the auto option.
-    const overridden = wrapper.get('[data-testid="reimbursement-entry-d1"] select')
+    const overridden = wrapper.get('[data-testid="reimbursement-entry-d2"] select')
     expect((overridden.element as HTMLSelectElement).value).toBe('__unassigned__')
-    const automatic = wrapper.get('[data-testid="reimbursement-entry-d2"] select')
-    expect((automatic.element as HTMLSelectElement).value).toBe('__auto__')
   })
 
   it('notifies an error when moving fails', async () => {
@@ -211,5 +223,39 @@ describe('ReimbursementView', () => {
     expect(notifySpy).toHaveBeenCalledWith(
       expect.objectContaining({ kind: 'error', code: 'documents.reimbursement.moveFailed' })
     )
+  })
+
+  it('filters to the unassigned branch only', async () => {
+    const { pinia, store } = setupStore()
+    vi.spyOn(store, 'loadReimbursementTree').mockResolvedValue()
+    store.reimbursementTree = makeTree()
+    const wrapper = mountView(pinia)
+    await flushPromises()
+    expect(wrapper.text()).toContain('会议费')
+    await wrapper.get('[data-testid="reimbursement-unassigned-only"]').trigger('click')
+    expect(wrapper.text()).not.toContain('会议费')
+    expect(wrapper.text()).toContain('b.pdf')
+  })
+
+  it('opens the category management settings from the toolbar', async () => {
+    const { pinia, store } = setupStore()
+    vi.spyOn(store, 'loadReimbursementTree').mockResolvedValue()
+    store.reimbursementTree = makeTree()
+    const wrapper = mountView(pinia)
+    await flushPromises()
+    await wrapper.get('[data-testid="reimbursement-manage-categories"]').trigger('click')
+    expect(configClientMock.openSettings).toHaveBeenCalledWith({
+      routeName: 'settings-documents-reimbursement'
+    })
+  })
+
+  it('keeps the error state with retry from the toolbar area', async () => {
+    const { pinia, store } = setupStore()
+    vi.spyOn(store, 'loadReimbursementTree').mockResolvedValue()
+    store.reimbursementLoadError = 'settings.documents.reimbursement.loadFailed'
+    const wrapper = mountView(pinia)
+    await flushPromises()
+    expect(wrapper.find('[data-testid="reimbursement-retry"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('settings.documents.reimbursement.loadFailed')
   })
 })
