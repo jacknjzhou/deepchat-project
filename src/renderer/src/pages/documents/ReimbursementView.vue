@@ -8,6 +8,7 @@
         <DcButton
           :variant="showUnassignedOnly ? 'default' : 'outline'"
           size="sm"
+          :aria-pressed="showUnassignedOnly"
           data-testid="reimbursement-unassigned-only"
           @click="showUnassignedOnly = !showUnassignedOnly"
         >
@@ -33,21 +34,34 @@
       </div>
     </div>
 
-    <div v-if="store.reimbursementLoadError" class="flex flex-col items-center gap-3 py-6">
+    <div
+      v-if="store.reimbursementLoadError && !hasTreeRows"
+      class="flex flex-col items-center gap-3 py-6"
+    >
       <p class="text-sm text-destructive">{{ t(store.reimbursementLoadError) }}</p>
       <DcButton variant="outline" data-testid="reimbursement-retry" @click="retry">
         {{ t('settings.documents.reimbursement.retry') }}
       </DcButton>
     </div>
 
-    <ReimbursementTree
-      v-else-if="store.reimbursementTree"
-      class="min-h-0 flex-1"
-      :tree="store.reimbursementTree.tree"
-      :unassigned="store.reimbursementTree.unassigned"
-      :show-unassigned-only="showUnassignedOnly"
-      @move="onMove"
-    />
+    <template v-else-if="hasTreeRows">
+      <div
+        v-if="store.reimbursementLoadError"
+        class="flex items-center justify-between gap-2 border-b bg-destructive/10 px-4 py-1.5 text-xs text-destructive"
+      >
+        <span>{{ t(store.reimbursementLoadError) }}</span>
+        <DcButton variant="outline" size="sm" data-testid="reimbursement-retry" @click="retry">
+          {{ t('settings.documents.reimbursement.retry') }}
+        </DcButton>
+      </div>
+      <ReimbursementTree
+        class="min-h-0 flex-1"
+        :tree="store.reimbursementTree?.tree ?? []"
+        :unassigned="store.reimbursementTree?.unassigned ?? []"
+        :show-unassigned-only="showUnassignedOnly"
+        @move="onMove"
+      />
+    </template>
 
     <p v-else class="flex-1 py-10 text-center text-sm text-muted-foreground">
       {{
@@ -60,7 +74,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { DcButton } from '@dc-ui/components/button'
 import { rendererNotificationManager } from '@renderer-notifications/rendererNotificationRuntime'
@@ -75,6 +89,15 @@ const configClient = createConfigClient()
 
 const showUnassignedOnly = ref(false)
 const exporting = ref(false)
+
+const hasTreeRows = computed(() => {
+  const data = store.reimbursementTree
+  return (
+    !!data &&
+    (data.tree.length > 0 ||
+      data.unassigned.some((group) => group.buckets.some((bucket) => bucket.documents.length > 0)))
+  )
+})
 
 onMounted(() => {
   void store.loadReimbursementTree()

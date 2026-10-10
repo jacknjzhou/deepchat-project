@@ -1,5 +1,5 @@
 // test/renderer/components/ReimbursementView.test.ts
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { defineComponent } from 'vue'
@@ -130,6 +130,10 @@ function makeTree() {
 }
 
 describe('ReimbursementView', () => {
+  beforeEach(() => {
+    configClientMock.openSettings.mockClear()
+  })
+
   it('renders the full tree from the store', async () => {
     const { pinia, store } = setupStore()
     vi.spyOn(store, 'loadReimbursementTree').mockResolvedValue()
@@ -151,7 +155,6 @@ describe('ReimbursementView', () => {
     const wrapper = mountView(pinia)
     await flushPromises()
     const select = wrapper.get('[data-testid="reimbursement-entry-d1"] select')
-    expect(select.exists()).toBe(true)
     await select.setValue('cat-a')
     expect(store.setReimbursementOverride).toHaveBeenCalledWith('d1', 'cat-a')
   })
@@ -255,11 +258,45 @@ describe('ReimbursementView', () => {
 
   it('keeps the error state with retry from the toolbar area', async () => {
     const { pinia, store } = setupStore()
-    vi.spyOn(store, 'loadReimbursementTree').mockResolvedValue()
+    const loadSpy = vi.spyOn(store, 'loadReimbursementTree').mockResolvedValue()
     store.reimbursementLoadError = 'settings.documents.reimbursement.loadFailed'
     const wrapper = mountView(pinia)
     await flushPromises()
     expect(wrapper.find('[data-testid="reimbursement-retry"]').exists()).toBe(true)
     expect(wrapper.text()).toContain('settings.documents.reimbursement.loadFailed')
+    await wrapper.get('[data-testid="reimbursement-retry"]').trigger('click')
+    expect(loadSpy.mock.calls.length).toBe(2)
+  })
+
+  it('shows the tree empty message when loaded data has no categories or documents', async () => {
+    const { pinia, store } = setupStore()
+    vi.spyOn(store, 'loadReimbursementTree').mockResolvedValue()
+    store.reimbursementTree = { tree: [], unassigned: [], summary: [] }
+    const wrapper = mountView(pinia)
+    await flushPromises()
+    expect(wrapper.find('[data-testid="reimbursement-tree"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('settings.documents.reimbursement.treeEmpty')
+  })
+
+  it('shows the loading message before data arrives', async () => {
+    const { pinia, store } = setupStore()
+    vi.spyOn(store, 'loadReimbursementTree').mockResolvedValue()
+    store.reimbursementIsLoading = true
+    const wrapper = mountView(pinia)
+    await flushPromises()
+    expect(wrapper.text()).toContain('settings.documents.reimbursement.loading')
+  })
+
+  it('keeps the tree visible with an inline error when a background refresh fails', async () => {
+    const { pinia, store } = setupStore()
+    vi.spyOn(store, 'loadReimbursementTree').mockResolvedValue()
+    store.reimbursementTree = makeTree()
+    store.reimbursementLoadError = 'settings.documents.reimbursement.loadFailed'
+    const wrapper = mountView(pinia)
+    await flushPromises()
+    expect(wrapper.find('[data-testid="reimbursement-tree"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('会议费')
+    expect(wrapper.text()).toContain('settings.documents.reimbursement.loadFailed')
+    expect(wrapper.find('[data-testid="reimbursement-retry"]').exists()).toBe(true)
   })
 })
