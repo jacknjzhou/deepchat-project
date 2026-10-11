@@ -9,6 +9,7 @@ import type { documentsTemplateUpsertInputSchema } from '@shared/contracts/route
 import type { DocumentsDatabase } from './data/database'
 import type { DocumentRow, DocumentTableInsertInput } from './data/tables/documents'
 import type { DocumentTaskRow } from './data/tables/documentTasks'
+import type { WatchedFileRow } from './data/tables/watchedFiles'
 import type {
   DocumentTemplateRow,
   DocumentTemplateTableUpsertInput
@@ -361,5 +362,13 @@ export class DocumentsRepository {
 
   countTaskBatch(batchId: string): { done: number; total: number } {
     return this.database.documentTasksTable.countBatch(batchId)
+  }
+
+  listWatchedFiles(): WatchedFileRow[] {
+    return this.database.watchedFilesTable.listAll()
+  }
+
+  upsertWatchedFile(input: { path: string; mtimeMs: number; taskId: string; now?: number }): void {
+    this.database.watchedFilesTable.upsert(input)
   }
 }

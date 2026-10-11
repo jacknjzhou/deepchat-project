@@ -22,7 +22,7 @@ export interface DocumentTaskInsertInput {
   filePath: string
   fileName: string
   templateId: string
-  source?: 'chat' | 'manual'
+  source?: 'chat' | 'manual' | 'scheduled'
   now?: number
 }
 
@@ -48,7 +48,7 @@ export class DocumentTasksTable extends BaseTable {
         file_path TEXT NOT NULL,
         file_name TEXT NOT NULL,
         template_id TEXT NOT NULL,
-        source TEXT NOT NULL DEFAULT 'manual' CHECK(source IN ('chat', 'manual')),
+        source TEXT NOT NULL DEFAULT 'manual',
         status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'running', 'done', 'failed')),
         type_key TEXT,
         document_id TEXT,
@@ -64,11 +64,38 @@ export class DocumentTasksTable extends BaseTable {
   }
 
   getLatestVersion(): number {
-    return 1
+    return 2
   }
 
-  getMigrationSQL(_version: number): string | null {
-    return null
+  // v2: rebuild the table to drop the source CHECK constraint (SQLite cannot alter CHECK).
+  getMigrationSQL(version: number): string | null {
+    if (version !== 2) return null
+    return `
+      CREATE TABLE document_tasks_v2 (
+        id TEXT PRIMARY KEY,
+        batch_id TEXT NOT NULL,
+        file_path TEXT NOT NULL,
+        file_name TEXT NOT NULL,
+        template_id TEXT NOT NULL,
+        source TEXT NOT NULL DEFAULT 'manual',
+        status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'running', 'done', 'failed')),
+        type_key TEXT,
+        document_id TEXT,
+        error TEXT,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+      INSERT INTO document_tasks_v2
+        SELECT id, batch_id, file_path, file_name, template_id, source, status,
+               type_key, document_id, error, created_at, updated_at
+        FROM document_tasks;
+      DROP TABLE document_tasks;
+      ALTER TABLE document_tasks_v2 RENAME TO document_tasks;
+      CREATE INDEX IF NOT EXISTS idx_document_tasks_status
+        ON document_tasks(status, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_document_tasks_created_at
+        ON document_tasks(created_at DESC, id DESC);
+    `
   }
 
   get(id: string): DocumentTaskRow | undefined {

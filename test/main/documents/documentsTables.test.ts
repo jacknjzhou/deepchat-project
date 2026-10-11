@@ -11,6 +11,9 @@ const documentsTableModule = sqliteModule
 const documentTasksTableModule = sqliteModule
   ? await import('@/documents/data/tables/documentTasks').catch(() => null)
   : null
+const watchedFilesTableModule = sqliteModule
+  ? await import('@/documents/data/tables/watchedFiles').catch(() => null)
+  : null
 const databaseModule = sqliteModule
   ? await import('@/documents/data/database').catch(() => null)
   : null
@@ -23,6 +26,7 @@ const Database = sqliteModule?.default
 const DocumentTemplatesTable = tableModule?.DocumentTemplatesTable
 const DocumentsTable = documentsTableModule?.DocumentsTable
 const DocumentTasksTable = documentTasksTableModule?.DocumentTasksTable
+const WatchedFilesTable = watchedFilesTableModule?.WatchedFilesTable
 const DocumentsDatabase = databaseModule?.DocumentsDatabase
 const DocumentsRepository = repositoryModule?.DocumentsRepository
 const seedPresetTemplates = seedModule?.seedPresetTemplates
@@ -30,6 +34,7 @@ const DatabaseCtor = Database!
 const DocumentTemplatesTableCtor = DocumentTemplatesTable!
 const DocumentsTableCtor = DocumentsTable!
 const DocumentTasksTableCtor = DocumentTasksTable!
+const WatchedFilesTableCtor = WatchedFilesTable!
 const DocumentsDatabaseCtor = DocumentsDatabase!
 const DocumentsRepositoryCtor = DocumentsRepository!
 
@@ -55,6 +60,7 @@ const modulesReady =
   )
 
 const describeIfSqlite = modulesReady ? describe : describe.skip
+const describeIfWatched = modulesReady && WatchedFilesTable ? describe : describe.skip
 const describeIfSeed = modulesReady && seedPresetTemplates ? describe : describe.skip
 
 describeIfSqlite('DocumentTemplatesTable', () => {
@@ -509,6 +515,61 @@ describeIfSqlite('documentTasksTable', () => {
     const table = new DocumentTasksTableCtor(db)
     expect(table.countBatch('missing')).toEqual({ done: 0, total: 0 })
     expect(table.update('nonexistent', { status: 'running' })).toBeUndefined()
+    db.close()
+  })
+})
+
+describeIfWatched('WatchedFilesTable', () => {
+  const makeDb = () => {
+    const db = new DatabaseCtor(':memory:')
+    new WatchedFilesTableCtor(db).createTable()
+    return db
+  }
+
+  it('upsert overwrites mtime and status for the same path', () => {
+    const db = makeDb()
+    const table = new WatchedFilesTableCtor(db)
+    table.upsert({ path: 'D:/scan/a.pdf', mtimeMs: 100, taskId: 't1', now: 1 })
+    table.upsert({ path: 'D:/scan/a.pdf', mtimeMs: 200, taskId: 't2', now: 2 })
+    expect(table.listAll()).toEqual([
+      { path: 'D:/scan/a.pdf', mtime_ms: 200, status: 'submitted', task_id: 't2', processed_at: 2 }
+    ])
+    db.close()
+  })
+})
+
+describeIfSqlite('documentTasksTable v2 migration', () => {
+  it('drops the source CHECK and preserves existing rows', () => {
+    const db = new DatabaseCtor(':memory:')
+    const table = new DocumentTasksTableCtor(db)
+    // Simulate a v1 database whose source column is constrained to 'chat' | 'manual'.
+    db.exec(`CREATE TABLE document_tasks (
+      id TEXT PRIMARY KEY, batch_id TEXT NOT NULL, file_path TEXT NOT NULL,
+      file_name TEXT NOT NULL, template_id TEXT NOT NULL,
+      source TEXT NOT NULL DEFAULT 'manual' CHECK(source IN ('chat', 'manual')),
+      status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'running', 'done', 'failed')),
+      type_key TEXT, document_id TEXT, error TEXT,
+      created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
+      INSERT INTO document_tasks VALUES ('id1','b1','p','n','tpl','manual','done',NULL,NULL,NULL,1,1)`)
+    expect(table.getLatestVersion()).toBe(2)
+    const sql = table.getMigrationSQL(2)
+    expect(sql).not.toBeNull()
+    db.exec(sql!)
+    const migrated = db.prepare(`SELECT source FROM document_tasks WHERE id = 'id1'`).get() as {
+      source: string
+    }
+    expect(migrated.source).toBe('manual')
+    table.insert({
+      batchId: 'b2',
+      filePath: 'p2',
+      fileName: 'n2',
+      templateId: 'auto',
+      source: 'scheduled',
+      now: 5
+    })
+    expect(
+      db.prepare(`SELECT source FROM document_tasks WHERE batch_id = 'b2'`).get()
+    ).toMatchObject({ source: 'scheduled' })
     db.close()
   })
 })

@@ -2,6 +2,7 @@ import type { DatabaseConnectionProvider } from '@/data/databaseConnection'
 import { DocumentTasksTable } from './tables/documentTasks'
 import { DocumentTemplatesTable } from './tables/documentTemplates'
 import { DocumentsTable } from './tables/documents'
+import { WatchedFilesTable } from './tables/watchedFiles'
 
 export class DocumentsDatabase {
   constructor(private readonly connection: DatabaseConnectionProvider) {}
@@ -20,5 +21,9 @@ export class DocumentsDatabase {
 
   get documentTasksTable(): DocumentTasksTable {
     return new DocumentTasksTable(this.getDatabase())
+  }
+
+  get watchedFilesTable(): WatchedFilesTable {
+    return new WatchedFilesTable(this.getDatabase())
   }
 }
