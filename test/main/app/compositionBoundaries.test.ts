@@ -477,4 +477,87 @@ describe('session boundary composition', () => {
       documentsSource.match(/\.\.\.providerSettings\.getCustomModels\(providerId\)/g)
     ).toHaveLength(2)
   })
+
+  it('wires managed config sync before documents migration', async () => {
+    const { readFileSync } = await vi.importActual<typeof import('node:fs')>('node:fs')
+    const compositionSource = readFileSync(
+      path.resolve(process.cwd(), 'src/main/app/composition.ts'),
+      'utf8'
+    )
+
+    expect(compositionSource).toContain('syncManagedConfig(')
+    expect(compositionSource).toContain('applyManagedAgentModels(')
+    expect(compositionSource).toContain('migrateDocumentsModelSettings(')
+    expect(compositionSource.indexOf('syncManagedConfig(')).toBeLessThan(
+      compositionSource.indexOf('migrateDocumentsModelSettings(')
+    )
+  })
+
+  it('reloads the provider runtime after managed writes and before model refresh', async () => {
+    const { readFileSync } = await vi.importActual<typeof import('node:fs')>('node:fs')
+    const compositionSource = readFileSync(
+      path.resolve(process.cwd(), 'src/main/app/composition.ts'),
+      'utf8'
+    )
+
+    const sync = compositionSource.indexOf('syncManagedConfig(')
+    const reload = compositionSource.indexOf('providerRuntime.reloadProvidersFromSettings()')
+    const refresh = compositionSource.indexOf('providerRuntime.refreshModels(provider.id)')
+    const migrate = compositionSource.indexOf('migrateDocumentsModelSettings(')
+
+    // managed writer 绕过运行时直接写存储，必须在刷新模型前显式重建运行时实例表，
+    // 否则 refreshModels 会因 Provider not found 失败，Agent 默认值预填整段跳过。
+    expect(sync).toBeGreaterThanOrEqual(0)
+    expect(reload).toBeGreaterThan(sync)
+    expect(refresh).toBeGreaterThan(reload)
+    expect(reload).toBeLessThan(migrate)
+  })
+
+  it('keeps managed config sync from blocking startup on device info failures', async () => {
+    const { readFileSync } = await vi.importActual<typeof import('node:fs')>('node:fs')
+    const compositionSource = readFileSync(
+      path.resolve(process.cwd(), 'src/main/app/composition.ts'),
+      'utf8'
+    )
+
+    expect(compositionSource).toContain('device info unavailable')
+  })
+
+  it('reruns managed agent prefill on manual refresh through one shared flow', async () => {
+    const { readFileSync } = await vi.importActual<typeof import('node:fs')>('node:fs')
+    const compositionSource = readFileSync(
+      path.resolve(process.cwd(), 'src/main/app/composition.ts'),
+      'utf8'
+    )
+
+    // 定义 1 次 + 启动期调用 1 次 + 手动刷新调用 1 次；删掉刷新期调用会退化为 2 次而失败。
+    expect(compositionSource.match(/runManagedModelRefreshAndAgentPrefill\(/g)).toHaveLength(3)
+
+    const refreshStart = compositionSource.indexOf('const refreshManagedConfig =')
+    const refreshEnd = compositionSource.indexOf('const appSettingsRoutes =', refreshStart)
+    expect(refreshStart).toBeGreaterThanOrEqual(0)
+    expect(refreshEnd).toBeGreaterThan(refreshStart)
+    const refreshSource = compositionSource.slice(refreshStart, refreshEnd)
+
+    // 预填必须发生在 syncManagedConfig 写入完成之后，且仅在拿到 config 时触发。
+    const syncCall = refreshSource.indexOf('const syncResult = await syncManagedConfig(')
+    const prefillCall = refreshSource.indexOf('void runManagedModelRefreshAndAgentPrefill(')
+    expect(syncCall).toBeGreaterThanOrEqual(0)
+    expect(prefillCall).toBeGreaterThan(syncCall)
+    expect(refreshSource).toContain('if (syncResult.config)')
+  })
+
+  it('reverts managed agent model artifacts when the server reports absent or denied', async () => {
+    const { readFileSync } = await vi.importActual<typeof import('node:fs')>('node:fs')
+    const compositionSource = readFileSync(
+      path.resolve(process.cwd(), 'src/main/app/composition.ts'),
+      'utf8'
+    )
+
+    // 启动期与手动刷新各一处；删除任一 absent/denied 分支的回滚调用都会失败。
+    expect(compositionSource.match(/revertManagedAgentModels\(/g)).toHaveLength(2)
+    expect(compositionSource).toContain("managedResult.status === 'absent'")
+    expect(compositionSource).toContain("syncResult.status === 'absent'")
+    expect(compositionSource).toContain('createManagedAgentSettingsWriter(agentSettings)')
+  })
 })

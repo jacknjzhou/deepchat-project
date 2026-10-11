@@ -30,6 +30,7 @@ function createRoutes(deps: {
     scheduler: {
       timeout: async <T>({ task }: { task: Promise<T> }) => await task
     },
+    readManagedProviderIds: () => [],
     recordSettingsActivity: vi.fn(async () => undefined)
   })
 }

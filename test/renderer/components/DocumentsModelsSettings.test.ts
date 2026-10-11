@@ -79,6 +79,15 @@ const mountPage = async (options: {
   vi.doMock('@/stores/modelStore', () => ({
     useModelStore: () => modelStore
   }))
+  vi.doMock('@/stores/managedStore', () => ({
+    useManagedStore: () => ({
+      documentsLocked: false,
+      load: vi.fn().mockResolvedValue(undefined),
+      refreshConfig: vi.fn().mockResolvedValue(undefined),
+      isManagedProvider: () => false,
+      providerIds: []
+    })
+  }))
   vi.doMock('@/components/ModelSelect.vue', () => ({
     default: ModelSelectStub
   }))

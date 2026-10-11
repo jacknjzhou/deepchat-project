@@ -163,7 +163,8 @@ describe('ProviderRuntime Integration Tests', () => {
       enableModel: vi.fn(),
       setCustomModels: vi.fn(),
       addCustomModel: vi.fn(),
-      removeCustomModel: vi.fn()
+      removeCustomModel: vi.fn(),
+      isManagedProvider: vi.fn().mockReturnValue(false)
     }
 
     mockProviderSettings = mockProviderSettingsInstance as unknown as ProviderSettings
@@ -203,6 +204,7 @@ describe('ProviderRuntime Integration Tests', () => {
     mockProviderSettings.getCustomModels = vi.fn().mockReturnValue([])
     mockProviderSettings.getProviderModels = vi.fn().mockReturnValue([])
     mockProviderSettings.getModelStatus = vi.fn().mockReturnValue(true)
+    mockProviderSettings.isManagedProvider = vi.fn().mockReturnValue(false)
     mockProviderSettings.resolveEffectiveModels = vi.fn((models, providerId) =>
       models.map((model) => ({
         ...model,
@@ -231,6 +233,44 @@ describe('ProviderRuntime Integration Tests', () => {
       expect(provider).toBeDefined()
       expect(provider.id).toBe('mock-openai-api')
       expect(provider.apiType).toBe('openai-compatible')
+    })
+
+    it('makes providers written to settings after init visible once the runtime reloads', async () => {
+      const managedProvider: LLM_PROVIDER = {
+        id: 'managed-corp-gw',
+        name: 'Managed Corp GW',
+        apiType: 'openai-compatible',
+        apiKey: 'managed-key',
+        baseUrl: 'https://corp.example.com/v1',
+        enable: true
+      }
+      let providers: LLM_PROVIDER[] = []
+      mockProviderSettings.getProviders = vi.fn(() => providers)
+      mockProviderSettings.getProviderById = vi.fn((id: string) =>
+        providers.find((provider) => provider.id === id)
+      )
+      mockProviderSettings.notifyModelsChanged = vi.fn()
+
+      const runtime = createProviderRuntime(mockProviderSettings)
+
+      // 模拟托管 writer 直接写入 provider 存储（绕过运行时）
+      providers = [managedProvider]
+
+      expect(() => runtime.getProviderById('managed-corp-gw')).toThrow(
+        'Provider managed-corp-gw not found'
+      )
+
+      runtime.reloadProvidersFromSettings()
+
+      expect(runtime.getProviderById('managed-corp-gw').id).toBe('managed-corp-gw')
+
+      await runtime.refreshModels('managed-corp-gw')
+
+      const fetchMock = vi.mocked(globalThis.fetch)
+      const requestedUrls = fetchMock.mock.calls.map((call) => String(call[0]))
+      expect(requestedUrls.some((url) => url.includes('/models'))).toBe(true)
+
+      await runtime.shutdown()
     })
 
     it('streams through the provider runtime boundary', () => {

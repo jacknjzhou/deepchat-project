@@ -40,6 +40,7 @@
   - [Install Dependencies](#install-dependencies)
   - [Start Development](#start-development)
   - [Build](#build)
+  - [Inject the Enterprise Managed Config URL (Optional)](#inject-the-enterprise-managed-config-url-optional)
 - [👥 Community \& Contribution](#-community--contribution)
 - [🙏🏻 Thanks](#-thanks)
 - [📃 License](#-license)
@@ -472,6 +473,21 @@ $ pnpm run build:mac:arm64
 $ pnpm run build:linux:x64
 $ pnpm run build:linux:arm64
 ```
+
+### Inject the Enterprise Managed Config URL (Optional)
+
+For enterprise batch deployment, set `MAIN_VITE_MANAGED_CONFIG_URL` in the **same shell** as the packaging command to bake a default enterprise managed config service URL into the installer. The client shows the URL on the **Settings → About** page with the source labeled "Built-in":
+
+```powershell
+# Windows (PowerShell)
+$env:MAIN_VITE_MANAGED_CONFIG_URL='https://example.com/managed/config'; pnpm run build:win
+```
+
+Notes:
+
+- The URL is replaced into the main process bundle at build time — **changing it requires rebuilding**
+- The runtime environment variable `DEEPCHAT_MANAGED_CONFIG_URL` takes priority and serves as an emergency override
+- When neither is set, the managed config is treated as unconfigured and client behavior is unchanged
 
 For a more detailed guide on development, project structure, and architecture, please see the [Developer Guide](./docs/developer-guide.md).
 

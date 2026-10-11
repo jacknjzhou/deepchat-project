@@ -1387,6 +1387,12 @@
       "invalidBaseUrl": "請輸入不含帳號或查詢參數的 HTTP(S) 位址"
     }
   },
+  "managed": {
+    "providerBadge": "Managed by your organization",
+    "providerHint": "This provider is configured by your organization and cannot be changed on this device.",
+    "documentsBadge": "Extraction models are configured by your organization and cannot be changed.",
+    "providerLocked": "This provider is configured by your organization and cannot be changed on this device."
+  },
   "mcp": {
     "title": "MCP設定",
     "description": "管理和配置MCP（模型控制協議）伺服器和工具",

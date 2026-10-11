@@ -33,5 +33,13 @@
     "hostname": "Hostname",
     "homeDir": "Home-Verzeichnis",
     "sid": "SID"
+  },
+  "managedConfig": {
+    "title": "Managed Configuration",
+    "endpoint": "Config Service URL",
+    "sourceLabel": "Source",
+    "sourceEnv": "Environment variable",
+    "sourceBuiltin": "Built-in",
+    "notConfigured": "Not configured"
   }
 }

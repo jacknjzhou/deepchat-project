@@ -1,4 +1,5 @@
 import type { ProviderSettingsPort } from '@/provider/settings'
+import { assertProviderWritable } from '@/provider/managedGuard'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -350,6 +351,8 @@ type ProviderImportServiceOptions = {
   homeDir?: string
   platform?: NodeJS.Platform
   appDataDir?: string
+  /** 托管 provider id 读取入口；导入覆盖既有 provider 时用于写保护 */
+  readManagedProviderIds?: () => string[]
 }
 
 type ProviderImportSettings = Pick<
@@ -362,6 +365,7 @@ export class ProviderImportService {
   private readonly homeDir: string
   private readonly platform: NodeJS.Platform
   private readonly appDataDir: string
+  private readonly readManagedProviderIds: () => string[]
 
   constructor(
     private readonly providerSettings: ProviderImportSettings,
@@ -371,6 +375,7 @@ export class ProviderImportService {
     this.platform = options.platform ?? process.platform
     this.appDataDir =
       options.appDataDir ?? process.env.APPDATA ?? path.join(this.homeDir, 'AppData', 'Roaming')
+    this.readManagedProviderIds = options.readManagedProviderIds ?? (() => [])
   }
 
   async scan(): Promise<ProviderImportScanResult> {
@@ -1425,6 +1430,7 @@ export class ProviderImportService {
         })
         results.push(this.buildResult(planned.raw, planned.mapping, 'created', planned))
       } else {
+        assertProviderWritable(planned.targetProviderId, this.readManagedProviderIds)
         nextProviders[existingIndex] = planned.provider
         changes.push({
           operation: 'update',

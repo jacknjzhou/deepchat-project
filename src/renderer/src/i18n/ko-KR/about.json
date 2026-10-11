@@ -33,5 +33,13 @@
     "hostname": "호스트 이름",
     "homeDir": "홈 디렉터리",
     "sid": "SID"
+  },
+  "managedConfig": {
+    "title": "Managed Configuration",
+    "endpoint": "Config Service URL",
+    "sourceLabel": "Source",
+    "sourceEnv": "Environment variable",
+    "sourceBuiltin": "Built-in",
+    "notConfigured": "Not configured"
   }
 }

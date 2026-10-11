@@ -1,5 +1,6 @@
 import type { ChatMessage } from '@shared/types/core/chat-message'
 import type { DocumentFieldEntry, DocumentTemplate } from '@shared/documents'
+import type { NewApiEndpointType } from '@shared/model'
 import type { DocumentsRepository } from '@/documents/repository'
 import {
   buildClassificationPrompts,
@@ -33,9 +34,15 @@ export interface CompletionRequest {
   messages: ChatMessage[]
   temperature?: number
   maxTokens?: number
+  /** 托管配置可显式指定聚合网关协议，透传到 provider 调用层 */
+  endpointType?: NewApiEndpointType
 }
 
-export type ModelTarget = { providerId: string; modelId: string }
+export type ModelTarget = {
+  providerId: string
+  modelId: string
+  endpointType?: NewApiEndpointType
+}
 
 export interface DocumentExtractorDeps {
   repository: Pick<DocumentsRepository, 'getTemplate' | 'getTemplateByTypeKey' | 'listTemplates'>
@@ -341,6 +348,7 @@ export class DocumentExtractor {
           const output = await this.deps.generateCompletion({
             providerId: target.providerId,
             modelId: target.modelId,
+            ...(target.endpointType ? { endpointType: target.endpointType } : {}),
             messages,
             temperature: EXTRACT_TEMPERATURE,
             maxTokens: EXTRACT_MAX_TOKENS
@@ -394,7 +402,11 @@ export class DocumentExtractor {
     options: { allowRequiredGapRetry?: boolean } = {}
   ): Promise<string> {
     const { allowRequiredGapRetry = true } = options
-    const request = { providerId: target.providerId, modelId: target.modelId }
+    const request = {
+      providerId: target.providerId,
+      modelId: target.modelId,
+      ...(target.endpointType ? { endpointType: target.endpointType } : {})
+    }
     const first = await this.deps.generateCompletion({
       ...request,
       messages,
@@ -447,11 +459,11 @@ export class DocumentExtractor {
   }
 
   private requireTarget(
-    target: { providerId: string; modelId: string } | null,
+    target: ModelTarget | null,
     // Retained as an internal call-site identifier; the user-facing message
     // now carries the stable prefix code mapped by the renderer.
     _settingName: string
-  ): { providerId: string; modelId: string } {
+  ): ModelTarget {
     if (!target) {
       throw new ModelNotConfiguredError(
         `[documents.modelRequired] No documents extraction model configured. Open Settings -> Agent -> Document Models.`
@@ -524,6 +536,7 @@ export class DocumentExtractor {
     const output = await this.deps.generateCompletion({
       providerId: target.providerId,
       modelId: target.modelId,
+      ...(target.endpointType ? { endpointType: target.endpointType } : {}),
       messages,
       temperature: CLASSIFY_TEMPERATURE
     })

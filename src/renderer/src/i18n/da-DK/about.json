@@ -33,5 +33,13 @@
     "hostname": "Værtsnavn",
     "homeDir": "Hjemmemappe",
     "sid": "SID"
+  },
+  "managedConfig": {
+    "title": "Managed Configuration",
+    "endpoint": "Config Service URL",
+    "sourceLabel": "Source",
+    "sourceEnv": "Environment variable",
+    "sourceBuiltin": "Built-in",
+    "notConfigured": "Not configured"
   }
 }

@@ -180,6 +180,7 @@ import { dialogErrorRoute, dialogRespondRoute } from './routes/dialog.routes'
 import {
   deviceGetAppVersionRoute,
   deviceGetInfoRoute,
+  deviceManagedConfigEndpointRoute,
   deviceRestartAppRoute,
   deviceResetDataByTypeRoute,
   deviceSanitizeSvgRoute,
@@ -447,6 +448,7 @@ import {
   pluginsInvokeActionRoute,
   pluginsListRoute
 } from './routes/plugins.routes'
+import { managedGetStatusRoute, managedRefreshRoute } from './routes/managed.routes'
 import {
   settingsActivityListRoute,
   settingsCheckCommandShellRoute,
@@ -682,6 +684,7 @@ export * from './routes/file.routes'
 export * from './routes/knowledge.routes'
 export * from './routes/cli.routes'
 export * from './routes/mcp.routes'
+export * from './routes/managed.routes'
 export * from './routes/memory.routes'
 export * from './routes/media.routes'
 export * from './routes/models.routes'
@@ -748,6 +751,7 @@ const DEEPCHAT_ROUTE_CATALOG_PART_1 = {
   [notificationAcknowledgePresentationRoute.name]: notificationAcknowledgePresentationRoute,
   [deviceGetAppVersionRoute.name]: deviceGetAppVersionRoute,
   [deviceGetInfoRoute.name]: deviceGetInfoRoute,
+  [deviceManagedConfigEndpointRoute.name]: deviceManagedConfigEndpointRoute,
   [deviceSelectDirectoryRoute.name]: deviceSelectDirectoryRoute,
   [deviceSelectFilesRoute.name]: deviceSelectFilesRoute,
   [deviceRestartAppRoute.name]: deviceRestartAppRoute,
@@ -982,6 +986,8 @@ const DEEPCHAT_ROUTE_CATALOG_PART_3 = {
   [settingsUpdateRoute.name]: settingsUpdateRoute,
   [settingsUpdatePublicRoute.name]: settingsUpdatePublicRoute,
   [settingsActivityListRoute.name]: settingsActivityListRoute,
+  [managedGetStatusRoute.name]: managedGetStatusRoute,
+  [managedRefreshRoute.name]: managedRefreshRoute,
   [startupGetBootstrapRoute.name]: startupGetBootstrapRoute,
   [performanceRecordRendererRoute.name]: performanceRecordRendererRoute
 } satisfies Record<string, RouteContract>

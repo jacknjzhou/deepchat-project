@@ -1,0 +1,149 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "DeepChat 运行时架构",
+    "locale": "zh-CN",
+    "output": "runtime-architecture.html",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "request-path",
+        "label": "请求链",
+        "focus": ["renderer", "preload", "routes", "session", "agent", "provider", "models"],
+        "note": "从 Renderer 到 LLM 供应商 API 的主请求路径。"
+      },
+      {
+        "id": "agent-loop",
+        "label": "Agent 执行循环",
+        "focus": ["session", "agent", "tool", "mcp", "skill", "memory", "tape"],
+        "note": "Turn 创建 Run，Provider 轮次与 Tool 执行交替推进。"
+      },
+      {
+        "id": "event-return",
+        "label": "事件回传",
+        "focus": ["agent", "events", "preload", "renderer"],
+        "note": "main → renderer 的 typed event 路由。"
+      },
+      {
+        "id": "entries-data",
+        "label": "入口与数据",
+        "focus": ["entries", "session", "agent", "tape", "database"],
+        "note": "Desktop / Remote / Scheduler 共用同一套 Session 生命周期。"
+      }
+    ]
+  },
+  "components": [
+    { "id": "entries", "type": "backend", "label": "多入口 Entry Points", "sublabel": "Desktop · Remote · CLI", "tag": "共用 Session 生命周期", "pos": [530, 180], "size": [170, 64] },
+    { "id": "events", "type": "messagebus", "label": "事件路由", "sublabel": "TypedEventHub", "tag": "SessionEventRouter", "pos": [730, 180], "size": [170, 64] },
+
+    { "id": "renderer", "type": "frontend", "label": "Renderer SPA", "sublabel": "Vue 3 · Pinia", "pos": [40, 420], "size": [130, 64] },
+    { "id": "preload", "type": "security", "label": "Preload Bridge", "sublabel": "contextBridge · zod", "pos": [210, 420], "size": [130, 64] },
+    { "id": "routes", "type": "backend", "label": "Route Registry", "sublabel": "ipcMain.handle", "pos": [400, 420], "size": [130, 64] },
+    { "id": "session", "type": "backend", "label": "Session 域", "sublabel": "Turn · Assignment", "pos": [560, 420], "size": [140, 64] },
+    { "id": "agent", "type": "backend", "label": "Agent Runtime", "sublabel": "LoopEngine / ACP", "tag": "Instance + Run", "pos": [730, 420], "size": [160, 64] },
+    { "id": "provider", "type": "backend", "label": "Provider Runtime", "sublabel": "AI SDK · streamChat", "pos": [920, 420], "size": [140, 64] },
+    { "id": "models", "type": "external", "label": "LLM 供应商 API", "sublabel": "OpenAI / Anthropic", "pos": [1090, 420], "size": [130, 64] },
+
+    { "id": "tape", "type": "database", "label": "Session Tape", "sublabel": "结构化工作记录", "pos": [560, 620], "size": [140, 60] },
+    { "id": "tool", "type": "backend", "label": "ToolService", "sublabel": "catalog · 权限预检", "pos": [720, 620], "size": [130, 60] },
+    { "id": "mcp", "type": "backend", "label": "McpService", "sublabel": "server/client", "pos": [880, 620], "size": [120, 60] },
+    { "id": "skill", "type": "backend", "label": "SkillService", "sublabel": "discoveryWorker", "pos": [1030, 620], "size": [120, 60] },
+    { "id": "memory", "type": "backend", "label": "MemoryService", "sublabel": "DuckDB VSS", "pos": [1180, 620], "size": [120, 60] },
+    { "id": "database", "type": "database", "label": "MainDatabase", "sublabel": "加密 SQLite", "pos": [880, 780], "size": [180, 60] }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "Renderer 进程", "wraps": ["renderer", "preload"], "pad": 16 },
+    {
+      "kind": "security-group",
+      "label": "主进程 · 能力与数据模块",
+      "wraps": ["tape", "tool", "mcp", "skill", "memory", "database"],
+      "pad": 16
+    }
+  ],
+  "connections": [
+    { "id": "renderer-invoke", "from": "renderer", "to": "preload", "label": "invoke", "variant": "emphasis", "fromSide": "right", "toSide": "left", "labelDy": -40 },
+    { "id": "preload-ipc", "from": "preload", "to": "routes", "label": "IPC 调用", "fromSide": "right", "toSide": "left", "labelDy": -40 },
+    { "id": "routes-session", "from": "routes", "to": "session", "label": "路由分发", "fromSide": "right", "toSide": "left", "labelDy": -40 },
+    { "id": "session-agent", "from": "session", "to": "agent", "label": "Turn → Run", "variant": "emphasis", "fromSide": "right", "toSide": "left", "labelDy": -40 },
+    { "id": "agent-provider", "from": "agent", "to": "provider", "label": "streamChat", "variant": "emphasis", "fromSide": "right", "toSide": "left", "labelDy": -40 },
+    { "id": "provider-models", "from": "provider", "to": "models", "label": "HTTPS 流式", "fromSide": "right", "toSide": "left", "labelDy": -40 },
+
+    { "id": "entries-session", "from": "entries", "to": "session", "label": "create / send / cancel", "fromSide": "bottom", "toSide": "top", "labelAt": [700, 330] },
+    { "id": "agent-events", "from": "agent", "to": "events", "label": "typed event", "fromSide": "top", "toSide": "bottom", "labelAt": [880, 330] },
+    { "id": "events-preload", "from": "events", "to": "preload", "label": "deepchat:event", "fromSide": "top", "toSide": "top", "via": [[815, 130], [275, 130]], "labelAt": [520, 116] },
+    { "id": "preload-renderer", "from": "preload", "to": "renderer", "label": "事件分发", "variant": "dashed", "fromSide": "left", "toSide": "right", "labelAt": [190, 520] },
+
+    { "id": "agent-tool", "from": "agent", "to": "tool", "label": "工具调用", "fromSide": "bottom", "toSide": "top", "labelAt": [720, 600] },
+    { "id": "agent-mcp", "from": "agent", "to": "mcp", "label": "MCP 工具", "fromSide": "bottom", "toSide": "top" },
+    { "id": "agent-skill", "from": "agent", "to": "skill", "label": "Skill 快照", "fromSide": "bottom", "toSide": "top" },
+    { "id": "agent-memory", "from": "agent", "to": "memory", "label": "记忆读写", "fromSide": "bottom", "toSide": "top" },
+
+    { "id": "session-tape", "from": "session", "to": "tape", "label": "transcript", "fromSide": "bottom", "toSide": "top", "labelAt": [540, 552] },
+    { "id": "tape-database", "from": "tape", "to": "database", "label": "SQLite", "fromSide": "bottom", "toSide": "top", "labelAt": [760, 733] },
+    { "id": "memory-database", "from": "memory", "to": "database", "label": "记忆表", "fromSide": "bottom", "toSide": "right", "labelAt": [1150, 810] }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "启动与组合根",
+      "items": [
+        "appMain.ts：single-instance 锁、deeplink 缓存、whenReady → startMainProcess",
+        "mainProcess.ts：创建 splash → settings/secret → 数据库解锁+迁移 → 注册协议",
+        "composition.ts：唯一组合根，创建模块 → registerRoutes → 依序 start，重名 route 直接抛错",
+        "窗口可用后延迟启动 floating、skill sync、MCP、remote runtime、provider warmup"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "请求链（Renderer → Main）",
+      "items": [
+        "Renderer SPA → api/XxxClient → core.invokeDeepchatRoute → window.deepchat.invoke",
+        "Preload createBridge：按 shared route 契约 zod 校验输入，返回前校验输出",
+        "ipcMain.handle('deepchat:route:invoke') → dispatchDeepchatRoute → 模块 route map handler",
+        "原生能力（SQLite/duckdb/sharp/node-pty/OCR）只存在于 main，renderer 拿不到 Node"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Session 与 Agent 运行",
+      "items": [
+        "SessionLifecycle 负责创建/草稿/关闭；SessionTurn 负责 send / queue / steer / cancel / interact",
+        "SessionAssignmentPolicy 解析 Agent、model、project、fork 与 subagent 归属",
+        "AgentManager 按 descriptor.kind 选择 DeepChat LoopEngine 或 ACP runtime",
+        "一个已载入 Session 对应一个 Instance；每次 Turn 创建独立 Run（取消信号 / provider round / requestSeq）"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "DeepChat 执行循环",
+      "items": [
+        "读取 Session 数据并准备 prompt → ProviderRuntime.streamChat 发起流式请求",
+        "更新 message projection → 判断是否产生 tool 调用",
+        "ToolService 执行（catalog / 权限预检 / 执行路由），需要用户交互时暂停并保存",
+        "写入 Tape tool fact → 进入下一轮；terminal / maxProviderRounds / maxToolCalls 后 settle Turn",
+        "恢复交互时最后一项完成后创建新的 resume Run"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "能力与数据模块",
+      "items": [
+        "Provider：provider DB 来源链（远端 → 缓存 → 内置），负责模型请求与认证",
+        "Tool / MCP / Skill / Plugin：工具目录、server-client 生命周期、Skill 发现与同步",
+        "Memory：DuckDB VSS 向量库 + 后台维护；Knowledge：内置 RAG，同时以 MCP server 暴露",
+        "Data：MainDatabase 只做连接/事务/迁移/备份，各模块自持 table；Tape 记录结构化工作轨迹"
+      ]
+    },
+    {
+      "dot": "orange",
+      "title": "入口与后台进程",
+      "items": [
+        "Desktop：window/tab/tray/shortcut + DesktopSessionBinding，窗口关闭不删除 Session",
+        "Remote：飞书 / Telegram / QQBot / Discord / WeChat 频道，复用同一套 Session 生命周期",
+        "Scheduler：cron 到期后创建 detached Session 跑 Turn，再按需投递结果",
+        "Utility 子进程：OCR helper、scheduler、fileWatcher、codeMode、backgroundExec"
+      ]
+    }
+  ]
+}

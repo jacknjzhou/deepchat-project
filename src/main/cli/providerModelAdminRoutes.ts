@@ -12,6 +12,7 @@ import {
 } from '@shared/contracts/routes'
 import type { LLM_PROVIDER } from '@shared/types/provider'
 import type { ProviderRuntime } from '@/provider'
+import { ManagedProviderLockedError, assertProviderWritable } from '@/provider/managedGuard'
 import type { ProviderQueryScheduler } from '@/provider/providerService'
 import type { ProviderSettingsPort } from '@/provider/settings'
 import {
@@ -44,6 +45,8 @@ export type CliProviderModelAdminDependencies = Readonly<{
   scheduler: ProviderQueryScheduler
   recordSettingsActivity?(input: SettingsActivityInput): void
   createProviderId?: () => string
+  /** 托管 provider id 的权威读取入口（必需，避免漏注入导致写保护静默失效） */
+  readManagedProviderIds: () => string[]
   log?: Pick<Console, 'warn'>
 }>
 
@@ -115,6 +118,16 @@ export function createCliProviderModelAdminRoutes(
   const recordActivity = (input: SettingsActivityInput): void => {
     dependencies.recordSettingsActivity?.(input)
   }
+  const requireWritableProvider = (providerId: string): void => {
+    try {
+      assertProviderWritable(providerId, dependencies.readManagedProviderIds)
+    } catch (error) {
+      if (error instanceof ManagedProviderLockedError) {
+        throw new CliRequestError('permission_denied', error.message, { httpStatus: 403 })
+      }
+      throw error
+    }
+  }
 
   return createRouteMap([
     [
@@ -185,6 +198,7 @@ export function createCliProviderModelAdminRoutes(
       async (rawInput, context) => {
         requireCliCaller(context.caller)
         const input = providersUpdatePublicRoute.input.parse(rawInput)
+        requireWritableProvider(input.providerId)
         const current = requireProvider(input.providerId)
         if (input.updates.apiType !== undefined && current.custom !== true) {
           throw new CliRequestError('conflict', 'Built-in provider API type cannot be changed', {
@@ -229,6 +243,7 @@ export function createCliProviderModelAdminRoutes(
       async (rawInput, context) => {
         requireCliCaller(context.caller)
         const input = providersSetCredentialRoute.input.parse(rawInput)
+        requireWritableProvider(input.providerId)
         const current = requireProvider(input.providerId)
         await executeMutation('update provider credential', () =>
           dependencies.providerRuntime.updateProviderAtomic(input.providerId, {

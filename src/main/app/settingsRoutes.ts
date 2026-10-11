@@ -2,6 +2,8 @@ import {
   SETTINGS_KEYS,
   configGetEntriesRoute,
   configUpdateEntriesRoute,
+  managedGetStatusRoute,
+  managedRefreshRoute,
   settingsActivityListRoute,
   settingsCheckCommandShellRoute,
   settingsGetCommandShellRoute,
@@ -13,6 +15,7 @@ import {
   settingsUpdateRoute,
   type ConfigEntryKey,
   type ConfigEntryValues,
+  type ManagedConfigStatus,
   type SettingsActivityInput,
   type SettingsChange,
   type SettingsKey,
@@ -44,6 +47,11 @@ export function createAppSettingsRoutes(deps: {
   applyContentProtection(enabled: boolean): void
   recordActivity(input: SettingsActivityInput): void
   listActivities(limit?: number): Promise<unknown[]>
+  /** 企业托管配置状态读取与刷新，具体实现由 composition 注入，路由层不重建 store */
+  managed: {
+    getStatus(): ManagedConfigStatus
+    refresh(): Promise<ManagedConfigStatus>
+  }
 }): DeepchatRouteMap {
   const readEntries = (keys?: ConfigEntryKey[]): Partial<ConfigEntryValues> => {
     const selectedKeys = keys?.length ? keys : undefined
@@ -314,6 +322,20 @@ export function createAppSettingsRoutes(deps: {
         return settingsActivityListRoute.output.parse({
           activities: await deps.listActivities(input.limit)
         })
+      }
+    ],
+    [
+      managedGetStatusRoute.name,
+      async (rawInput) => {
+        managedGetStatusRoute.input.parse(rawInput)
+        return managedGetStatusRoute.output.parse(deps.managed.getStatus())
+      }
+    ],
+    [
+      managedRefreshRoute.name,
+      async (rawInput) => {
+        managedRefreshRoute.input.parse(rawInput)
+        return managedRefreshRoute.output.parse(await deps.managed.refresh())
       }
     ]
   ])

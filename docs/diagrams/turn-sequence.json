@@ -1,0 +1,137 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "DeepChat 一次 Turn 的模块间时序",
+    "subtitle": "请求链 → Provider 流式轮次 → 工具循环 → 事件回传 → settle",
+    "locale": "zh-CN",
+    "output": "turn-sequence.html",
+    "quality_profile": "showcase",
+    "viewBox": [1050, 850],
+    "views": [
+      {
+        "id": "request-chain",
+        "label": "发起 Turn",
+        "focus": ["renderer", "preload", "routes", "session", "agent"],
+        "note": "Renderer 经 Preload 契约校验与 Route Registry 分发，进入 Session 域创建 Run。"
+      },
+      {
+        "id": "provider-round",
+        "label": "Provider 轮次",
+        "focus": ["agent", "provider", "models"],
+        "note": "Agent Runtime 通过 ProviderRuntime.streamChat 向供应商发起流式请求。"
+      },
+      {
+        "id": "tool-loop",
+        "label": "工具循环",
+        "focus": ["agent", "provider", "tool"],
+        "note": "产生 tool call 后由 ToolService 执行，结果回填并进入下一轮 provider round。"
+      },
+      {
+        "id": "event-return",
+        "label": "事件回传",
+        "focus": ["agent", "events", "preload", "renderer", "session"],
+        "note": "typed event 经事件路由与 Preload 分发回 Renderer，最后 settle Turn。"
+      }
+    ]
+  },
+  "participants": [
+    { "id": "renderer", "type": "frontend", "label": "Renderer SPA", "sublabel": "Vue 3" },
+    { "id": "preload", "type": "security", "label": "Preload", "sublabel": "zod 校验" },
+    { "id": "routes", "type": "backend", "label": "Routes", "sublabel": "ipcMain" },
+    { "id": "session", "type": "backend", "label": "Session 域", "sublabel": "Turn" },
+    { "id": "agent", "type": "backend", "label": "Agent Runtime", "sublabel": "LoopEngine" },
+    { "id": "provider", "type": "backend", "label": "Provider", "sublabel": "streamChat" },
+    { "id": "models", "type": "external", "label": "LLM API", "sublabel": "供应商" },
+    { "id": "tool", "type": "backend", "label": "ToolService", "sublabel": "catalog" },
+    { "id": "events", "type": "messagebus", "label": "事件路由", "sublabel": "TypedEventHub" }
+  ],
+  "segments": [
+    { "from": 150, "to": 320, "label": "① 发起 Turn" },
+    { "from": 340, "to": 610, "label": "② Provider 轮次与工具循环" },
+    { "from": 628, "to": 790, "label": "③ 事件回传与 settle" }
+  ],
+  "messages": [
+    { "id": "renderer-invoke", "from": "renderer", "to": "preload", "y": 186, "label": "invoke(route)", "variant": "emphasis" },
+    { "id": "preload-validate", "from": "preload", "to": "routes", "y": 222, "label": "校验后分发", "variant": "emphasis" },
+    { "id": "routes-dispatch", "from": "routes", "to": "session", "y": 258, "label": "chat.send", "variant": "emphasis" },
+    { "id": "session-run", "from": "session", "to": "agent", "y": 294, "label": "Turn → Run", "variant": "emphasis" },
+
+    { "id": "agent-stream", "from": "agent", "to": "provider", "y": 346, "label": "streamChat", "variant": "emphasis" },
+    { "id": "provider-request", "from": "provider", "to": "models", "y": 382, "label": "HTTPS 流式请求", "variant": "emphasis" },
+    { "id": "models-tokens", "from": "models", "to": "provider", "y": 418, "label": "token 流", "variant": "return" },
+    { "id": "provider-delta", "from": "provider", "to": "agent", "y": 454, "label": "message delta", "variant": "return" },
+    { "id": "agent-tool-call", "from": "agent", "to": "tool", "y": 506, "label": "tool call", "variant": "emphasis" },
+    { "id": "tool-result", "from": "tool", "to": "agent", "y": 542, "label": "tool result", "variant": "return" },
+    { "id": "agent-next-round", "from": "agent", "to": "provider", "y": 588, "label": "下一轮请求", "variant": "dashed" },
+
+    { "id": "agent-emit", "from": "agent", "to": "events", "y": 640, "label": "typed event", "variant": "dashed" },
+    { "id": "events-preload", "from": "events", "to": "preload", "y": 676, "label": "deepchat:event", "variant": "dashed" },
+    { "id": "preload-renderer", "from": "preload", "to": "renderer", "y": 712, "label": "事件分发", "variant": "return" },
+    { "id": "agent-settle", "from": "agent", "to": "session", "y": 748, "label": "settle Turn", "variant": "return" }
+  ],
+  "activations": [
+    { "participant": "preload", "from": 180, "to": 302, "type": "security" },
+    { "participant": "routes", "from": 216, "to": 302, "type": "backend" },
+    { "participant": "session", "from": 252, "to": 312, "type": "backend" },
+    { "participant": "agent", "from": 288, "to": 760, "type": "backend" },
+    { "participant": "provider", "from": 340, "to": 460, "type": "backend" },
+    { "participant": "models", "from": 376, "to": 424, "type": "external" },
+    { "participant": "tool", "from": 500, "to": 548, "type": "backend" },
+    { "participant": "events", "from": 634, "to": 718, "type": "messagebus" },
+    { "participant": "preload", "from": 670, "to": 720, "type": "security" },
+    { "participant": "session", "from": 742, "to": 762, "type": "backend" }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "发起 Turn：契约先行",
+      "items": [
+        "Renderer 只调用 window.deepchat.invoke，不直接接触 Node 与原生能力",
+        "Preload createBridge 按 shared route 契约校验输入与输出，失败即拒绝",
+        "Route Registry 是唯一分发点，重名 route 在组合根启动阶段直接抛错",
+        "Session 域负责创建 Session / Turn，并由 AssignmentPolicy 解析 Agent 与 model"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Provider 轮次：流式优先",
+      "items": [
+        "AgentManager 按 descriptor.kind 选择 DeepChat LoopEngine 或 ACP runtime",
+        "每次 Turn 创建独立 Run，持有取消信号、provider round 与 requestSeq",
+        "ProviderRuntime.streamChat 走 AI SDK 向供应商发起 HTTPS 流式请求",
+        "token 流与 message delta 逐段回填 message projection，不必等待整段完成"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "工具循环：交替推进",
+      "items": [
+        "检测到 tool call 后由 ToolService 执行 catalog、权限预检与执行路由",
+        "需要用户交互时暂停并保存现场，恢复后创建新的 resume Run",
+        "tool result 回填后进入下一轮 provider round",
+        "终态由 terminal、maxProviderRounds 或 maxToolCalls 判定"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "事件回传：typed event",
+      "items": [
+        "Agent 通过 TypedEventHub 与 SessionEventRouter 发出结构化事件",
+        "事件经 Preload 分发回 Renderer，UI 侧按类型增量更新",
+        "该链路与请求链解耦，长任务可在后台继续推进",
+        "渲染进程始终不持有 Node 权限，回传内容仍是契约化数据"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "落库与 settle",
+      "items": [
+        "工具事实写入 Session Tape，形成结构化工作轨迹",
+        "MainDatabase 只负责连接、事务、迁移与备份，各模块自持 table",
+        "Turn 结算后 Session 状态与 transcript 保持一致",
+        "窗口关闭不会删除 Session，下次载入可继续推进"
+      ]
+    }
+  ]
+}
