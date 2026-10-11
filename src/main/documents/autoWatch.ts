@@ -1,6 +1,6 @@
 import path from 'node:path'
 import type { DocumentsAutoWatchConfig } from '@shared/documents'
-import { AUTO_TEMPLATE_ID, type DocumentExtractFileInput } from './extractor/documentExtractor'
+import type { DocumentExtractFileInput } from './extractor/documentExtractor'
 import type { DocumentsAutoWatchState } from './modelSettings'
 
 export type AutoWatchConfig = DocumentsAutoWatchConfig
@@ -65,11 +65,11 @@ export class AutoWatchScheduler {
 
   async runOnce(): Promise<void> {
     const now = this.deps.now ?? Date.now
-    const config = this.deps.readConfig()
-    this.nextRunAt = now() + config.intervalHours * HOUR_MS
-    if (!config.enabled || config.dir === '') return
     let lastError: string | null = null
     try {
+      const config = this.deps.readConfig()
+      this.nextRunAt = now() + config.intervalHours * HOUR_MS
+      if (!config.enabled || config.dir === '') return
       const entries = await this.deps.readdir(config.dir, { withFileTypes: true })
       const extSet = new Set(config.extensions.map((e) => e.toLowerCase()))
       const candidates = entries
@@ -81,7 +81,12 @@ export class AutoWatchScheduler {
       )
       const pending: Array<{ path: string; mtimeMs: number }> = []
       for (const p of candidates) {
-        const mtimeMs = (await this.deps.stat(p)).mtimeMs
+        let mtimeMs: number
+        try {
+          mtimeMs = (await this.deps.stat(p)).mtimeMs
+        } catch {
+          continue
+        }
         // normalize 两侧再比较：watched 记录与本次 join 产出的分隔符风格可能不同（Windows）
         if (watched.get(path.normalize(p)) === mtimeMs) continue
         pending.push({ path: p, mtimeMs })
@@ -99,18 +104,25 @@ export class AutoWatchScheduler {
           }),
           source: 'scheduled'
         })
-        batch.forEach((f, i) =>
+        batch.forEach((f, i) => {
+          // submit() persists one task per file in order within a single insertBatch transaction.
+          const task = tasks[i]
+          if (!task) throw new Error(`no submitted task for watched file: ${f.path}`)
           this.deps.upsertWatchedFile({
             path: f.path,
             mtimeMs: f.mtimeMs,
-            taskId: tasks[i]?.id ?? AUTO_TEMPLATE_ID,
+            taskId: task.id,
             now: now()
           })
-        )
+        })
       }
     } catch (error) {
       lastError = error instanceof Error ? error.message : String(error)
     }
-    this.deps.writeState({ lastRunAt: now(), lastError })
+    try {
+      this.deps.writeState({ lastRunAt: now(), lastError })
+    } catch {
+      // settings store failure must not reject the timer callback
+    }
   }
 }

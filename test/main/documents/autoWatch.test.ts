@@ -24,7 +24,6 @@ function makeDeps(overrides: Partial<Record<string, unknown>> = {}) {
     submit: vi.fn(() => [{ id: 't1' }, { id: 't2' }, { id: 't3' }]),
     readdir: vi.fn(async () => files),
     stat: vi.fn(async (_p: string) => ({ mtimeMs: 111 })),
-    join: (dir: string, name: string) => `${dir}/${name}`,
     now: vi.fn(() => 1_000_000)
   }
   Object.assign(deps, overrides)
@@ -42,6 +41,7 @@ describe('AutoWatchScheduler.runOnce', () => {
     expect(arg.files).toHaveLength(2) // roundLimit=2，txt 被过滤
     expect(arg.files[0].mimeType).toBe('application/pdf')
     expect(deps.upsertWatchedFile).toHaveBeenCalledTimes(2)
+    expect(deps.writeState).toHaveBeenCalledWith({ lastRunAt: 1_000_000, lastError: null })
   })
 
   it('path+mtime 均相同跳过；mtime 变化重识别', async () => {
@@ -76,6 +76,7 @@ describe('AutoWatchScheduler.runOnce', () => {
     const s = new AutoWatchScheduler(deps as never)
     await s.runOnce()
     expect(deps.readdir).not.toHaveBeenCalled()
+    expect(deps.writeState).not.toHaveBeenCalled()
   })
 
   it('后缀大小写不敏感', async () => {
@@ -92,5 +93,26 @@ describe('nextRunAt', () => {
     const s = new AutoWatchScheduler(deps as never)
     await s.runOnce()
     expect(s.getNextRunAt()).toBe(1_000_000 + 3_600_000)
+  })
+})
+
+describe('AutoWatchScheduler.start/stop', () => {
+  it('tick 到点触发一轮，stop 后不再触发', async () => {
+    vi.useFakeTimers()
+    try {
+      let current = 1_000_000
+      const deps = makeDeps({ now: vi.fn(() => current) })
+      const s = new AutoWatchScheduler(deps as never)
+      s.start()
+      current += 60_000
+      await vi.advanceTimersByTimeAsync(60_000)
+      expect(deps.submit).toHaveBeenCalledTimes(1)
+      s.stop()
+      current += 60_000
+      await vi.advanceTimersByTimeAsync(60_000)
+      expect(deps.submit).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

@@ -653,6 +653,7 @@ export async function createMainProcessControl(dependencies: {
   let acpAsLlmProviderSessionControl: AcpAsLlmProviderSessionControlPort
   let acpAsLlmProviderPermission: AcpAsLlmProviderPermissionPort
   let routeDispatcher: RouteDispatcher | undefined
+  let autoWatchScheduler: AutoWatchScheduler | undefined
   let cliComputeService: CliComputeService
   let cliAudioTranscriptionService: CliAudioTranscriptionService
   let cliOcrService: CliOcrService
@@ -2863,6 +2864,7 @@ export async function createMainProcessControl(dependencies: {
     await runDestroyStep('ocrRuntimeService.close', () => ocrRuntimeService.close())
     await runDestroyStep('providerRuntime.shutdown', () => providerRuntime.shutdown())
     await runDestroyStep('acpRuntime.shutdown', () => acpRuntimeOwner.shutdown())
+    await runDestroyStep('autoWatchScheduler.stop', () => autoWatchScheduler?.stop())
     await runDestroyStep('mainDatabase.close', () => mainDatabase.close())
     await runDestroyStep('shortcutPresenter.destroy', () => shortcutPresenter.destroy())
     await runDestroyStep('notificationService.clearAllNotifications', () =>
@@ -3154,7 +3156,7 @@ export async function createMainProcessControl(dependencies: {
     // Resume interrupted recognition tasks from the previous run.
     void recognitionTaskManager.resumePending()
     // Auto watch: periodically scan the configured directory and submit new files for recognition.
-    const autoWatchScheduler = new AutoWatchScheduler({
+    autoWatchScheduler = new AutoWatchScheduler({
       readConfig: () => readAutoWatchConfig(providerSettings),
       writeState: (state) =>
         providerSettings.setSetting(DOCUMENTS_SETTINGS_KEYS.autoWatchState, state),
