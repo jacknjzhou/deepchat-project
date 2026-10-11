@@ -620,8 +620,10 @@ describe('ReimbursementView', () => {
     const wrapper = mountView(pinia)
     await flushPromises()
     const exportButton = wrapper.get('[data-testid="reimbursement-export"]')
-    expect(exportButton.text()).not.toContain('(1)')
+    // Global i18n mock renders keys as-is: the count variant swaps in once a
+    // group is checked.
+    expect(exportButton.text()).not.toContain('exportWithCount')
     await wrapper.get('[data-testid="reimbursement-group-check-grp-a"]').setValue(true)
-    expect(exportButton.text()).toContain('(1)')
+    expect(exportButton.text()).toContain('exportWithCount')
   })
 })

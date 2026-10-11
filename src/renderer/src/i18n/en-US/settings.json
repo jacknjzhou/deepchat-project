@@ -343,6 +343,7 @@
       "manageCategories": "Manage categories",
       "export": "Export package",
       "exportDone": "Exported {count} files to {path}",
+      "exportWithCount": "Export ({count})",
       "materialsTitle": "Required materials",
       "materialCount": "{count} collected",
       "unknownPerson": "Unknown person",

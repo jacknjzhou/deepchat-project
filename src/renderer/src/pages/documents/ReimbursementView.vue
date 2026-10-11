@@ -166,18 +166,14 @@
                   type="checkbox"
                   class="h-4 w-4 shrink-0"
                   :checked="checkedGroupIds.has(node.group.id)"
-                  :aria-label="t('settings.documents.reimbursement.selectGroupForExport')"
+                  :aria-label="`${t('settings.documents.reimbursement.selectGroupForExport')} — ${node.group.name}`"
                   :data-testid="`reimbursement-group-check-${node.group.id}`"
                   @change="toggleGroupChecked(node.group.id, $event)"
                 />
                 <button
                   type="button"
                   class="flex min-w-0 items-center gap-1.5 text-sm font-medium"
-                  :aria-label="
-                    expandedGroupIds.has(node.group.id)
-                      ? t('settings.documents.reimbursement.collapseGroup')
-                      : t('settings.documents.reimbursement.expandGroup')
-                  "
+                  :aria-expanded="expandedGroupIds.has(node.group.id)"
                   :data-testid="`reimbursement-group-toggle-${node.group.id}`"
                   @click="toggleGroupExpanded(node.group.id)"
                 >
@@ -478,9 +474,10 @@ function goConfig() {
 }
 
 const exportLabel = computed(() => {
-  const base = t('settings.documents.reimbursement.export')
   const count = checkedGroupIds.value.size
-  return count > 0 ? `${base} (${count})` : base
+  return count > 0
+    ? t('settings.documents.reimbursement.exportWithCount', { count })
+    : t('settings.documents.reimbursement.export')
 })
 
 async function onExport() {
