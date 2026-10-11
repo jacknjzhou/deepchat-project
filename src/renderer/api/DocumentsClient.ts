@@ -1,5 +1,6 @@
 import type { DeepchatBridge } from '@shared/contracts/bridge'
 import {
+  documentAutoWatchChooseDirRoute,
   documentTemplatesDeleteRoute,
   documentTemplatesForkRoute,
   documentTemplatesGetRoute,
@@ -117,6 +118,10 @@ export function createDocumentsClient(bridge: DeepchatBridge = getDeepchatBridge
       }),
     reimbursementExport: (input: z.input<typeof documentsReimbursementExportRoute.input> = {}) =>
       invokeRoute(bridge, documentsReimbursementExportRoute.name, input),
+    chooseAutoWatchDir: async (): Promise<string | null> => {
+      const out = await invokeRoute(bridge, documentAutoWatchChooseDirRoute.name, {})
+      return out.dir
+    },
     onTaskUpdated: (
       listener: (payload: z.infer<typeof documentsTaskUpdatedEvent.payload>) => void
     ) => bridge.on(documentsTaskUpdatedEvent.name, listener)
