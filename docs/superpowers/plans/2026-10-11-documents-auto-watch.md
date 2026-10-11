@@ -879,3 +879,51 @@ git commit -m "i18n: documents auto watch keys"
 - **类型一致性**：`WatchedFileRow`/`WatchedFileUpsertInput`（Task 1）与 scheduler deps（Task 4）签名一致；`DocumentsAutoWatchConfig` 在 Task 4 定义、Task 5 移到 shared 并由主进程复用（plan 内已注明移动）；`AUTO_TEMPLATE_ID` Task 3 定义、Task 4 引用，顺序正确（Task 3 先于 Task 4 执行）。
 - **对 spec 的一处修正**：spec 写「templateId 改 optional——不传时走自动分类」；实际实现为「缺省时补约定值 `'auto'`」（extractor 既有约定，`documentExtractor.ts:91-118`）。语义一致，实现更贴合代码库现状，已写进计划头部关键背景。
 - **对 spec 的补充**：`document_tasks.source` CHECK 约束需 v2 迁移重建表（spec 未预见，Task 1 Step 5 处理）。
+
+---
+
+## As-built（2026-10-11 实施记录）
+
+**状态**：6 Task 全部完成，每 Task 通过 spec + 质量双审（质量审查 3 次 Needs fixes 均已修复并复审 Approve），最终整体终审 **Ready to merge**。
+
+**提交链**（本功能 14 个实现提交 + 2 个文档提交，分支 `20261009classifier-docs-content`）：
+
+| Commit | 内容 |
+| --- | --- |
+| `77a9fbdc` | spec 文档 |
+| `a3d8d751` | plan 文档 |
+| `2854bff9` | Task 1：documents_watched_files 表 + document_tasks v2 迁移 + repository 方法 |
+| `380df2b3` | Task 1 补：schema catalog 注册 + DocumentsDatabase bootstrap ensureMigrated（生产可达性） |
+| `5563cfb1` | Task 1 审查修复：迁移脚本内聚事务 + DDL 匹配改正则 + 注释 |
+| `196ca334` | Task 2：DOCUMENT_SOURCES 加 'scheduled' + templateId optional + chooseDir 路由 |
+| `63abff69` | Task 3：documents 表 v2 迁移（去 source CHECK，13 列重建） |
+| `59edc6ab` | Task 3：AUTO_TEMPLATE_ID 常量 + taskManager 缺省归一化 |
+| `dbcd3026` | Task 3：端口类型加宽 + cast 清理 + 契约微调 |
+| `bddc0fd4` | Task 3 审查修复：sourceScheduled × 20 locale + 迁移 SQL 显式列清单 |
+| `5a9fa077` | Task 4：shared autoWatch 类型 + readAutoWatchConfig/State + AutoWatchScheduler |
+| `9ddfdebd` | Task 4：composition 装配（resumePending 后 start） |
+| `23714e37` | Task 4 审查修复：destroy 序列 stop + per-file stat 容错 + 硬失败语义 + start/stop 测试 |
+| `1013d9b9` | Task 5：设置页「自动识别」卡片 + DocumentsClient.chooseAutoWatchDir + config 白名单联动 |
+| `0465f6fb` | Task 5：i18n 10 键 × 20 locale |
+| `62eb83b5` | Task 5 审查修复：locked 态 disabled + 边界常量互指注释 + sanitize 注释修正 |
+
+**验证**：主进程 documents 套件 17 文件 291 用例全绿（Electron + ELECTRON_RUN_AS_NODE）；渲染端相关 152 用例全绿；`pnpm run i18n` 20 locale 全过；lint 0 警告；typecheck 双端通过。
+
+**实现中相对 plan 的关键偏差（均已审查确认合理）**：
+
+1. **迁移触发机制**：plan 假设 catalog 迁移循环可达 v2，实际全局 `schema_versions` 高水位使其不可达 → 改为 `DocumentsDatabase` 构造函数事务内 `ensureMigrated()`（DDL 文本检测 `CHECK(source IN`，重建后天然幂等），documents 与 document_tasks 两表同法。
+2. **Windows 路径归一化**：plan 的去重比较在 Windows 上因 `path.join` 反斜杠失效 → 两侧 `path.normalize` 归一化。
+3. **config 白名单联动**（Task 5 必要偏离）：渲染端 getSetting/setSetting 走 config 契约白名单，新增键必须同步 `CONFIG_ENTRY_KEYS`/ValuesSchema/ChangeSchema + settingsRoutes `read()`，否则配置读不回。
+4. **i18n 键命名**：归入既有 `documents.archive` 段（`autoWatchTitle` 等 10 键，含额外 `autoWatchInvalidExtensions`）；任务列表 'auto' 显示复用既有键 `taskClassifying`/`autoClassify`（DocumentTaskStrip 已有特判），未新建 autoClassified。
+5. **重启策略**：实现为启动即到期（≤1 分钟跑首轮）而非「从 lastRunAt 重算」，去重表保证安全，行为等效。
+6. **documents 表迁移**（Task 3 计划外）：scheduled 归档硬前提（taskManager 透传任务 source 到 insertDocument），镜像 document_tasks 方案。
+7. **提交信息记录**：`380df2b3` 52 字符超 ≤50 约定（reword 成本 > 收益，未整改）；`dbcd3026` 范围混杂（拆分成本 > 收益，保留）。
+
+**非阻塞遗留（后续迭代候选）**：
+
+1. `watched_files.status` 列恒 'submitted'（状态扩展位，当前死重）
+2. autoWatchState 无实时刷新推送（重进设置页可见新状态）
+3. chooseDir 复用 `reimbursementDeps.showOpenDialog` 端口（命名失真，可改 dialogDeps）
+4. 路径去重未做大小写折叠（Windows 重选同目录不同大小写会全量重识别一轮）
+5. `ConfigEntryChangeSchema` 的 autoWatchState 成员渲染端无写入者
+
