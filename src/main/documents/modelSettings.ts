@@ -77,7 +77,10 @@ export interface DocumentsAutoWatchState {
 const isFiniteInt = (v: unknown, min: number, max: number): v is number =>
   typeof v === 'number' && Number.isInteger(v) && v >= min && v <= max
 
-/** 非法值逐字段回落默认值（与渲染端 sanitize 范围一致：1-72 小时、1-20、后缀格式校验） */
+/**
+ * 非法值逐字段回落默认值。范围对齐渲染端 clamp（1-72 小时、1-20）；
+ * 后缀策略此处为 all-or-nothing（任一非法即整体回落默认），渲染端按项过滤并在保存时阻止空列表。
+ */
 export function readAutoWatchConfig(store: DocumentsSettingsStore): DocumentsAutoWatchConfig {
   const raw = store.getSetting<Record<string, unknown>>(DOCUMENTS_SETTINGS_KEYS.autoWatch)
   if (!raw || typeof raw !== 'object') return { ...DOCUMENTS_AUTO_WATCH_DEFAULT }

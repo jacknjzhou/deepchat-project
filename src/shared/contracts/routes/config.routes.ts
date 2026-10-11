@@ -106,6 +106,8 @@ const AcpManualAgentInputSchema = z.looseObject({
 
 const AcpManualAgentUpdateSchema = AcpManualAgentInputSchema.partial()
 
+// Mirror of DocumentsAutoWatchConfig in @shared/documents; keep ranges in sync
+// with renderer clamp and modelSettings sanitize.
 const DocumentsAutoWatchConfigSchema = z.object({
   enabled: z.boolean(),
   dir: z.string(),

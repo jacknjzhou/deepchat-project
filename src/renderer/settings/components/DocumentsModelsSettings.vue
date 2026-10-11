@@ -236,7 +236,7 @@
         <div>
           <DcButton
             data-testid="auto-watch-save"
-            :disabled="autoWatchSaving"
+            :disabled="locked || autoWatchSaving"
             @click="saveAutoWatch"
           >
             {{
