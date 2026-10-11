@@ -149,17 +149,22 @@
       </div>
 
       <DialogFooter class="flex-wrap gap-2">
-        <div v-if="document" class="flex items-center gap-2" data-testid="detail-manual-grouping">
+        <div
+          v-if="document"
+          class="mr-auto flex items-end gap-2"
+          data-testid="detail-manual-grouping"
+        >
           <div data-testid="detail-reimbursement-category">
+            <label class="mb-1 block text-sm font-medium" for="detail-reimbursement-category">
+              {{ t('settings.documents.archive.colReimbursement') }}
+            </label>
             <Select
+              id="detail-reimbursement-category"
               :model-value="reimbursementCategory"
               :disabled="categorySelectDisabled"
               @update:model-value="(value) => onReimbursementCategoryChange(String(value))"
             >
-              <SelectTrigger
-                class="w-40"
-                :aria-label="t('settings.documents.archive.colReimbursement')"
-              >
+              <SelectTrigger class="w-40">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -180,12 +185,16 @@
             </Select>
           </div>
           <div :title="groupSelectTitle" data-testid="detail-reimbursement-group">
+            <label class="mb-1 block text-sm font-medium" for="detail-reimbursement-group">
+              {{ t('settings.documents.archive.colGroup') }}
+            </label>
             <Select
+              id="detail-reimbursement-group"
               :model-value="reimbursementGroup"
               :disabled="groupSelectDisabled"
               @update:model-value="(value) => onReimbursementGroupChange(String(value))"
             >
-              <SelectTrigger class="w-40" :aria-label="t('settings.documents.archive.colGroup')">
+              <SelectTrigger class="w-40">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
