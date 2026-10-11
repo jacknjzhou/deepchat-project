@@ -420,6 +420,25 @@ export function createDocumentsRoutes(
       async (rawInput) => {
         const input = documentsReimbursementExportRoute.input.parse(rawInput)
         const store = requireConfigStore()
+        const config = readReimbursementConfig(store)
+        // 勾选分组导出：在弹目录选择框之前 fail-fast 校验类别与分组 id，避免无效参数先弹框；
+        // 分组 id 按类别内校验，严于 setGroupOverride 的全局校验（同 id 分组可能存在于多个类别）
+        const selectedGroupIds =
+          input.categoryId !== undefined && input.groupIds !== undefined ? input.groupIds : null
+        const selectedCategory =
+          selectedGroupIds === null
+            ? null
+            : (config.categories.find((category) => category.id === input.categoryId) ?? null)
+        if (selectedGroupIds !== null) {
+          if (selectedCategory === null) {
+            throw new Error(`[documents.reimbursement.categoryUnknown:${input.categoryId}]`)
+          }
+          for (const groupId of selectedGroupIds) {
+            if (!selectedCategory.customGroups.some((group) => group.id === groupId)) {
+              throw new Error(`[documents.reimbursement.groupUnknown:${groupId}]`)
+            }
+          }
+        }
         const { canceled, filePaths } = await reimbursementDeps.showOpenDialog({
           properties: ['openDirectory', 'createDirectory'],
           title: '选择报销整理包导出目录'
@@ -428,7 +447,6 @@ export function createDocumentsRoutes(
         if (!rootDir) {
           return documentsReimbursementExportRoute.output.parse({ canceled: true })
         }
-        const config = readReimbursementConfig(store)
         const documents = repository.listDocuments({
           status: input.status,
           dateFrom: input.dateFrom,
@@ -437,10 +455,28 @@ export function createDocumentsRoutes(
         })
         const templateNameById = new Map(repository.listTemplates().map((t) => [t.id, t.name]))
         const treeResult = buildReimbursementTree(documents, config, templateNameById)
+        // 勾选分组导出：只保留勾选类别的一个节点，清空 person→period 组与未分类，
+        // customGroups 仅保留勾选分组；total/materials/summary 不被导出消费，保持原样
+        const exportResult =
+          selectedCategory !== null && selectedGroupIds !== null
+            ? {
+                ...treeResult,
+                tree: treeResult.tree
+                  .filter((node) => node.category.id === selectedCategory.id)
+                  .map((node) => ({
+                    ...node,
+                    groups: [],
+                    customGroups: node.customGroups.filter((item) =>
+                      selectedGroupIds.includes(item.group.id)
+                    )
+                  })),
+                unassigned: []
+              }
+            : treeResult
         const filesById = new Map(documents.map((document) => [document.id, document.fileUris]))
         const output = await exportReimbursementPackage({
           rootDir,
-          result: treeResult,
+          result: exportResult,
           filesById,
           deps: {
             copyFile: (src, dest) => fsp.copyFile(src, dest),
