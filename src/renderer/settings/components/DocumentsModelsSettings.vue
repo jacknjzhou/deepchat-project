@@ -13,238 +13,239 @@
       </p>
     </div>
 
-    <div data-testid="documents-models-model-card" class="rounded-lg border border-border p-4">
-      <div class="mb-3 text-sm font-medium">{{ t('settings.documentsModels.models.title') }}</div>
+    <div class="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
+      <div class="flex min-w-0 flex-col gap-4">
+        <div data-testid="documents-models-model-card" class="rounded-lg border border-border p-4">
+          <div class="mb-3 text-sm font-medium">
+            {{ t('settings.documentsModels.models.title') }}
+          </div>
 
-      <div class="flex flex-col gap-4">
-        <div class="flex flex-col gap-1.5">
-          <span class="text-xs font-medium text-muted-foreground">
-            {{ t('settings.documentsModels.textModel') }}
-          </span>
-          <Popover v-model:open="textSelectOpen">
-            <PopoverTrigger as-child>
-              <DcButton
-                data-testid="documents-text-model-trigger"
-                variant="outline"
-                :disabled="locked"
-                :class="[
-                  'h-8 w-[320px] justify-between text-sm',
-                  textInvalidReason
-                    ? 'border-destructive text-destructive hover:text-destructive'
-                    : 'border-border hover:bg-accent'
-                ]"
+          <div class="flex flex-col gap-4">
+            <div class="flex flex-col gap-1.5">
+              <span class="text-xs font-medium text-muted-foreground">
+                {{ t('settings.documentsModels.textModel') }}
+              </span>
+              <Popover v-model:open="textSelectOpen">
+                <PopoverTrigger as-child>
+                  <DcButton
+                    data-testid="documents-text-model-trigger"
+                    variant="outline"
+                    :disabled="locked"
+                    :class="[
+                      'h-8 w-full max-w-[320px] justify-between text-sm',
+                      textInvalidReason
+                        ? 'border-destructive text-destructive hover:text-destructive'
+                        : 'border-border hover:bg-accent'
+                    ]"
+                  >
+                    <span class="min-w-0 truncate">{{ textModelLabel }}</span>
+                    <Icon icon="lucide:chevron-down" class="h-4 w-4 shrink-0 opacity-50" />
+                  </DcButton>
+                </PopoverTrigger>
+                <PopoverContent class="w-[320px] p-0" align="start">
+                  <ModelSelect
+                    :exclude-providers="['acp']"
+                    :respect-chat-mode="false"
+                    :selected-provider-id="draftTextModel?.providerId ?? ''"
+                    :selected-model-id="draftTextModel?.modelId ?? ''"
+                    @update:model="selectTextModel"
+                  />
+                </PopoverContent>
+              </Popover>
+              <p
+                v-if="textInvalidReason"
+                data-testid="documents-text-model-invalid"
+                class="text-xs text-destructive"
               >
-                <span class="min-w-0 truncate">{{ textModelLabel }}</span>
-                <Icon icon="lucide:chevron-down" class="h-4 w-4 shrink-0 opacity-50" />
-              </DcButton>
-            </PopoverTrigger>
-            <PopoverContent class="w-[320px] p-0" align="start">
-              <ModelSelect
-                :exclude-providers="['acp']"
-                :respect-chat-mode="false"
-                :selected-provider-id="draftTextModel?.providerId ?? ''"
-                :selected-model-id="draftTextModel?.modelId ?? ''"
-                @update:model="selectTextModel"
-              />
-            </PopoverContent>
-          </Popover>
-          <p
-            v-if="textInvalidReason"
-            data-testid="documents-text-model-invalid"
-            class="text-xs text-destructive"
-          >
-            {{ t(`settings.documentsModels.invalid.${textInvalidReason}`) }}
-          </p>
+                {{ t(`settings.documentsModels.invalid.${textInvalidReason}`) }}
+              </p>
+            </div>
+
+            <div class="flex flex-col gap-1.5">
+              <span class="text-xs font-medium text-muted-foreground">
+                {{ t('settings.documentsModels.visionModel') }}
+              </span>
+              <Popover v-model:open="visionSelectOpen">
+                <PopoverTrigger as-child>
+                  <DcButton
+                    data-testid="documents-vision-model-trigger"
+                    variant="outline"
+                    :disabled="locked"
+                    :class="[
+                      'h-8 w-full max-w-[320px] justify-between text-sm',
+                      visionInvalidReason
+                        ? 'border-destructive text-destructive hover:text-destructive'
+                        : 'border-border hover:bg-accent'
+                    ]"
+                  >
+                    <span class="min-w-0 truncate">{{ visionModelLabel }}</span>
+                    <Icon icon="lucide:chevron-down" class="h-4 w-4 shrink-0 opacity-50" />
+                  </DcButton>
+                </PopoverTrigger>
+                <PopoverContent class="w-[320px] p-0" align="start">
+                  <ModelSelect
+                    :exclude-providers="['acp']"
+                    :respect-chat-mode="false"
+                    :vision-only="true"
+                    :selected-provider-id="draftVisionModel?.providerId ?? ''"
+                    :selected-model-id="draftVisionModel?.modelId ?? ''"
+                    @update:model="selectVisionModel"
+                  />
+                </PopoverContent>
+              </Popover>
+              <p
+                v-if="visionInvalidReason"
+                data-testid="documents-vision-model-invalid"
+                class="text-xs text-destructive"
+              >
+                {{ t(`settings.documentsModels.invalid.${visionInvalidReason}`) }}
+              </p>
+            </div>
+          </div>
         </div>
 
-        <div class="flex flex-col gap-1.5">
-          <span class="text-xs font-medium text-muted-foreground">
-            {{ t('settings.documentsModels.visionModel') }}
-          </span>
-          <Popover v-model:open="visionSelectOpen">
-            <PopoverTrigger as-child>
-              <DcButton
-                data-testid="documents-vision-model-trigger"
-                variant="outline"
-                :disabled="locked"
-                :class="[
-                  'h-8 w-[320px] justify-between text-sm',
-                  visionInvalidReason
-                    ? 'border-destructive text-destructive hover:text-destructive'
-                    : 'border-border hover:bg-accent'
-                ]"
-              >
-                <span class="min-w-0 truncate">{{ visionModelLabel }}</span>
-                <Icon icon="lucide:chevron-down" class="h-4 w-4 shrink-0 opacity-50" />
-              </DcButton>
-            </PopoverTrigger>
-            <PopoverContent class="w-[320px] p-0" align="start">
-              <ModelSelect
-                :exclude-providers="['acp']"
-                :respect-chat-mode="false"
-                :vision-only="true"
-                :selected-provider-id="draftVisionModel?.providerId ?? ''"
-                :selected-model-id="draftVisionModel?.modelId ?? ''"
-                @update:model="selectVisionModel"
-              />
-            </PopoverContent>
-          </Popover>
-          <p
-            v-if="visionInvalidReason"
-            data-testid="documents-vision-model-invalid"
-            class="text-xs text-destructive"
-          >
-            {{ t(`settings.documentsModels.invalid.${visionInvalidReason}`) }}
-          </p>
-        </div>
-      </div>
-    </div>
-
-    <div
-      data-testid="documents-models-concurrency-card"
-      class="rounded-lg border border-border p-4"
-    >
-      <div class="mb-2 text-sm font-medium">
-        {{ t('settings.documentsModels.concurrency.title') }}
-      </div>
-      <Input
-        data-testid="documents-concurrency-input"
-        type="number"
-        :min="1"
-        :max="10"
-        :step="1"
-        class="w-24"
-        :disabled="locked"
-        :model-value="String(concurrency)"
-        @update:model-value="onConcurrencyInput"
-      />
-      <p class="mt-1.5 text-xs text-muted-foreground">
-        {{ t('settings.documentsModels.concurrency.hint') }}
-      </p>
-    </div>
-
-    <div data-testid="documents-auto-watch-card" class="rounded-lg border border-border p-4">
-      <div class="mb-2 text-sm font-medium">
-        {{ t('settings.documents.archive.autoWatchTitle') }}
-      </div>
-      <div class="flex flex-col gap-3">
-        <div class="flex flex-wrap items-center gap-2">
-          <input
-            data-testid="auto-watch-enable"
-            type="checkbox"
-            class="size-4 accent-primary"
+        <div
+          data-testid="documents-models-concurrency-card"
+          class="rounded-lg border border-border p-4"
+        >
+          <div class="mb-2 text-sm font-medium">
+            {{ t('settings.documentsModels.concurrency.title') }}
+          </div>
+          <Input
+            data-testid="documents-concurrency-input"
+            type="number"
+            :min="1"
+            :max="10"
+            :step="1"
+            class="w-24"
             :disabled="locked"
-            :checked="autoWatchEnabled"
-            @change="onAutoWatchEnabledChange"
+            :model-value="String(concurrency)"
+            @update:model-value="onConcurrencyInput"
           />
-          <span class="text-xs font-medium text-muted-foreground">
-            {{ t('settings.documents.archive.autoWatchEnable') }}
-          </span>
-          <span class="text-xs text-muted-foreground">
-            {{ t('settings.documents.archive.autoWatchDir') }}:
-          </span>
-          <span data-testid="auto-watch-dir" class="min-w-0 flex-1 truncate text-xs">
-            {{ autoWatchDir || '—' }}
-          </span>
-          <DcButton
-            data-testid="auto-watch-choose-dir"
-            variant="outline"
-            :disabled="locked"
-            @click="onChooseAutoWatchDir"
-          >
-            {{ t('settings.documents.archive.autoWatchChooseDir') }}
-          </DcButton>
+          <p class="mt-1.5 text-xs text-muted-foreground">
+            {{ t('settings.documentsModels.concurrency.hint') }}
+          </p>
         </div>
+      </div>
 
-        <div class="flex flex-wrap items-center gap-4">
-          <label class="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-            {{ t('settings.documents.archive.autoWatchIntervalHours') }}
-            <Input
-              data-testid="auto-watch-interval"
-              type="number"
-              :min="1"
-              :max="72"
-              :step="1"
-              class="w-20"
-              :disabled="locked"
-              :model-value="autoWatchIntervalInput"
-              @update:model-value="onAutoWatchIntervalInput"
-            />
-          </label>
-          <label class="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-            {{ t('settings.documents.archive.autoWatchRoundLimit') }}
-            <Input
-              data-testid="auto-watch-round-limit"
-              type="number"
-              :min="1"
-              :max="20"
-              :step="1"
-              class="w-20"
-              :disabled="locked"
-              :model-value="autoWatchRoundLimitInput"
-              @update:model-value="onAutoWatchRoundLimitInput"
-            />
-          </label>
+      <div data-testid="documents-auto-watch-card" class="rounded-lg border border-border p-4">
+        <div class="mb-2 text-sm font-medium">
+          {{ t('settings.documents.archive.autoWatchTitle') }}
         </div>
-
-        <div class="flex flex-wrap items-center gap-3">
-          <span class="text-xs font-medium text-muted-foreground">
-            {{ t('settings.documents.archive.autoWatchExtensions') }}
-          </span>
-          <label
-            v-for="ext in autoWatchExtensionOptions"
-            :key="ext"
-            class="flex items-center gap-1 text-xs text-muted-foreground"
-          >
+        <div class="flex flex-col gap-3">
+          <div class="flex flex-wrap items-center gap-2">
             <input
+              data-testid="auto-watch-enable"
               type="checkbox"
               class="size-4 accent-primary"
-              :disabled="locked"
-              :checked="autoWatchExtensions.includes(ext)"
-              :data-testid="`auto-watch-ext-${ext.slice(1)}`"
-              @change="onAutoWatchExtensionChange(ext, $event)"
+              :checked="autoWatchEnabled"
+              @change="onAutoWatchEnabledChange"
             />
-            {{ ext }}
-          </label>
-        </div>
+            <span class="text-xs font-medium text-muted-foreground">
+              {{ t('settings.documents.archive.autoWatchEnable') }}
+            </span>
+            <span class="text-xs text-muted-foreground">
+              {{ t('settings.documents.archive.autoWatchDir') }}:
+            </span>
+            <span data-testid="auto-watch-dir" class="min-w-0 flex-1 truncate text-xs">
+              {{ autoWatchDir || '—' }}
+            </span>
+            <DcButton
+              data-testid="auto-watch-choose-dir"
+              variant="outline"
+              @click="onChooseAutoWatchDir"
+            >
+              {{ t('settings.documents.archive.autoWatchChooseDir') }}
+            </DcButton>
+          </div>
 
-        <div class="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-          <span data-testid="auto-watch-last-run">
-            {{ t('settings.documents.archive.autoWatchLastRun') }}:
-            {{ autoWatchLastRunText }}
-          </span>
-          <span
-            v-if="autoWatchState.lastError"
-            data-testid="auto-watch-error"
-            class="text-destructive"
+          <div class="flex flex-wrap items-center gap-4">
+            <label class="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+              {{ t('settings.documents.archive.autoWatchIntervalHours') }}
+              <Input
+                data-testid="auto-watch-interval"
+                type="number"
+                :min="1"
+                :max="72"
+                :step="1"
+                class="w-20"
+                :model-value="autoWatchIntervalInput"
+                @update:model-value="onAutoWatchIntervalInput"
+              />
+            </label>
+            <label class="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+              {{ t('settings.documents.archive.autoWatchRoundLimit') }}
+              <Input
+                data-testid="auto-watch-round-limit"
+                type="number"
+                :min="1"
+                :max="20"
+                :step="1"
+                class="w-20"
+                :model-value="autoWatchRoundLimitInput"
+                @update:model-value="onAutoWatchRoundLimitInput"
+              />
+            </label>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-3">
+            <span class="text-xs font-medium text-muted-foreground">
+              {{ t('settings.documents.archive.autoWatchExtensions') }}
+            </span>
+            <label
+              v-for="ext in autoWatchExtensionOptions"
+              :key="ext"
+              class="flex items-center gap-1 text-xs text-muted-foreground"
+            >
+              <input
+                type="checkbox"
+                class="size-4 accent-primary"
+                :checked="autoWatchExtensions.includes(ext)"
+                :data-testid="`auto-watch-ext-${ext.slice(1)}`"
+                @change="onAutoWatchExtensionChange(ext, $event)"
+              />
+              {{ ext }}
+            </label>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+            <span data-testid="auto-watch-last-run">
+              {{ t('settings.documents.archive.autoWatchLastRun') }}:
+              {{ autoWatchLastRunText }}
+            </span>
+            <span
+              v-if="autoWatchState.lastError"
+              data-testid="auto-watch-error"
+              class="text-destructive"
+            >
+              {{ autoWatchState.lastError }}
+            </span>
+          </div>
+
+          <p
+            v-if="autoWatchValidationError"
+            data-testid="auto-watch-validation"
+            class="text-xs text-destructive"
           >
-            {{ autoWatchState.lastError }}
-          </span>
-        </div>
+            {{ autoWatchValidationError }}
+          </p>
+          <p v-if="autoWatchSaveState === 'error'" class="text-xs text-destructive">
+            {{ t('settings.documentsModels.saveError') }}
+          </p>
 
-        <p
-          v-if="autoWatchValidationError"
-          data-testid="auto-watch-validation"
-          class="text-xs text-destructive"
-        >
-          {{ autoWatchValidationError }}
-        </p>
-        <p v-if="autoWatchSaveState === 'error'" class="text-xs text-destructive">
-          {{ t('settings.documentsModels.saveError') }}
-        </p>
-
-        <div>
-          <DcButton
-            data-testid="auto-watch-save"
-            :disabled="locked || autoWatchSaving"
-            @click="saveAutoWatch"
-          >
-            {{
-              autoWatchSaveState === 'saved'
-                ? t('settings.documentsModels.saved')
-                : t('settings.documentsModels.save')
-            }}
-          </DcButton>
+          <div>
+            <DcButton
+              data-testid="auto-watch-save"
+              :disabled="autoWatchSaving"
+              @click="saveAutoWatch"
+            >
+              {{
+                autoWatchSaveState === 'saved'
+                  ? t('settings.documentsModels.saved')
+                  : t('settings.documentsModels.save')
+              }}
+            </DcButton>
+          </div>
         </div>
       </div>
     </div>
@@ -539,7 +540,6 @@ const onAutoWatchExtensionChange = (ext: string, event: Event) => {
 }
 
 const onChooseAutoWatchDir = async (): Promise<void> => {
-  if (locked.value) return
   try {
     const dir = await documentsClient.chooseAutoWatchDir()
     if (dir) {
@@ -553,7 +553,7 @@ const onChooseAutoWatchDir = async (): Promise<void> => {
 }
 
 const saveAutoWatch = async (): Promise<void> => {
-  if (locked.value || autoWatchSaving.value) return
+  if (autoWatchSaving.value) return
   autoWatchValidationError.value = null
   const dir = autoWatchDir.value.trim()
   if (autoWatchEnabled.value && !dir) {
