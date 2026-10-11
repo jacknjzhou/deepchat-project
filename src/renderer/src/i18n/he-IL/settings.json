@@ -2840,7 +2840,6 @@
       "filesLimit": "ניתן לבחור עד 20 קבצים",
       "colReimbursement": "סוג החזר",
       "colGroup": "קבוצה",
-      "manualGroupingTitle": "קיבוץ ידני",
       "reimbursementSetFailed": "הגדרת סיווג ההחזרים נכשלה"
     },
     "reimbursement": {

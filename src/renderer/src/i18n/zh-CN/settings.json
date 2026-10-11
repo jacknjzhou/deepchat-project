@@ -333,7 +333,6 @@
       "filesLimit": "最多选择 20 个文件",
       "colReimbursement": "报销类型",
       "colGroup": "分组名称",
-      "manualGroupingTitle": "手工分组",
       "reimbursementSetFailed": "报销归类设置失败"
     },
     "reimbursement": {

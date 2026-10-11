@@ -2840,7 +2840,6 @@
       "filesLimit": "می‌توانید حداکثر 20 فایل انتخاب کنید",
       "colReimbursement": "نوع بازپرداخت",
       "colGroup": "گروه",
-      "manualGroupingTitle": "گروه‌بندی دستی",
       "reimbursementSetFailed": "تنظیم دسته‌بندی بازپرداخت ناموفق بود"
     },
     "reimbursement": {

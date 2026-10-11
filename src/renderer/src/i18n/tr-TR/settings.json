@@ -333,7 +333,6 @@
       "filesLimit": "En fazla 20 dosya seçebilirsiniz",
       "colReimbursement": "Masraf türü",
       "colGroup": "Grup",
-      "manualGroupingTitle": "Manuel gruplandırma",
       "reimbursementSetFailed": "Masraf sınıflandırması ayarlanamadı"
     },
     "reimbursement": {

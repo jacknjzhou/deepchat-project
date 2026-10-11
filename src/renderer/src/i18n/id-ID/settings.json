@@ -333,7 +333,6 @@
       "filesLimit": "Anda dapat memilih hingga 20 file",
       "colReimbursement": "Tipe penggantian",
       "colGroup": "Grup",
-      "manualGroupingTitle": "Pengelompokan manual",
       "reimbursementSetFailed": "Gagal mengatur klasifikasi penggantian"
     },
     "reimbursement": {

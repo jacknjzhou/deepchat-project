@@ -333,7 +333,6 @@
       "filesLimit": "Bạn có thể chọn tối đa 20 tệp",
       "colReimbursement": "Loại hoàn ứng",
       "colGroup": "Nhóm",
-      "manualGroupingTitle": "Nhóm thủ công",
       "reimbursementSetFailed": "Đặt phân loại hoàn ứng thất bại"
     },
     "reimbursement": {

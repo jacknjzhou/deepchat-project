@@ -333,7 +333,6 @@
       "filesLimit": "You can select up to 20 files",
       "colReimbursement": "Reimbursement Type",
       "colGroup": "Group",
-      "manualGroupingTitle": "Manual Grouping",
       "reimbursementSetFailed": "Failed to update reimbursement classification"
     },
     "reimbursement": {

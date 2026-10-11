@@ -2840,7 +2840,6 @@
       "filesLimit": "Du kan vælge op til 20 filer",
       "colReimbursement": "Refusionstype",
       "colGroup": "Gruppe",
-      "manualGroupingTitle": "Manuel gruppering",
       "reimbursementSetFailed": "Kunne ikke anvende refusionsklassificering"
     },
     "reimbursement": {

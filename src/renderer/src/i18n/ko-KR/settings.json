@@ -2840,7 +2840,6 @@
       "filesLimit": "최대 20개의 파일을 선택할 수 있습니다",
       "colReimbursement": "경비 유형",
       "colGroup": "그룹",
-      "manualGroupingTitle": "수동 그룹화",
       "reimbursementSetFailed": "경비 분류 설정 실패"
     },
     "reimbursement": {

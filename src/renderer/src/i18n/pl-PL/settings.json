@@ -333,7 +333,6 @@
       "filesLimit": "Możesz wybrać maksymalnie 20 plików",
       "colReimbursement": "Typ rozliczenia",
       "colGroup": "Grupa",
-      "manualGroupingTitle": "Ręczne grupowanie",
       "reimbursementSetFailed": "Nie udało się zmienić klasyfikacji rozliczeń"
     },
     "reimbursement": {

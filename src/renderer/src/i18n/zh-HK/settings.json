@@ -2840,7 +2840,6 @@
       "filesLimit": "最多選擇 20 個檔案",
       "colReimbursement": "報銷類型",
       "colGroup": "分組名稱",
-      "manualGroupingTitle": "手工分組",
       "reimbursementSetFailed": "報銷歸類設定失敗"
     },
     "reimbursement": {

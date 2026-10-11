@@ -497,6 +497,15 @@ describe('DocumentDetailDialog', () => {
       expect(categorySelectOf(unassigned.wrapper).element.value).toBe('__unassigned__')
     })
 
+    it('切到源文件页后手工分组仍固定显示', async () => {
+      stubStore.reimbursementConfig = makeReimbursementConfig()
+      const { wrapper } = await setup()
+      await wrapper.get('[data-testid="detail-tab-files"]').trigger('click')
+      expect(wrapper.get('[data-testid="detail-manual-grouping"]').exists()).toBe(true)
+      expect(categorySelectOf(wrapper).exists()).toBe(true)
+      expect(groupSelectOf(wrapper).exists()).toBe(true)
+    })
+
     it('类别变更按映射调用 store 并以返回记录复位分组', async () => {
       stubStore.reimbursementConfig = makeReimbursementConfig()
       stubStore.setReimbursementOverride.mockResolvedValueOnce(

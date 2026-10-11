@@ -2840,7 +2840,6 @@
       "filesLimit": "Можно выбрать не более 20 файлов",
       "colReimbursement": "Тип возмещения",
       "colGroup": "Группа",
-      "manualGroupingTitle": "Ручная группировка",
       "reimbursementSetFailed": "Не удалось изменить классификацию возмещения"
     },
     "reimbursement": {

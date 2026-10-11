@@ -333,7 +333,6 @@
       "filesLimit": "Puede seleccionar hasta 20 archivos",
       "colReimbursement": "Tipo de reembolso",
       "colGroup": "Grupo",
-      "manualGroupingTitle": "Agrupación manual",
       "reimbursementSetFailed": "Error al establecer la clasificación de reembolso"
     },
     "reimbursement": {

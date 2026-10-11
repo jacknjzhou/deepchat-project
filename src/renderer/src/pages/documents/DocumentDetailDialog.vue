@@ -100,66 +100,6 @@
           <p v-if="fieldError" class="text-xs text-destructive" data-testid="detail-field-error">
             {{ fieldError }}
           </p>
-          <div class="rounded border p-3" data-testid="detail-manual-grouping">
-            <h3 class="mb-2 text-sm font-medium">
-              {{ t('settings.documents.archive.manualGroupingTitle') }}
-            </h3>
-            <div class="grid grid-cols-1 gap-x-4 gap-y-3 md:grid-cols-2">
-              <div data-testid="detail-reimbursement-category">
-                <label class="mb-1 block text-sm font-medium" for="detail-reimbursement-category">
-                  {{ t('settings.documents.archive.colReimbursement') }}
-                </label>
-                <Select
-                  :id="`detail-reimbursement-category`"
-                  :model-value="reimbursementCategory"
-                  :disabled="categorySelectDisabled"
-                  @update:model-value="(value) => onReimbursementCategoryChange(String(value))"
-                >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem :value="AUTO_CATEGORY">
-                      {{ t('settings.documents.reimbursement.autoCategory') }}
-                    </SelectItem>
-                    <SelectItem :value="UNASSIGNED_CATEGORY">
-                      {{ t('settings.documents.reimbursement.forceUnassigned') }}
-                    </SelectItem>
-                    <SelectItem
-                      v-for="category in sortedReimbursementCategories"
-                      :key="category.id"
-                      :value="category.id"
-                    >
-                      {{ category.name }}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div :title="groupSelectTitle" data-testid="detail-reimbursement-group">
-                <label class="mb-1 block text-sm font-medium" for="detail-reimbursement-group">
-                  {{ t('settings.documents.archive.colGroup') }}
-                </label>
-                <Select
-                  :id="`detail-reimbursement-group`"
-                  :model-value="reimbursementGroup"
-                  :disabled="groupSelectDisabled"
-                  @update:model-value="(value) => onReimbursementGroupChange(String(value))"
-                >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem :value="NO_GROUP">
-                      {{ t('settings.documents.reimbursement.groupNone') }}
-                    </SelectItem>
-                    <SelectItem
-                      v-for="group in selectedReimbursementGroups"
-                      :key="group.id"
-                      :value="group.id"
-                    >
-                      {{ group.name }}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
         </section>
 
         <section v-else class="h-[min(70vh,calc(100vh-16rem))] space-y-2 overflow-y-auto">
@@ -209,6 +149,60 @@
       </div>
 
       <DialogFooter class="flex-wrap gap-2">
+        <div v-if="document" class="flex items-center gap-2" data-testid="detail-manual-grouping">
+          <div data-testid="detail-reimbursement-category">
+            <Select
+              :model-value="reimbursementCategory"
+              :disabled="categorySelectDisabled"
+              @update:model-value="(value) => onReimbursementCategoryChange(String(value))"
+            >
+              <SelectTrigger
+                class="w-40"
+                :aria-label="t('settings.documents.archive.colReimbursement')"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem :value="AUTO_CATEGORY">
+                  {{ t('settings.documents.reimbursement.autoCategory') }}
+                </SelectItem>
+                <SelectItem :value="UNASSIGNED_CATEGORY">
+                  {{ t('settings.documents.reimbursement.forceUnassigned') }}
+                </SelectItem>
+                <SelectItem
+                  v-for="category in sortedReimbursementCategories"
+                  :key="category.id"
+                  :value="category.id"
+                >
+                  {{ category.name }}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div :title="groupSelectTitle" data-testid="detail-reimbursement-group">
+            <Select
+              :model-value="reimbursementGroup"
+              :disabled="groupSelectDisabled"
+              @update:model-value="(value) => onReimbursementGroupChange(String(value))"
+            >
+              <SelectTrigger class="w-40" :aria-label="t('settings.documents.archive.colGroup')">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem :value="NO_GROUP">
+                  {{ t('settings.documents.reimbursement.groupNone') }}
+                </SelectItem>
+                <SelectItem
+                  v-for="group in selectedReimbursementGroups"
+                  :key="group.id"
+                  :value="group.id"
+                >
+                  {{ group.name }}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
         <span
           v-if="recognizing"
           class="mr-auto text-sm text-muted-foreground"

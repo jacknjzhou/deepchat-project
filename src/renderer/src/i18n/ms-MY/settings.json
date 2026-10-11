@@ -333,7 +333,6 @@
       "filesLimit": "Anda boleh memilih sehingga 20 fail",
       "colReimbursement": "Jenis bayaran balik",
       "colGroup": "Kumpulan",
-      "manualGroupingTitle": "Pengumpulan manual",
       "reimbursementSetFailed": "Gagal menetapkan pengelasan bayaran balik"
     },
     "reimbursement": {
