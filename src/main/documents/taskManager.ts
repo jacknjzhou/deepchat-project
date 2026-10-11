@@ -1,12 +1,17 @@
 import { randomUUID } from 'node:crypto'
 import type { DocumentFieldEntry } from '@shared/documents'
-import type { DocumentExtractFileInput, DocumentExtractRoute } from './extractor/documentExtractor'
+import {
+  AUTO_TEMPLATE_ID,
+  type DocumentExtractFileInput,
+  type DocumentExtractRoute
+} from './extractor/documentExtractor'
 import type { DocumentRepositoryTaskPort, DocumentTask } from './repository'
 
 export interface RecognitionTaskSubmitInput {
   files: DocumentExtractFileInput[]
-  templateId: string
-  source: 'chat' | 'manual'
+  // Omitted for scheduled submissions: the classifier resolves it per file.
+  templateId?: string
+  source: 'chat' | 'manual' | 'scheduled'
 }
 
 export interface RecognitionExtractResult {
@@ -57,7 +62,9 @@ export class RecognitionTaskManager {
         batchId,
         filePath: file.path,
         fileName: file.name ?? file.path.split(/[\\/]/).pop() ?? file.path,
-        templateId: input.templateId,
+        // Scheduled submissions omit templateId; the row must always carry a
+        // resolvable value ('auto' → classifier) so the DB binding never sees undefined.
+        templateId: input.templateId ?? AUTO_TEMPLATE_ID,
         source: input.source
       }))
     )

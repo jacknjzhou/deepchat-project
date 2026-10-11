@@ -25,7 +25,7 @@ export interface DocumentInsertInput {
   templateSnapshot: DocumentTemplate
   fields: Record<string, { value: unknown; uncertain: boolean }>
   fileUris: string[]
-  source: 'chat' | 'manual'
+  source: 'chat' | 'manual' | 'scheduled'
   sessionId: string | null
   status: 'draft' | 'confirmed'
   now?: number
@@ -48,7 +48,7 @@ export interface DocumentTask {
   filePath: string
   fileName: string
   templateId: string
-  source: 'chat' | 'manual'
+  source: 'chat' | 'manual' | 'scheduled'
   status: DocumentTaskStatus
   typeKey: string | null
   documentId: string | null
@@ -64,7 +64,7 @@ export interface DocumentRepositoryTaskPort {
       filePath: string
       fileName: string
       templateId: string
-      source?: 'chat' | 'manual'
+      source?: 'chat' | 'manual' | 'scheduled'
     }>
   ): DocumentTask[]
   updateTask(
@@ -88,7 +88,7 @@ export interface DocumentRepositoryTaskPort {
     templateSnapshot: unknown
     fields: Record<string, { value: unknown; uncertain: boolean }>
     fileUris: string[]
-    source: 'chat' | 'manual'
+    source: 'chat' | 'manual' | 'scheduled'
     sessionId: string | null
     status: 'draft' | 'confirmed'
     now?: number
@@ -319,7 +319,7 @@ export class DocumentsRepository {
       filePath: string
       fileName: string
       templateId: string
-      source?: 'chat' | 'manual'
+      source?: 'chat' | 'manual' | 'scheduled'
     }>
   ): DocumentTask[] {
     return this.database.documentTasksTable.insertBatch(inputs).map(toTask)

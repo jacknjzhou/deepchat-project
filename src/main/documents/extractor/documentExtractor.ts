@@ -65,6 +65,8 @@ export interface DocumentExtractorDeps {
 
 const IMAGE_MIME_PREFIX = 'image/'
 const IMAGE_EXTENSIONS = /\.(jpe?g|png|gif|webp|bmp)$/i
+// Sentinel template id that routes extraction through model-side classification.
+export const AUTO_TEMPLATE_ID = 'auto'
 const CLASSIFY_TEMPERATURE = 0
 const EXTRACT_TEMPERATURE = 0.2
 const EXTRACT_MAX_TOKENS = 4096
@@ -103,7 +105,7 @@ export class DocumentExtractor {
     let pdfPages: { dataUrls: string[]; pageCount: number } | null = null
     if (
       isPdf &&
-      input.templateId === 'auto' &&
+      input.templateId === AUTO_TEMPLATE_ID &&
       pdfText !== null &&
       !pdfText.hasTextLayer &&
       (await this.deps.resolveVisionTarget()) !== null
@@ -478,7 +480,7 @@ export class DocumentExtractor {
     pdfText: { text: string; hasTextLayer: boolean; pageCount?: number } | null,
     pdfPages: { dataUrls: string[] } | null
   ): Promise<DocumentTemplate> {
-    if (templateId !== 'auto') {
+    if (templateId !== AUTO_TEMPLATE_ID) {
       const template = this.deps.repository.getTemplate(templateId)
       if (!template) {
         throw new Error(`Unknown template: ${templateId}`)

@@ -418,6 +418,111 @@ describe('RecognitionTaskManager', () => {
     expect(updates.at(-1)).toMatchObject({ status: 'done', typeKey: 'contract_purchase' })
   })
 
+  it('defaults a missing templateId to the auto classifier', async () => {
+    const inserted: Array<{ templateId: string; source: string }> = []
+    const manager = new RecognitionTaskManager({
+      repository: {
+        insertTasks: (inputs) => {
+          for (const input of inputs) {
+            inserted.push({ templateId: input.templateId, source: input.source })
+          }
+          return inputs.map((input, i) =>
+            makeTask({ id: `t${i}`, templateId: input.templateId, source: input.source })
+          )
+        },
+        updateTask: (id, input) => makeTask({ id, status: input.status }),
+        listRecentTasks: () => [],
+        listPendingTasks: () => [],
+        markRunningTasksFailed: () => {},
+        countTaskBatch: () => ({ done: 0, total: 1 }),
+        insertDocument: () => ({ id: 'doc' })
+      },
+      extractor: {
+        extract: async () => ({
+          template: { id: 'tpl1', typeKey: 'invoice_special' },
+          route: 'text',
+          fields: {},
+          rawOutput: '',
+          durationMs: 1,
+          issues: []
+        })
+      },
+      publishTaskUpdated: () => {}
+    })
+    // 调度任务省略 templateId：写入任务行前必须归一化为 'auto'，否则 DB 绑定 undefined 崩溃
+    manager.submit({ files: [{ path: 'C:\\a.png' }], source: 'scheduled' })
+    await manager.idle()
+    expect(inserted).toEqual([{ templateId: 'auto', source: 'scheduled' }])
+  })
+
+  it('archives a scheduled templateId-less task via auto classification', async () => {
+    const extractedTemplateIds: string[] = []
+    const insertedDocs: Array<{ templateId: string; source: string; fileUris: string[] }> = []
+    // Emulates the sqlite update contract: omitted fields keep their stored value.
+    const stored = new Map<string, DocumentTask>()
+    const manager = new RecognitionTaskManager({
+      repository: {
+        insertTasks: (inputs) =>
+          inputs.map((input, i) => {
+            const task = makeTask({
+              id: `t${i}`,
+              templateId: input.templateId,
+              source: input.source
+            })
+            stored.set(task.id, task)
+            return task
+          }),
+        updateTask: (id, input) => {
+          const existing = stored.get(id)
+          const task = makeTask({
+            id,
+            templateId: existing?.templateId,
+            source: existing?.source,
+            status: input.status,
+            typeKey: input.typeKey ?? null,
+            documentId: input.documentId ?? null
+          })
+          stored.set(id, task)
+          return task
+        },
+        listRecentTasks: () => [],
+        listPendingTasks: () => [],
+        markRunningTasksFailed: () => {},
+        countTaskBatch: () => ({ done: 0, total: 1 }),
+        insertDocument: (input) => {
+          insertedDocs.push({
+            templateId: input.templateId,
+            source: input.source,
+            fileUris: input.fileUris
+          })
+          return { id: 'doc-9' }
+        }
+      },
+      extractor: {
+        extract: async (input) => {
+          extractedTemplateIds.push(input.templateId)
+          return {
+            template: { id: 'tpl-invoice', typeKey: 'invoice_special' },
+            route: 'text',
+            fields: { invoice_code: { value: '123', uncertain: false } },
+            rawOutput: '',
+            durationMs: 1,
+            issues: []
+          }
+        }
+      },
+      publishTaskUpdated: () => {}
+    })
+    manager.submit({ files: [{ path: 'C:\\a.png', name: 'a.png' }], source: 'scheduled' })
+    await manager.idle()
+    // 执行链使用任务行上的 templateId（已归一化为 'auto'）
+    expect(extractedTemplateIds).toEqual(['auto'])
+    // 归档收到分类结果与任务 source，而不是 undefined 或硬编码值
+    expect(insertedDocs).toEqual([
+      { templateId: 'tpl-invoice', source: 'scheduled', fileUris: ['C:\\a.png'] }
+    ])
+  })
+
   it('retryTask ignores tasks that are not failed or missing', async () => {
     const done = makeTask({ id: 't-done', status: 'done' })
     const manager = new RecognitionTaskManager({
