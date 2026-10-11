@@ -2797,6 +2797,7 @@
       "colCreatedAt": "Créé le",
       "sourceChat": "Chat",
       "sourceManual": "Manuel",
+      "sourceScheduled": "Reconnaissance planifiée",
       "detailTitle": "Détails du document",
       "fieldsTitle": "Champs",
       "filesTitle": "Fichiers originaux",

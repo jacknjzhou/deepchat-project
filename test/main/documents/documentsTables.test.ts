@@ -665,7 +665,7 @@ describeIfSqlite('documentsTable v2 migration', () => {
     expect(migrated.source).toBe('manual')
     expect(migrated.status).toBe('confirmed')
     expect(migrated.reimbursement_override).toBeNull()
-    // 重建后 scheduled 可写
+    // Scheduled rows are writable after the rebuild.
     table.insert({
       templateId: 'tpl',
       typeKey: 'contract',

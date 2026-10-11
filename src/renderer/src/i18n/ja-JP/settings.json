@@ -2797,6 +2797,7 @@
       "colCreatedAt": "作成日時",
       "sourceChat": "チャット",
       "sourceManual": "手動",
+      "sourceScheduled": "自動認識",
       "detailTitle": "ドキュメント詳細",
       "fieldsTitle": "フィールド",
       "filesTitle": "元ファイル",

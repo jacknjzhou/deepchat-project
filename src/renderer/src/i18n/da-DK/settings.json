@@ -2797,6 +2797,7 @@
       "colCreatedAt": "Oprettet",
       "sourceChat": "Chat",
       "sourceManual": "Manuel",
+      "sourceScheduled": "Automatisk genkendelse",
       "detailTitle": "Dokumentdetaljer",
       "fieldsTitle": "Felter",
       "filesTitle": "Originalfiler",

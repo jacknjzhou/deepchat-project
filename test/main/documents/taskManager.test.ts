@@ -449,7 +449,8 @@ describe('RecognitionTaskManager', () => {
       },
       publishTaskUpdated: () => {}
     })
-    // 调度任务省略 templateId：写入任务行前必须归一化为 'auto'，否则 DB 绑定 undefined 崩溃
+    // Scheduled submissions omit templateId: it must be normalized to 'auto' before
+    // the row is written, otherwise the DB binding crashes on undefined.
     manager.submit({ files: [{ path: 'C:\\a.png' }], source: 'scheduled' })
     await manager.idle()
     expect(inserted).toEqual([{ templateId: 'auto', source: 'scheduled' }])
@@ -515,9 +516,10 @@ describe('RecognitionTaskManager', () => {
     })
     manager.submit({ files: [{ path: 'C:\\a.png', name: 'a.png' }], source: 'scheduled' })
     await manager.idle()
-    // 执行链使用任务行上的 templateId（已归一化为 'auto'）
+    // The run chain uses the row's templateId (already normalized to 'auto').
     expect(extractedTemplateIds).toEqual(['auto'])
-    // 归档收到分类结果与任务 source，而不是 undefined 或硬编码值
+    // Archiving receives the classified template and the task's source, not an
+    // undefined or hardcoded value.
     expect(insertedDocs).toEqual([
       { templateId: 'tpl-invoice', source: 'scheduled', fileUris: ['C:\\a.png'] }
     ])

@@ -2797,6 +2797,7 @@
       "colCreatedAt": "생성 시각",
       "sourceChat": "채팅",
       "sourceManual": "수동",
+      "sourceScheduled": "자동 인식",
       "detailTitle": "문서 상세",
       "fieldsTitle": "필드",
       "filesTitle": "원본 파일",

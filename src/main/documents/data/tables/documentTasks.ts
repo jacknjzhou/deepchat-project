@@ -86,6 +86,8 @@ export class DocumentTasksTable extends BaseTable {
         updated_at INTEGER NOT NULL
       );
       INSERT INTO document_tasks_v2
+        (id, batch_id, file_path, file_name, template_id, source, status,
+         type_key, document_id, error, created_at, updated_at)
         SELECT id, batch_id, file_path, file_name, template_id, source, status,
                type_key, document_id, error, created_at, updated_at
         FROM document_tasks;

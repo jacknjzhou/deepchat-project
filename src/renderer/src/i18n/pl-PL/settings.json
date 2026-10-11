@@ -290,6 +290,7 @@
       "colCreatedAt": "Utworzono",
       "sourceChat": "Czat",
       "sourceManual": "Ręcznie",
+      "sourceScheduled": "Automatyczne rozpoznawanie",
       "detailTitle": "Szczegóły dokumentu",
       "fieldsTitle": "Pola",
       "filesTitle": "Pliki źródłowe",

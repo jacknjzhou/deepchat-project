@@ -2797,6 +2797,7 @@
       "colCreatedAt": "נוצר",
       "sourceChat": "צ'אט",
       "sourceManual": "ידני",
+      "sourceScheduled": "זיהוי אוטומטי",
       "detailTitle": "פרטי המסמך",
       "fieldsTitle": "שדות",
       "filesTitle": "קבצים מקוריים",

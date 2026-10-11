@@ -2797,6 +2797,7 @@
       "colCreatedAt": "تاریخ ایجاد",
       "sourceChat": "گفتگو",
       "sourceManual": "دستی",
+      "sourceScheduled": "شناسایی خودکار",
       "detailTitle": "جزئیات سند",
       "fieldsTitle": "فیلدها",
       "filesTitle": "فایل‌های اصلی",

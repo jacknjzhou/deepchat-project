@@ -105,6 +105,9 @@ export class DocumentsTable extends BaseTable {
         updated_at INTEGER NOT NULL
       );
       INSERT INTO documents_v2
+        (id, template_id, type_key, template_snapshot_json, fields_json,
+         file_uris_json, source, session_id, reimbursement_override,
+         reimbursement_group_override, status, created_at, updated_at)
         SELECT id, template_id, type_key, template_snapshot_json, fields_json,
                file_uris_json, source, session_id, reimbursement_override,
                reimbursement_group_override, status, created_at, updated_at
@@ -118,13 +121,10 @@ export class DocumentsTable extends BaseTable {
     `
   }
 
-  // Ensure the table accepts scheduled-source rows. This table is not migrated by the
-  // main catalog loop for CHECK changes (its table version 2 sits far below the global
-  // schema_versions high-water mark), and startup diagnosis/repair only detects missing
-  // tables/columns, not constraint changes. Detect the legacy source CHECK in the stored
-  // DDL and rebuild once; the rebuilt DDL no longer contains it, which makes this
-  // idempotent. The rebuild runs in its own transaction (better-sqlite3 downgrades nested
-  // transactions to savepoints) so it stays atomic in any caller context.
+  // Ensure the table accepts scheduled-source rows; see
+  // DocumentTasksTable.ensureMigrated for the rationale (idempotent DDL detection,
+  // transactional rebuild). Assumes the startup repair has already added any missing
+  // columns before this runs.
   ensureMigrated(): void {
     if (!this.tableExists()) {
       this.db.exec(this.getCreateTableSQL())

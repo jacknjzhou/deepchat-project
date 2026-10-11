@@ -822,14 +822,15 @@ describeIfSqlite('documents stats and tasks route handlers', () => {
     await taskManager.idle()
     const taskId = output.tasks[0]?.id
     expect(taskId).toBeTruthy()
-    // 省略 templateId 不在 DB 层崩（绑定 undefined），任务行归一化为 'auto' 并执行成功
+    // Omitting templateId no longer crashes at the DB layer (undefined binding):
+    // the row is normalized to 'auto' and the task completes.
     expect(repository.getTask(taskId!)).toMatchObject({
       templateId: 'auto',
       status: 'done',
       typeKey: 'invoice_special'
     })
     expect(repository.getTask(taskId!)?.documentId).toBeTruthy()
-    // 归档收到分类结果，source 透传任务的 scheduled
+    // Archiving receives the classified result with the task's scheduled source.
     const documents = repository.listDocuments({})
     expect(documents).toHaveLength(1)
     expect(documents[0]).toMatchObject({
@@ -949,7 +950,7 @@ describe('documents scheduled submit and autoWatch chooseDir handlers', () => {
       await handler({ files: [{ path: 'D:/scan/a.pdf' }], source: 'scheduled' })
     )
     expect(output.tasks).toEqual([task])
-    // handler 归一化省略的 templateId，端口不再收到 undefined
+    // The handler normalizes the omitted templateId; the port no longer sees undefined.
     expect(submit).toHaveBeenCalledWith({
       files: [{ path: 'D:/scan/a.pdf' }],
       templateId: 'auto',

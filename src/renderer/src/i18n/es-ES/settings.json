@@ -290,6 +290,7 @@
       "colCreatedAt": "Creado el",
       "sourceChat": "Chat",
       "sourceManual": "Manual",
+      "sourceScheduled": "Reconocimiento programado",
       "detailTitle": "Detalle del documento",
       "fieldsTitle": "Campos",
       "filesTitle": "Archivos originales",

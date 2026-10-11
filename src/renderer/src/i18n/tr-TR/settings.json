@@ -290,6 +290,7 @@
       "colCreatedAt": "Oluşturulma",
       "sourceChat": "Sohbet",
       "sourceManual": "Manuel",
+      "sourceScheduled": "Otomatik tanıma",
       "detailTitle": "Belge ayrıntıları",
       "fieldsTitle": "Alanlar",
       "filesTitle": "Orijinal dosyalar",

@@ -290,6 +290,7 @@
       "colCreatedAt": "Dibuat",
       "sourceChat": "Obrolan",
       "sourceManual": "Manual",
+      "sourceScheduled": "Pengenalan otomatis",
       "detailTitle": "Detail dokumen",
       "fieldsTitle": "Kolom",
       "filesTitle": "Berkas asli",

@@ -2797,6 +2797,7 @@
       "colCreatedAt": "建立時間",
       "sourceChat": "聊天",
       "sourceManual": "手動",
+      "sourceScheduled": "自動識別",
       "detailTitle": "單據詳情",
       "fieldsTitle": "欄位",
       "filesTitle": "原始檔案",

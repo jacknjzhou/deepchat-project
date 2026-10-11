@@ -2797,6 +2797,7 @@
       "colCreatedAt": "Создан",
       "sourceChat": "Чат",
       "sourceManual": "Вручную",
+      "sourceScheduled": "Автоматическое распознавание",
       "detailTitle": "Сведения о документе",
       "fieldsTitle": "Поля",
       "filesTitle": "Исходные файлы",
