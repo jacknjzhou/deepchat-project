@@ -24,7 +24,7 @@ export interface DocumentTableInsertInput {
   templateSnapshot: Record<string, unknown>
   fields: Record<string, unknown>
   fileUris: string[]
-  source: 'chat' | 'manual'
+  source: 'chat' | 'manual' | 'scheduled'
   sessionId: string | null
   status: 'draft' | 'confirmed'
   reimbursementOverride?: string | null
@@ -66,7 +66,7 @@ export class DocumentsTable extends BaseTable {
         template_snapshot_json TEXT NOT NULL DEFAULT '{}',
         fields_json TEXT NOT NULL DEFAULT '{}',
         file_uris_json TEXT NOT NULL DEFAULT '[]',
-        source TEXT NOT NULL CHECK(source IN ('chat', 'manual')),
+        source TEXT NOT NULL,
         session_id TEXT,
         reimbursement_override TEXT,
         reimbursement_group_override TEXT,
@@ -82,11 +82,60 @@ export class DocumentsTable extends BaseTable {
   }
 
   getLatestVersion(): number {
-    return 1
+    return 2
   }
 
-  getMigrationSQL(_version: number): string | null {
-    return null
+  // v2: rebuild the table to drop the source CHECK constraint (SQLite cannot alter CHECK).
+  getMigrationSQL(version: number): string | null {
+    if (version !== 2) return null
+    return `
+      CREATE TABLE documents_v2 (
+        id TEXT PRIMARY KEY,
+        template_id TEXT NOT NULL,
+        type_key TEXT NOT NULL,
+        template_snapshot_json TEXT NOT NULL DEFAULT '{}',
+        fields_json TEXT NOT NULL DEFAULT '{}',
+        file_uris_json TEXT NOT NULL DEFAULT '[]',
+        source TEXT NOT NULL,
+        session_id TEXT,
+        reimbursement_override TEXT,
+        reimbursement_group_override TEXT,
+        status TEXT NOT NULL DEFAULT 'draft' CHECK(status IN ('draft', 'confirmed')),
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+      INSERT INTO documents_v2
+        SELECT id, template_id, type_key, template_snapshot_json, fields_json,
+               file_uris_json, source, session_id, reimbursement_override,
+               reimbursement_group_override, status, created_at, updated_at
+        FROM documents;
+      DROP TABLE documents;
+      ALTER TABLE documents_v2 RENAME TO documents;
+      CREATE INDEX IF NOT EXISTS idx_documents_type_key_status
+        ON documents(type_key, status, updated_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_documents_updated_at
+        ON documents(updated_at DESC, id DESC);
+    `
+  }
+
+  // Ensure the table accepts scheduled-source rows. This table is not migrated by the
+  // main catalog loop for CHECK changes (its table version 2 sits far below the global
+  // schema_versions high-water mark), and startup diagnosis/repair only detects missing
+  // tables/columns, not constraint changes. Detect the legacy source CHECK in the stored
+  // DDL and rebuild once; the rebuilt DDL no longer contains it, which makes this
+  // idempotent. The rebuild runs in its own transaction (better-sqlite3 downgrades nested
+  // transactions to savepoints) so it stays atomic in any caller context.
+  ensureMigrated(): void {
+    if (!this.tableExists()) {
+      this.db.exec(this.getCreateTableSQL())
+      return
+    }
+    const ddl = this.db
+      .prepare(`SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?`)
+      .get(this.tableName) as { sql: string | null } | undefined
+    if (!ddl?.sql || !/CHECK\s*\(\s*source\s+IN/i.test(ddl.sql)) return
+    const sql = this.getMigrationSQL(2)
+    if (sql) this.db.transaction(() => this.db.exec(sql))()
   }
 
   private buildWhere(filter: DocumentListFilter): { where: string; params: unknown[] } {

@@ -78,11 +78,28 @@ const createV1Table = (db: SqliteDb) => {
     INSERT INTO document_tasks VALUES ('id1','b1','p','n','tpl','manual','done',NULL,NULL,NULL,1,1)`)
 }
 
-const ddlHasSourceCheck = (db: SqliteDb) => {
+const ddlHasSourceCheck = (db: SqliteDb, tableName = 'document_tasks') => {
   const ddl = db
-    .prepare(`SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'document_tasks'`)
-    .get() as { sql: string } | undefined
+    .prepare(`SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?`)
+    .get(tableName) as { sql: string } | undefined
   return Boolean(ddl?.sql.includes('CHECK(source IN'))
+}
+
+// Creates a legacy v1 documents table whose source column is constrained to
+// 'chat' | 'manual', with all current columns and one existing 'manual' row.
+const createV1DocumentsTable = (db: SqliteDb) => {
+  db.exec(`CREATE TABLE documents (
+    id TEXT PRIMARY KEY, template_id TEXT NOT NULL, type_key TEXT NOT NULL,
+    template_snapshot_json TEXT NOT NULL DEFAULT '{}', fields_json TEXT NOT NULL DEFAULT '{}',
+    file_uris_json TEXT NOT NULL DEFAULT '[]',
+    source TEXT NOT NULL CHECK(source IN ('chat', 'manual')),
+    session_id TEXT, reimbursement_override TEXT, reimbursement_group_override TEXT,
+    status TEXT NOT NULL DEFAULT 'draft' CHECK(status IN ('draft', 'confirmed')),
+    created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
+    CREATE INDEX idx_documents_type_key_status ON documents(type_key, status, updated_at DESC);
+    CREATE INDEX idx_documents_updated_at ON documents(updated_at DESC, id DESC);
+    INSERT INTO documents VALUES
+      ('doc1','tpl','contract','{}','{}','[]','manual',NULL,NULL,NULL,'confirmed',1,1)`)
 }
 
 describeIfSqlite('DocumentTemplatesTable', () => {
@@ -630,6 +647,87 @@ describeIfSqlite('documentTasksTable ensureMigrated', () => {
   })
 })
 
+describeIfSqlite('documentsTable v2 migration', () => {
+  it('drops the source CHECK and preserves existing rows', () => {
+    const db = new DatabaseCtor(':memory:')
+    const table = new DocumentsTableCtor(db)
+    // Simulate a v1 database whose source column is constrained to 'chat' | 'manual'.
+    createV1DocumentsTable(db)
+    expect(table.getLatestVersion()).toBe(2)
+    const sql = table.getMigrationSQL(2)
+    expect(sql).not.toBeNull()
+    db.exec(sql!)
+    const migrated = db.prepare(`SELECT * FROM documents WHERE id = 'doc1'`).get() as {
+      source: string
+      status: string
+      reimbursement_override: string | null
+    }
+    expect(migrated.source).toBe('manual')
+    expect(migrated.status).toBe('confirmed')
+    expect(migrated.reimbursement_override).toBeNull()
+    // 重建后 scheduled 可写
+    table.insert({
+      templateId: 'tpl',
+      typeKey: 'contract',
+      templateSnapshot: {},
+      fields: {},
+      fileUris: [],
+      source: 'scheduled',
+      sessionId: null,
+      status: 'draft',
+      now: 5
+    })
+    expect(
+      db.prepare(`SELECT source FROM documents WHERE source = 'scheduled'`).get()
+    ).toMatchObject({ source: 'scheduled' })
+    db.close()
+  })
+})
+
+describeIfSqlite('documentsTable ensureMigrated', () => {
+  it('rebuilds a legacy v1 table and keeps rows', () => {
+    const db = new DatabaseCtor(':memory:')
+    createV1DocumentsTable(db)
+    const table = new DocumentsTableCtor(db)
+    table.ensureMigrated()
+    expect(ddlHasSourceCheck(db, 'documents')).toBe(false)
+    expect(db.prepare(`SELECT source FROM documents WHERE id = 'doc1'`).get()).toMatchObject({
+      source: 'manual'
+    })
+    db.close()
+  })
+
+  it('is idempotent on an already migrated table', () => {
+    const db = new DatabaseCtor(':memory:')
+    createV1DocumentsTable(db)
+    const table = new DocumentsTableCtor(db)
+    table.ensureMigrated()
+    table.ensureMigrated()
+    expect(table.count({})).toBe(1)
+    db.close()
+  })
+
+  it('creates the table when missing', () => {
+    const db = new DatabaseCtor(':memory:')
+    const table = new DocumentsTableCtor(db)
+    table.ensureMigrated()
+    expect(ddlHasSourceCheck(db, 'documents')).toBe(false)
+    const row = table.insert({
+      templateId: 'tpl',
+      typeKey: 'contract',
+      templateSnapshot: {},
+      fields: {},
+      fileUris: [],
+      source: 'scheduled',
+      sessionId: null,
+      status: 'draft',
+      now: 1
+    })
+    expect(row.source).toBe('scheduled')
+    db.close()
+  })
+})
+
 describeIfSqlite('DocumentsDatabase bootstrap', () => {
   it('ensures watched files and migrated tasks tables on construction', () => {
     const db = new DatabaseCtor(':memory:')
@@ -673,6 +771,17 @@ describeIfSqlite('DocumentsDatabase bootstrap', () => {
     expect(
       db.prepare(`SELECT source FROM document_tasks WHERE batch_id = 'b2'`).get()
     ).toMatchObject({ source: 'scheduled' })
+    db.close()
+  })
+
+  it('migrates a legacy v1 documents table on construction', () => {
+    const db = new DatabaseCtor(':memory:')
+    createV1DocumentsTable(db)
+    new DocumentsDatabaseCtor({ getDatabase: () => db })
+    expect(ddlHasSourceCheck(db, 'documents')).toBe(false)
+    expect(db.prepare(`SELECT source FROM documents WHERE id = 'doc1'`).get()).toMatchObject({
+      source: 'manual'
+    })
     db.close()
   })
 })
