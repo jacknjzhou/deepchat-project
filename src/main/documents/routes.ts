@@ -1,6 +1,7 @@
 import { promises as fsp } from 'node:fs'
 import path from 'node:path'
 import {
+  documentAutoWatchChooseDirRoute,
   documentTemplatesDeleteRoute,
   documentTemplatesForkRoute,
   documentTemplatesGetRoute,
@@ -187,10 +188,12 @@ export function createDocumentsRoutes(
       documentsTasksCreateRoute.name,
       async (rawInput) => {
         const input = documentsTasksCreateRoute.input.parse(rawInput)
+        // The contract already carries 'scheduled'/omitted templateId; the
+        // RecognitionTaskSubmitInput port is widened by the scheduler task.
         const tasks = taskManager.submit({
           files: input.files,
-          templateId: input.templateId,
-          source: input.source
+          templateId: input.templateId as string,
+          source: input.source as 'chat' | 'manual'
         })
         return documentsTasksCreateRoute.output.parse({ tasks })
       }
@@ -266,7 +269,8 @@ export function createDocumentsRoutes(
               templateSnapshot: result.template,
               fields: result.fields,
               fileUris: [input.file.path],
-              source: input.source ?? 'manual',
+              // Repository port still narrows sources to 'chat' | 'manual' at this seam.
+              source: (input.source ?? 'manual') as 'chat' | 'manual',
               sessionId: input.sessionId ?? null,
               status: 'draft',
               now: Date.now()
@@ -498,6 +502,17 @@ export function createDocumentsRoutes(
           exportedFiles: output.exportedFiles,
           summaryPath: output.summaryPath
         })
+      }
+    ],
+    [
+      documentAutoWatchChooseDirRoute.name,
+      async (rawInput) => {
+        documentAutoWatchChooseDirRoute.input.parse(rawInput)
+        const picked = await reimbursementDeps.showOpenDialog({
+          properties: ['openDirectory']
+        })
+        const dir = picked.canceled ? null : (picked.filePaths[0] ?? null)
+        return documentAutoWatchChooseDirRoute.output.parse({ dir })
       }
     ]
   ])

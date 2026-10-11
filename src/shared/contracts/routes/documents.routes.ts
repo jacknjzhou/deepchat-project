@@ -289,7 +289,8 @@ export const documentsTasksCreateRoute = defineRouteContract({
   name: 'documents.tasks.create',
   input: z.object({
     files: z.array(documentExtractFileSchema).min(1).max(20),
-    templateId: z.string().min(1),
+    // Scheduled submissions omit templateId: the classifier resolves it per file.
+    templateId: z.string().min(1).optional(),
     source: documentSourceSchema.default('manual')
   }),
   output: z.object({ tasks: z.array(documentTaskSchema) })
@@ -495,4 +496,10 @@ export const documentsReimbursementExportRoute = defineRouteContract({
     .refine((value) => value.canceled || typeof value.path === 'string', {
       message: 'path is required when not canceled'
     })
+})
+
+export const documentAutoWatchChooseDirRoute = defineRouteContract({
+  name: 'documents.autoWatch.chooseDir',
+  input: z.object({}).strict(),
+  output: z.object({ dir: z.string().nullable() })
 })

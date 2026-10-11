@@ -19,7 +19,7 @@ export const DOCUMENT_TEMPLATE_CATEGORIES = [
 ] as const
 export type DocumentTemplateCategory = (typeof DOCUMENT_TEMPLATE_CATEGORIES)[number]
 
-export const DOCUMENT_SOURCES = ['chat', 'manual'] as const
+export const DOCUMENT_SOURCES = ['chat', 'manual', 'scheduled'] as const
 export type DocumentSource = (typeof DOCUMENT_SOURCES)[number]
 
 export const DOCUMENT_STATUSES = ['draft', 'confirmed'] as const

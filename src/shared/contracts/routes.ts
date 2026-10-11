@@ -377,6 +377,7 @@ import {
   cronJobsUpsertRoute
 } from './routes/cronJobs.routes'
 import {
+  documentAutoWatchChooseDirRoute,
   documentTemplatesDeleteRoute,
   documentTemplatesForkRoute,
   documentTemplatesGetRoute,
@@ -851,6 +852,7 @@ const DEEPCHAT_ROUTE_CATALOG_PART_1 = {
   [documentsReimbursementSetOverrideRoute.name]: documentsReimbursementSetOverrideRoute,
   [documentsReimbursementSetGroupOverrideRoute.name]: documentsReimbursementSetGroupOverrideRoute,
   [documentsReimbursementExportRoute.name]: documentsReimbursementExportRoute,
+  [documentAutoWatchChooseDirRoute.name]: documentAutoWatchChooseDirRoute,
   [pluginsListRoute.name]: pluginsListRoute,
   [pluginsGetRoute.name]: pluginsGetRoute,
   [pluginsEnableRoute.name]: pluginsEnableRoute,

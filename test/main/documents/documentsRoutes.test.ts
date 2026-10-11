@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import {
+  documentAutoWatchChooseDirRoute,
   documentTemplatesDeleteRoute,
   documentTemplatesForkRoute,
   documentTemplatesGetRoute,
@@ -863,6 +864,63 @@ describeIfSqlite('documents stats and tasks route handlers', () => {
     )
     expect(remaining.tasks).toHaveLength(1)
     expect(remaining.tasks[0]).toMatchObject({ filePath: 'C:\\b.png', status: 'pending' })
+  })
+})
+
+// These handlers never touch the database (the repository is a placeholder),
+// so they run without the sqlite native module.
+describe('documents scheduled submit and autoWatch chooseDir handlers', () => {
+  it('documents.tasks.create forwards scheduled source without templateId to the task manager', async () => {
+    const task = {
+      id: 't1',
+      batchId: 'b1',
+      filePath: 'D:/scan/a.pdf',
+      fileName: 'a.pdf',
+      templateId: 'auto',
+      status: 'pending',
+      typeKey: null,
+      documentId: null,
+      error: null,
+      createdAt: 1,
+      updatedAt: 1
+    }
+    const submit = vi.fn().mockReturnValue([task])
+    const taskManager = { submit, resumePending: vi.fn() }
+    const routes = createDocumentsRoutes({} as never, fakeExtractor, taskManager as never)
+    const handler = getRouteHandler(routes, documentsTasksCreateRoute.name)
+    const output = documentsTasksCreateRoute.output.parse(
+      await handler({ files: [{ path: 'D:/scan/a.pdf' }], source: 'scheduled' })
+    )
+    expect(output.tasks).toEqual([task])
+    expect(submit).toHaveBeenCalledWith({
+      files: [{ path: 'D:/scan/a.pdf' }],
+      templateId: undefined,
+      source: 'scheduled'
+    })
+  })
+
+  it('documents.autoWatch.chooseDir returns the picked directory or null when canceled', async () => {
+    const routes = createDocumentsRoutes(
+      {} as never,
+      fakeExtractor,
+      fakeTaskManager,
+      undefined,
+      undefined,
+      { showOpenDialog: async () => ({ canceled: false, filePaths: ['D:/scan'] }) }
+    )
+    const handler = getRouteHandler(routes, documentAutoWatchChooseDirRoute.name)
+    expect(await handler({})).toEqual({ dir: 'D:/scan' })
+
+    const canceledRoutes = createDocumentsRoutes(
+      {} as never,
+      fakeExtractor,
+      fakeTaskManager,
+      undefined,
+      undefined,
+      { showOpenDialog: async () => ({ canceled: true, filePaths: [] }) }
+    )
+    const canceledHandler = getRouteHandler(canceledRoutes, documentAutoWatchChooseDirRoute.name)
+    expect(await canceledHandler({})).toEqual({ dir: null })
   })
 })
 
