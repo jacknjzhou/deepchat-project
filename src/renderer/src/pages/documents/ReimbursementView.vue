@@ -57,7 +57,7 @@
             :disabled="exporting"
             @click="onExport"
           >
-            {{ t('settings.documents.reimbursement.export') }}
+            {{ exportLabel }}
           </DcButton>
         </div>
       </div>
@@ -161,11 +161,34 @@
               </DcButton>
             </template>
             <template v-else>
-              <span class="flex items-center gap-2 text-sm font-medium">
-                {{ node.group.name }}
-                <DcBadge variant="outline">{{ groupEntryCount(node) }}</DcBadge>
-              </span>
-              <div class="flex gap-1">
+              <div class="flex min-w-0 items-center gap-2">
+                <input
+                  type="checkbox"
+                  class="h-4 w-4 shrink-0"
+                  :checked="checkedGroupIds.has(node.group.id)"
+                  :aria-label="t('settings.documents.reimbursement.selectGroupForExport')"
+                  :data-testid="`reimbursement-group-check-${node.group.id}`"
+                  @change="toggleGroupChecked(node.group.id, $event)"
+                />
+                <button
+                  type="button"
+                  class="flex min-w-0 items-center gap-1.5 text-sm font-medium"
+                  :aria-label="
+                    expandedGroupIds.has(node.group.id)
+                      ? t('settings.documents.reimbursement.collapseGroup')
+                      : t('settings.documents.reimbursement.expandGroup')
+                  "
+                  :data-testid="`reimbursement-group-toggle-${node.group.id}`"
+                  @click="toggleGroupExpanded(node.group.id)"
+                >
+                  <span class="text-xs text-muted-foreground">
+                    {{ expandedGroupIds.has(node.group.id) ? '▾' : '▸' }}
+                  </span>
+                  <span class="truncate">{{ node.group.name }}</span>
+                  <DcBadge variant="outline">{{ groupEntryCount(node) }}</DcBadge>
+                </button>
+              </div>
+              <div class="flex shrink-0 gap-1">
                 <DcButton
                   size="sm"
                   variant="outline"
@@ -185,25 +208,27 @@
               </div>
             </template>
           </div>
-          <div v-for="bucket in node.buckets" :key="bucket.period ?? '__unknown__'" class="mb-3">
-            <div class="mb-1 text-xs text-muted-foreground">
-              {{ bucket.period ?? t('settings.documents.reimbursement.unknownPeriod') }}
+          <div v-if="expandedGroupIds.has(node.group.id)">
+            <div v-for="bucket in node.buckets" :key="bucket.period ?? '__unknown__'" class="mb-3">
+              <div class="mb-1 text-xs text-muted-foreground">
+                {{ bucket.period ?? t('settings.documents.reimbursement.unknownPeriod') }}
+              </div>
+              <ReimbursementEntryRow
+                v-for="entry in bucket.documents"
+                :key="entry.id"
+                :entry="entry"
+                :groups="selectedCategoryGroups"
+                :categories="store.reimbursementTree?.tree ?? []"
+                :category-id="selectedCategoryId"
+                :show-group-select="true"
+                @move="onMove"
+                @move-group="onMoveGroup"
+              />
             </div>
-            <ReimbursementEntryRow
-              v-for="entry in bucket.documents"
-              :key="entry.id"
-              :entry="entry"
-              :groups="selectedCategoryGroups"
-              :categories="store.reimbursementTree?.tree ?? []"
-              :category-id="selectedCategoryId"
-              :show-group-select="true"
-              @move="onMove"
-              @move-group="onMoveGroup"
-            />
+            <p v-if="!node.buckets.length" class="text-xs text-muted-foreground">
+              {{ t('settings.documents.reimbursement.groupEmpty') }}
+            </p>
           </div>
-          <p v-if="!node.buckets.length" class="text-xs text-muted-foreground">
-            {{ t('settings.documents.reimbursement.groupEmpty') }}
-          </p>
         </div>
       </div>
     </section>
@@ -233,6 +258,8 @@ const showGroupForm = ref(false)
 const newGroupName = ref('')
 const editingGroupId = ref<string | null>(null)
 const editingGroupName = ref('')
+const expandedGroupIds = ref(new Set<string>())
+const checkedGroupIds = ref(new Set<string>())
 
 onMounted(async () => {
   // Custom-group management needs the saved config; fetch it alongside the
@@ -256,16 +283,46 @@ function resetGroupFormState() {
   editingGroupName.value = ''
 }
 
+// Collapse/checked state is per-category view state; reset it whenever the
+// selected category changes so it never leaks across categories.
+function resetGroupSelectionState() {
+  expandedGroupIds.value = new Set()
+  checkedGroupIds.value = new Set()
+}
+
 function selectCategory(id: string) {
   userSelected.value = true
   resetGroupFormState()
+  resetGroupSelectionState()
   selectedCategoryId.value = id
 }
 
 function selectUnassigned() {
   userSelected.value = true
   resetGroupFormState()
+  resetGroupSelectionState()
   selectedCategoryId.value = null
+}
+
+function toggleGroupExpanded(groupId: string) {
+  const next = new Set(expandedGroupIds.value)
+  if (next.has(groupId)) {
+    next.delete(groupId)
+  } else {
+    next.add(groupId)
+  }
+  expandedGroupIds.value = next
+}
+
+function toggleGroupChecked(groupId: string, event: Event) {
+  const checked = (event.target as HTMLInputElement).checked
+  const next = new Set(checkedGroupIds.value)
+  if (checked) {
+    next.add(groupId)
+  } else {
+    next.delete(groupId)
+  }
+  checkedGroupIds.value = next
 }
 
 function retry() {
@@ -369,10 +426,18 @@ async function confirmRename() {
 }
 
 async function removeGroup(groupId: string) {
-  await updateSelectedCategory((category) => ({
+  const saved = await updateSelectedCategory((category) => ({
     ...category,
     customGroups: category.customGroups.filter((group) => group.id !== groupId)
   }))
+  if (!saved) return
+  // A deleted group can no longer be exported or expanded.
+  const nextExpanded = new Set(expandedGroupIds.value)
+  nextExpanded.delete(groupId)
+  expandedGroupIds.value = nextExpanded
+  const nextChecked = new Set(checkedGroupIds.value)
+  nextChecked.delete(groupId)
+  checkedGroupIds.value = nextChecked
 }
 
 async function onMove(documentId: string, value: string) {
@@ -412,11 +477,23 @@ function goConfig() {
   void configClient.openSettings({ routeName: 'settings-documents-reimbursement' })
 }
 
+const exportLabel = computed(() => {
+  const base = t('settings.documents.reimbursement.export')
+  const count = checkedGroupIds.value.size
+  return count > 0 ? `${base} (${count})` : base
+})
+
 async function onExport() {
   if (exporting.value) return
   exporting.value = true
   try {
-    const result = await store.exportReimbursementPackage()
+    // Checked groups narrow the export to the current category's selected
+    // groups; without a selection the export stays full-package as before.
+    const selection =
+      selectedCategoryId.value !== null && checkedGroupIds.value.size > 0
+        ? { categoryId: selectedCategoryId.value, groupIds: [...checkedGroupIds.value] }
+        : undefined
+    const result = await store.exportReimbursementPackage(selection)
     if (result.canceled) return
     notifyTransient(
       'success',

@@ -291,6 +291,8 @@ describe('ReimbursementView', () => {
     })
     const wrapper = mountView(pinia)
     await flushPromises()
+    // Custom groups render collapsed by default; expand before asserting rows.
+    await wrapper.get('[data-testid="reimbursement-group-toggle-grp-a"]').trigger('click')
     const root = wrapper.element as HTMLElement
     const groupSection = root.querySelector('[data-testid="reimbursement-custom-group-grp-a"]')
     expect(groupSection).not.toBeNull()
@@ -514,5 +516,112 @@ describe('ReimbursementView', () => {
     await wrapper.get('[data-testid="reimbursement-category-unassigned"]').trigger('click')
     await flushPromises()
     expect(wrapper.findAll('[data-testid^="reimbursement-group-"]')).toHaveLength(0)
+  })
+
+  it('renders custom groups collapsed by default and toggles entries', async () => {
+    const { pinia, store } = setupStore()
+    vi.spyOn(store, 'loadReimbursementTree').mockResolvedValue()
+    store.reimbursementTree = makeTreeFixture({
+      groupedDocuments: [makeEntry('d-grouped', { groupId: 'grp-a' })]
+    })
+    const wrapper = mountView(pinia)
+    await flushPromises()
+    // Collapsed by default: the toggle renders but entries stay hidden.
+    expect(wrapper.find('[data-testid="reimbursement-group-toggle-grp-a"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="reimbursement-entry-d-grouped"]').exists()).toBe(false)
+    await wrapper.get('[data-testid="reimbursement-group-toggle-grp-a"]').trigger('click')
+    expect(wrapper.find('[data-testid="reimbursement-entry-d-grouped"]').exists()).toBe(true)
+    await wrapper.get('[data-testid="reimbursement-group-toggle-grp-a"]').trigger('click')
+    expect(wrapper.find('[data-testid="reimbursement-entry-d-grouped"]').exists()).toBe(false)
+  })
+
+  it('exports only the checked groups with categoryId and groupIds', async () => {
+    const { pinia, store } = setupStore()
+    vi.spyOn(store, 'loadReimbursementTree').mockResolvedValue()
+    vi.spyOn(store, 'exportReimbursementPackage').mockResolvedValue({
+      canceled: true,
+      path: 'D:\\pkg',
+      exportedFiles: 1
+    })
+    store.reimbursementTree = makeTreeFixture({
+      groupedDocuments: [makeEntry('d-grouped', { groupId: 'grp-a' })]
+    })
+    const wrapper = mountView(pinia)
+    await flushPromises()
+    await wrapper.get('[data-testid="reimbursement-group-check-grp-a"]').setValue(true)
+    await wrapper.get('[data-testid="reimbursement-export"]').trigger('click')
+    await flushPromises()
+    expect(store.exportReimbursementPackage).toHaveBeenCalledWith({
+      categoryId: 'cat-a',
+      groupIds: ['grp-a']
+    })
+  })
+
+  it('exports the full package without selection keys when nothing is checked', async () => {
+    const { pinia, store } = setupStore()
+    vi.spyOn(store, 'loadReimbursementTree').mockResolvedValue()
+    vi.spyOn(store, 'exportReimbursementPackage').mockResolvedValue({ canceled: true })
+    store.reimbursementTree = makeTreeFixture({
+      groupedDocuments: [makeEntry('d-grouped', { groupId: 'grp-a' })]
+    })
+    const wrapper = mountView(pinia)
+    await flushPromises()
+    await wrapper.get('[data-testid="reimbursement-export"]').trigger('click')
+    await flushPromises()
+    expect(store.exportReimbursementPackage).toHaveBeenCalledWith(undefined)
+  })
+
+  it('resets collapse and checks when switching categories', async () => {
+    const { pinia, store } = setupStore()
+    vi.spyOn(store, 'loadReimbursementTree').mockResolvedValue()
+    store.reimbursementTree = makeTreeFixture({
+      groupedDocuments: [makeEntry('d-grouped', { groupId: 'grp-a' })]
+    })
+    const wrapper = mountView(pinia)
+    await flushPromises()
+    await wrapper.get('[data-testid="reimbursement-group-toggle-grp-a"]').trigger('click')
+    await wrapper.get('[data-testid="reimbursement-group-check-grp-a"]').setValue(true)
+    await wrapper.get('[data-testid="reimbursement-category-unassigned"]').trigger('click')
+    await wrapper.get('[data-testid="reimbursement-category-cat-a"]').trigger('click')
+    const check = wrapper.get('[data-testid="reimbursement-group-check-grp-a"]')
+    expect((check.element as HTMLInputElement).checked).toBe(false)
+    // Collapse resets too: entries hidden again after switching back.
+    expect(wrapper.find('[data-testid="reimbursement-entry-d-grouped"]').exists()).toBe(false)
+  })
+
+  it('clears the export check when the checked group is deleted', async () => {
+    const { pinia, store } = setupStore()
+    vi.spyOn(store, 'loadReimbursementTree').mockResolvedValue()
+    const config = makeConfig([{ id: 'grp-a', name: '分组一', sortOrder: 0 }])
+    store.reimbursementConfig = config
+    vi.spyOn(store, 'loadReimbursementConfig').mockResolvedValue(config)
+    vi.spyOn(store, 'saveReimbursementConfig').mockResolvedValue(config)
+    vi.spyOn(store, 'exportReimbursementPackage').mockResolvedValue({ canceled: true })
+    store.reimbursementTree = makeTreeFixture({
+      ungroupedDocuments: [makeEntry('d1')],
+      customGroups: [{ group: { id: 'grp-a', name: '分组一', sortOrder: 0 }, buckets: [] }]
+    })
+    const wrapper = mountView(pinia)
+    await flushPromises()
+    await wrapper.get('[data-testid="reimbursement-group-check-grp-a"]').setValue(true)
+    await wrapper.get('[data-testid="reimbursement-group-delete-grp-a"]').trigger('click')
+    await flushPromises()
+    await wrapper.get('[data-testid="reimbursement-export"]').trigger('click')
+    await flushPromises()
+    expect(store.exportReimbursementPackage).toHaveBeenCalledWith(undefined)
+  })
+
+  it('shows the checked group count on the export button', async () => {
+    const { pinia, store } = setupStore()
+    vi.spyOn(store, 'loadReimbursementTree').mockResolvedValue()
+    store.reimbursementTree = makeTreeFixture({
+      groupedDocuments: [makeEntry('d-grouped', { groupId: 'grp-a' })]
+    })
+    const wrapper = mountView(pinia)
+    await flushPromises()
+    const exportButton = wrapper.get('[data-testid="reimbursement-export"]')
+    expect(exportButton.text()).not.toContain('(1)')
+    await wrapper.get('[data-testid="reimbursement-group-check-grp-a"]').setValue(true)
+    expect(exportButton.text()).toContain('(1)')
   })
 })
