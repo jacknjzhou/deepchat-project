@@ -13,7 +13,9 @@ import type {
 import type { z } from 'zod'
 import type {
   documentsStatsEntrySchema,
-  documentsTemplateUpsertInputSchema
+  documentsTemplateUpsertInputSchema,
+  ReimbursementConfig,
+  ReimbursementTreeResult
 } from '@shared/contracts/routes'
 import type { documentsTaskUpdatedEvent } from '@shared/contracts/events'
 import { documentsApi, type DocumentsTaskItem } from '@api/documentTasks'
@@ -223,6 +225,10 @@ export const useDocumentsStore = defineStore('documents', () => {
     }
     if (payload.status === 'done' || payload.status === 'failed') {
       scheduleArchiveRefresh()
+      // Once loaded, keep the reimbursement tree fresh for the session.
+      if (reimbursementTree.value !== null) {
+        scheduleReimbursementRefresh()
+      }
     }
   }
 
@@ -273,6 +279,16 @@ export const useDocumentsStore = defineStore('documents', () => {
     }
   }
 
+  // In-place-only sibling of replaceArchiveDocument: never prepends, so
+  // reimbursement calls made from views without the archive list loaded cannot
+  // inject orphan rows into an unloaded/filtered list.
+  function replaceArchiveDocumentInPlace(document: DocumentRecord) {
+    const index = archiveDocuments.value.findIndex((d) => d.id === document.id)
+    if (index >= 0) {
+      archiveDocuments.value[index] = document
+    }
+  }
+
   async function saveArchiveDocument(
     id: string,
     fields: Record<string, DocumentFieldEntry>,
@@ -319,6 +335,111 @@ export const useDocumentsStore = defineStore('documents', () => {
     return client.previewFile({ documentId, uriIndex })
   }
 
+  const reimbursementConfig = ref<ReimbursementConfig | null>(null)
+  const reimbursementTree = ref<ReimbursementTreeResult | null>(null)
+  const reimbursementIsLoading = ref(false)
+  const reimbursementLoadError = ref<string | null>(null)
+
+  async function loadReimbursementConfig(client: DocumentsClient = defaultClient) {
+    const result = await client.reimbursementGetConfig()
+    reimbursementConfig.value = result.config
+    return result.config
+  }
+
+  async function saveReimbursementConfig(
+    config: ReimbursementConfig,
+    client: DocumentsClient = defaultClient
+  ) {
+    const result = await client.reimbursementSetConfig(config)
+    reimbursementConfig.value = result.config
+    return result.config
+  }
+
+  // Guards against out-of-order reimbursement responses: only the latest
+  // loadReimbursementTree call may commit results or manage isLoading.
+  let reimbursementLoadSeq = 0
+  // Trailing-edge debounce so batch completion events refresh the tree once,
+  // mirroring scheduleArchiveRefresh; guarded by reimbursementLoadSeq.
+  const REIMBURSEMENT_REFRESH_DEBOUNCE_MS = 300
+  let reimbursementRefreshTimer: ReturnType<typeof setTimeout> | null = null
+
+  function scheduleReimbursementRefresh() {
+    if (reimbursementRefreshTimer !== null) {
+      clearTimeout(reimbursementRefreshTimer)
+    }
+    reimbursementRefreshTimer = setTimeout(() => {
+      reimbursementRefreshTimer = null
+      void loadReimbursementTree()
+    }, REIMBURSEMENT_REFRESH_DEBOUNCE_MS)
+  }
+
+  async function loadReimbursementTree(client: DocumentsClient = defaultClient) {
+    const seq = ++reimbursementLoadSeq
+    reimbursementIsLoading.value = true
+    reimbursementLoadError.value = null
+    try {
+      const result = await client.reimbursementTree({
+        status: archiveFilter.status,
+        dateFrom: archiveFilter.dateFrom,
+        dateTo: archiveFilter.dateTo
+      })
+      if (seq !== reimbursementLoadSeq) {
+        return
+      }
+      reimbursementTree.value = result
+    } catch (error) {
+      if (seq !== reimbursementLoadSeq) {
+        return
+      }
+      console.error('[DocumentsStore] loadReimbursementTree failed', error)
+      reimbursementLoadError.value = 'settings.documents.reimbursement.loadFailed'
+    } finally {
+      if (seq === reimbursementLoadSeq) {
+        reimbursementIsLoading.value = false
+      }
+    }
+  }
+
+  async function setReimbursementOverride(
+    documentId: string,
+    categoryId: string | null,
+    client: DocumentsClient = defaultClient
+  ): Promise<DocumentRecord | null> {
+    const result = await client.reimbursementSetOverride(documentId, categoryId)
+    const document = result.document as DocumentRecord | null
+    if (document) {
+      replaceArchiveDocumentInPlace(document)
+    }
+    await loadReimbursementTree(client)
+    return document
+  }
+
+  async function setReimbursementGroupOverride(
+    documentId: string,
+    groupId: string | null,
+    client: DocumentsClient = defaultClient
+  ): Promise<DocumentRecord | null> {
+    const result = await client.reimbursementSetGroupOverride(documentId, groupId)
+    const document = result.document as DocumentRecord | null
+    if (document) {
+      replaceArchiveDocumentInPlace(document)
+    }
+    await loadReimbursementTree(client)
+    return document
+  }
+
+  async function exportReimbursementPackage(
+    selection?: { categoryId: string; groupIds: string[] },
+    client: DocumentsClient = defaultClient
+  ) {
+    return client.reimbursementExport({
+      status: archiveFilter.status,
+      dateFrom: archiveFilter.dateFrom,
+      dateTo: archiveFilter.dateTo,
+      ...(selection ? { categoryId: selection.categoryId, groupIds: selection.groupIds } : {})
+    })
+  }
+
   return {
     templates,
     isLoading,
@@ -350,6 +471,16 @@ export const useDocumentsStore = defineStore('documents', () => {
     removeArchiveDocument,
     recognizeDocument,
     exportArchiveCsv,
-    previewArchiveFile
+    previewArchiveFile,
+    reimbursementConfig,
+    reimbursementTree,
+    reimbursementIsLoading,
+    reimbursementLoadError,
+    loadReimbursementConfig,
+    saveReimbursementConfig,
+    loadReimbursementTree,
+    setReimbursementOverride,
+    setReimbursementGroupOverride,
+    exportReimbursementPackage
   }
 })

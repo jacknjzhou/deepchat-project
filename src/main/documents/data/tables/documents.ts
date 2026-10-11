@@ -11,6 +11,8 @@ export interface DocumentRow {
   file_uris_json: string
   source: string
   session_id: string | null
+  reimbursement_override: string | null
+  reimbursement_group_override: string | null
   status: string
   created_at: number
   updated_at: number
@@ -25,6 +27,7 @@ export interface DocumentTableInsertInput {
   source: 'chat' | 'manual'
   sessionId: string | null
   status: 'draft' | 'confirmed'
+  reimbursementOverride?: string | null
   now?: number
 }
 
@@ -65,6 +68,8 @@ export class DocumentsTable extends BaseTable {
         file_uris_json TEXT NOT NULL DEFAULT '[]',
         source TEXT NOT NULL CHECK(source IN ('chat', 'manual')),
         session_id TEXT,
+        reimbursement_override TEXT,
+        reimbursement_group_override TEXT,
         status TEXT NOT NULL DEFAULT 'draft' CHECK(status IN ('draft', 'confirmed')),
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL
@@ -155,8 +160,9 @@ export class DocumentsTable extends BaseTable {
       .prepare(
         `INSERT INTO documents
            (id, template_id, type_key, template_snapshot_json, fields_json,
-            file_uris_json, source, session_id, status, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+            file_uris_json, source, session_id, reimbursement_override, status,
+            created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
         id,
@@ -167,6 +173,7 @@ export class DocumentsTable extends BaseTable {
         JSON.stringify(input.fileUris),
         input.source,
         input.sessionId,
+        input.reimbursementOverride ?? null,
         input.status,
         now,
         now
@@ -193,6 +200,27 @@ export class DocumentsTable extends BaseTable {
          WHERE id = ?`
       )
       .run(fields, status, templateId, typeKey, templateSnapshot, now, id)
+    return this.get(id)
+  }
+
+  setReimbursementOverride(id: string, value: string | null): DocumentRow | undefined {
+    const existing = this.get(id)
+    if (!existing) return undefined
+    // 调整类别 = 分组从属于旧类别，必须复位
+    this.db
+      .prepare(
+        'UPDATE documents SET reimbursement_override = ?, reimbursement_group_override = NULL, updated_at = ? WHERE id = ?'
+      )
+      .run(value, Date.now(), id)
+    return this.get(id)
+  }
+
+  setReimbursementGroupOverride(id: string, groupId: string | null): DocumentRow | undefined {
+    const existing = this.get(id)
+    if (!existing) return undefined
+    this.db
+      .prepare('UPDATE documents SET reimbursement_group_override = ?, updated_at = ? WHERE id = ?')
+      .run(groupId, Date.now(), id)
     return this.get(id)
   }
 

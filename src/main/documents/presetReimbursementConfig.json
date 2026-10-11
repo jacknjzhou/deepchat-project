@@ -1,0 +1,337 @@
+{
+  "version": 1,
+  "categories": [
+    {
+      "id": "cat-city-transport",
+      "name": "城市交通费",
+      "requiredMaterials": [
+        { "name": "发票", "linkedTypeKeys": ["invoice_special", "invoice_general"] }
+      ],
+      "linkedTypeKeys": [],
+      "sortOrder": 1
+    },
+    {
+      "id": "cat-abroad",
+      "name": "因公出国（境）",
+      "requiredMaterials": [
+        { "name": "机票电子行程单", "linkedTypeKeys": ["travel_itinerary"] },
+        { "name": "登机牌", "linkedTypeKeys": [] }
+      ],
+      "linkedTypeKeys": [],
+      "sortOrder": 2
+    },
+    {
+      "id": "cat-business-hospitality",
+      "name": "业务招待费",
+      "requiredMaterials": [
+        { "name": "用餐人数说明", "linkedTypeKeys": [] },
+        { "name": "发票", "linkedTypeKeys": ["invoice_special", "invoice_general"] },
+        { "name": "支付记录", "linkedTypeKeys": ["bank_receipt", "payment_screenshot"] },
+        { "name": "用餐流水单", "linkedTypeKeys": ["catering_receipt"] }
+      ],
+      "linkedTypeKeys": ["catering_receipt"],
+      "sortOrder": 3
+    },
+    {
+      "id": "cat-meeting",
+      "name": "会议费",
+      "requiredMaterials": [
+        { "name": "会议通知（议程）", "linkedTypeKeys": ["meeting_minutes"] },
+        { "name": "会议签到表", "linkedTypeKeys": [] },
+        { "name": "参会人员截图（线上会议）", "linkedTypeKeys": [] },
+        { "name": "费用清单", "linkedTypeKeys": [] },
+        { "name": "发票", "linkedTypeKeys": ["invoice_special", "invoice_general"] },
+        { "name": "合同", "linkedTypeKeys": ["contract"] }
+      ],
+      "linkedTypeKeys": ["meeting_minutes"],
+      "sortOrder": 4
+    },
+    {
+      "id": "cat-office-supplies",
+      "name": "办公用品",
+      "requiredMaterials": [
+        { "name": "发票", "linkedTypeKeys": ["invoice_special", "invoice_general"] },
+        { "name": "合同", "linkedTypeKeys": ["contract"] },
+        { "name": "订单完整截图（网购）", "linkedTypeKeys": ["purchase_order"] },
+        { "name": "采购申请单", "linkedTypeKeys": [] },
+        { "name": "送货单", "linkedTypeKeys": [] }
+      ],
+      "linkedTypeKeys": ["purchase_order"],
+      "sortOrder": 5
+    },
+    {
+      "id": "cat-printing",
+      "name": "印刷费",
+      "requiredMaterials": [
+        { "name": "合同", "linkedTypeKeys": ["contract"] },
+        { "name": "发票", "linkedTypeKeys": ["invoice_special", "invoice_general"] },
+        { "name": "送货单", "linkedTypeKeys": [] },
+        { "name": "验收单", "linkedTypeKeys": [] }
+      ],
+      "linkedTypeKeys": [],
+      "sortOrder": 6
+    },
+    {
+      "id": "cat-handling-fee",
+      "name": "手续费",
+      "requiredMaterials": [
+        { "name": "发票", "linkedTypeKeys": ["invoice_special", "invoice_general"] }
+      ],
+      "linkedTypeKeys": [],
+      "sortOrder": 7
+    },
+    {
+      "id": "cat-communication",
+      "name": "通讯费",
+      "requiredMaterials": [
+        { "name": "发票", "linkedTypeKeys": ["invoice_special", "invoice_general"] }
+      ],
+      "linkedTypeKeys": [],
+      "sortOrder": 8
+    },
+    {
+      "id": "cat-landline",
+      "name": "固定电话费",
+      "requiredMaterials": [
+        { "name": "合同", "linkedTypeKeys": [] },
+        { "name": "发票", "linkedTypeKeys": ["invoice_special", "invoice_general"] },
+        { "name": "费用明细清单", "linkedTypeKeys": [] }
+      ],
+      "linkedTypeKeys": [],
+      "sortOrder": 9
+    },
+    {
+      "id": "cat-network",
+      "name": "网络费",
+      "requiredMaterials": [
+        { "name": "合同", "linkedTypeKeys": [] },
+        { "name": "发票", "linkedTypeKeys": ["invoice_special", "invoice_general"] },
+        { "name": "费用明细清单", "linkedTypeKeys": [] }
+      ],
+      "linkedTypeKeys": [],
+      "sortOrder": 10
+    },
+    {
+      "id": "cat-express",
+      "name": "快递费",
+      "requiredMaterials": [
+        { "name": "合同", "linkedTypeKeys": [] },
+        { "name": "发票", "linkedTypeKeys": ["invoice_special", "invoice_general"] },
+        { "name": "费用明细清单", "linkedTypeKeys": [] }
+      ],
+      "linkedTypeKeys": [],
+      "sortOrder": 11
+    },
+    {
+      "id": "cat-commissioned",
+      "name": "委托业务费",
+      "requiredMaterials": [
+        { "name": "合同或具有同等法律效力的订单", "linkedTypeKeys": ["contract"] },
+        { "name": "发票", "linkedTypeKeys": ["invoice_special", "invoice_general"] },
+        { "name": "完成验收单", "linkedTypeKeys": [] }
+      ],
+      "linkedTypeKeys": [],
+      "sortOrder": 12
+    },
+    {
+      "id": "cat-patent",
+      "name": "专利费",
+      "requiredMaterials": [
+        { "name": "合同", "linkedTypeKeys": ["contract"] },
+        { "name": "发票", "linkedTypeKeys": ["invoice_special", "invoice_general"] },
+        { "name": "专利申请受理通知书", "linkedTypeKeys": [] },
+        { "name": "收费明细清单（合同未明确总计）", "linkedTypeKeys": [] }
+      ],
+      "linkedTypeKeys": [],
+      "sortOrder": 13
+    },
+    {
+      "id": "cat-publication",
+      "name": "文字版面费",
+      "requiredMaterials": [
+        { "name": "发票", "linkedTypeKeys": ["invoice_special", "invoice_general"] },
+        { "name": "刊发文章（含研究院或项目署名）", "linkedTypeKeys": [] }
+      ],
+      "linkedTypeKeys": [],
+      "sortOrder": 14
+    },
+    {
+      "id": "cat-research-materials",
+      "name": "课题研究资料费",
+      "requiredMaterials": [
+        { "name": "发票", "linkedTypeKeys": ["invoice_special", "invoice_general"] },
+        { "name": "明细清单", "linkedTypeKeys": [] },
+        { "name": "领用和签收记录", "linkedTypeKeys": [] }
+      ],
+      "linkedTypeKeys": [],
+      "sortOrder": 15
+    },
+    {
+      "id": "cat-consulting-meeting",
+      "name": "专家咨询费（会议形式）",
+      "requiredMaterials": [
+        { "name": "会议通知（议程）", "linkedTypeKeys": ["meeting_minutes"] },
+        { "name": "会议签到表", "linkedTypeKeys": [] },
+        { "name": "会议截图（线上会议）", "linkedTypeKeys": [] }
+      ],
+      "linkedTypeKeys": ["meeting_minutes"],
+      "sortOrder": 16
+    },
+    {
+      "id": "cat-consulting-remote",
+      "name": "专家咨询费（通讯形式）",
+      "requiredMaterials": [
+        { "name": "信函或邮件等书面材料", "linkedTypeKeys": [] },
+        { "name": "专家本人身份证明", "linkedTypeKeys": [] },
+        { "name": "任职证明", "linkedTypeKeys": [] },
+        { "name": "收款信息", "linkedTypeKeys": [] }
+      ],
+      "linkedTypeKeys": [],
+      "sortOrder": 17
+    },
+    {
+      "id": "cat-materials-over",
+      "name": "材料费（一万元以上）",
+      "requiredMaterials": [
+        { "name": "发票", "linkedTypeKeys": ["invoice_special", "invoice_general"] },
+        { "name": "订单明细", "linkedTypeKeys": ["purchase_order"] },
+        { "name": "验收单", "linkedTypeKeys": [] },
+        { "name": "合同", "linkedTypeKeys": ["contract"] }
+      ],
+      "linkedTypeKeys": ["purchase_order"],
+      "sortOrder": 18
+    },
+    {
+      "id": "cat-materials-under",
+      "name": "材料费（一万元以下）",
+      "requiredMaterials": [
+        { "name": "发票", "linkedTypeKeys": ["invoice_special", "invoice_general"] },
+        { "name": "订单明细", "linkedTypeKeys": ["purchase_order"] },
+        { "name": "验收单（无法提供合同时）", "linkedTypeKeys": [] }
+      ],
+      "linkedTypeKeys": ["purchase_order"],
+      "sortOrder": 19
+    },
+    {
+      "id": "cat-equipment",
+      "name": "设备费",
+      "requiredMaterials": [
+        { "name": "合同/协议/订单（三选一）", "linkedTypeKeys": ["contract", "purchase_order"] },
+        { "name": "发票", "linkedTypeKeys": ["invoice_special", "invoice_general"] },
+        { "name": "报价单", "linkedTypeKeys": ["quotation"] },
+        { "name": "送货单", "linkedTypeKeys": [] },
+        { "name": "验收单", "linkedTypeKeys": ["asset_acceptance"] },
+        { "name": "资产处理单", "linkedTypeKeys": [] }
+      ],
+      "linkedTypeKeys": ["asset_acceptance", "quotation"],
+      "sortOrder": 20
+    },
+    {
+      "id": "cat-renovation",
+      "name": "场地装修费",
+      "requiredMaterials": [
+        { "name": "合同", "linkedTypeKeys": ["contract", "lease_contract"] },
+        { "name": "发票", "linkedTypeKeys": ["invoice_special", "invoice_general"] }
+      ],
+      "linkedTypeKeys": [],
+      "sortOrder": 21
+    },
+    {
+      "id": "cat-renovation-special",
+      "name": "场地装修费（非常规费用）",
+      "requiredMaterials": [
+        { "name": "费用明细说明文件（赔偿费及押金没收）", "linkedTypeKeys": [] }
+      ],
+      "linkedTypeKeys": [],
+      "sortOrder": 22
+    },
+    {
+      "id": "cat-property",
+      "name": "物业管理费",
+      "requiredMaterials": [
+        { "name": "合同", "linkedTypeKeys": ["contract"] },
+        { "name": "发票", "linkedTypeKeys": ["invoice_special", "invoice_general"] },
+        { "name": "费用明细清单", "linkedTypeKeys": [] }
+      ],
+      "linkedTypeKeys": [],
+      "sortOrder": 23
+    },
+    {
+      "id": "cat-utilities",
+      "name": "水电气暖费",
+      "requiredMaterials": [
+        { "name": "发票", "linkedTypeKeys": ["invoice_special", "invoice_general"] },
+        { "name": "收费明细", "linkedTypeKeys": [] }
+      ],
+      "linkedTypeKeys": [],
+      "sortOrder": 24
+    },
+    {
+      "id": "cat-resource-rental",
+      "name": "资源租用费",
+      "requiredMaterials": [
+        { "name": "合同", "linkedTypeKeys": ["contract"] },
+        { "name": "发票", "linkedTypeKeys": ["invoice_special", "invoice_general"] },
+        { "name": "收费明细", "linkedTypeKeys": [] }
+      ],
+      "linkedTypeKeys": [],
+      "sortOrder": 25
+    },
+    {
+      "id": "cat-training",
+      "name": "培训费",
+      "requiredMaterials": [
+        { "name": "培训协议/合同或年审规定", "linkedTypeKeys": ["contract"] },
+        { "name": "发票", "linkedTypeKeys": ["invoice_special", "invoice_general"] }
+      ],
+      "linkedTypeKeys": [],
+      "sortOrder": 26
+    },
+    {
+      "id": "cat-activity",
+      "name": "活动费",
+      "requiredMaterials": [
+        { "name": "活动内容/日期/人数/姓名说明", "linkedTypeKeys": [] },
+        { "name": "费用单据", "linkedTypeKeys": ["invoice_special", "invoice_general"] },
+        { "name": "审批流程单", "linkedTypeKeys": [] }
+      ],
+      "linkedTypeKeys": [],
+      "sortOrder": 27
+    },
+    {
+      "id": "cat-recruiting",
+      "name": "招聘费",
+      "requiredMaterials": [
+        { "name": "合同", "linkedTypeKeys": ["contract"] },
+        { "name": "发票", "linkedTypeKeys": ["invoice_special", "invoice_general"] }
+      ],
+      "linkedTypeKeys": [],
+      "sortOrder": 28
+    }
+  ],
+  "personFieldKeys": [
+    "passenger_name",
+    "guest_name",
+    "buyer_name",
+    "payer_name",
+    "payee_name",
+    "handover_person",
+    "name"
+  ],
+  "dateFieldKeys": [
+    "invoice_date",
+    "consume_date",
+    "depart_date",
+    "checkin_date",
+    "sign_date",
+    "order_date",
+    "meeting_date",
+    "claim_date",
+    "purchase_date",
+    "entry_date",
+    "value_date",
+    "quote_date"
+  ],
+  "amountFieldKeys": ["total_amount", "amount", "contract_amount"],
+  "dateGrouping": "month"
+}

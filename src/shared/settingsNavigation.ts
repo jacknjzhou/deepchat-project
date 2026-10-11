@@ -25,6 +25,7 @@ export interface SettingsNavigationItem {
     | 'settings-documents'
     | 'settings-documents-template'
     | 'settings-documents-models'
+    | 'settings-documents-reimbursement'
   path: string
   titleKey: string
   icon: string
@@ -154,6 +155,15 @@ export const SETTINGS_NAVIGATION_ITEMS: SettingsNavigationItem[] = [
     position: 3.55,
     groupKey: 'models',
     keywords: ['documents', 'models', 'extraction', '单据', '识别', '模型', '提取']
+  },
+  {
+    routeName: 'settings-documents-reimbursement',
+    path: '/documents-reimbursement',
+    titleKey: 'routes.settings-documents-reimbursement',
+    icon: 'lucide:folder-tree',
+    position: 3.56,
+    groupKey: 'models',
+    keywords: ['documents', 'reimbursement', '报销', '类别', '分类']
   },
   {
     routeName: 'settings-acp',

@@ -57,6 +57,9 @@ export interface DocumentFieldEntry {
   uncertain: boolean
 }
 
+/** 报销“未分类”哨兵：可写入 reimbursementOverride 强制不归类；报销类别 id 不得占用该值 */
+export const REIMBURSEMENT_UNASSIGNED = 'unassigned'
+
 export interface DocumentRecord {
   id: string
   templateId: string
@@ -67,6 +70,10 @@ export interface DocumentRecord {
   source: DocumentSource
   sessionId: string | null
   status: DocumentStatus
+  /** 手动报销归类：null=自动；'unassigned'=强制未分类；其余=类别 id */
+  reimbursementOverride: string | null
+  /** 手动报销细分项分组：null=未分组；其余=所属类别下自定义分组 id */
+  reimbursementGroupOverride: string | null
   createdAt: number
   updatedAt: number
 }
