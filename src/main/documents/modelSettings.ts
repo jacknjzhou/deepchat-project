@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { DOCUMENTS_AUTO_WATCH_DEFAULT, type DocumentsAutoWatchConfig } from '@shared/documents'
 import { isNewApiEndpointType, type NewApiEndpointType } from '@shared/model'
 import type { ManagedConfigPayload } from '../managed/types'
 
@@ -20,6 +21,8 @@ export const DOCUMENTS_SETTINGS_KEYS = {
   concurrency: 'documents.concurrency',
   temperature: 'documents.temperature',
   maxTokens: 'documents.maxTokens',
+  autoWatch: 'documents.autoWatch',
+  autoWatchState: 'documents.autoWatchState',
   migrated: 'documents.settingsMigrated'
 } as const
 
@@ -63,6 +66,43 @@ export function readDocumentsModelSettings(store: DocumentsSettingsStore): Docum
     ),
     temperature: typeof temperature === 'number' ? temperature : null,
     maxTokens: typeof maxTokens === 'number' ? maxTokens : null
+  }
+}
+
+export interface DocumentsAutoWatchState {
+  lastRunAt: number | null
+  lastError: string | null
+}
+
+const isFiniteInt = (v: unknown, min: number, max: number): v is number =>
+  typeof v === 'number' && Number.isInteger(v) && v >= min && v <= max
+
+/** 非法值逐字段回落默认值（与渲染端 sanitize 范围一致：1-72 小时、1-20、后缀格式校验） */
+export function readAutoWatchConfig(store: DocumentsSettingsStore): DocumentsAutoWatchConfig {
+  const raw = store.getSetting<Record<string, unknown>>(DOCUMENTS_SETTINGS_KEYS.autoWatch)
+  if (!raw || typeof raw !== 'object') return { ...DOCUMENTS_AUTO_WATCH_DEFAULT }
+  const r = raw as Record<string, unknown>
+  return {
+    enabled: r.enabled === true,
+    dir: typeof r.dir === 'string' ? r.dir : '',
+    intervalHours: isFiniteInt(r.intervalHours, 1, 72) ? r.intervalHours : 1,
+    extensions:
+      Array.isArray(r.extensions) &&
+      r.extensions.length > 0 &&
+      r.extensions.every((e) => typeof e === 'string' && /^\.[A-Za-z0-9]+$/.test(e))
+        ? (r.extensions as string[])
+        : [...DOCUMENTS_AUTO_WATCH_DEFAULT.extensions],
+    roundLimit: isFiniteInt(r.roundLimit, 1, 20) ? r.roundLimit : 20
+  }
+}
+
+export function readAutoWatchState(store: DocumentsSettingsStore): DocumentsAutoWatchState {
+  const raw = store.getSetting<Record<string, unknown>>(DOCUMENTS_SETTINGS_KEYS.autoWatchState)
+  if (!raw || typeof raw !== 'object') return { lastRunAt: null, lastError: null }
+  const r = raw as Record<string, unknown>
+  return {
+    lastRunAt: typeof r.lastRunAt === 'number' ? r.lastRunAt : null,
+    lastError: typeof r.lastError === 'string' ? r.lastError : null
   }
 }
 

@@ -110,3 +110,26 @@ export const SEED_VALUE_TYPE_MAP: Record<string, DocumentFieldValueType> = {
   array: 'array',
   enum: 'enum'
 }
+
+/** 「智能信息提取」目录自动识别配置（主进程 scheduler 与渲染端设置页共用） */
+export interface DocumentsAutoWatchConfig {
+  enabled: boolean
+  dir: string
+  /** 扫描间隔（小时），1-72 */
+  intervalHours: number
+  /** 识别后缀，格式 /^\.[A-Za-z0-9]+$/ */
+  extensions: string[]
+  /** 每轮提交上限，1-20 */
+  roundLimit: number
+}
+
+export const DOCUMENTS_AUTO_WATCH_DEFAULT: DocumentsAutoWatchConfig = {
+  enabled: false,
+  dir: '',
+  intervalHours: 1,
+  extensions: ['.pdf', '.png', '.jpg', '.jpeg'],
+  roundLimit: 20
+}
+
+/** 设置页可勾选的后缀候选（默认值是其子集） */
+export const DOCUMENTS_AUTO_WATCH_EXTENSIONS = ['.pdf', '.png', '.jpg', '.jpeg', '.webp', '.gif']
