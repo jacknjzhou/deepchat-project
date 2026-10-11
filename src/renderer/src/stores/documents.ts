@@ -428,11 +428,15 @@ export const useDocumentsStore = defineStore('documents', () => {
     return document
   }
 
-  async function exportReimbursementPackage(client: DocumentsClient = defaultClient) {
+  async function exportReimbursementPackage(
+    selection?: { categoryId: string; groupIds: string[] },
+    client: DocumentsClient = defaultClient
+  ) {
     return client.reimbursementExport({
       status: archiveFilter.status,
       dateFrom: archiveFilter.dateFrom,
-      dateTo: archiveFilter.dateTo
+      dateTo: archiveFilter.dateTo,
+      ...(selection ? { categoryId: selection.categoryId, groupIds: selection.groupIds } : {})
     })
   }
 

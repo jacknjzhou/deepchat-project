@@ -159,13 +159,42 @@ describe('documents store reimbursement actions', () => {
     store.archiveFilter.status = 'confirmed'
     store.archiveFilter.dateFrom = 100
     store.archiveFilter.dateTo = 200
-    const result = await store.exportReimbursementPackage(client as never)
+    const result = await store.exportReimbursementPackage(undefined, client as never)
     expect(client.reimbursementExport).toHaveBeenCalledWith({
       status: 'confirmed',
       dateFrom: 100,
       dateTo: 200
     })
     expect(result).toEqual({ canceled: true })
+  })
+
+  it('exportReimbursementPackage forwards the group selection with the archive filter', async () => {
+    setActivePinia(createPinia())
+    const store = useDocumentsStore()
+    const client = makeFakeClient()
+    store.archiveFilter.status = 'confirmed'
+    const result = await store.exportReimbursementPackage(
+      { categoryId: 'cat-a', groupIds: ['grp-a'] },
+      client as never
+    )
+    expect(client.reimbursementExport).toHaveBeenCalledWith({
+      status: 'confirmed',
+      dateFrom: undefined,
+      dateTo: undefined,
+      categoryId: 'cat-a',
+      groupIds: ['grp-a']
+    })
+    expect(result).toEqual({ canceled: true })
+  })
+
+  it('exportReimbursementPackage omits the selection keys when no groups are checked', async () => {
+    setActivePinia(createPinia())
+    const store = useDocumentsStore()
+    const client = makeFakeClient()
+    await store.exportReimbursementPackage(undefined, client as never)
+    const input = vi.mocked(client.reimbursementExport).mock.calls[0]![0]
+    expect(input).not.toHaveProperty('categoryId')
+    expect(input).not.toHaveProperty('groupIds')
   })
 
   it('sets load error key when tree request fails', async () => {
