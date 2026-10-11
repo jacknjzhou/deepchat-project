@@ -197,12 +197,15 @@ import { SchedulerDatabase } from '@/scheduler/data/database'
 import { DocumentsDatabase } from '@/documents/data/database'
 import { DocumentExtractor } from '@/documents/extractor/documentExtractor'
 import {
+  DOCUMENTS_SETTINGS_KEYS,
   DocumentsModelConfigError,
   migrateDocumentsModelSettings,
+  readAutoWatchConfig,
   readDocumentsModelSettings,
   resolveDocumentsModelSettings,
   validateDocumentsModelRef
 } from '@/documents/modelSettings'
+import { AutoWatchScheduler } from '@/documents/autoWatch'
 import { DocumentsRepository } from '@/documents/repository'
 import { createDocumentsRoutes } from '@/documents/routes'
 import { RecognitionTaskManager } from '@/documents/taskManager'
@@ -3150,6 +3153,19 @@ export async function createMainProcessControl(dependencies: {
     )
     // Resume interrupted recognition tasks from the previous run.
     void recognitionTaskManager.resumePending()
+    // Auto watch: periodically scan the configured directory and submit new files for recognition.
+    const autoWatchScheduler = new AutoWatchScheduler({
+      readConfig: () => readAutoWatchConfig(providerSettings),
+      writeState: (state) =>
+        providerSettings.setSetting(DOCUMENTS_SETTINGS_KEYS.autoWatchState, state),
+      listWatchedFiles: () => documentsRepository.listWatchedFiles(),
+      upsertWatchedFile: (input) => documentsRepository.upsertWatchedFile(input),
+      submit: (input) =>
+        recognitionTaskManager.submit({ files: input.files, source: input.source }),
+      readdir: (dir, options) => fsp.readdir(dir, options),
+      stat: (p) => fsp.stat(p)
+    })
+    autoWatchScheduler.start()
     const resumeScreeningService = new ResumeScreeningService({
       database: resumeScreeningDatabase,
       invoker: new ResumeLlmInvoker({
