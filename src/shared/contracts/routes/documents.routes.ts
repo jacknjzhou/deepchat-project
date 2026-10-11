@@ -473,11 +473,18 @@ export const documentsReimbursementSetGroupOverrideRoute = defineRouteContract({
 
 export const documentsReimbursementExportRoute = defineRouteContract({
   name: 'documents.reimbursement.export',
-  input: z.object({
-    status: documentStatusSchema.optional(),
-    dateFrom: timestampMsSchema.optional(),
-    dateTo: timestampMsSchema.optional()
-  }),
+  input: z
+    .object({
+      status: documentStatusSchema.optional(),
+      dateFrom: timestampMsSchema.optional(),
+      dateTo: timestampMsSchema.optional(),
+      // 勾选分组导出：categoryId 与 groupIds 必须成对出现，都缺省 = 全量导出
+      categoryId: z.string().min(1).max(64).optional(),
+      groupIds: z.array(z.string().min(1).max(64)).min(1).max(50).optional()
+    })
+    .refine((value) => (value.categoryId === undefined) === (value.groupIds === undefined), {
+      message: 'categoryId and groupIds must be provided together'
+    }),
   output: z
     .object({
       canceled: z.boolean(),
