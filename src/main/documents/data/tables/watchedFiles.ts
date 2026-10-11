@@ -51,6 +51,7 @@ export class WatchedFilesTable extends BaseTable {
         `INSERT INTO documents_watched_files (path, mtime_ms, status, task_id, processed_at)
          VALUES (?, ?, 'submitted', ?, ?)
          ON CONFLICT(path) DO UPDATE SET mtime_ms = excluded.mtime_ms,
+           -- rediscovery means resubmission: reset status to 'submitted' and refresh the task
            status = excluded.status, task_id = excluded.task_id, processed_at = excluded.processed_at`
       )
       .run(input.path, input.mtimeMs, input.taskId, input.now ?? Date.now())

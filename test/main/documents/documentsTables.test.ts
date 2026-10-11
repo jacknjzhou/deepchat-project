@@ -63,6 +63,28 @@ const describeIfSqlite = modulesReady ? describe : describe.skip
 const describeIfWatched = modulesReady && WatchedFilesTable ? describe : describe.skip
 const describeIfSeed = modulesReady && seedPresetTemplates ? describe : describe.skip
 
+type SqliteDb = ReturnType<typeof DatabaseCtor>
+
+// Creates a legacy v1 document_tasks table whose source column is constrained to
+// 'chat' | 'manual', with one existing 'manual' row (id 'id1') to exercise migrations.
+const createV1Table = (db: SqliteDb) => {
+  db.exec(`CREATE TABLE document_tasks (
+    id TEXT PRIMARY KEY, batch_id TEXT NOT NULL, file_path TEXT NOT NULL,
+    file_name TEXT NOT NULL, template_id TEXT NOT NULL,
+    source TEXT NOT NULL DEFAULT 'manual' CHECK(source IN ('chat', 'manual')),
+    status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'running', 'done', 'failed')),
+    type_key TEXT, document_id TEXT, error TEXT,
+    created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
+    INSERT INTO document_tasks VALUES ('id1','b1','p','n','tpl','manual','done',NULL,NULL,NULL,1,1)`)
+}
+
+const ddlHasSourceCheck = (db: SqliteDb) => {
+  const ddl = db
+    .prepare(`SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'document_tasks'`)
+    .get() as { sql: string } | undefined
+  return Boolean(ddl?.sql.includes('CHECK(source IN'))
+}
+
 describeIfSqlite('DocumentTemplatesTable', () => {
   const makeDb = () => {
     const db = new DatabaseCtor(':memory:')
@@ -543,14 +565,7 @@ describeIfSqlite('documentTasksTable v2 migration', () => {
     const db = new DatabaseCtor(':memory:')
     const table = new DocumentTasksTableCtor(db)
     // Simulate a v1 database whose source column is constrained to 'chat' | 'manual'.
-    db.exec(`CREATE TABLE document_tasks (
-      id TEXT PRIMARY KEY, batch_id TEXT NOT NULL, file_path TEXT NOT NULL,
-      file_name TEXT NOT NULL, template_id TEXT NOT NULL,
-      source TEXT NOT NULL DEFAULT 'manual' CHECK(source IN ('chat', 'manual')),
-      status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'running', 'done', 'failed')),
-      type_key TEXT, document_id TEXT, error TEXT,
-      created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
-      INSERT INTO document_tasks VALUES ('id1','b1','p','n','tpl','manual','done',NULL,NULL,NULL,1,1)`)
+    createV1Table(db)
     expect(table.getLatestVersion()).toBe(2)
     const sql = table.getMigrationSQL(2)
     expect(sql).not.toBeNull()
@@ -575,26 +590,6 @@ describeIfSqlite('documentTasksTable v2 migration', () => {
 })
 
 describeIfSqlite('documentTasksTable ensureMigrated', () => {
-  type SqliteDb = ReturnType<typeof DatabaseCtor>
-
-  const createV1Table = (db: SqliteDb) => {
-    db.exec(`CREATE TABLE document_tasks (
-      id TEXT PRIMARY KEY, batch_id TEXT NOT NULL, file_path TEXT NOT NULL,
-      file_name TEXT NOT NULL, template_id TEXT NOT NULL,
-      source TEXT NOT NULL DEFAULT 'manual' CHECK(source IN ('chat', 'manual')),
-      status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'running', 'done', 'failed')),
-      type_key TEXT, document_id TEXT, error TEXT,
-      created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
-      INSERT INTO document_tasks VALUES ('id1','b1','p','n','tpl','manual','done',NULL,NULL,NULL,1,1)`)
-  }
-
-  const ddlHasSourceCheck = (db: SqliteDb) => {
-    const ddl = db
-      .prepare(`SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'document_tasks'`)
-      .get() as { sql: string } | undefined
-    return Boolean(ddl?.sql.includes('CHECK(source IN'))
-  }
-
   it('rebuilds a legacy v1 table and keeps rows', () => {
     const db = new DatabaseCtor(':memory:')
     createV1Table(db)
@@ -638,13 +633,13 @@ describeIfSqlite('documentTasksTable ensureMigrated', () => {
 describeIfSqlite('DocumentsDatabase bootstrap', () => {
   it('ensures watched files and migrated tasks tables on construction', () => {
     const db = new DatabaseCtor(':memory:')
-    new DocumentsDatabaseCtor({ getDatabase: () => db })
+    const first = new DocumentsDatabaseCtor({ getDatabase: () => db })
     const tables = db
       .prepare(`SELECT name FROM sqlite_master WHERE type = 'table'`)
       .all() as Array<{ name: string }>
     expect(tables.map((t) => t.name)).toContain('document_tasks')
     expect(tables.map((t) => t.name)).toContain('documents_watched_files')
-    new DocumentsDatabaseCtor({ getDatabase: () => db }).documentTasksTable.insert({
+    first.documentTasksTable.insert({
       batchId: 'b1',
       filePath: 'p',
       fileName: 'n',
@@ -652,19 +647,17 @@ describeIfSqlite('DocumentsDatabase bootstrap', () => {
       source: 'scheduled',
       now: 1
     })
+    const rowsAfterFirst = first.documentTasksTable.listRecent()
+    expect(rowsAfterFirst).toHaveLength(1)
+    // Reconstructing must not rebuild or lose data.
+    new DocumentsDatabaseCtor({ getDatabase: () => db })
+    expect(first.documentTasksTable.listRecent()).toEqual(rowsAfterFirst)
     db.close()
   })
 
   it('migrates a legacy v1 document_tasks table on construction', () => {
     const db = new DatabaseCtor(':memory:')
-    db.exec(`CREATE TABLE document_tasks (
-      id TEXT PRIMARY KEY, batch_id TEXT NOT NULL, file_path TEXT NOT NULL,
-      file_name TEXT NOT NULL, template_id TEXT NOT NULL,
-      source TEXT NOT NULL DEFAULT 'manual' CHECK(source IN ('chat', 'manual')),
-      status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'running', 'done', 'failed')),
-      type_key TEXT, document_id TEXT, error TEXT,
-      created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
-      INSERT INTO document_tasks VALUES ('id1','b1','p','n','tpl','manual','done',NULL,NULL,NULL,1,1)`)
+    createV1Table(db)
     new DocumentsDatabaseCtor({ getDatabase: () => db })
     expect(db.prepare(`SELECT source FROM document_tasks WHERE id = 'id1'`).get()).toMatchObject({
       source: 'manual'

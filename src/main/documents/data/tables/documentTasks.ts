@@ -103,7 +103,8 @@ export class DocumentTasksTable extends BaseTable {
   // high-water mark, so that loop can never reach version 2), and startup diagnosis/repair
   // only detects missing tables/columns, not CHECK constraint changes. Detect the legacy
   // source CHECK in the stored DDL and rebuild once; the rebuilt DDL no longer contains it,
-  // which makes this idempotent.
+  // which makes this idempotent. The rebuild runs in its own transaction (better-sqlite3
+  // downgrades nested transactions to savepoints) so it stays atomic in any caller context.
   ensureMigrated(): void {
     if (!this.tableExists()) {
       this.db.exec(this.getCreateTableSQL())
@@ -112,9 +113,9 @@ export class DocumentTasksTable extends BaseTable {
     const ddl = this.db
       .prepare(`SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?`)
       .get(this.tableName) as { sql: string | null } | undefined
-    if (!ddl?.sql?.includes('CHECK(source IN')) return
+    if (!ddl?.sql || !/CHECK\s*\(\s*source\s+IN/i.test(ddl.sql)) return
     const sql = this.getMigrationSQL(2)
-    if (sql) this.db.exec(sql)
+    if (sql) this.db.transaction(() => this.db.exec(sql))()
   }
 
   get(id: string): DocumentTaskRow | undefined {
