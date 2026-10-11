@@ -98,6 +98,25 @@ export class DocumentTasksTable extends BaseTable {
     `
   }
 
+  // Ensure the table is usable for scheduled sources. This table is not part of the main
+  // catalog migration loop (its table version 2 sits far below the global schema_versions
+  // high-water mark, so that loop can never reach version 2), and startup diagnosis/repair
+  // only detects missing tables/columns, not CHECK constraint changes. Detect the legacy
+  // source CHECK in the stored DDL and rebuild once; the rebuilt DDL no longer contains it,
+  // which makes this idempotent.
+  ensureMigrated(): void {
+    if (!this.tableExists()) {
+      this.db.exec(this.getCreateTableSQL())
+      return
+    }
+    const ddl = this.db
+      .prepare(`SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?`)
+      .get(this.tableName) as { sql: string | null } | undefined
+    if (!ddl?.sql?.includes('CHECK(source IN')) return
+    const sql = this.getMigrationSQL(2)
+    if (sql) this.db.exec(sql)
+  }
+
   get(id: string): DocumentTaskRow | undefined {
     return this.db.prepare('SELECT * FROM document_tasks WHERE id = ?').get(id) as
       | DocumentTaskRow

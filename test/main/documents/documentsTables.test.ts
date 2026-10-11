@@ -574,6 +574,116 @@ describeIfSqlite('documentTasksTable v2 migration', () => {
   })
 })
 
+describeIfSqlite('documentTasksTable ensureMigrated', () => {
+  type SqliteDb = ReturnType<typeof DatabaseCtor>
+
+  const createV1Table = (db: SqliteDb) => {
+    db.exec(`CREATE TABLE document_tasks (
+      id TEXT PRIMARY KEY, batch_id TEXT NOT NULL, file_path TEXT NOT NULL,
+      file_name TEXT NOT NULL, template_id TEXT NOT NULL,
+      source TEXT NOT NULL DEFAULT 'manual' CHECK(source IN ('chat', 'manual')),
+      status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'running', 'done', 'failed')),
+      type_key TEXT, document_id TEXT, error TEXT,
+      created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
+      INSERT INTO document_tasks VALUES ('id1','b1','p','n','tpl','manual','done',NULL,NULL,NULL,1,1)`)
+  }
+
+  const ddlHasSourceCheck = (db: SqliteDb) => {
+    const ddl = db
+      .prepare(`SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'document_tasks'`)
+      .get() as { sql: string } | undefined
+    return Boolean(ddl?.sql.includes('CHECK(source IN'))
+  }
+
+  it('rebuilds a legacy v1 table and keeps rows', () => {
+    const db = new DatabaseCtor(':memory:')
+    createV1Table(db)
+    const table = new DocumentTasksTableCtor(db)
+    table.ensureMigrated()
+    expect(ddlHasSourceCheck(db)).toBe(false)
+    expect(db.prepare(`SELECT source FROM document_tasks WHERE id = 'id1'`).get()).toMatchObject({
+      source: 'manual'
+    })
+    db.close()
+  })
+
+  it('is idempotent on an already migrated table', () => {
+    const db = new DatabaseCtor(':memory:')
+    createV1Table(db)
+    const table = new DocumentTasksTableCtor(db)
+    table.ensureMigrated()
+    table.ensureMigrated()
+    expect(table.listRecent()).toHaveLength(1)
+    db.close()
+  })
+
+  it('creates the table when missing', () => {
+    const db = new DatabaseCtor(':memory:')
+    const table = new DocumentTasksTableCtor(db)
+    table.ensureMigrated()
+    expect(ddlHasSourceCheck(db)).toBe(false)
+    const row = table.insert({
+      batchId: 'b1',
+      filePath: 'p',
+      fileName: 'n',
+      templateId: 'auto',
+      source: 'scheduled',
+      now: 1
+    })
+    expect(row.source).toBe('scheduled')
+    db.close()
+  })
+})
+
+describeIfSqlite('DocumentsDatabase bootstrap', () => {
+  it('ensures watched files and migrated tasks tables on construction', () => {
+    const db = new DatabaseCtor(':memory:')
+    new DocumentsDatabaseCtor({ getDatabase: () => db })
+    const tables = db
+      .prepare(`SELECT name FROM sqlite_master WHERE type = 'table'`)
+      .all() as Array<{ name: string }>
+    expect(tables.map((t) => t.name)).toContain('document_tasks')
+    expect(tables.map((t) => t.name)).toContain('documents_watched_files')
+    new DocumentsDatabaseCtor({ getDatabase: () => db }).documentTasksTable.insert({
+      batchId: 'b1',
+      filePath: 'p',
+      fileName: 'n',
+      templateId: 'auto',
+      source: 'scheduled',
+      now: 1
+    })
+    db.close()
+  })
+
+  it('migrates a legacy v1 document_tasks table on construction', () => {
+    const db = new DatabaseCtor(':memory:')
+    db.exec(`CREATE TABLE document_tasks (
+      id TEXT PRIMARY KEY, batch_id TEXT NOT NULL, file_path TEXT NOT NULL,
+      file_name TEXT NOT NULL, template_id TEXT NOT NULL,
+      source TEXT NOT NULL DEFAULT 'manual' CHECK(source IN ('chat', 'manual')),
+      status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'running', 'done', 'failed')),
+      type_key TEXT, document_id TEXT, error TEXT,
+      created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
+      INSERT INTO document_tasks VALUES ('id1','b1','p','n','tpl','manual','done',NULL,NULL,NULL,1,1)`)
+    new DocumentsDatabaseCtor({ getDatabase: () => db })
+    expect(db.prepare(`SELECT source FROM document_tasks WHERE id = 'id1'`).get()).toMatchObject({
+      source: 'manual'
+    })
+    new DocumentsDatabaseCtor({ getDatabase: () => db }).documentTasksTable.insert({
+      batchId: 'b2',
+      filePath: 'p2',
+      fileName: 'n2',
+      templateId: 'auto',
+      source: 'scheduled',
+      now: 5
+    })
+    expect(
+      db.prepare(`SELECT source FROM document_tasks WHERE batch_id = 'b2'`).get()
+    ).toMatchObject({ source: 'scheduled' })
+    db.close()
+  })
+})
+
 describeIfSqlite('DocumentsRepository', () => {
   const makeRepo = () => {
     const db = new DatabaseCtor(':memory:')
