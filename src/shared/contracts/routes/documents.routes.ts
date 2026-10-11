@@ -500,6 +500,6 @@ export const documentsReimbursementExportRoute = defineRouteContract({
 
 export const documentAutoWatchChooseDirRoute = defineRouteContract({
   name: 'documents.autoWatch.chooseDir',
-  input: z.object({}).strict(),
-  output: z.object({ dir: z.string().nullable() })
+  input: z.object({}).strict().default({}),
+  output: z.object({ dir: z.string().min(1).nullable() })
 })

@@ -290,6 +290,7 @@
       "colCreatedAt": "Created At",
       "sourceChat": "Chat",
       "sourceManual": "Manual",
+      "sourceScheduled": "Scheduled",
       "detailTitle": "Document Detail",
       "fieldsTitle": "Fields",
       "filesTitle": "Original Files",

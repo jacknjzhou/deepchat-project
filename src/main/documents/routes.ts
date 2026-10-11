@@ -31,7 +31,7 @@ import { REIMBURSEMENT_UNASSIGNED } from '@shared/documents'
 import { dialog } from 'electron'
 import { createRouteMap, type DeepchatRouteMap } from '@/routes/routeRegistry'
 import { buildDocumentsCsv, CSV_EXPORT_MAX_ROWS } from './csv'
-import type { DocumentExtractor } from './extractor/documentExtractor'
+import { AUTO_TEMPLATE_ID, type DocumentExtractor } from './extractor/documentExtractor'
 import type { DocumentsSettingsStore } from './modelSettings'
 import type { DocumentsRepository } from './repository'
 import { buildReimbursementTree, REIMBURSEMENT_TREE_MAX_DOCUMENTS } from './reimbursement'
@@ -188,12 +188,12 @@ export function createDocumentsRoutes(
       documentsTasksCreateRoute.name,
       async (rawInput) => {
         const input = documentsTasksCreateRoute.input.parse(rawInput)
-        // The contract already carries 'scheduled'/omitted templateId; the
-        // RecognitionTaskSubmitInput port is widened by the scheduler task.
+        // Scheduled submissions omit templateId: normalize to the auto classifier
+        // here so the task port never sees an undefined template binding.
         const tasks = taskManager.submit({
           files: input.files,
-          templateId: input.templateId as string,
-          source: input.source as 'chat' | 'manual'
+          templateId: input.templateId ?? AUTO_TEMPLATE_ID,
+          source: input.source
         })
         return documentsTasksCreateRoute.output.parse({ tasks })
       }
@@ -269,8 +269,7 @@ export function createDocumentsRoutes(
               templateSnapshot: result.template,
               fields: result.fields,
               fileUris: [input.file.path],
-              // Repository port still narrows sources to 'chat' | 'manual' at this seam.
-              source: (input.source ?? 'manual') as 'chat' | 'manual',
+              source: input.source ?? 'manual',
               sessionId: input.sessionId ?? null,
               status: 'draft',
               now: Date.now()

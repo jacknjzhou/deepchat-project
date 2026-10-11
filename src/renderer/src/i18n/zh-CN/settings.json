@@ -290,6 +290,7 @@
       "colCreatedAt": "创建时间",
       "sourceChat": "聊天",
       "sourceManual": "手动",
+      "sourceScheduled": "自动识别",
       "detailTitle": "单据详情",
       "fieldsTitle": "字段",
       "filesTitle": "原文件",

@@ -40,6 +40,7 @@ import {
 } from '@/documents/reimbursementExport'
 import { createDocumentsRoutes } from '@/documents/routes'
 import { DocumentsRepository } from '@/documents/repository'
+import { RecognitionTaskManager } from '@/documents/taskManager'
 import { DocumentsDatabase } from '@/documents/data/database'
 import { DocumentTasksTable } from '@/documents/data/tables/documentTasks'
 import { DocumentTemplatesTable } from '@/documents/data/tables/documentTemplates'
@@ -782,6 +783,62 @@ describeIfSqlite('documents stats and tasks route handlers', () => {
     })
   })
 
+  it('documents.tasks.create runs a scheduled templateId-less task end to end', async () => {
+    const repository = makeRepository()
+    const extractor = {
+      extract: vi.fn(async () => ({
+        template: {
+          id: 'tpl-1',
+          typeKey: 'invoice_special',
+          name: '增值税专用发票',
+          icon: null,
+          category: '发票类',
+          fields: [],
+          extractionMode: 'auto',
+          promptPreset: null,
+          isBuiltin: true,
+          builtinSourceId: null,
+          version: 1,
+          createdAt: 1,
+          updatedAt: 1
+        },
+        route: 'vision',
+        fields: { invoice_code: { value: '123456789012', uncertain: false } },
+        rawOutput: '{"fields":{}}',
+        durationMs: 42,
+        issues: []
+      }))
+    }
+    const taskManager = new RecognitionTaskManager({
+      repository,
+      extractor: extractor as never,
+      publishTaskUpdated: () => {}
+    })
+    const routes = createDocumentsRoutes(repository, extractor as never, taskManager)
+    const handler = getRouteHandler(routes, documentsTasksCreateRoute.name)
+    const output = documentsTasksCreateRoute.output.parse(
+      await handler({ files: [{ path: 'C:\\a.png', name: 'a.png' }], source: 'scheduled' })
+    )
+    await taskManager.idle()
+    const taskId = output.tasks[0]?.id
+    expect(taskId).toBeTruthy()
+    // 省略 templateId 不在 DB 层崩（绑定 undefined），任务行归一化为 'auto' 并执行成功
+    expect(repository.getTask(taskId!)).toMatchObject({
+      templateId: 'auto',
+      status: 'done',
+      typeKey: 'invoice_special'
+    })
+    expect(repository.getTask(taskId!)?.documentId).toBeTruthy()
+    // 归档收到分类结果，source 透传任务的 scheduled
+    const documents = repository.listDocuments({})
+    expect(documents).toHaveLength(1)
+    expect(documents[0]).toMatchObject({
+      source: 'scheduled',
+      typeKey: 'invoice_special',
+      status: 'draft'
+    })
+  })
+
   it('documents.tasks.list returns recent tasks from repository', async () => {
     const repository = makeRepository()
     repository.insertTasks([
@@ -892,9 +949,10 @@ describe('documents scheduled submit and autoWatch chooseDir handlers', () => {
       await handler({ files: [{ path: 'D:/scan/a.pdf' }], source: 'scheduled' })
     )
     expect(output.tasks).toEqual([task])
+    // handler 归一化省略的 templateId，端口不再收到 undefined
     expect(submit).toHaveBeenCalledWith({
       files: [{ path: 'D:/scan/a.pdf' }],
-      templateId: undefined,
+      templateId: 'auto',
       source: 'scheduled'
     })
   })
