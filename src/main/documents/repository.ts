@@ -93,6 +93,19 @@ export interface DocumentRepositoryTaskPort {
     status: 'draft' | 'confirmed'
     now?: number
   }): { id: string }
+  findFileDedupeNames(hashes: string[]): Map<string, string>
+  insertFileDedupes(
+    rows: Array<{
+      contentHash: string
+      fileName: string
+      filePath: string
+      source: string
+      taskId: string
+      now: number
+    }>
+  ): void
+  deleteFileDedupesByTask(taskId: string): void
+  bindFileDedupeDocument(taskId: string, documentId: string): void
 }
 
 const toTemplate = (row: DocumentTemplateRow): DocumentTemplate => ({
@@ -270,7 +283,11 @@ export class DocumentsRepository {
   }
 
   deleteDocument(id: string): void {
-    this.database.documentsTable.delete(id)
+    // 文档删除时级联清理其内容哈希行：手动重传同内容可再次识别。
+    this.database.getDatabase().transaction(() => {
+      this.database.documentsTable.delete(id)
+      this.database.fileDedupeTable.deleteByDocument(id)
+    })()
   }
 
   countDocumentsByTemplateId(templateId: string): number {
@@ -368,7 +385,37 @@ export class DocumentsRepository {
     return this.database.watchedFilesTable.listAll()
   }
 
-  upsertWatchedFile(input: { path: string; mtimeMs: number; taskId: string; now?: number }): void {
+  upsertWatchedFile(input: {
+    path: string
+    mtimeMs: number
+    taskId: string | null
+    now?: number
+  }): void {
     this.database.watchedFilesTable.upsert(input)
+  }
+
+  findFileDedupeNames(hashes: string[]): Map<string, string> {
+    return this.database.fileDedupeTable.findByHashes(hashes)
+  }
+
+  insertFileDedupes(
+    rows: Array<{
+      contentHash: string
+      fileName: string
+      filePath: string
+      source: string
+      taskId: string
+      now: number
+    }>
+  ): void {
+    this.database.fileDedupeTable.insertAll(rows)
+  }
+
+  deleteFileDedupesByTask(taskId: string): void {
+    this.database.fileDedupeTable.deleteByTask(taskId)
+  }
+
+  bindFileDedupeDocument(taskId: string, documentId: string): void {
+    this.database.fileDedupeTable.bindDocument(taskId, documentId)
   }
 }

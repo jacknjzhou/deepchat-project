@@ -14,6 +14,9 @@ const documentTasksTableModule = sqliteModule
 const watchedFilesTableModule = sqliteModule
   ? await import('@/documents/data/tables/watchedFiles').catch(() => null)
   : null
+const fileDedupeTableModule = sqliteModule
+  ? await import('@/documents/data/tables/fileDedupe').catch(() => null)
+  : null
 const databaseModule = sqliteModule
   ? await import('@/documents/data/database').catch(() => null)
   : null
@@ -27,6 +30,7 @@ const DocumentTemplatesTable = tableModule?.DocumentTemplatesTable
 const DocumentsTable = documentsTableModule?.DocumentsTable
 const DocumentTasksTable = documentTasksTableModule?.DocumentTasksTable
 const WatchedFilesTable = watchedFilesTableModule?.WatchedFilesTable
+const FileDedupeTable = fileDedupeTableModule?.FileDedupeTable
 const DocumentsDatabase = databaseModule?.DocumentsDatabase
 const DocumentsRepository = repositoryModule?.DocumentsRepository
 const seedPresetTemplates = seedModule?.seedPresetTemplates
@@ -35,6 +39,7 @@ const DocumentTemplatesTableCtor = DocumentTemplatesTable!
 const DocumentsTableCtor = DocumentsTable!
 const DocumentTasksTableCtor = DocumentTasksTable!
 const WatchedFilesTableCtor = WatchedFilesTable!
+const FileDedupeTableCtor = FileDedupeTable!
 const DocumentsDatabaseCtor = DocumentsDatabase!
 const DocumentsRepositoryCtor = DocumentsRepository!
 
@@ -61,6 +66,7 @@ const modulesReady =
 
 const describeIfSqlite = modulesReady ? describe : describe.skip
 const describeIfWatched = modulesReady && WatchedFilesTable ? describe : describe.skip
+const describeIfDedupe = modulesReady && FileDedupeTable ? describe : describe.skip
 const describeIfSeed = modulesReady && seedPresetTemplates ? describe : describe.skip
 
 type SqliteDb = ReturnType<typeof DatabaseCtor>
@@ -573,6 +579,145 @@ describeIfWatched('WatchedFilesTable', () => {
     expect(table.listAll()).toEqual([
       { path: 'D:/scan/a.pdf', mtime_ms: 200, status: 'submitted', task_id: 't2', processed_at: 2 }
     ])
+    db.close()
+  })
+
+  it('accepts a null task_id and keeps upsert idempotent for the same path', () => {
+    const db = makeDb()
+    const table = new WatchedFilesTableCtor(db)
+    table.upsert({ path: 'D:/t/dup.pdf', mtimeMs: 5, taskId: null, now: 1000 })
+    expect(table.listAll()).toEqual([
+      { path: 'D:/t/dup.pdf', mtime_ms: 5, status: 'submitted', task_id: null, processed_at: 1000 }
+    ])
+    // 同 path 再次登记：覆盖 mtime/task_id，幂等不冲突
+    table.upsert({ path: 'D:/t/dup.pdf', mtimeMs: 9, taskId: 't2', now: 2000 })
+    expect(table.listAll()).toEqual([
+      { path: 'D:/t/dup.pdf', mtime_ms: 9, status: 'submitted', task_id: 't2', processed_at: 2000 }
+    ])
+    db.close()
+  })
+
+  it('ensureMigrated rebuilds a legacy NOT NULL task_id table and keeps rows', () => {
+    const db = new DatabaseCtor(':memory:')
+    createLegacyWatchedTable(db)
+    const table = new WatchedFilesTableCtor(db)
+    table.ensureMigrated()
+    expect(watchedTaskIdNullable(db)).toBe(true)
+    expect(table.listAll()).toEqual([
+      { path: 'D:/old/a.pdf', mtime_ms: 10, status: 'submitted', task_id: 't0', processed_at: 1 }
+    ])
+    table.upsert({ path: 'D:/t/dup.pdf', mtimeMs: 5, taskId: null, now: 1000 })
+    expect(table.listAll()).toHaveLength(2)
+    // 幂等：重复执行不报错、不丢数据
+    table.ensureMigrated()
+    expect(table.listAll()).toHaveLength(2)
+    db.close()
+  })
+})
+
+// Simulates a v1 documents_watched_files table whose task_id column is NOT NULL,
+// with one existing row, to exercise the nullable repair.
+const createLegacyWatchedTable = (db: SqliteDb) => {
+  db.exec(`CREATE TABLE documents_watched_files (
+    path TEXT PRIMARY KEY,
+    mtime_ms INTEGER NOT NULL,
+    status TEXT NOT NULL DEFAULT 'submitted',
+    task_id TEXT NOT NULL,
+    processed_at INTEGER NOT NULL);
+  INSERT INTO documents_watched_files VALUES ('D:/old/a.pdf', 10, 'submitted', 't0', 1)`)
+}
+
+const watchedTaskIdNullable = (db: SqliteDb) => {
+  const ddl = db
+    .prepare(`SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?`)
+    .get('documents_watched_files') as { sql: string } | undefined
+  return Boolean(ddl?.sql && !/task_id\s+TEXT\s+NOT\s+NULL/i.test(ddl.sql))
+}
+
+describeIfDedupe('FileDedupeTable', () => {
+  it('creates the table idempotently and registers rows', () => {
+    const db = new DatabaseCtor(':memory:')
+    const table = new FileDedupeTableCtor(db)
+    table.createTable()
+    expect(() => table.createTable()).not.toThrow()
+    const row = db
+      .prepare(`SELECT * FROM documents_file_dedupe WHERE content_hash = ?`)
+      .get('a'.repeat(64))
+    expect(row).toBeUndefined()
+    db.close()
+  })
+})
+
+describeIfSqlite('DocumentsRepository file dedupe', () => {
+  const makeRepo = () => {
+    const db = new DatabaseCtor(':memory:')
+    new DocumentTemplatesTableCtor(db).createTable()
+    new DocumentsTableCtor(db).createTable()
+    const database = new DocumentsDatabaseCtor({ getDatabase: () => db })
+    return { db, repo: new DocumentsRepositoryCtor(database) }
+  }
+
+  it('documents_file_dedupe 表幂等建表并支持登记/查询/清理/回填', () => {
+    const { db, repo } = makeRepo()
+    expect(() => new FileDedupeTableCtor(db).createTable()).not.toThrow()
+    repo.insertFileDedupes([
+      {
+        contentHash: 'a'.repeat(64),
+        fileName: '发票.pdf',
+        filePath: 'D:/t/发票.pdf',
+        source: 'scheduled',
+        taskId: 'task-1',
+        now: 1000
+      }
+    ])
+    const found = repo.findFileDedupeNames(['a'.repeat(64), 'b'.repeat(64)])
+    expect(found.get('a'.repeat(64))).toBe('发票.pdf')
+    expect(found.has('b'.repeat(64))).toBe(false)
+    repo.bindFileDedupeDocument('task-1', 'doc-1')
+    repo.deleteFileDedupesByTask('task-1')
+    expect(repo.findFileDedupeNames(['a'.repeat(64)]).size).toBe(0)
+    db.close()
+  })
+
+  it('findFileDedupeNames handles empty input', () => {
+    const { db, repo } = makeRepo()
+    expect(repo.findFileDedupeNames([]).size).toBe(0)
+    db.close()
+  })
+
+  it('删除文档时级联清理其哈希行，重传同内容可再次识别', () => {
+    const { db, repo } = makeRepo()
+    const tpl = repo.upsertTemplate({
+      typeKey: 'fx',
+      name: 'F',
+      category: '自定义',
+      fields: [],
+      now: 1
+    })
+    const doc = repo.insertDocument({
+      templateId: tpl.id,
+      typeKey: 'fx',
+      templateSnapshot: tpl,
+      fields: {},
+      fileUris: [],
+      source: 'manual',
+      sessionId: null,
+      status: 'draft',
+      now: 2
+    })
+    repo.insertFileDedupes([
+      {
+        contentHash: 'c'.repeat(64),
+        fileName: 'a.pdf',
+        filePath: 'D:/t/a.pdf',
+        source: 'manual',
+        taskId: 't9',
+        now: 1000
+      }
+    ])
+    repo.bindFileDedupeDocument('t9', doc.id)
+    repo.deleteDocument(doc.id)
+    expect(repo.findFileDedupeNames(['c'.repeat(64)]).size).toBe(0)
     db.close()
   })
 })
