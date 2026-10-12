@@ -123,17 +123,7 @@
         <table v-if="store.archiveDocuments.length" class="w-full border-collapse text-sm">
           <thead>
             <tr class="border-b text-left text-muted-foreground">
-              <th v-if="!selectedTypeKey" class="px-2 py-2 font-medium">
-                {{ t('settings.documents.archive.colType') }}
-              </th>
-              <th
-                v-for="column in tableFieldColumns"
-                :key="column.key"
-                class="px-2 py-2 font-medium"
-              >
-                {{ column.label }}
-              </th>
-              <th v-if="!selectedTypeKey" class="px-2 py-2 font-medium">
+              <th class="px-2 py-2 font-medium">
                 {{ t('settings.documents.archive.colSummary') }}
               </th>
               <th class="px-2 py-2 font-medium">
@@ -155,22 +145,7 @@
               class="cursor-pointer border-b transition-colors hover:bg-accent/40"
               @click="openDetail(document)"
             >
-              <td v-if="!selectedTypeKey" class="px-2 py-2">
-                {{ templateNameById.get(document.templateId) ?? document.typeKey }}
-              </td>
-              <td
-                v-for="column in tableFieldColumns"
-                :key="column.key"
-                class="max-w-48 truncate px-2 py-2"
-                :title="formatDisplayValue(document.fields[column.key]?.value ?? null)"
-              >
-                {{ formatDisplayValue(document.fields[column.key]?.value ?? null) }}
-              </td>
-              <td
-                v-if="!selectedTypeKey"
-                class="max-w-64 truncate px-2 py-2"
-                :title="summarizeDocument(document)"
-              >
+              <td class="max-w-64 truncate px-2 py-2" :title="summarizeDocument(document)">
                 {{ summarizeDocument(document) }}
               </td>
               <td
@@ -259,12 +234,8 @@ import {
 } from '@shared/documents'
 import {
   buildDefaultDateRangeTexts,
-  buildMoneyColumns,
   formatDateRangeToMs,
-  formatDisplayValue,
-  orderedSnapshotFields,
-  resolveEffectiveReimbursement,
-  type MoneyColumn
+  resolveEffectiveReimbursement
 } from './documentArchive'
 import { summarizeDocument } from './documentSummary'
 import { documentsApi, type DocumentsTaskItem } from '@api/documentTasks'
@@ -292,8 +263,6 @@ const viewMode = ref<'documents' | 'reimbursement'>('documents')
 
 const selectedTypeKey = computed(() => store.archiveFilter.typeKey ?? null)
 
-const templateNameById = computed(() => new Map(store.templates.map((tpl) => [tpl.id, tpl.name])))
-
 // Reimbursement column cells: one resolver pass per row, both cells reuse the
 // resolved labels through this map. Stale ids degrade to '—' via the resolver.
 const reimbursementCellsById = computed(() => {
@@ -317,20 +286,6 @@ const reimbursementCellsById = computed(() => {
     cells.set(document.id, { category, group })
   }
   return cells
-})
-
-const moneyColumns = computed<MoneyColumn[]>(() => buildMoneyColumns(store.archiveDocuments))
-
-const tableFieldColumns = computed<{ key: string; label: string }[]>(() => {
-  if (selectedTypeKey.value) {
-    const template = store.templates.find((tpl) => tpl.typeKey === selectedTypeKey.value)
-    if (!template) {
-      return []
-    }
-    const snapshot = { fields: template.fields } as DocumentRecord['templateSnapshot']
-    return orderedSnapshotFields(snapshot).map((f) => ({ key: f.key, label: f.label }))
-  }
-  return moneyColumns.value
 })
 
 const capitalize = (value: string) => value.charAt(0).toUpperCase() + value.slice(1)
