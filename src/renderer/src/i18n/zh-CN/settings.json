@@ -421,6 +421,13 @@
       "issues": "提示",
       "empty": "上传样张后查看提取结果",
       "fileRequired": "未能获取样张文件路径，请重新选择"
+    },
+    "recognize": {
+      "duplicateSkipped": "已跳过 {count} 个内容重复的文件",
+      "duplicateOf": "与 {name} 重复"
+    },
+    "autoWatch": {
+      "duplicatesNotice": "本轮已跳过 {count} 个重复文件"
     }
   },
   "documentsModels": {

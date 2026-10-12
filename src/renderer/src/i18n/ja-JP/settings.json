@@ -2928,6 +2928,13 @@
       "issues": "注意点",
       "empty": "サンプルをアップロードすると結果が表示されます",
       "fileRequired": "サンプルファイルのパスを取得できませんでした。選び直してください"
+    },
+    "recognize": {
+      "duplicateSkipped": "内容が重複する {count} 件のファイルをスキップしました",
+      "duplicateOf": "{name} と重複"
+    },
+    "autoWatch": {
+      "duplicatesNotice": "このラウンドで重複ファイル {count} 件をスキップしました"
     }
   },
   "documentsModels": {

@@ -421,6 +421,13 @@
       "issues": "Nota",
       "empty": "Muat naik sampel untuk melihat hasil",
       "fileRequired": "Laluan fail sampel tidak diperoleh. Sila pilih semula"
+    },
+    "recognize": {
+      "duplicateSkipped": "{count} fail dengan kandungan pendua dilangkau",
+      "duplicateOf": "Pendua bagi {name}"
+    },
+    "autoWatch": {
+      "duplicatesNotice": "{count} fail pendua dilangkau dalam pusingan ini"
     }
   },
   "documentsModels": {

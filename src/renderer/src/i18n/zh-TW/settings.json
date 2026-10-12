@@ -2928,6 +2928,13 @@
       "issues": "提示",
       "empty": "上傳樣張後查看擷取結果",
       "fileRequired": "無法取得樣張檔案路徑，請重新選擇"
+    },
+    "recognize": {
+      "duplicateSkipped": "已跳過 {count} 個內容重複的檔案",
+      "duplicateOf": "與 {name} 重複"
+    },
+    "autoWatch": {
+      "duplicatesNotice": "本輪已跳過 {count} 個重複檔案"
     }
   },
   "documentsModels": {

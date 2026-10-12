@@ -421,6 +421,13 @@
       "issues": "Avisos",
       "empty": "Sube una muestra para ver los resultados",
       "fileRequired": "No se pudo obtener la ruta del archivo. Vuelve a seleccionarlo"
+    },
+    "recognize": {
+      "duplicateSkipped": "Se omitieron {count} archivo(s) con contenido duplicado",
+      "duplicateOf": "Duplicado de {name}"
+    },
+    "autoWatch": {
+      "duplicatesNotice": "Se omitieron {count} archivo(s) duplicado(s) en esta ronda"
     }
   },
   "documentsModels": {

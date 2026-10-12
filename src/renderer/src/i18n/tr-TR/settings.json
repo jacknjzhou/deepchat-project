@@ -421,6 +421,13 @@
       "issues": "Notlar",
       "empty": "Sonuçları görmek için örnek yükleyin",
       "fileRequired": "Örnek dosya yolu alınamadı. Lütfen yeniden seçin"
+    },
+    "recognize": {
+      "duplicateSkipped": "İçeriği yinelenen {count} dosya atlandı",
+      "duplicateOf": "{name} ile aynı"
+    },
+    "autoWatch": {
+      "duplicatesNotice": "Bu turda {count} yinelenen dosya atlandı"
     }
   },
   "documentsModels": {

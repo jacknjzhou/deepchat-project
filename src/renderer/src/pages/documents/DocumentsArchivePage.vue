@@ -379,7 +379,11 @@ function retry() {
   void store.loadArchiveDocuments(store.archivePage)
 }
 
-function notifyTransient(kind: 'success' | 'error', code: string, title: string) {
+function notifyTransient(
+  kind: 'success' | 'info' | 'warning' | 'error',
+  code: string,
+  title: string
+) {
   try {
     rendererNotificationManager.notify({ kind, code, title })
   } catch (error) {
@@ -496,14 +500,26 @@ async function onClearFailedTasks() {
 }
 
 let unsubscribeTask: (() => void) | null = null
+let unsubscribeDuplicates: (() => void) | null = null
 
 onMounted(() => {
   unsubscribeTask = documentsApi.onTaskUpdated((payload) => store.handleTaskUpdated(payload))
+  // Auto-watch submissions report content-dedupe skips so the user learns why
+  // watched files never showed up in the archive.
+  unsubscribeDuplicates = documentsApi.onWatchDuplicates((payload) =>
+    notifyTransient(
+      'warning',
+      'documents.watch.duplicates',
+      t('settings.documents.autoWatch.duplicatesNotice', { count: payload.count })
+    )
+  )
 })
 
 onBeforeUnmount(() => {
   unsubscribeTask?.()
   unsubscribeTask = null
+  unsubscribeDuplicates?.()
+  unsubscribeDuplicates = null
 })
 
 syncFilters()

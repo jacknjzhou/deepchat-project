@@ -421,6 +421,13 @@
       "issues": "Note",
       "empty": "Carica un campione per vedere i risultati",
       "fileRequired": "Impossibile ottenere il percorso del file. Seleziona di nuovo"
+    },
+    "recognize": {
+      "duplicateSkipped": "{count} file con contenuto duplicato ignorati",
+      "duplicateOf": "Duplicato di {name}"
+    },
+    "autoWatch": {
+      "duplicatesNotice": "{count} file duplicati ignorati in questo ciclo"
     }
   },
   "documentsModels": {

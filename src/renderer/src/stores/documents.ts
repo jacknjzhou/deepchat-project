@@ -8,7 +8,8 @@ import type {
   DocumentTemplateCategory,
   DocumentRecord,
   DocumentFieldEntry,
-  DocumentStatus
+  DocumentStatus,
+  RecognitionDuplicate
 } from '@shared/documents'
 import type { z } from 'zod'
 import type {
@@ -239,7 +240,9 @@ export const useDocumentsStore = defineStore('documents', () => {
     const result = await client.createTasks({ ...input, source: 'manual' })
     const created = result.tasks as DocumentsTaskItem[]
     tasks.value = [...created, ...tasks.value]
-    return created
+    // Content-dedupe skips: tolerate clients that predate the duplicates field.
+    const duplicates = (result as { duplicates?: RecognitionDuplicate[] }).duplicates ?? []
+    return { created, duplicates }
   }
 
   async function retryRecognitionTask(

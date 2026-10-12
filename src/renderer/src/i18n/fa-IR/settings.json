@@ -2928,6 +2928,13 @@
       "issues": "نکات",
       "empty": "برای دیدن نتایج نمونه‌ای بارگذاری کنید",
       "fileRequired": "مسیر فایل نمونه به دست نیامد. دوباره انتخاب کنید"
+    },
+    "recognize": {
+      "duplicateSkipped": "{count} فایل با محتوای تکراری نادیده گرفته شد",
+      "duplicateOf": "تکراریِ {name}"
+    },
+    "autoWatch": {
+      "duplicatesNotice": "در این دور {count} فایل تکراری نادیده گرفته شد"
     }
   },
   "documentsModels": {

@@ -421,6 +421,13 @@
       "issues": "Notes",
       "empty": "Upload a sample to see extraction results",
       "fileRequired": "Could not resolve the sample file path. Please reselect"
+    },
+    "recognize": {
+      "duplicateSkipped": "Skipped {count} file(s) with duplicate content",
+      "duplicateOf": "Duplicate of {name}"
+    },
+    "autoWatch": {
+      "duplicatesNotice": "Skipped {count} duplicate file(s) in this round"
     }
   },
   "documentsModels": {

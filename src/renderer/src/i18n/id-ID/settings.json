@@ -421,6 +421,13 @@
       "issues": "Catatan",
       "empty": "Unggah contoh untuk melihat hasil",
       "fileRequired": "Jalur berkas contoh tidak ditemukan. Silakan pilih ulang"
+    },
+    "recognize": {
+      "duplicateSkipped": "{count} file dengan konten duplikat dilewati",
+      "duplicateOf": "Duplikat dari {name}"
+    },
+    "autoWatch": {
+      "duplicatesNotice": "{count} file duplikat dilewati pada putaran ini"
     }
   },
   "documentsModels": {

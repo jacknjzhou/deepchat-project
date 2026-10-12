@@ -421,6 +421,13 @@
       "issues": "Hinweise",
       "empty": "Beispiel hochladen, um Ergebnisse zu sehen",
       "fileRequired": "Dateipfad konnte nicht ermittelt werden. Bitte neu auswählen"
+    },
+    "recognize": {
+      "duplicateSkipped": "{count} Datei(en) mit doppeltem Inhalt übersprungen",
+      "duplicateOf": "Duplikat von {name}"
+    },
+    "autoWatch": {
+      "duplicatesNotice": "{count} doppelte Datei(en) in diesem Durchlauf übersprungen"
     }
   },
   "documentsModels": {

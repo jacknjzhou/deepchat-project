@@ -421,6 +421,13 @@
       "issues": "Uwagi",
       "empty": "Prześlij próbkę, aby zobaczyć wyniki",
       "fileRequired": "Nie udało się uzyskać ścieżki pliku. Wybierz ponownie"
+    },
+    "recognize": {
+      "duplicateSkipped": "Pominięto pliki z powtórzoną zawartością: {count}",
+      "duplicateOf": "Powiela {name}"
+    },
+    "autoWatch": {
+      "duplicatesNotice": "W tej rundzie pominięto powtórzone pliki: {count}"
     }
   },
   "documentsModels": {

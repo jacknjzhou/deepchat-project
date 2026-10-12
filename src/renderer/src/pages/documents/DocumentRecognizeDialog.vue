@@ -73,6 +73,20 @@
         <p v-if="error" class="text-sm text-destructive" data-testid="recognize-error">
           {{ t('settings.documents.archive.recognizeFailed') }}: {{ error }}
         </p>
+        <p
+          v-if="skippedDuplicates.length"
+          class="text-sm text-muted-foreground"
+          data-testid="recognize-duplicates-hint"
+        >
+          {{
+            t('settings.documents.recognize.duplicateSkipped', { count: skippedDuplicates.length })
+          }}
+          <span v-for="d in skippedDuplicates" :key="d.path">
+            {{ d.fileName }}（{{
+              t('settings.documents.recognize.duplicateOf', { name: d.existingName })
+            }}）
+          </span>
+        </p>
       </div>
       <DialogFooter>
         <DcButton
@@ -107,6 +121,7 @@ import {
   DialogTitle
 } from '@shadcn/components/ui/dialog'
 import { DcButton } from '@dc-ui/components/button'
+import type { RecognitionDuplicate } from '@shared/documents'
 import { createDeviceClient } from '@api/DeviceClient'
 import { useDocumentsStore } from '@/stores/documents'
 
@@ -130,6 +145,7 @@ const selectedFiles = ref<Array<{ path: string; name: string }>>([])
 const templateId = ref(AUTO_VALUE)
 const submitting = ref(false)
 const error = ref('')
+const skippedDuplicates = ref<RecognitionDuplicate[]>([])
 
 const canSubmit = computed(() => selectedFiles.value.length > 0 && !submitting.value)
 const isPdfFile = computed(() =>
@@ -146,6 +162,7 @@ watch(
     templateId.value = AUTO_VALUE
     submitting.value = false
     error.value = ''
+    skippedDuplicates.value = []
   }
 )
 
@@ -191,12 +208,18 @@ async function onSubmit() {
   submitting.value = true
   error.value = ''
   try {
-    const created = await store.createRecognitionTasks({
+    const { created, duplicates } = await store.createRecognitionTasks({
       files: selectedFiles.value.map((file) => ({ path: file.path, name: file.name })),
       templateId: templateId.value === AUTO_VALUE ? 'auto' : templateId.value
     })
     emit('submitted', created.length)
-    emit('update:open', false)
+    if (duplicates.length > 0) {
+      // Keep the dialog open so the user can review which files were skipped;
+      // reopening resets the hint via the open watcher.
+      skippedDuplicates.value = duplicates
+    } else {
+      emit('update:open', false)
+    }
   } catch (err) {
     console.error('[DocumentRecognizeDialog] create tasks failed', err)
     error.value = err instanceof Error ? err.message : String(err)

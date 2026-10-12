@@ -2928,6 +2928,13 @@
       "issues": "הערות",
       "empty": "העלו דגימה לצפייה בתוצאות",
       "fileRequired": "לא ניתן היה לאתר את נתיב הקובץ. יש לבחור מחדש"
+    },
+    "recognize": {
+      "duplicateSkipped": "דולגו {count} קבצים עם תוכן כפול",
+      "duplicateOf": "כפול של {name}"
+    },
+    "autoWatch": {
+      "duplicatesNotice": "בסבב זה דולגו {count} קבצים כפולים"
     }
   },
   "documentsModels": {

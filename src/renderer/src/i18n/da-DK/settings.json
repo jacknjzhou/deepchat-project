@@ -2928,6 +2928,13 @@
       "issues": "Bemærkninger",
       "empty": "Upload en prøve for at se resultaterne",
       "fileRequired": "Kunne ikke finde filstien. Vælg prøven igen"
+    },
+    "recognize": {
+      "duplicateSkipped": "Sprang {count} fil(er) med identisk indhold over",
+      "duplicateOf": "Dublet af {name}"
+    },
+    "autoWatch": {
+      "duplicatesNotice": "Sprang {count} duplikatfiler over i denne runde"
     }
   },
   "documentsModels": {

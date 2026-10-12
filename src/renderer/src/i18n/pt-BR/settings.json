@@ -2928,6 +2928,13 @@
       "issues": "Observações",
       "empty": "Envie uma amostra para ver os resultados",
       "fileRequired": "Não foi possível obter o caminho do arquivo. Selecione novamente"
+    },
+    "recognize": {
+      "duplicateSkipped": "{count} arquivo(s) com conteúdo duplicado ignorado(s)",
+      "duplicateOf": "Duplicado de {name}"
+    },
+    "autoWatch": {
+      "duplicatesNotice": "{count} arquivo(s) duplicado(s) ignorado(s) nesta rodada"
     }
   },
   "documentsModels": {

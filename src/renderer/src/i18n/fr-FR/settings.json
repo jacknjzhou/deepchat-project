@@ -2928,6 +2928,13 @@
       "issues": "Remarques",
       "empty": "Téléversez un échantillon pour voir les résultats",
       "fileRequired": "Chemin du fichier introuvable. Veuillez remplacer l'échantillon"
+    },
+    "recognize": {
+      "duplicateSkipped": "{count} fichier(s) au contenu en doublon ignoré(s)",
+      "duplicateOf": "Doublon de {name}"
+    },
+    "autoWatch": {
+      "duplicatesNotice": "{count} fichier(s) en doublon ignoré(s) lors de ce passage"
     }
   },
   "documentsModels": {

@@ -33,7 +33,7 @@ import {
   type DeepchatRouteOutput,
   type ReimbursementConfig
 } from '@shared/contracts/routes'
-import { documentsTaskUpdatedEvent } from '@shared/contracts/events'
+import { documentsTaskUpdatedEvent, documentsWatchDuplicatesEvent } from '@shared/contracts/events'
 import type { z } from 'zod'
 import { getDeepchatBridge } from './core'
 
@@ -124,7 +124,10 @@ export function createDocumentsClient(bridge: DeepchatBridge = getDeepchatBridge
     },
     onTaskUpdated: (
       listener: (payload: z.infer<typeof documentsTaskUpdatedEvent.payload>) => void
-    ) => bridge.on(documentsTaskUpdatedEvent.name, listener)
+    ) => bridge.on(documentsTaskUpdatedEvent.name, listener),
+    onWatchDuplicates: (
+      listener: (payload: z.infer<typeof documentsWatchDuplicatesEvent.payload>) => void
+    ) => bridge.on(documentsWatchDuplicatesEvent.name, listener)
   }
 }
 

@@ -421,6 +421,13 @@
       "issues": "Lưu ý",
       "empty": "Tải lên mẫu vật để xem kết quả",
       "fileRequired": "Không lấy được đường dẫn tệp mẫu. Vui lòng chọn lại"
+    },
+    "recognize": {
+      "duplicateSkipped": "Đã bỏ qua {count} tệp có nội dung trùng lặp",
+      "duplicateOf": "Trùng với {name}"
+    },
+    "autoWatch": {
+      "duplicatesNotice": "Đã bỏ qua {count} tệp trùng lặp trong lượt này"
     }
   },
   "documentsModels": {
