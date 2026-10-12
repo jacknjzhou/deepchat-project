@@ -57,6 +57,13 @@ export interface DocumentFieldEntry {
   uncertain: boolean
 }
 
+/** 内容去重：提交时被拦截的重复文件（path 供自动监控登记使用，UI 只用 fileName/existingName） */
+export interface RecognitionDuplicate {
+  fileName: string
+  existingName: string
+  path: string
+}
+
 /** 报销“未分类”哨兵：可写入 reimbursementOverride 强制不归类；报销类别 id 不得占用该值 */
 export const REIMBURSEMENT_UNASSIGNED = 'unassigned'
 

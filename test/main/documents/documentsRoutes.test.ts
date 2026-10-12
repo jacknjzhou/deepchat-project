@@ -289,7 +289,17 @@ describe('documents route contracts', () => {
       createdAt: 1,
       updatedAt: 1
     }
-    expect(documentsTasksCreateRoute.output.parse({ tasks: [task] }).tasks).toHaveLength(1)
+    expect(
+      documentsTasksCreateRoute.output.parse({ tasks: [task], duplicates: [] }).tasks
+    ).toHaveLength(1)
+    expect(
+      documentsTasksCreateRoute.output.parse({
+        tasks: [],
+        duplicates: [{ fileName: 'a.png', existingName: 'b.png', path: 'C:\\a.png' }]
+      }).duplicates
+    ).toEqual([{ fileName: 'a.png', existingName: 'b.png', path: 'C:\\a.png' }])
+    // duplicates 为必填字段
+    expect(() => documentsTasksCreateRoute.output.parse({ tasks: [] })).toThrow()
     expect(documentsTasksListRoute.output.parse({ tasks: [] }).tasks).toEqual([])
   })
 

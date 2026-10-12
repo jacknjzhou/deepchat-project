@@ -285,6 +285,13 @@ export const documentTaskSchema = z.object({
   updatedAt: timestampMsSchema
 })
 
+/** 内容去重：提交时被拦截的重复文件（path 供自动监控登记使用，UI 只用 fileName/existingName） */
+export const documentRecognitionDuplicateSchema = z.object({
+  fileName: z.string(),
+  existingName: z.string(),
+  path: z.string()
+})
+
 export const documentsTasksCreateRoute = defineRouteContract({
   name: 'documents.tasks.create',
   input: z.object({
@@ -293,7 +300,10 @@ export const documentsTasksCreateRoute = defineRouteContract({
     templateId: z.string().min(1).optional(),
     source: documentSourceSchema.default('manual')
   }),
-  output: z.object({ tasks: z.array(documentTaskSchema) })
+  output: z.object({
+    tasks: z.array(documentTaskSchema),
+    duplicates: z.array(documentRecognitionDuplicateSchema)
+  })
 })
 
 export const documentsTasksListRoute = defineRouteContract({

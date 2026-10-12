@@ -195,7 +195,9 @@ export function createDocumentsRoutes(
           templateId: input.templateId ?? AUTO_TEMPLATE_ID,
           source: input.source
         })
-        return documentsTasksCreateRoute.output.parse({ tasks })
+        // Content-level dedupe lands later; the contract reserves the field
+        // so the renderer can surface blocked files without another round trip.
+        return documentsTasksCreateRoute.output.parse({ tasks, duplicates: [] })
       }
     ],
     [
