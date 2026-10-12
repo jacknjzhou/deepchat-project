@@ -879,6 +879,8 @@ export class DeepChatLoopRunner {
     }
 
     const traceEnabled = this.ports.traceSettings.isEnabled()
+    // The gap recurs on every tool round of the same provider+model; warn once per message run.
+    const warnedInterleavedReasoningGapModels = new Set<string>()
     const initialRequestSeq = Math.max(
       this.ports.tape.listViewManifestsByMessage(sessionId, messageId)[0]
         ?.requestSeq ?? 0,
@@ -2330,9 +2332,13 @@ export class DeepChatLoopRunner {
         },
         diagnostics: {
           onInterleavedReasoningGap: (gap) => {
-            console.warn(
-              `[DeepChatAgent] Interleaved reasoning gap detected for ${gap.providerId}/${gap.modelId}. Update provider DB metadata at ${gap.providerDbSourceUrl}.`
-            )
+            const gapKey = `${gap.providerId}/${gap.modelId}`
+            if (!warnedInterleavedReasoningGapModels.has(gapKey)) {
+              warnedInterleavedReasoningGapModels.add(gapKey)
+              console.warn(
+                `[DeepChatAgent] Interleaved reasoning gap detected for ${gap.providerId}/${gap.modelId}. Update provider DB metadata at ${gap.providerDbSourceUrl}.`
+              )
+            }
             if (!traceEnabled) {
               return
             }
