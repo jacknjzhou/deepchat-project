@@ -2047,13 +2047,25 @@ export class SkillService implements SkillServicePort {
           throw new Error('effective content batch exceeds 2 MiB')
         }
         if (packageBytes > SKILL_EXECUTION_PACKAGE_MAX_BATCH_BYTES) {
-          throw new Error('execution package batch exceeds 16 MiB')
+          throw new Error(
+            `execution package batch exceeds ${
+              SKILL_EXECUTION_PACKAGE_MAX_BATCH_BYTES / (1024 * 1024)
+            } MiB`
+          )
         }
         if (currentEncodedBytes > SKILL_EXECUTION_PACKAGE_MAX_ENCODED_BYTES) {
-          throw new Error('execution package encoding exceeds 7 MiB')
+          throw new Error(
+            `execution package encoding exceeds ${
+              SKILL_EXECUTION_PACKAGE_MAX_ENCODED_BYTES / (1024 * 1024)
+            } MiB`
+          )
         }
         if (encodedPackageBytes > SKILL_EXECUTION_PACKAGE_MAX_BATCH_ENCODED_BYTES) {
-          throw new Error('execution package encoded batch exceeds 28 MiB')
+          throw new Error(
+            `execution package encoded batch exceeds ${
+              SKILL_EXECUTION_PACKAGE_MAX_BATCH_ENCODED_BYTES / (1024 * 1024)
+            } MiB`
+          )
         }
         resolutions.push(resolution)
       } catch (error) {
@@ -2264,7 +2276,9 @@ export class SkillService implements SkillServicePort {
       )
       packageBytes += bytes.byteLength
       if (packageBytes > SKILL_EXECUTION_PACKAGE_MAX_BYTES) {
-        throw new Error('execution package exceeds 4 MiB')
+        throw new Error(
+          `execution package exceeds ${SKILL_EXECUTION_PACKAGE_MAX_BYTES / (1024 * 1024)} MiB`
+        )
       }
       files.push({
         relativePath,

@@ -1,6 +1,10 @@
 import { describe, it, expect, beforeEach, vi, Mock, afterEach } from 'vitest'
 import type { SkillSettingsPort } from '@/skill/settings'
 import type { SkillMetadata } from '../../../src/shared/types/skill'
+import {
+  SKILL_EXECUTION_PACKAGE_MAX_DIRECTORIES,
+  SKILL_EXECUTION_PACKAGE_MAX_FILES
+} from '../../../src/shared/types/skill'
 import { app } from 'electron'
 
 const DEFAULT_SKILLS_DIR = '/mock/home/.deepchat/skills'
@@ -1418,9 +1422,13 @@ describe('SkillService', () => {
       await assignDiscoveredSkills()
       const scriptsDir = `${DEFAULT_SKILLS_DIR}/test-skill/scripts`
       ;(fs.existsSync as Mock).mockReturnValue(true)
+      // One entry past the combined per-directory enumeration cap so the guard fires
+      // before any package candidate is read, regardless of the current cap values.
+      const entryCount =
+        SKILL_EXECUTION_PACKAGE_MAX_FILES + SKILL_EXECUTION_PACKAGE_MAX_DIRECTORIES + 1
       ;(fs.readdirSync as Mock).mockImplementation((target: string) =>
         target === scriptsDir
-          ? Array.from({ length: 513 }, (_, index) => createFileEntry(`file-${index}.txt`))
+          ? Array.from({ length: entryCount }, (_, index) => createFileEntry(`file-${index}.txt`))
           : []
       )
 

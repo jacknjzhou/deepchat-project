@@ -460,7 +460,7 @@ describe('Tape Skill materialization domain', () => {
           executionPackage: fullPackage
         }))
       )
-    ).toThrow('package batch exceeds 16 MiB')
+    ).toThrow('package batch exceeds 64 MiB')
   })
 
   it('fails rather than truncating body, count, and aggregate overflow', () => {
