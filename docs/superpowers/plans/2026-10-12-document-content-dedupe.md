@@ -146,6 +146,22 @@ bindFileDedupeDocument(taskId: string, documentId: string): void
 
 watchedFiles：task_id 列改为可空（NULL 登记不冲突，upsert 幂等语义不变：同 path 覆盖 mtime/task_id）。
 
+**删除级联（用户确认语义）**：`repository.deleteDocument`（repository.ts:272）内在删除文档的同一事务中执行
+`DELETE FROM documents_file_dedupe WHERE document_id = ?`——所有删除调用方自动生效，无需改 routes.ts:176 的调用点。
+Step 1 测试补充：
+
+```ts
+it('删除文档时级联清理其哈希行，重传同内容可再次识别', () => {
+  const db = createDocumentsDatabase()
+  db.insertFileDedupes([
+    { contentHash: 'c'.repeat(64), fileName: 'a.pdf', filePath: 'D:/t/a.pdf', source: 'manual', taskId: 't9', now: 1000 }
+  ])
+  db.bindFileDedupeDocument('t9', 'doc-9')
+  db.deleteDocument('doc-9')
+  expect(db.findFileDedupeNames(['c'.repeat(64)]).size).toBe(0)
+})
+```
+
 - [ ] **Step 4: 测试通过** → **Step 5: Commit** `feat(documents): file dedupe table`
 
 ---
@@ -442,7 +458,7 @@ i18n 新键（20 语言同步）：`settings.documents.recognize.duplicateSkippe
 - [ ] **Step 1: 运行相关套件**（ELECTRON_RUN_AS_NODE 方式跑主进程 sqlite/manager/autoWatch/routes 套件；vitest.renderer 跑弹窗/store/契约套件）
 - [ ] **Step 2:** `pnpm run typecheck:node`（必须过）；`typecheck:web` OOM 则注明跳过
 - [ ] **Step 3:** `pnpm exec oxfmt <改动文件>` + `pnpm exec oxlint <改动文件>`
-- [ ] **Step 4: 手动验收**（dev 实例）：同内容 PDF 改名两次提交 → 第二个被弹窗提示拦截；放入监控目录同内容新文件 → 通知提示且下轮不重扫；失败任务重试不受影响
+- [ ] **Step 4: 手动验收**（dev 实例）：同内容 PDF 改名两次提交 → 第二个被弹窗提示拦截；放入监控目录同内容新文件 → 通知提示且下轮不重扫；失败任务重试不受影响；删除已识别文档后手动重传同内容 → 可重新识别，监控目录原文件 mtime 未变不复活
 - [ ] **Step 5: 更新 project_memory 去重条目**
 
 ---
