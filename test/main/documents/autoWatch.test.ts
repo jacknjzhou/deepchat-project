@@ -1,3 +1,4 @@
+import path from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { AutoWatchScheduler, type AutoWatchConfig } from '@/documents/autoWatch'
 
@@ -84,6 +85,91 @@ describe('AutoWatchScheduler.runOnce', () => {
     const s = new AutoWatchScheduler(deps as never)
     await s.runOnce()
     expect(deps.submit.mock.calls[0][0].files).toHaveLength(1)
+  })
+
+  it('递归扫描子目录中的匹配文件，跳过点前缀目录', async () => {
+    const root = 'D:/scan'
+    const sub = path.join(root, 'sub')
+    const deeper = path.join(sub, 'deeper')
+    const hidden = path.join(root, '.hidden')
+    const dirent = (name: string, isDir: boolean, isLink = false) => ({
+      name,
+      isFile: () => !isDir,
+      isDirectory: () => isDir,
+      isSymbolicLink: () => isLink
+    })
+    const deps = makeDeps({
+      readConfig: vi.fn(() => ({ ...baseConfig, roundLimit: 5 })),
+      readdir: vi.fn(async (dir: string) => {
+        if (dir === root) {
+          return [dirent('top.pdf', false), dirent('sub', true), dirent('.hidden', true)]
+        }
+        if (dir === sub) {
+          return [dirent('nested.pdf', false), dirent('deeper', true)]
+        }
+        if (dir === hidden) {
+          return [dirent('secret.pdf', false)]
+        }
+        if (dir === deeper) {
+          return [dirent('deep.pdf', false)]
+        }
+        return []
+      })
+    })
+    const s = new AutoWatchScheduler(deps as never)
+    await s.runOnce()
+    const names = deps.submit.mock.calls[0][0].files.map((f: { name: string }) => f.name).sort()
+    expect(names).toEqual(['deep.pdf', 'nested.pdf', 'top.pdf'])
+    expect(deps.readdir).not.toHaveBeenCalledWith(hidden, expect.anything())
+  })
+
+  it('跳过符号链接子目录（防环）', async () => {
+    const root = 'D:/scan'
+    const loop = path.join(root, 'loop')
+    const dirent = (name: string, isDir: boolean, isLink = false) => ({
+      name,
+      isFile: () => !isDir,
+      isDirectory: () => isDir,
+      isSymbolicLink: () => isLink
+    })
+    const deps = makeDeps({
+      readdir: vi.fn(async (dir: string) => {
+        if (dir === root) {
+          return [dirent('loop', true, true), dirent('plain', true)]
+        }
+        return [dirent('x.pdf', false)]
+      })
+    })
+    const s = new AutoWatchScheduler(deps as never)
+    await s.runOnce()
+    expect(deps.readdir).not.toHaveBeenCalledWith(loop, expect.anything())
+    expect(deps.submit.mock.calls[0][0].files.map((f: { name: string }) => f.name)).toEqual([
+      'x.pdf'
+    ])
+  })
+
+  it('子目录读取失败跳过该子树并继续本轮', async () => {
+    const root = 'D:/scan'
+    const denied = path.join(root, 'denied')
+    const dirent = (name: string, isDir: boolean) => ({
+      name,
+      isFile: () => !isDir,
+      isDirectory: () => isDir,
+      isSymbolicLink: () => false
+    })
+    const deps = makeDeps({
+      readdir: vi.fn(async (dir: string) => {
+        if (dir === root) return [dirent('denied', true), dirent('ok', true)]
+        if (dir === denied) throw new Error('EACCES')
+        return [dirent('y.pdf', false)]
+      })
+    })
+    const s = new AutoWatchScheduler(deps as never)
+    await s.runOnce()
+    expect(deps.submit.mock.calls[0][0].files.map((f: { name: string }) => f.name)).toEqual([
+      'y.pdf'
+    ])
+    expect(deps.writeState).toHaveBeenCalledWith({ lastRunAt: 1_000_000, lastError: null })
   })
 })
 

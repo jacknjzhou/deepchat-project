@@ -26,16 +26,21 @@ export interface AutoWatchDeps {
     files: DocumentExtractFileInput[]
     source: 'scheduled'
   }) => Array<{ id: string }>
-  readdir: (
-    dir: string,
-    options: { withFileTypes: true }
-  ) => Promise<Array<{ name: string; isFile: () => boolean }>>
+  readdir: (dir: string, options: { withFileTypes: true }) => Promise<Array<DirentLike>>
   stat: (p: string) => Promise<{ mtimeMs: number }>
   now?: () => number
 }
 
+/** fs.Dirent 的结构子集，便于测试桩注入 */
+interface DirentLike {
+  name: string
+  isFile: () => boolean
+  isDirectory: () => boolean
+  isSymbolicLink: () => boolean
+}
+
 /**
- * 目录自动识别调度器：分钟 tick 对齐小时间隔，扫描目录内新/变更文件
+ * 目录自动识别调度器：分钟 tick 对齐小时间隔，递归扫描目录树内新/变更文件
  * 经 RecognitionTaskManager 提交（source='scheduled'，模板缺省走自动分类）。
  * 已处理文件以 path+mtime 记录在 documents_watched_files，mtime 变化才会重识别。
  */
@@ -70,12 +75,9 @@ export class AutoWatchScheduler {
       const config = this.deps.readConfig()
       this.nextRunAt = now() + config.intervalHours * HOUR_MS
       if (!config.enabled || config.dir === '') return
-      const entries = await this.deps.readdir(config.dir, { withFileTypes: true })
+      const rootEntries = await this.deps.readdir(config.dir, { withFileTypes: true })
       const extSet = new Set(config.extensions.map((e) => e.toLowerCase()))
-      const candidates = entries
-        .filter((e) => e.isFile() && extSet.has(path.extname(e.name).toLowerCase()))
-        .map((e) => path.join(config.dir, e.name))
-        .sort()
+      const candidates = (await this.collectCandidates(config.dir, rootEntries, extSet)).sort()
       const watched = new Map(
         this.deps.listWatchedFiles().map((w) => [path.normalize(w.path), w.mtime_ms])
       )
@@ -124,5 +126,41 @@ export class AutoWatchScheduler {
     } catch {
       // settings store failure must not reject the timer callback
     }
+  }
+
+  /**
+   * 递归收集目录树下匹配后缀的文件：进入普通子目录，跳过符号链接/联结目录（防环）
+   * 与点前缀目录；单个子目录读取失败仅跳过该子树，不影响本轮其余目录。
+   * 根目录的 readdir 错误不在此吞掉，由 runOnce 统一记入 lastError。
+   */
+  private async collectCandidates(
+    rootDir: string,
+    rootEntries: Array<DirentLike>,
+    extSet: Set<string>
+  ): Promise<string[]> {
+    const visited = new Set([path.normalize(rootDir)])
+    const files: string[] = []
+    const walk = async (dir: string, entries: Array<DirentLike>): Promise<void> => {
+      for (const entry of entries) {
+        if (entry.isFile()) {
+          if (extSet.has(path.extname(entry.name).toLowerCase())) {
+            files.push(path.join(dir, entry.name))
+          }
+          continue
+        }
+        if (!entry.isDirectory() || entry.isSymbolicLink() || entry.name.startsWith('.')) continue
+        const subDir = path.join(dir, entry.name)
+        const key = path.normalize(subDir)
+        if (visited.has(key)) continue
+        visited.add(key)
+        try {
+          await walk(subDir, await this.deps.readdir(subDir, { withFileTypes: true }))
+        } catch {
+          // 子目录不可读时跳过该子树
+        }
+      }
+    }
+    await walk(rootDir, rootEntries)
+    return files
   }
 }
