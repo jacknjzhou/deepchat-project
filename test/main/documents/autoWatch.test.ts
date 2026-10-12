@@ -17,12 +17,21 @@ function makeDeps(overrides: Partial<Record<string, unknown>> = {}) {
     { name: 'c.pdf', isFile: () => true },
     { name: 'note.txt', isFile: () => true }
   ]
+  // 内存版 watched 登记：upsert 即写入，供下一轮 listWatchedFiles 断言不重扫
+  const watched: Array<{ path: string; mtime_ms: number }> = []
   const deps = {
     readConfig: vi.fn(() => ({ ...baseConfig })),
     writeState: vi.fn(),
-    listWatchedFiles: vi.fn(() => [] as Array<{ path: string; mtime_ms: number }>),
-    upsertWatchedFile: vi.fn(),
-    submit: vi.fn(() => [{ id: 't1' }, { id: 't2' }, { id: 't3' }]),
+    listWatchedFiles: vi.fn(() => watched.map((w) => ({ ...w }))),
+    upsertWatchedFile: vi.fn((input: { path: string; mtimeMs: number }) => {
+      const existing = watched.find((w) => w.path === input.path)
+      if (existing) existing.mtime_ms = input.mtimeMs
+      else watched.push({ path: input.path, mtime_ms: input.mtimeMs })
+    }),
+    submit: vi.fn(async (input: { files: Array<{ path: string }> }) => ({
+      tasks: input.files.map((f, i) => ({ id: `t${i + 1}`, filePath: f.path })),
+      duplicates: []
+    })),
     readdir: vi.fn(async () => files),
     stat: vi.fn(async (_p: string) => ({ mtimeMs: 111 })),
     now: vi.fn(() => 1_000_000)
@@ -170,6 +179,40 @@ describe('AutoWatchScheduler.runOnce', () => {
       'y.pdf'
     ])
     expect(deps.writeState).toHaveBeenCalledWith({ lastRunAt: 1_000_000, lastError: null })
+  })
+
+  it('被拦截的重复文件仍登记 watched（taskId null）且不再重扫', async () => {
+    const deps = makeDeps({
+      submit: vi.fn(async (input: { files: Array<{ path: string }> }) => ({
+        tasks: [{ id: 't1', filePath: input.files[0]!.path }],
+        duplicates: [{ path: input.files[1]!.path }]
+      }))
+    })
+    const s = new AutoWatchScheduler(deps as never)
+    await s.runOnce()
+    expect(deps.upsertWatchedFile).toHaveBeenCalledTimes(2)
+    expect(deps.upsertWatchedFile).toHaveBeenCalledWith(expect.objectContaining({ taskId: 't1' }))
+    expect(deps.upsertWatchedFile).toHaveBeenCalledWith(expect.objectContaining({ taskId: null }))
+    const nullCall = deps.upsertWatchedFile.mock.calls.find((call) => call[0].taskId === null)
+    expect(nullCall?.[0].path).toContain('b.pdf')
+    // 下一轮：重复文件已登记（taskId null）不再提交；roundLimit 外的 c.pdf 仍会进入本轮
+    deps.submit.mockClear()
+    await s.runOnce()
+    const resubmitted = deps.submit.mock.calls[0]?.[0].files.map((f: { name: string }) => f.name)
+    expect(resubmitted).toEqual(['c.pdf'])
+  })
+
+  it('既不在 tasks 也不在 duplicates 中的文件保守跳过登记', async () => {
+    const deps = makeDeps({
+      submit: vi.fn(async (input: { files: Array<{ path: string }> }) => ({
+        tasks: [{ id: 't1', filePath: input.files[0]!.path }],
+        duplicates: []
+      }))
+    })
+    const s = new AutoWatchScheduler(deps as never)
+    await s.runOnce()
+    expect(deps.upsertWatchedFile).toHaveBeenCalledTimes(1)
+    expect(deps.upsertWatchedFile).toHaveBeenCalledWith(expect.objectContaining({ taskId: 't1' }))
   })
 })
 

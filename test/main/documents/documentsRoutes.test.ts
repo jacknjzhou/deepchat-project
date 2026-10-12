@@ -968,6 +968,52 @@ describe('documents scheduled submit and autoWatch chooseDir handlers', () => {
     })
   })
 
+  it('documents.tasks.create routes through the dedupe wrapper and returns duplicates', async () => {
+    const task = {
+      id: 't1',
+      batchId: 'b1',
+      filePath: 'C:\\a.png',
+      fileName: 'a.png',
+      templateId: 'auto',
+      status: 'pending',
+      typeKey: null,
+      documentId: null,
+      error: null,
+      createdAt: 1,
+      updatedAt: 1
+    }
+    const submit = vi.fn().mockReturnValue([task])
+    const taskManager = { submit, resumePending: vi.fn() }
+    const dedupeSubmit = vi.fn(async (input: { files: unknown[] }) => ({
+      tasks: [task],
+      duplicates: [{ fileName: 'a.png', existingName: 'b.png', path: 'C:\\a.png' }]
+    }))
+    const routes = createDocumentsRoutes(
+      {} as never,
+      fakeExtractor,
+      taskManager as never,
+      undefined,
+      undefined,
+      undefined,
+      dedupeSubmit as never
+    )
+    const handler = getRouteHandler(routes, documentsTasksCreateRoute.name)
+    const output = documentsTasksCreateRoute.output.parse(
+      await handler({ files: [{ path: 'C:\\a.png' }], templateId: 'auto' })
+    )
+    expect(output.duplicates).toEqual([
+      { fileName: 'a.png', existingName: 'b.png', path: 'C:\\a.png' }
+    ])
+    // The wrapper receives the normalized input (templateId defaulted by the handler).
+    expect(dedupeSubmit).toHaveBeenCalledWith({
+      files: [{ path: 'C:\\a.png' }],
+      templateId: 'auto',
+      source: 'manual'
+    })
+    // Direct submit is not called when the wrapper is injected.
+    expect(submit).not.toHaveBeenCalled()
+  })
+
   it('documents.autoWatch.chooseDir returns the picked directory or null when canceled', async () => {
     const routes = createDocumentsRoutes(
       {} as never,

@@ -21,11 +21,16 @@ export interface AutoWatchDeps {
   readConfig: () => DocumentsAutoWatchConfig
   writeState: (state: DocumentsAutoWatchState) => void
   listWatchedFiles: () => Array<{ path: string; mtime_ms: number }>
-  upsertWatchedFile: (input: { path: string; mtimeMs: number; taskId: string; now: number }) => void
-  submit: (input: {
-    files: DocumentExtractFileInput[]
-    source: 'scheduled'
-  }) => Array<{ id: string }>
+  upsertWatchedFile: (input: {
+    path: string
+    mtimeMs: number
+    taskId: string | null
+    now: number
+  }) => void
+  submit: (input: { files: DocumentExtractFileInput[]; source: 'scheduled' }) => Promise<{
+    tasks: Array<{ id: string; filePath: string }>
+    duplicates: Array<{ path: string }>
+  }>
   readdir: (dir: string, options: { withFileTypes: true }) => Promise<Array<DirentLike>>
   stat: (p: string) => Promise<{ mtimeMs: number }>
   now?: () => number
@@ -95,7 +100,7 @@ export class AutoWatchScheduler {
       }
       const batch = pending.slice(0, config.roundLimit)
       if (batch.length > 0) {
-        const tasks = this.deps.submit({
+        const { tasks, duplicates } = await this.deps.submit({
           files: batch.map((f) => {
             const ext = path.extname(f.path).toLowerCase()
             return {
@@ -106,14 +111,18 @@ export class AutoWatchScheduler {
           }),
           source: 'scheduled'
         })
-        batch.forEach((f, i) => {
-          // submit() persists one task per file in order within a single insertBatch transaction.
-          const task = tasks[i]
-          if (!task) throw new Error(`no submitted task for watched file: ${f.path}`)
+        // submit 返回按文件 1:1 产出任务；内容去重拦截的文件以 duplicates 报告。
+        // 重复文件也登记 watched（taskId null），mtime 不变即不再重扫；
+        // 既不在 tasks 也不在 duplicates 的文件说明提交与登记间出现异常，保守跳过登记。
+        const taskIdByPath = new Map(tasks.map((t) => [t.filePath, t.id]))
+        const dupPaths = new Set(duplicates.map((d) => d.path))
+        batch.forEach((f) => {
+          const taskId = taskIdByPath.get(f.path) ?? null
+          if (taskId === null && !dupPaths.has(f.path)) return
           this.deps.upsertWatchedFile({
             path: f.path,
             mtimeMs: f.mtimeMs,
-            taskId: task.id,
+            taskId,
             now: now()
           })
         })

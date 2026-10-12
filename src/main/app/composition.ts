@@ -206,8 +206,14 @@ import {
   validateDocumentsModelRef
 } from '@/documents/modelSettings'
 import { AutoWatchScheduler } from '@/documents/autoWatch'
+import {
+  filterDuplicateFiles,
+  submitWithDedupe,
+  type DedupeSubmitDeps
+} from '@/documents/contentDedupe'
+import { sha256File } from '@/documents/fileHash'
 import { DocumentsRepository } from '@/documents/repository'
-import { createDocumentsRoutes } from '@/documents/routes'
+import { createDocumentsRoutes, type DocumentsDedupeSubmit } from '@/documents/routes'
 import { RecognitionTaskManager } from '@/documents/taskManager'
 import { seedPresetTemplates } from '@/documents/seed'
 import { ResumeScreeningDatabase } from '@/resumeScreening/data/database'
@@ -3146,12 +3152,27 @@ export async function createMainProcessControl(dependencies: {
           version: Date.now()
         })
     })
+    // 提交收口：先做内容去重过滤，再提交并登记 hash→task_id（documents_file_dedupes）。
+    // 手动提交（documents.tasks.create）与自动监控提交共用同一份依赖接线。
+    const documentsDedupeDeps: DedupeSubmitDeps = {
+      submit: (input) => recognitionTaskManager.submit(input),
+      filter: (files, source) =>
+        filterDuplicateFiles(files, source, {
+          sha256File,
+          findFileDedupeNames: (hashes) => documentsRepository.findFileDedupeNames(hashes)
+        }),
+      register: (rows) => documentsRepository.insertFileDedupes(rows)
+    }
+    const documentsDedupeSubmit: DocumentsDedupeSubmit = (input) =>
+      submitWithDedupe(documentsDedupeDeps, input)
     const documentsRoutes = createDocumentsRoutes(
       documentsRepository,
       documentExtractor,
       recognitionTaskManager,
       undefined, // csvDeps 走默认值（dialog.showSaveDialog）
-      providerSettings
+      providerSettings,
+      undefined, // reimbursementDeps 走默认值（dialog.showOpenDialog）
+      documentsDedupeSubmit
     )
     // Resume interrupted recognition tasks from the previous run.
     void recognitionTaskManager.resumePending()
@@ -3162,8 +3183,16 @@ export async function createMainProcessControl(dependencies: {
         providerSettings.setSetting(DOCUMENTS_SETTINGS_KEYS.autoWatchState, state),
       listWatchedFiles: () => documentsRepository.listWatchedFiles(),
       upsertWatchedFile: (input) => documentsRepository.upsertWatchedFile(input),
-      submit: (input) =>
-        recognitionTaskManager.submit({ files: input.files, source: input.source }),
+      submit: async (input) => {
+        const result = await documentsDedupeSubmit(input)
+        // 被内容去重拦截的自动监控文件：通知 renderer 提示用户（Task 7 订阅）
+        if (result.duplicates.length > 0) {
+          publishDeepchatEvent('documents.watch.duplicates', {
+            count: result.duplicates.length
+          })
+        }
+        return result
+      },
       readdir: (dir, options) => fsp.readdir(dir, options),
       stat: (p) => fsp.stat(p)
     })

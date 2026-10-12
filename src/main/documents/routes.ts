@@ -27,17 +27,22 @@ import {
   documentsTasksRetryRoute,
   documentsUpsertRoute
 } from '@shared/contracts/routes'
-import { REIMBURSEMENT_UNASSIGNED } from '@shared/documents'
+import { REIMBURSEMENT_UNASSIGNED, type RecognitionDuplicate } from '@shared/documents'
 import { dialog } from 'electron'
 import { createRouteMap, type DeepchatRouteMap } from '@/routes/routeRegistry'
 import { buildDocumentsCsv, CSV_EXPORT_MAX_ROWS } from './csv'
 import { AUTO_TEMPLATE_ID, type DocumentExtractor } from './extractor/documentExtractor'
 import type { DocumentsSettingsStore } from './modelSettings'
-import type { DocumentsRepository } from './repository'
+import type { DocumentTask, DocumentsRepository } from './repository'
 import { buildReimbursementTree, REIMBURSEMENT_TREE_MAX_DOCUMENTS } from './reimbursement'
 import { exportReimbursementPackage } from './reimbursementExport'
 import { readReimbursementConfig, writeReimbursementConfig } from './reimbursementConfig'
-import type { RecognitionTaskManager } from './taskManager'
+import type { RecognitionTaskManager, RecognitionTaskSubmitInput } from './taskManager'
+
+/** 内容去重提交包装器（composition 注入 submitWithDedupe 接线） */
+export type DocumentsDedupeSubmit = (
+  input: RecognitionTaskSubmitInput
+) => Promise<{ tasks: DocumentTask[]; duplicates: RecognitionDuplicate[] }>
 
 interface DocumentsCsvRouteDeps {
   showSaveDialog: (
@@ -85,7 +90,8 @@ export function createDocumentsRoutes(
   taskManager: RecognitionTaskManager,
   csvDeps: DocumentsCsvRouteDeps = defaultCsvDeps,
   configStore?: DocumentsSettingsStore,
-  reimbursementDeps: ReimbursementRouteDeps = defaultReimbursementDeps
+  reimbursementDeps: ReimbursementRouteDeps = defaultReimbursementDeps,
+  dedupeSubmit?: DocumentsDedupeSubmit
 ): DeepchatRouteMap {
   const requireConfigStore = (): DocumentsSettingsStore => {
     if (!configStore) {
@@ -190,14 +196,17 @@ export function createDocumentsRoutes(
         const input = documentsTasksCreateRoute.input.parse(rawInput)
         // Scheduled submissions omit templateId: normalize to the auto classifier
         // here so the task port never sees an undefined template binding.
-        const tasks = taskManager.submit({
+        const submitInput = {
           files: input.files,
           templateId: input.templateId ?? AUTO_TEMPLATE_ID,
           source: input.source
-        })
-        // Content-level dedupe lands later; the contract reserves the field
-        // so the renderer can surface blocked files without another round trip.
-        return documentsTasksCreateRoute.output.parse({ tasks, duplicates: [] })
+        }
+        // Content-level dedupe: composition injects the submitWithDedupe wrapper;
+        // without it the submit goes through directly with no duplicates reported.
+        const { tasks, duplicates } = dedupeSubmit
+          ? await dedupeSubmit(submitInput)
+          : { tasks: taskManager.submit(submitInput), duplicates: [] }
+        return documentsTasksCreateRoute.output.parse({ tasks, duplicates })
       }
     ],
     [
