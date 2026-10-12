@@ -569,34 +569,32 @@ async function runSave(id: string, fields: Record<string, DocumentFieldEntry>) {
   }
 }
 
-function overrideToCategoryValue(override: string | null) {
-  if (override === null) {
-    return AUTO_CATEGORY
-  }
-  return override === REIMBURSEMENT_UNASSIGNED ? UNASSIGNED_CATEGORY : override
-}
-
-// Stale override ids (category removed since) degrade to auto, matching the
-// archive table's effective-category semantics. Without the config loaded the
-// raw value is kept as-is since it cannot be validated yet.
+// 生效类别语义（同归档表格/报销视图行）：override 条目显示所选类别/强制未分类；
+// 未设置或已失效的 override 回退 typeKey 联动解析的类别，无联动时显示 auto 占位。
+// config 未加载时原始 override 无法校验，保持原样显示。
 function seedReimbursementCategory(doc: DocumentRecord | null) {
   const override = doc?.reimbursementOverride ?? null
+  if (override === REIMBURSEMENT_UNASSIGNED) {
+    return UNASSIGNED_CATEGORY
+  }
   if (
     override !== null &&
-    override !== REIMBURSEMENT_UNASSIGNED &&
-    store.reimbursementConfig !== null &&
-    !store.reimbursementConfig.categories.some((category) => category.id === override)
+    (store.reimbursementConfig === null ||
+      store.reimbursementConfig.categories.some((category) => category.id === override))
   ) {
+    return override
+  }
+  if (doc === null) {
     return AUTO_CATEGORY
   }
-  return overrideToCategoryValue(override)
+  return resolveEffectiveReimbursement(doc, store.reimbursementConfig).categoryId ?? AUTO_CATEGORY
 }
 
 // Category writes clear the stored group override unconditionally, so both
 // select values are re-submitted from the returned record instead of being
 // patched locally.
 function applyReimbursementRecord(record: DocumentRecord) {
-  reimbursementCategory.value = overrideToCategoryValue(record.reimbursementOverride)
+  reimbursementCategory.value = seedReimbursementCategory(record)
   reimbursementGroup.value = record.reimbursementGroupOverride ?? NO_GROUP
 }
 
