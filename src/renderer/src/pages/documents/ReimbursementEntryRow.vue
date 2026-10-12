@@ -26,9 +26,12 @@
       <option value="__none__">{{ t('settings.documents.reimbursement.groupNone') }}</option>
       <option v-for="group in groups" :key="group.id" :value="group.id">{{ group.name }}</option>
     </select>
+    <!-- 生效类别语义（同归档表格）：override 条目显示所选类别/强制未分类；
+         typeKey 联动条目显示树归属类别；仅未分类视图回退「自动归类」占位 -->
     <select
       class="shrink-0 rounded border bg-transparent px-1 py-0.5 text-xs"
-      :value="entry.isOverride ? (categoryId ?? '__unassigned__') : '__auto__'"
+      :value="entry.isOverride ? (categoryId ?? '__unassigned__') : (categoryId ?? '__auto__')"
+      :data-testid="`reimbursement-entry-category-${entry.id}`"
       @change="emit('move', entry.id, ($event.target as HTMLSelectElement).value)"
     >
       <option value="__auto__">{{ t('settings.documents.reimbursement.autoCategory') }}</option>

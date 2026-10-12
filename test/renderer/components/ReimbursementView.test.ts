@@ -208,6 +208,18 @@ describe('ReimbursementView', () => {
     expect((selects[1]!.element as HTMLSelectElement).value).toBe('cat-a')
   })
 
+  it('mirrors the owning category on typeKey-linked selects', async () => {
+    const { pinia, store } = setupStore()
+    vi.spyOn(store, 'loadReimbursementTree').mockResolvedValue()
+    store.reimbursementTree = makeTree()
+    const wrapper = mountView(pinia)
+    await flushPromises()
+    // Auto-classified entries resolve to their linked category via the tree,
+    // so the select mirrors that category instead of the auto placeholder.
+    const selects = wrapper.findAll('[data-testid="reimbursement-entry-d1"] select')
+    expect((selects[1]!.element as HTMLSelectElement).value).toBe('cat-a')
+  })
+
   it('shows forced-unassigned and auto values in the unassigned view', async () => {
     const { pinia, store } = setupStore()
     vi.spyOn(store, 'loadReimbursementTree').mockResolvedValue()
