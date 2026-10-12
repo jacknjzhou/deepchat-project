@@ -983,10 +983,10 @@ describeIfSeed('seedPresetTemplates', () => {
     return { db, database }
   }
 
-  it('seeds all 20 preset templates idempotently', () => {
+  it('seeds all 21 preset templates idempotently', () => {
     const { db, database } = makeSeedDatabase()
     const count1 = seedPresetTemplates!(database, { now: 100 })
-    expect(count1).toBe(20)
+    expect(count1).toBe(21)
     const templates = database.documentTemplatesTable.list()
     const typeKeys = templates.map((t) => t.type_key).sort()
     expect(typeKeys).toEqual([
@@ -1008,6 +1008,7 @@ describeIfSeed('seedPresetTemplates', () => {
       'purchase_order',
       'quotation',
       'resume',
+      'ride_hailing_itinerary',
       'tender_notice',
       'travel_itinerary'
     ])
@@ -1031,6 +1032,15 @@ describeIfSeed('seedPresetTemplates', () => {
     expect(invoice.is_builtin).toBe(1)
     expect(invoice.category).toBe('发票类')
 
+    const rideHailing = templates.find((t) => t.type_key === 'ride_hailing_itinerary')!
+    expect(rideHailing.category).toBe('出行票据类')
+    const rideFields = JSON.parse(rideHailing.fields_json) as Array<{
+      key: string
+      valueType: string
+    }>
+    expect(rideFields.find((f) => f.key === 'trips')?.valueType).toBe('array')
+    expect(rideFields.find((f) => f.key === 'employee_no')?.required).toBe(false)
+
     const count2 = seedPresetTemplates!(database, { now: 200 })
     expect(count2).toBe(0)
     expect(database.documentTemplatesTable.list().every((t) => t.version === 1)).toBe(true)
@@ -1047,7 +1057,7 @@ describeIfSeed('seedPresetTemplates', () => {
     const parsed = documentTemplatesListRoute.output.parse({
       templates: repository.listTemplates()
     })
-    expect(parsed.templates).toHaveLength(20)
+    expect(parsed.templates).toHaveLength(21)
     db.close()
   })
 
@@ -1073,7 +1083,7 @@ describeIfSeed('seedPresetTemplates', () => {
       now: 50
     })
     const count = seedPresetTemplates!(database, { now: 100 })
-    expect(count).toBe(20)
+    expect(count).toBe(21)
     const upgraded = database.documentTemplatesTable.getByTypeKey('invoice_special')!
     expect(upgraded.created_at).toBe(50)
     expect(upgraded.updated_at).toBe(100)
@@ -1107,7 +1117,7 @@ describeIfSeed('seedPresetTemplates', () => {
       now: 50
     })
     const count = seedPresetTemplates!(database, { now: 100 })
-    expect(count).toBe(19)
+    expect(count).toBe(20)
     const preserved = database.documentTemplatesTable.getByTypeKey('contract')!
     expect(preserved.name).toBe('自定义合同')
     expect(preserved.is_builtin).toBe(0)

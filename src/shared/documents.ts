@@ -85,6 +85,7 @@ export const PRESET_TEMPLATE_TYPE_KEY_MAP: Record<string, string> = {
   租赁合同模板: 'lease_contract',
   补充说明模板: 'contract_supplement',
   行程单模板: 'travel_itinerary',
+  打车行程单模板: 'ride_hailing_itinerary',
   住宿单模板: 'hotel_receipt',
   餐饮流水单模板: 'catering_receipt',
   订购单模板: 'purchase_order',

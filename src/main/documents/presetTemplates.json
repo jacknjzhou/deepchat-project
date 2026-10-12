@@ -209,6 +209,69 @@
       ]
     },
     {
+      "name": "打车行程单模板",
+      "category": "出行票据类",
+      "description": "滴滴/网约车等含多段行程明细的打车行程单信息提取",
+      "fields": [
+        {
+          "key": "passenger_name",
+          "label": "姓名",
+          "type": "string",
+          "desc": "乘车人姓名"
+        },
+        {
+          "key": "employee_no",
+          "label": "工号",
+          "type": "string",
+          "desc": "员工工号，个人单据常无此栏",
+          "required": false
+        },
+        {
+          "key": "department",
+          "label": "部门",
+          "type": "string",
+          "desc": "申请部门，个人单据常无此栏",
+          "required": false
+        },
+        {
+          "key": "apply_date",
+          "label": "申请日期",
+          "type": "date",
+          "desc": "单据申请日期，YYYY-MM-DD"
+        },
+        {
+          "key": "trip_date_start",
+          "label": "行程开始日期",
+          "type": "date",
+          "desc": "行程起止日期的起始日，YYYY-MM-DD"
+        },
+        {
+          "key": "trip_date_end",
+          "label": "行程结束日期",
+          "type": "date",
+          "desc": "行程起止日期的截止日，YYYY-MM-DD"
+        },
+        {
+          "key": "trip_count",
+          "label": "行程笔数",
+          "type": "number",
+          "desc": "行程笔数，如\"共2笔行程\"取2；应与明细行数一致，不符标黄"
+        },
+        {
+          "key": "total_amount",
+          "label": "合计金额",
+          "type": "number",
+          "desc": "行程费用合计，即\"合计XX.XX元\"的总金额"
+        },
+        {
+          "key": "trips",
+          "label": "行程明细",
+          "type": "array",
+          "desc": "字段值为 JSON 数组，元素结构：[{vehicle_type(车型), ride_time(上车时间，如 12-27 09:20 周六 或完整时间), city(城市), start_point(起点), end_point(终点), mileage_km(里程（公里），数字), amount(金额（元），数字), remark(备注，无则填 null)}]；单据有几行行程就输出几项，顺序与票面一致"
+        }
+      ]
+    },
+    {
       "name": "住宿单模板",
       "category": "出行票据类",
       "description": "酒店住宿账单/发票信息提取",
