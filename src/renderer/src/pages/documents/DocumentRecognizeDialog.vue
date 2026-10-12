@@ -207,12 +207,17 @@ async function onSubmit() {
   }
   submitting.value = true
   error.value = ''
+  // 重新提交时清掉上一轮的重复拦截提示，避免与新的错误信息叠加残留
+  skippedDuplicates.value = []
   try {
     const { created, duplicates } = await store.createRecognitionTasks({
       files: selectedFiles.value.map((file) => ({ path: file.path, name: file.name })),
       templateId: templateId.value === AUTO_VALUE ? 'auto' : templateId.value
     })
-    emit('submitted', created.length)
+    // 全部被拦截时不再上报 0 计数，避免父页面叠加一条“已加入 0 个任务”toast
+    if (created.length > 0) {
+      emit('submitted', created.length)
+    }
     if (duplicates.length > 0) {
       // Keep the dialog open so the user can review which files were skipped;
       // reopening resets the hint via the open watcher.
