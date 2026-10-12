@@ -97,3 +97,51 @@ export async function submitWithDedupe(
   if (rows.length > 0) deps.register(rows)
   return { tasks, duplicates }
 }
+
+export interface ChatFileDedupeDeps {
+  sha256File: (path: string) => Promise<string | null>
+  findFileDedupeNames: (hashes: string[]) => Map<string, string>
+  insertFileDedupes: (rows: FileDedupeRow[]) => void
+  bindFileDedupeDocument: (taskId: string, documentId: string) => void
+  now?: () => number
+}
+
+export type ChatDedupeOutcome<D> =
+  | { status: 'duplicate'; fileName: string; existingName: string }
+  | { status: 'ok'; value: D }
+
+/**
+ * chat 单文件提交的内容去重（手动/定时批量提交走 submitWithDedupe）：
+ * 提取前按哈希查 documents_file_dedupes，命中则拦截并返回 duplicate；
+ * 未命中执行 proceed，且仅在 proceed 成功后登记 hash→document，
+ * 提取/入库失败不会留下登记行。chat 无任务，task_id 以 document.id 占位
+ * 并绑定 document_id，保持 deleteDocument 按 document_id 的级联清理语义。
+ */
+export async function submitChatFileWithDedupe<D extends { documentId: string }>(
+  deps: ChatFileDedupeDeps,
+  input: { file: DocumentExtractFileInput; source: string },
+  proceed: () => Promise<D>
+): Promise<ChatDedupeOutcome<D>> {
+  const hash = await deps.sha256File(input.file.path)
+  if (hash !== null) {
+    const existingName = deps.findFileDedupeNames([hash]).get(hash)
+    if (existingName !== undefined) {
+      return { status: 'duplicate', fileName: displayName(input.file), existingName }
+    }
+  }
+  const value = await proceed()
+  if (hash !== null) {
+    deps.insertFileDedupes([
+      {
+        contentHash: hash,
+        fileName: displayName(input.file),
+        filePath: input.file.path,
+        source: input.source,
+        taskId: value.documentId,
+        now: (deps.now ?? Date.now)()
+      }
+    ])
+    deps.bindFileDedupeDocument(value.documentId, value.documentId)
+  }
+  return { status: 'ok', value }
+}

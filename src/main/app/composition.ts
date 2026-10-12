@@ -208,6 +208,7 @@ import {
 import { AutoWatchScheduler } from '@/documents/autoWatch'
 import {
   filterDuplicateFiles,
+  submitChatFileWithDedupe,
   submitWithDedupe,
   type DedupeSubmitDeps
 } from '@/documents/contentDedupe'
@@ -1760,35 +1761,52 @@ export async function createMainProcessControl(dependencies: {
             }))
         })),
       extractAndDraft: async (input) => {
-        const result = await documentExtractor.extract({
-          templateId: input.templateId,
-          file: input.file
-        })
-        const document = documentsRepository.insertDocument({
-          templateId: result.template.id,
-          typeKey: result.template.typeKey,
-          templateSnapshot: result.template,
-          fields: result.fields,
-          fileUris: [input.file.path],
-          source: input.source ?? 'chat',
-          sessionId: input.sessionId ?? null,
-          status: 'draft',
-          now: Date.now()
-        })
-        return {
-          document: {
-            id: document.id,
-            typeKey: document.typeKey,
-            status: document.status,
-            fields: document.fields,
-            fileUris: document.fileUris
+        // chat 路径内容去重（手动/定时批量提交走 documents.tasks.create 的 submitWithDedupe）：
+        // 提取前按文件哈希查 documents_file_dedupes，命中则拦截；入库成功后登记 hash→document。
+        const outcome = await submitChatFileWithDedupe(
+          {
+            sha256File,
+            findFileDedupeNames: (hashes) => documentsRepository.findFileDedupeNames(hashes),
+            insertFileDedupes: (rows) => documentsRepository.insertFileDedupes(rows),
+            bindFileDedupeDocument: (taskId, documentId) =>
+              documentsRepository.bindFileDedupeDocument(taskId, documentId)
           },
-          meta: {
-            route: result.route,
-            durationMs: result.durationMs,
-            issues: result.issues
+          { file: input.file, source: input.source ?? 'chat' },
+          async () => {
+            const result = await documentExtractor.extract({
+              templateId: input.templateId,
+              file: input.file
+            })
+            const document = documentsRepository.insertDocument({
+              templateId: result.template.id,
+              typeKey: result.template.typeKey,
+              templateSnapshot: result.template,
+              fields: result.fields,
+              fileUris: [input.file.path],
+              source: input.source ?? 'chat',
+              sessionId: input.sessionId ?? null,
+              status: 'draft',
+              now: Date.now()
+            })
+            return {
+              documentId: document.id,
+              document: {
+                id: document.id,
+                typeKey: document.typeKey,
+                status: document.status,
+                fields: document.fields,
+                fileUris: document.fileUris
+              },
+              meta: {
+                route: result.route,
+                durationMs: result.durationMs,
+                issues: result.issues
+              }
+            }
           }
-        }
+        )
+        if (outcome.status === 'duplicate') return outcome
+        return { status: 'ok', document: outcome.value.document, meta: outcome.value.meta }
       },
       confirmDocument: async (input) => {
         const updated = await documentsRepository.updateDocument(input.id, {

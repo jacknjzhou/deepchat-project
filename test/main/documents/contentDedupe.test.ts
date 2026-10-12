@@ -2,7 +2,11 @@ import { describe, expect, it, vi } from 'vitest'
 import type { DocumentExtractFileInput } from '@/documents/extractor/documentExtractor'
 import type { DocumentTask } from '@/documents/repository'
 import type { RecognitionTaskSubmitInput } from '@/documents/taskManager'
-import { filterDuplicateFiles, submitWithDedupe } from '@/documents/contentDedupe'
+import {
+  filterDuplicateFiles,
+  submitChatFileWithDedupe,
+  submitWithDedupe
+} from '@/documents/contentDedupe'
 
 const HASH_A = 'a'.repeat(64)
 const HASH_B = 'b'.repeat(64)
@@ -133,5 +137,69 @@ describe('submitWithDedupe', () => {
     expect(result.tasks).toEqual([])
     expect(deps.submit).not.toHaveBeenCalled()
     expect(deps.register).not.toHaveBeenCalled()
+  })
+})
+
+describe('submitChatFileWithDedupe', () => {
+  const makeChatDeps = (hash: string | null, table = new Map<string, string>()) => ({
+    sha256File: vi.fn(async () => hash),
+    findFileDedupeNames: vi.fn(() => table),
+    insertFileDedupes: vi.fn(),
+    bindFileDedupeDocument: vi.fn(),
+    now: vi.fn(() => 5000)
+  })
+  const proceed = (documentId: string) => vi.fn(async () => ({ documentId, extracted: 'payload' }))
+
+  it('命中查表时返回 duplicate 且不执行 proceed', async () => {
+    const deps = makeChatDeps(HASH_A, new Map([[HASH_A, '表内名']]))
+    const run = proceed('doc-1')
+    const outcome = await submitChatFileWithDedupe(
+      deps,
+      { file: file('D:/scan/a.pdf', 'a.pdf'), source: 'chat' },
+      run
+    )
+    expect(outcome).toEqual({ status: 'duplicate', fileName: 'a.pdf', existingName: '表内名' })
+    expect(deps.sha256File).toHaveBeenCalledWith('D:/scan/a.pdf')
+    expect(deps.findFileDedupeNames).toHaveBeenCalledWith([HASH_A])
+    expect(run).not.toHaveBeenCalled()
+    expect(deps.insertFileDedupes).not.toHaveBeenCalled()
+  })
+
+  it('未命中时执行 proceed 并登记 hash→document（task_id 以 document.id 占位并绑定）', async () => {
+    const deps = makeChatDeps(HASH_A)
+    const run = proceed('doc-9')
+    const outcome = await submitChatFileWithDedupe(
+      deps,
+      { file: file('D:/scan/a.pdf', 'a.pdf'), source: 'chat' },
+      run
+    )
+    expect(outcome).toEqual({ status: 'ok', value: { documentId: 'doc-9', extracted: 'payload' } })
+    expect(run).toHaveBeenCalledTimes(1)
+    expect(deps.insertFileDedupes).toHaveBeenCalledWith([
+      {
+        contentHash: HASH_A,
+        fileName: 'a.pdf',
+        filePath: 'D:/scan/a.pdf',
+        source: 'chat',
+        taskId: 'doc-9',
+        now: 5000
+      }
+    ])
+    expect(deps.bindFileDedupeDocument).toHaveBeenCalledWith('doc-9', 'doc-9')
+  })
+
+  it('hash 计算失败(null)时照常 proceed 且不登记', async () => {
+    const deps = makeChatDeps(null)
+    const run = proceed('doc-1')
+    const outcome = await submitChatFileWithDedupe(
+      deps,
+      { file: file('D:/scan/a.pdf', 'a.pdf'), source: 'chat' },
+      run
+    )
+    expect(outcome.status).toBe('ok')
+    expect(run).toHaveBeenCalledTimes(1)
+    expect(deps.findFileDedupeNames).not.toHaveBeenCalled()
+    expect(deps.insertFileDedupes).not.toHaveBeenCalled()
+    expect(deps.bindFileDedupeDocument).not.toHaveBeenCalled()
   })
 })

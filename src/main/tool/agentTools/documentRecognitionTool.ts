@@ -104,6 +104,18 @@ export class DocumentRecognitionToolHandler {
         file: input.file,
         source: 'chat'
       })
+      if (result.status === 'duplicate') {
+        return createAgentToolErrorResult(
+          DOCUMENT_RECOGNITION_AGENT_TOOL_NAME,
+          `File "${result.fileName}" has the same content as already archived document ` +
+            `"${result.existingName}" and was skipped. Do not retry; inform the user.`,
+          {
+            code: 'DUPLICATE_CONTENT',
+            recoverable: true,
+            data: { fileName: result.fileName, existingName: result.existingName }
+          }
+        )
+      }
       return createAgentToolSuccessResult(DOCUMENT_RECOGNITION_AGENT_TOOL_NAME, result, {
         summary:
           `Recognized document ${result.document.id} (type ${result.document.typeKey}) and saved ` +
