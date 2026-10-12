@@ -6,7 +6,7 @@
 
 ## 1. 项目概览
 
-- **产品定位**：SRIBD办公智能体（`electron-builder.yml` 中 `productName`），基于开源项目 DeepChat 的企业级 AI Agent 桌面客户端。
+- **产品定位**：办公智能体（`electron-builder.yml` 中 `productName`），基于开源项目 DeepChat 的企业级 AI Agent 桌面客户端。
 - **技术栈**：Electron 41 + Vue 3 + TypeScript（全 ESM），electron-vite 构建；状态管理 Pinia；路由 vue-router（hash 模式）；UI 为 Tailwind CSS 4 + shadcn-vue（reka-ui）+ VueUse；文案 vue-i18n（20 个 locale）；契约校验 zod 4；测试 Vitest + Vue Test Utils + Playwright；代码风格 oxlint/oxfmt。
 - **核心依赖**：
   - 模型接入：Vercel AI SDK（`ai` + `@ai-sdk/openai|anthropic|google|azure|bedrock|openai-compatible` 等）、`ollama`
@@ -157,8 +157,8 @@ App composition → Desktop / Remote / Scheduler / Deeplink → Session → Agen
 | `memory/` | `core/`、`infra/vectorStoreManager.ts`、`services/`、`data/` | 长期记忆：写入、检索、索引与后台维护；向量 store 带 lease 与 config identity，embedding 配置变更时重建（duckdb VSS） |
 | `knowledge/` | `index.ts` | 内置知识库：存储目录、embedding/file port、task queue、RAG 实例缓存与生命周期；同时以 MCP server 形式暴露 |
 | `workspace/` + `file/` | `workspace/fileSecurity.ts`、`pathResolver.ts`、`file/adapters/` | Workspace 目录授权、文件树/搜索/预览协议；文件 MIME 检测、校验与格式转换（docx/xlsx/pdf 等） |
-| `documents/` **（SRIBD）** | `taskManager.ts`、`extractor/`、`presetTemplates.json`、`repository.ts`、`data/` | 文档识别归档：批量任务队列（并发、进度、失败重试）、按文件智能路由提取（PDF 文本层 / 视觉模型 / OCR）、发票预设模板、归档入库与 CSV 导出 |
-| `resumeScreening/` **（SRIBD）** | `service.ts`、`textExtractor.ts`、`llmInvoker.ts`、`prompts.ts`、`resumePreviewProtocol.ts`、`data/` | 简历筛选助手：文本抽取 + LLM 流水线生成结构化候选人画像与面试要点，进度事件驱动 UI |
+| `documents/` | `taskManager.ts`、`extractor/`、`presetTemplates.json`、`repository.ts`、`data/` | 文档识别归档：批量任务队列（并发、进度、失败重试）、按文件智能路由提取（PDF 文本层 / 视觉模型 / OCR）、发票预设模板、归档入库与 CSV 导出 |
+| `resumeScreening/` | `service.ts`、`textExtractor.ts`、`llmInvoker.ts`、`prompts.ts`、`resumePreviewProtocol.ts`、`data/` | 简历筛选助手：文本抽取 + LLM 流水线生成结构化候选人画像与面试要点，进度事件驱动 UI |
 | `ocr/` | `lightOcrProcessHost.ts`、`lightOcrProtocol.ts`、`ocrExtractionScheduler.ts`、`ocrArtifactStore.ts`、`attachmentCapabilityRouter.ts`、`ocrRuntimeService.ts` | OCR 子系统：light-ocr 跑在独立 helper 进程（协议通信）；提取调度、产物/缓存、runtime 资产解析；附件能力路由决定走文本层/视觉/OCR |
 | `remote/` | `index.ts`、`binding/store.ts`、channel manager、delivery | IM 远程控制：Telegram、Feishu/Lark、QQBot、Discord、WeChat iLink 频道 runtime；endpoint 与 session 绑定；`/start`、`/pair`、`/new`、`/sessions`、`/model` 等命令协议 |
 | `scheduler/` | `index.ts`、`routes.ts`、`data/tables/cronJobs.ts`、独立 `schedulerUtilityHostEntry` | Cron 定时任务：`cron_jobs` 表（表达式/时区/agent/权限策略/delivery）、run executor、detached session 进程管理、reconcile |
@@ -199,7 +199,7 @@ App composition → Desktop / Remote / Scheduler / Deeplink → Session → Agen
 
 ### 5.3 业务 feature 的组织范式
 
-一个 SRIBD 业务功能（如简历筛选）横跨四层，读代码时可按此线索追踪：
+一个企业定制业务功能（如简历筛选）横跨四层，读代码时可按此线索追踪：
 
 ```
 shared/contracts + shared/documents 等领域类型（契约）
@@ -231,15 +231,15 @@ shared/contracts + shared/documents 等领域类型（契约）
 ### 6.4 构建与打包
 
 - `electron.vite.config.ts`：main / preload / renderer 三段入口；Vue、Tailwind 4、Monaco、svg-loader 等插件；renderer 多 HTML entry；
-- `electron-builder.yml`：`productName: SRIBD办公智能体`；asar 打包 + `app.asar.unpacked` 放置 `out/cli`、`runtime/`、`resources/`、`build/bundled-plugins/`；macOS 另嵌 managed helper；
+- `electron-builder.yml`：`productName: 办公智能体`；asar 打包 + `app.asar.unpacked` 放置 `out/cli`、`runtime/`、`resources/`、`build/bundled-plugins/`；macOS 另嵌 managed helper；
 - 命令链：`pnpm dev`（electron-vite dev --watch）；`pnpm build`（typecheck → electron-vite build → cli:build）；`pnpm build:win|mac|linux[:arch]`（build → 三个插件 bundle → installVss → electron-builder）。
 
 ## 7. 关键流程（文字时序）
 
 1. **应用启动**：`appMain`（single-instance 检查 → deeplink 缓存）→ `app/mainProcess`（splash → settings/secret/proxy → 数据库解锁+迁移 → 协议注册）→ `app/composition`（创建模块 → registerRoutes → 依序 start → 延迟启动 floating/skill sync/MCP/remote）→ desktop 创建窗口加载 renderer。
 2. **发一条消息**：输入框 → `ChatClient` → route `session.turn` → `session/turn.ts` 排队 → `assignment` 确定 agent/model → `AgentManager` 取 instance → DeepChat LoopEngine 或 ACP runtime 创建 Run → provider 流式请求 → 工具调用走 `tool`（MCP/内置/Skill）→ run 事件经 `sessionEventRouter` 推 run stream → renderer 流式渲染；全过程由 Tape 记录。
-3. **文档识别（SRIBD）**：`DocumentsClient` 创建任务 → `documents/taskManager` 并发队列 → `extractor` 智能路由（PDF 文本层直接抽 / pdfjs 渲染 + 视觉模型 / OCR 兜底）→ 字段校验与金额交叉校验 → repository 入库 → 事件刷新归档 UI。
-4. **简历筛选（SRIBD）**：`ResumeScreeningClient` → `resumeScreening/service` → `textExtractor`（文本层/视觉/OCR）→ `llmInvoker` 按 `prompts` 产出结构化画像与面试要点 → 入库 → 进度事件驱动任务列表。
+3. **文档识别**：`DocumentsClient` 创建任务 → `documents/taskManager` 并发队列 → `extractor` 智能路由（PDF 文本层直接抽 / pdfjs 渲染 + 视觉模型 / OCR 兜底）→ 字段校验与金额交叉校验 → repository 入库 → 事件刷新归档 UI。
+4. **简历筛选**：`ResumeScreeningClient` → `resumeScreening/service` → `textExtractor`（文本层/视觉/OCR）→ `llmInvoker` 按 `prompts` 产出结构化画像与面试要点 → 入库 → 进度事件驱动任务列表。
 5. **远程控制**：`remote` 频道 runtime 收 IM 消息 → 校验/配对 → 定位绑定 session → 复用 Turn 链路 → 结果回传 IM。
 6. **定时任务**：scheduler utility host 触发 cron → 创建 detached session 跑 Turn → delivery router 投递结果。
 

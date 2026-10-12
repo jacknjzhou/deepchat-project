@@ -81,7 +81,7 @@ function buildToolDefinition(
     server: {
       name: AGENT_MEMORY_TOOL_SERVER_NAME,
       icons: '🧠',
-      description: 'SRIBD Office Agent long-term memory tools'
+      description: 'Office Agent long-term memory tools'
     }
   }
 }

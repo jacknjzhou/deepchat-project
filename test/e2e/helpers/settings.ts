@@ -21,7 +21,7 @@ const isSettingsWindow = async (page: Page): Promise<boolean> => {
     return false
   }
 
-  return title === 'SRIBD办公智能体 - 设置'
+  return title === '办公智能体 - 设置'
 }
 
 export async function openSettings(app: ElectronAppInstance): Promise<Page> {

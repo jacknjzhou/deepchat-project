@@ -2,7 +2,7 @@
   "steps": {
     "welcome": {
       "title": "Willkommen",
-      "description": "Richten wir SRIBD Office Agent ein"
+      "description": "Richten wir Office Agent ein"
     },
     "provider": {
       "title": "Modellanbieter",
@@ -17,7 +17,7 @@
       "description": "Alles bereit. Sie können loslegen!"
     }
   },
-  "title": "Willkommen bei SRIBD Office Agent",
+  "title": "Willkommen bei Office Agent",
   "description": "Lassen Sie uns die Einrichtung gemeinsam abschließen",
   "provider": {
     "select": "Anbieter auswählen",
@@ -35,7 +35,7 @@
     "back": "Zurück"
   },
   "page": {
-    "title": "Willkommen bei SRIBD Office Agent",
+    "title": "Willkommen bei Office Agent",
     "description": "Verbinden Sie einen Modellanbieter, um zu starten",
     "guide": {
       "title": "Einrichtungsfortschritt",
@@ -72,8 +72,8 @@
   },
   "agentPage": {
     "title": "Agent auswählen und loslegen",
-    "deepchatType": "SRIBD Office Agent",
+    "deepchatType": "Office Agent",
     "acpType": "ACP Agent",
-    "manageAgents": "SRIBD Office Agent verwalten"
+    "manageAgents": "Office Agent verwalten"
   }
 }

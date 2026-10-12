@@ -61,7 +61,7 @@ export class DocumentRecognitionToolHandler {
       server: {
         name: DOCUMENT_RECOGNITION_TOOL_SERVER_NAME,
         icons: '📄',
-        description: 'SRIBD Office Agent document recognition tools'
+        description: 'Office Agent document recognition tools'
       }
     }
   }

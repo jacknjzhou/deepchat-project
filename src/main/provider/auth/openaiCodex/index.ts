@@ -131,14 +131,14 @@ export function resolveOpenAICodexCallbackUrl(
     return {
       kind: 'failure',
       error: callback.error,
-      message: 'Authentication complete. You can return to SRIBD Office Agent.'
+      message: 'Authentication complete. You can return to Office Agent.'
     }
   }
 
   return {
     kind: 'success',
     code: callback.code,
-    message: 'Authentication complete. You can return to SRIBD Office Agent.'
+    message: 'Authentication complete. You can return to Office Agent.'
   }
 }
 

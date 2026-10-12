@@ -1,6 +1,6 @@
 {
   "input": {
-    "placeholder": "Спросите SRIBD Office Agent о чем угодно, {'@'} чтобы упомянуть файлы, / для команд",
+    "placeholder": "Спросите Office Agent о чем угодно, {'@'} чтобы упомянуть файлы, / для команд",
     "fileArea": "Область файлов",
     "inputArea": "Область ввода",
     "functionSwitch": "Переключатель функций",
@@ -33,7 +33,7 @@
     "voiceRecognitionUnsupportedTitle": "Текущая среда не поддерживает распознавание речи",
     "voiceRecognitionUnsupportedDescription": "Используйте эту функцию в браузере или настольной среде с поддержкой распознавания речи.",
     "voiceRecognitionPermissionDeniedTitle": "Не удалось получить доступ к микрофону",
-    "voiceRecognitionPermissionDeniedDescription": "Разрешите SRIBD Office Agent использовать микрофон и попробуйте снова.",
+    "voiceRecognitionPermissionDeniedDescription": "Разрешите Office Agent использовать микрофон и попробуйте снова.",
     "voiceRecognitionErrorTitle": "Ошибка распознавания речи",
     "voiceRecognitionErrorDescription": "Не удалось завершить распознавание речи. Повторите попытку позже.",
     "send": "Отправить",
@@ -59,7 +59,7 @@
         "agentCore": "Agent Core",
         "agentImageGeneration": "Генерация изображений",
         "agentSkills": "Agent Skills",
-        "deepchatSettings": "SRIBD Office Agent Settings",
+        "deepchatSettings": "Office Agent Settings",
         "yobrowser": "YoBrowser"
       }
     },
@@ -487,12 +487,12 @@
   },
   "onboarding": {
     "agentSwitch": {
-      "title": "Переключиться на агент SRIBD Office Agent",
-      "description": "Перед началом чата переключитесь с ACP и вернитесь к встроенному потоку SRIBD Office Agent.",
+      "title": "Переключиться на агент Office Agent",
+      "description": "Перед началом чата переключитесь с ACP и вернитесь к встроенному потоку Office Agent.",
       "caption": "Нажмите на выделенную кнопку агента на боковой панели, чтобы продолжить."
     },
     "switchModel": {
-      "description": "Выберите модель, которую хотите использовать для первого разговора в SRIBD Office Agent.",
+      "description": "Выберите модель, которую хотите использовать для первого разговора в Office Agent.",
       "caption": "Используйте выделенный переключатель моделей и выберите любую доступную модель."
     },
     "firstChat": {
@@ -669,7 +669,7 @@
       "reasons": {
         "session_unavailable": "Этот сеанс больше недоступен.",
         "agent_unavailable": "Выбранный Agent недоступен.",
-        "deepchat_agent_required": "Для проактивного сотрудничества требуется SRIBD Office Agent.",
+        "deepchat_agent_required": "Для проактивного сотрудничества требуется Office Agent.",
         "regular_parent_required": "Проактивное сотрудничество недоступно в дочернем сеансе.",
         "agent_policy_unavailable": "Не удалось загрузить политику сотрудничества.",
         "subagents_disabled": "Включите Subagents для этого Agent, чтобы использовать проактивное сотрудничество."

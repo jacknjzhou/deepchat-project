@@ -1558,7 +1558,7 @@ export class TurnCoordinator {
         )
       ) {
         throw new Error(
-          'Recovered materialized Skill context belongs to another SRIBD Office Agent.'
+          'Recovered materialized Skill context belongs to another Office Agent.'
         )
       }
       const recoveredSessionSkillNames = materializedSkillContexts

@@ -13,7 +13,7 @@ export default async function notarizing(context) {
     return
   }
 
-  const appPath = `${appOutDir}/SRIBD办公智能体.app`
+  const appPath = `${appOutDir}/办公智能体.app`
   console.info(`Notarizing macOS app: ${appPath}`)
   await notarizeReleaseArtifact(appPath)
 }

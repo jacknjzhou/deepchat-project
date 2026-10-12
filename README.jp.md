@@ -1,10 +1,10 @@
 <p align='center'>
-<img src='./build/icon.png' width="150" height="150" alt="SRIBD Office Agent アイコン" />
+<img src='./build/icon.png' width="150" height="150" alt="Office Agent アイコン" />
 </p>
 
-<h1 align="center">SRIBD Office Agent - エンタープライズ AI Agent デスクトップクライアント</h1>
+<h1 align="center">Office Agent - エンタープライズ AI Agent デスクトップクライアント</h1>
 
-<p align="center">SRIBD Office Agent は、ローカルファーストのエンタープライズ向け AI Agent デスクトップクライアントです。オープンソースプロジェクト <a href="https://github.com/ThinkInAIXYZ/deepchat">DeepChat</a>（Apache License 2.0）をベースに構築されています。Tape.systemsの哲学に基づく豊富な Agent 機能に加え、MCP、Skills、ACP、メッセージアプリ向けリモートコントロールをサポートし、ドキュメント認識・アーカイブ、履歴書スクリーニング、オフィス自動化などの SRIBD エンタープライズ拡張機能を備えています。</p>
+<p align="center">Office Agent は、ローカルファーストのエンタープライズ向け AI Agent デスクトップクライアントです。オープンソースプロジェクト <a href="https://github.com/ThinkInAIXYZ/deepchat">DeepChat</a>（Apache License 2.0）をベースに構築されています。Tape.systemsの哲学に基づく豊富な Agent 機能に加え、MCP、Skills、ACP、メッセージアプリ向けリモートコントロールをサポートし、ドキュメント認識・アーカイブ、履歴書スクリーニング、オフィス自動化などの エンタープライズ拡張機能を備えています。</p>
 
 <p align="center">
   <a href="https://github.com/jacknjzhou/deepchat-project/stargazers"><img src="https://img.shields.io/github/stars/jacknjzhou/deepchat-project" alt="Stars Badge"/></a>
@@ -22,9 +22,9 @@
 
 - [📑 目次](#-目次)
 - [🚀 プロジェクト紹介](#-プロジェクト紹介)
-- [💡 なぜSRIBD Office Agentを選ぶのか](#-なぜsribd-office-agentを選ぶのか)
+- [💡 なぜ Office Agentを選ぶのか](#-なぜ-office-agentを選ぶのか)
 - [🔥 主な機能](#-主な機能)
-- [🏢 SRIBD エンタープライズ拡張機能](#-sribd-エンタープライズ拡張機能)
+- [🏢 エンタープライズ拡張機能](#-エンタープライズ拡張機能)
 - [📼 Tape と Trace](#-tape-と-trace)
 - [🧠 Skills サポート](#-skills-サポート)
 - [🧩 ACP 連携（Agent Client Protocol）](#-acp-連携agent-client-protocol)
@@ -42,26 +42,27 @@
   - [ビルド](#ビルド)
   - [エンタープライズ管理設定 URL のビルド時注入（任意）](#エンタープライズ管理設定-url-のビルド時注入任意)
 - [👥 コミュニティと貢献](#-コミュニティと貢献)
+- [🙏🏻 謝辞](#-謝辞)
 - [📃 ライセンス](#-ライセンス)
 
 ## 🚀 プロジェクト紹介
 
-SRIBD Office Agentは、モデル・ツール・Skills・エージェントランタイム・Tape・長時間セッションを1つのデスクトップアプリに統合する、強力なローカルファーストAgentデスクトップクライアントです。OpenAI、Gemini、AnthropicなどのクラウドAPIや、ローカルにデプロイされたOllamaモデルを使用する場合でも、SRIBD Office Agentはスムーズなユーザー体験を提供します。
+Office Agentは、モデル・ツール・Skills・エージェントランタイム・Tape・長時間セッションを1つのデスクトップアプリに統合する、強力なローカルファーストAgentデスクトップクライアントです。OpenAI、Gemini、AnthropicなどのクラウドAPIや、ローカルにデプロイされたOllamaモデルを使用する場合でも、Office Agentはスムーズなユーザー体験を提供します。
 
-SRIBD Office AgentのセッションとAgentプロセスはTape.systemsの哲学に基づいています。プロセスを残すことで、コンテキスト、ツール呼び出し、リクエスト、結果を復元・追跡・検査できます。さらに、優れたMCPサポート、インストール可能なSkills、ACP Agent連携、Telegram、Feishu/Lark、QQBot、Discord、WeChat iLinkなどのIMツールからのリモートコントロールを提供します。
+Office AgentのセッションとAgentプロセスはTape.systemsの哲学に基づいています。プロセスを残すことで、コンテキスト、ツール呼び出し、リクエスト、結果を復元・追跡・検査できます。さらに、優れたMCPサポート、インストール可能なSkills、ACP Agent連携、Telegram、Feishu/Lark、QQBot、Discord、WeChat iLinkなどのIMツールからのリモートコントロールを提供します。
 
-SRIBD Office Agentは、オープンソースプロジェクト DeepChat をベースに構築されています。上流コミュニティが築いた素晴らしい基盤に感謝します。
+Office Agentは、オープンソースプロジェクト DeepChat をベースに構築されています。上流コミュニティが築いた素晴らしい基盤に感謝します。
 
-## 💡 なぜSRIBD Office Agentを選ぶのか
+## 💡 なぜ Office Agentを選ぶのか
 
-他のAIツールと比較して、SRIBD Office Agentは以下のようなユニークな利点を提供します：
+他のAIツールと比較して、Office Agentは以下のようなユニークな利点を提供します：
 
-- **ローカルファーストAgentデスクトップクライアント**: SRIBD Office Agent、ACP Agent、リモート対応Botを1つのローカルアプリで実行できます
+- **ローカルファーストAgentデスクトップクライアント**: Office Agent、ACP Agent、リモート対応Botを1つのローカルアプリで実行できます
 - **Tape.systemsの哲学**: 復元可能なセッション履歴を保持し、リクエストコンテキストとtoken予算を検査できます
 - **持ち運べるSkills**: 会話ごとにSkillsをインストール、インポート、エクスポート、有効化し、コードレビュー、文書、フロントエンド、Office/PDFなどに対応できます
 - **ネイティブACP連携**: ACP互換のコーディング/タスクエージェントを「モデル」と同じ入口から使用できます
 - **優れたMCPサポート**: Resources、Prompts、Tools、複数Transport、inMemoryサービス、ワンクリックインストールに対応します
-- **リモート対応ワークフロー**: Telegram、Feishu/Lark、QQBot、Discord、WeChat iLink からSRIBD Office Agentセッションを操作できます
+- **リモート対応ワークフロー**: Telegram、Feishu/Lark、QQBot、Discord、WeChat iLink から Office Agentセッションを操作できます
 - **統一されたマルチモデル管理**: 主要なクラウドLLMとローカルOllamaモデルを1つのアプリで扱えます
 - **プライバシー重視**: ローカルデータストレージとネットワークプロキシのサポートにより、情報漏洩のリスクを軽減します
 - **ビジネスフレンドリー**: Apache License 2.0の下でオープンソース化され、商用・個人利用の両方に適しています
@@ -69,7 +70,7 @@ SRIBD Office Agentは、オープンソースプロジェクト DeepChat をベ�
 ## 🔥 主な機能
 
 - 🤖 **ローカルファーストAgentデスクトップクライアント**
-  - SRIBD Office Agent、ACP、リモート対応エージェントを1つのモデル選択に近い入口から選択
+  - Office Agent、ACP、リモート対応エージェントを1つのモデル選択に近い入口から選択
   - プロジェクトフォルダー、権限モード、ツール出力、復元可能なコンテキストを備えた長時間セッションに対応
 - 📼 **Tape と Trace**
   - Session Tapeが構造化された作業履歴を記録し、復元、再開、将来のAgent memoryフローを支えます
@@ -82,7 +83,7 @@ SRIBD Office Agentは、オープンソースプロジェクト DeepChat をベ�
   - ACP互換エージェント（内蔵/カスタムコマンド）を「モデル」として選択可能
   - エージェントが提供する場合、ACP Workspace UI で構造化プラン、ツール呼び出し、ターミナル出力を表示
 - 📡 **リモートコントロール**
-  - Telegram、Feishu/Lark、QQBot、Discord、WeChat iLink からSRIBD Office Agentセッションを操作可能
+  - Telegram、Feishu/Lark、QQBot、Discord、WeChat iLink からOffice Agentセッションを操作可能
   - リモートエンドポイントをセッションに紐づけ、モデル切り替え、保留中の操作対応、生成停止、デスクトップ表示を実行可能
 - 🌐 **複数のクラウドLLMプロバイダーサポート**: DeepSeek、OpenAI、Moonshot/Kimi、Grok、Gemini、Anthropicなど
 - 🏠 **ローカルモデルデプロイメントサポート**:
@@ -117,9 +118,9 @@ SRIBD Office Agentは、オープンソースプロジェクト DeepChat をベ�
   - コード構造が明確で、モデルプロバイダーもMCPサービスも高度に分離されており、最小コストで自由にカスタマイズ可能
   - 合理的なアーキテクチャ、データ相互作用とUI動作の分離により、Electronの機能を十分に活用し、単純なウェブラッパーを拒否、優れたパフォーマンス
 
-## 🏢 SRIBD エンタープライズ拡張機能
+## 🏢 エンタープライズ拡張機能
 
-本フォークは **SRIBD Office Agent** としてリリースされており、アップストリームの DeepChat 機能に加えて、以下のエンタープライズ向け機能を追加しています：
+本フォークは **Office Agent** としてリリースされており、アップストリームの DeepChat 機能に加えて、以下のエンタープライズ向け機能を追加しています：
 
 - 📄 **ドキュメント認識・アーカイブ**
   - ビジュアル抽出テンプレートエディター：請求書プリセットテンプレートに加え、カスタムフィールド・プロンプト・テスト抽出パネルをサポート
@@ -147,11 +148,11 @@ SRIBD Office Agentは、オープンソースプロジェクト DeepChat をベ�
 
 ## 📼 Tape と Trace
 
-SRIBD Office AgentのSession TapeはTape.systemsの哲学を継承し、エージェント作業を復元可能かつ検査可能にします。Traceプレビューでは、リクエスト番号、プロバイダー/モデル情報、Tape view manifest、含まれる/除外されるコンテキストエントリー、token予算を確認でき、長時間セッションのデバッグと再開が容易になります。
+Office AgentのSession TapeはTape.systemsの哲学を継承し、エージェント作業を復元可能かつ検査可能にします。Traceプレビューでは、リクエスト番号、プロバイダー/モデル情報、Tape view manifest、含まれる/除外されるコンテキストエントリー、token予算を確認でき、長時間セッションのデバッグと再開が容易になります。
 
 ## 🧠 Skills サポート
 
-SRIBD Office Agent Skills は標準の Agent Skills 仕様と互換性のある設計です。Skillにはタスク手順、参考資料、アセット、任意のスクリプトを含めることができ、有効化するとSRIBD Office Agentがその分野の専門アシスタントのように振る舞えます。
+Office Agent Skills は標準の Agent Skills 仕様と互換性のある設計です。Skillにはタスク手順、参考資料、アセット、任意のスクリプトを含めることができ、有効化するとOffice Agentがその分野の専門アシスタントのように振る舞えます。
 
 Skillsはフォルダー、ZIPファイル、URLからインストールできます。Claude Code、Codex、Cursor、Windsurf、GitHub Copilot、Kiro、Antigravity、OpenCode、Goose、Kilo Code などの互換ツールとのインポート/エクスポートにも対応します。
 
@@ -165,7 +166,7 @@ Skillsはフォルダー、ZIPファイル、URLからインストールでき�
 
 ## 🧩 ACP 連携（Agent Client Protocol）
 
-SRIBD Office Agentは [Agent Client Protocol（ACP）](https://agentclientprotocol.com) を内蔵しており、外部のエージェントランタイムをSRIBD Office Agentにネイティブに統合できます。有効化すると、ACPエージェントはモデルセレクターに「モデル」として表示され、SRIBD Office Agent内でコーディング/タスク系エージェントをWorkspace UIと一緒に利用できます。
+Office Agentは [Agent Client Protocol（ACP）](https://agentclientprotocol.com) を内蔵しており、外部のエージェントランタイムをOffice Agentにネイティブに統合できます。有効化すると、ACPエージェントはモデルセレクターに「モデル」として表示され、Office Agent内でコーディング/タスク系エージェントをWorkspace UIと一緒に利用できます。
 
 クイックスタート：
 
@@ -177,9 +178,9 @@ ACP互換のエージェント/クライアント一覧：https://agentclientpro
 
 ## 📡 リモートコントロール
 
-SRIBD Office Agentはメッセージアプリからリモート操作できるため、デスクトップから離れていても同じセッションを継続できます。設定は **設定 → Remote** から行います。
+Office Agentはメッセージアプリからリモート操作できるため、デスクトップから離れていても同じセッションを継続できます。設定は **設定 → Remote** から行います。
 
-対応チャンネルは Telegram、Feishu/Lark、QQBot、Discord、WeChat iLink です。リモートエンドポイントは1つのSRIBD Office Agentセッションに紐づけられ、リモートチャットから新規セッション作成、最近のセッション一覧と切り替え、生成停止、現在のセッションをデスクトップで開く、保留中の質問や権限リクエストへの回答、モデル切り替え、実行状態の確認ができます。
+対応チャンネルは Telegram、Feishu/Lark、QQBot、Discord、WeChat iLink です。リモートエンドポイントは1つのOffice Agentセッションに紐づけられ、リモートチャットから新規セッション作成、最近のセッション一覧と切り替え、生成停止、現在のセッションをデスクトップで開く、保留中の質問や権限リクエストへの回答、モデル切り替え、実行状態の確認ができます。
 
 主なコマンドは `/start`、`/help`、`/pair`、`/new`、`/sessions`、`/use`、`/stop`、`/open`、`/pending`、`/model`、`/status` です。
 
@@ -391,7 +392,7 @@ SRIBD Office Agentはメッセージアプリからリモート操作できる�
 
 ## 🔍 ユースケース
 
-SRIBD Office Agentは様々なAIアプリケーションシナリオに適しています：
+Office Agentは様々なAIアプリケーションシナリオに適しています：
 
 - **日常アシスタント**: 質問への回答、提案の提供、文章作成の支援
 - **開発支援**: コード生成、デバッグ、技術的問題の解決
@@ -409,11 +410,11 @@ SRIBD Office Agentは様々なAIアプリケーションシナリオに適して
 - macOS: `.dmg`インストールファイル
 - Linux: `.AppImage`または`.deb`インストールファイル
 
-内部分発チャネルは SRIBD チームが管理しています。内部ダウンロードリンクについては、メンテナーまでお問い合わせください。
+内部分発チャネルは開発チームが管理しています。内部ダウンロードリンクについては、メンテナーまでお問い合わせください。
 
 ### モデルの設定
 
-1. SRIBD Office Agentアプリケーションを起動
+1. Office Agentアプリケーションを起動
 2. 設定アイコンをクリック
 3. "モデルプロバイダー"タブを選択
 4. APIキーを追加するか、ローカルOllamaを設定
@@ -486,7 +487,7 @@ $env:MAIN_VITE_MANAGED_CONFIG_URL='https://example.com/managed/config'; pnpm run
 
 ## 👥 コミュニティと貢献
 
-SRIBD Office Agentは SRIBD チームによってメンテナンスされており、様々な形での貢献を歓迎します：
+Office Agentは開発チームによってメンテナンスされており、様々な形での貢献を歓迎します：
 
 - 🐛 [問題を報告する](https://github.com/jacknjzhou/deepchat-project/issues)
 - 💡 [機能の提案を提出する](https://github.com/jacknjzhou/deepchat-project/issues)

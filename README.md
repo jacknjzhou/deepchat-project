@@ -1,10 +1,10 @@
 <p align='center'>
-<img src='./build/icon.png' width="150" height="150" alt="SRIBD Office Agent Icon" />
+<img src='./build/icon.png' width="150" height="150" alt="Office Agent Icon" />
 </p>
 
-<h1 align="center">SRIBD Office Agent - Enterprise AI Agent Desktop Client</h1>
+<h1 align="center">Office Agent - Enterprise AI Agent Desktop Client</h1>
 
-<p align="center">SRIBD Office Agent is a local-first, enterprise-oriented AI agent desktop client built on the open-source <a href="https://github.com/ThinkInAIXYZ/deepchat">DeepChat</a> project (Apache License 2.0). It offers rich agent capabilities around the Tape.systems philosophy, with support for MCP, Skills, ACP, remote control for messaging apps, and a suite of SRIBD enterprise features for document recognition, resume screening, and office automation.</p>
+<p align="center">Office Agent is a local-first, enterprise-oriented AI agent desktop client built on the open-source <a href="https://github.com/ThinkInAIXYZ/deepchat">DeepChat</a> project (Apache License 2.0). It offers rich agent capabilities around the Tape.systems philosophy, with support for MCP, Skills, ACP, remote control for messaging apps, and a suite of enterprise features for document recognition, resume screening, and office automation.</p>
 
 <p align="center">
   <a href="https://github.com/jacknjzhou/deepchat-project/stargazers"><img src="https://img.shields.io/github/stars/jacknjzhou/deepchat-project" alt="Stars Badge"/></a>
@@ -22,9 +22,9 @@
 
 - [📑 Table of Contents](#-table-of-contents)
 - [🚀 Project Introduction](#-project-introduction)
-- [💡 Why Choose SRIBD Office Agent](#-why-choose-sribd-office-agent)
+- [💡 Why Choose Office Agent](#-why-choose-office-agent)
 - [🔥 Main Features](#-main-features)
-- [🏢 SRIBD Enterprise Enhancements](#-sribd-enterprise-enhancements)
+- [🏢 Enterprise Enhancements](#-enterprise-enhancements)
 - [📼 Tape \& Trace](#-tape--trace)
 - [🧠 Skills Support](#-skills-support)
 - [🧩 ACP Integration (Agent Client Protocol)](#-acp-integration-agent-client-protocol)
@@ -47,22 +47,22 @@
 
 ## 🚀 Project Introduction
 
-SRIBD Office Agent is a powerful, local-first AI agent desktop client that brings together models, tools, Skills, agent runtimes, Tape, and long-running sessions in one desktop app. Whether you're using cloud APIs like OpenAI, Gemini, Anthropic, or locally deployed Ollama models, SRIBD Office Agent delivers a smooth user experience.
+Office Agent is a powerful, local-first AI agent desktop client that brings together models, tools, Skills, agent runtimes, Tape, and long-running sessions in one desktop app. Whether you're using cloud APIs like OpenAI, Gemini, Anthropic, or locally deployed Ollama models, Office Agent delivers a smooth user experience.
 
-SRIBD Office Agent's sessions and agent processes follow the Tape.systems philosophy: keep the process, so context, tool calls, requests, and results stay recoverable, traceable, and inspectable. It also provides strong MCP support, installable Skills, ACP agent integration, and remote control for Telegram, Feishu/Lark, QQBot, Discord, WeChat iLink, and other messaging workflows.
+Office Agent's sessions and agent processes follow the Tape.systems philosophy: keep the process, so context, tool calls, requests, and results stay recoverable, traceable, and inspectable. It also provides strong MCP support, installable Skills, ACP agent integration, and remote control for Telegram, Feishu/Lark, QQBot, Discord, WeChat iLink, and other messaging workflows.
 
-SRIBD Office Agent is built on the open-source DeepChat project — thanks to the upstream community for the excellent foundation.
+Office Agent is built on the open-source DeepChat project — thanks to the upstream community for the excellent foundation.
 
-## 💡 Why Choose SRIBD Office Agent
+## 💡 Why Choose Office Agent
 
-Compared to other AI tools, SRIBD Office Agent offers the following unique advantages:
+Compared to other AI tools, Office Agent offers the following unique advantages:
 
-- **Local-First Agent Desktop Client**: Run SRIBD Office Agent, ACP agents, and remote-ready bots in one local app
+- **Local-First Agent Desktop Client**: Run Office Agent, ACP agents, and remote-ready bots in one local app
 - **Tape.systems Philosophy**: Preserve recoverable session history, trace request context, and inspect token budgets when agent work gets complex
 - **Skills That Travel**: Install, import, export, and enable reusable Skills per conversation for code review, documents, frontend work, Office/PDF tasks, and more
 - **Native ACP Integration**: Run ACP-compatible coding and task agents as first-class entries in the model selector
 - **Strong MCP Support**: Support Resources, Prompts, Tools, multiple transports, inMemory services, and one-click installation
-- **Remote-Ready Workflows**: Control SRIBD Office Agent sessions from Telegram, Feishu/Lark, QQBot, Discord, and WeChat iLink
+- **Remote-Ready Workflows**: Control Office Agent sessions from Telegram, Feishu/Lark, QQBot, Discord, and WeChat iLink
 - **Unified Multi-Model Management**: One application supports mainstream cloud LLMs and local Ollama models, eliminating the need to switch between multiple apps
 - **Privacy-Focused**: Local data storage and network proxy support reduce the risk of information leakage
 - **Business-Friendly**: Embraces open source under the Apache License 2.0, suitable for both commercial and personal use
@@ -70,7 +70,7 @@ Compared to other AI tools, SRIBD Office Agent offers the following unique advan
 ## 🔥 Main Features
 
 - 🤖 **Local-First Agent Desktop Client**
-  - Select SRIBD Office Agent, ACP, and remote-capable agents from one model-like entry point
+  - Select Office Agent, ACP, and remote-capable agents from one model-like entry point
   - Run long-lived sessions with project folders, permission modes, tool output, and resumable context
 - 📼 **Tape & Trace**
   - Session Tape records structured work history for recovery, resume, and future agent memory flows
@@ -83,7 +83,7 @@ Compared to other AI tools, SRIBD Office Agent offers the following unique advan
   - Run ACP-compatible agents (built-in or custom commands) as selectable “models”
   - ACP workspace UI for structured plans, tool calls, and terminal output when provided by the agent
 - 📡 **Remote Control**
-  - Control SRIBD Office Agent sessions from Telegram, Feishu/Lark, QQBot, Discord, and WeChat iLink
+  - Control Office Agent sessions from Telegram, Feishu/Lark, QQBot, Discord, and WeChat iLink
   - Bind remote endpoints to sessions, switch models, answer pending interactions, stop runs, and open desktop sessions remotely
 - 🌐 **Multiple Cloud LLM Provider Support**: DeepSeek, OpenAI, Moonshot/Kimi, Grok, Gemini, Anthropic, and more
 - 🏠 **Local Model Deployment Support**:
@@ -120,9 +120,9 @@ Compared to other AI tools, SRIBD Office Agent offers the following unique advan
 
 For more details on how to use these features, see the [documentation index](./docs/README.md).
 
-## 🏢 SRIBD Enterprise Enhancements
+## 🏢 Enterprise Enhancements
 
-This fork ships as **SRIBD Office Agent** and extends upstream DeepChat with the following enterprise-oriented features:
+This fork ships as **Office Agent** and extends upstream DeepChat with the following enterprise-oriented features:
 
 - 📄 **Document Recognition & Archive**
   - Extraction templates with a visual editor: preset invoice templates plus custom fields, prompts, and a test-extraction panel
@@ -150,11 +150,11 @@ This fork ships as **SRIBD Office Agent** and extends upstream DeepChat with the
 
 ## 📼 Tape & Trace
 
-SRIBD Office Agent's session Tape follows the Tape.systems philosophy and keeps agent work recoverable and inspectable. Trace previews expose request sequences, provider/model metadata, Tape view manifests, included or excluded entries, and token budgets, making long-running agent sessions easier to debug and resume.
+Office Agent's session Tape follows the Tape.systems philosophy and keeps agent work recoverable and inspectable. Trace previews expose request sequences, provider/model metadata, Tape view manifests, included or excluded entries, and token budgets, making long-running agent sessions easier to debug and resume.
 
 ## 🧠 Skills Support
 
-SRIBD Office Agent Skills are designed to be compatible with the standard Agent Skills specification. A Skill can include task instructions, reference files, assets, and optional scripts, so SRIBD Office Agent can act more like a domain specialist after it is enabled.
+Office Agent Skills are designed to be compatible with the standard Agent Skills specification. A Skill can include task instructions, reference files, assets, and optional scripts, so Office Agent can act more like a domain specialist after it is enabled.
 
 You can install Skills from folders, ZIP files, or URLs, and import/export them with Claude Code, Codex, Cursor, Windsurf, GitHub Copilot, Kiro, Antigravity, OpenCode, Goose, Kilo Code, and other compatible tools.
 
@@ -168,7 +168,7 @@ Quick start:
 
 ## 🧩 ACP Integration (Agent Client Protocol)
 
-SRIBD Office Agent has built-in support for [Agent Client Protocol (ACP)](https://agentclientprotocol.com), allowing you to integrate external agent runtimes with a native UI. Once enabled, ACP agents appear as first-class entries in the model selector, so you can use coding agents and task agents directly inside the app.
+Office Agent has built-in support for [Agent Client Protocol (ACP)](https://agentclientprotocol.com), allowing you to integrate external agent runtimes with a native UI. Once enabled, ACP agents appear as first-class entries in the model selector, so you can use coding agents and task agents directly inside the app.
 
 Quick start:
 
@@ -180,7 +180,7 @@ To explore the ecosystem of compatible agents and clients, see: https://agentcli
 
 ## 📡 Remote Control
 
-SRIBD Office Agent can be controlled from messaging apps, so you can keep a session running even when you are away from the desktop. Configure remote channels under **Settings → Remote**.
+Office Agent can be controlled from messaging apps, so you can keep a session running even when you are away from the desktop. Configure remote channels under **Settings → Remote**.
 
 Supported channels include Telegram, Feishu/Lark, QQBot, Discord, and WeChat iLink. Remote endpoints can bind to one session, then create new sessions, list and switch recent sessions, stop generation, open the current session on desktop, answer pending questions or permission prompts, switch models, and check runtime status.
 
@@ -394,7 +394,7 @@ Common commands include `/start`, `/help`, `/pair`, `/new`, `/sessions`, `/use`,
 
 ## 🔍 Use Cases
 
-SRIBD Office Agent is suitable for various AI application scenarios:
+Office Agent is suitable for various AI application scenarios:
 
 - **Daily Assistant**: Answering questions, providing suggestions, assisting with writing and creation
 - **Development Aid**: Code generation, debugging, technical problem solving
@@ -412,11 +412,11 @@ Download the latest version for your system from the [GitHub Releases](https://g
 - macOS: `.dmg` installation file
 - Linux: `.AppImage` or `.deb` installation file
 
-Internal distribution channels are maintained by the SRIBD team; contact the maintainers for internal download links.
+Internal distribution channels are maintained by the maintainers; contact the maintainers for internal download links.
 
 ### Configure Models
 
-1. Launch the SRIBD Office Agent application
+1. Launch the Office Agent application
 2. Click the settings icon
 3. Select the "Model Providers" tab
 4. Add your API keys or configure local Ollama
@@ -493,7 +493,7 @@ For a more detailed guide on development, project structure, and architecture, p
 
 ## 👥 Community & Contribution
 
-SRIBD Office Agent is maintained by the SRIBD team, and we welcome various forms of contribution:
+Office Agent is maintained by the maintainers, and we welcome various forms of contribution:
 
 - 🐛 [Report issues](https://github.com/jacknjzhou/deepchat-project/issues)
 - 💡 [Submit feature suggestions](https://github.com/jacknjzhou/deepchat-project/issues)

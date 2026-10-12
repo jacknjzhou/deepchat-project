@@ -339,7 +339,7 @@ export class SessionAssignment implements SessionAgentAssignmentPort, SessionAss
       this.requireSession(sessionId)
       const { handle } = this.dependencies.runtime.resolveSession(toAppSessionId(sessionId))
       if (handle.kind !== 'deepchat') {
-        throw new Error('Tool mode is only available for SRIBD Office Agent sessions.')
+        throw new Error('Tool mode is only available for Office Agent sessions.')
       }
       const state = await handle.snapshot()
       if (state?.status === 'generating') {
@@ -418,7 +418,7 @@ export class SessionAssignment implements SessionAgentAssignmentPort, SessionAss
         if (
           this.dependencies.runtime.getSessionAgentKind(toAppSessionId(sessionId)) !== 'deepchat'
         ) {
-          throw new Error('Proactive collaboration requires a SRIBD Office Agent session.')
+          throw new Error('Proactive collaboration requires a Office Agent session.')
         }
       }
       this.dependencies.sessions.updateOrchestrationPolicy(sessionId, normalized)
