@@ -212,6 +212,7 @@ import {
   submitWithDedupe,
   type DedupeSubmitDeps
 } from '@/documents/contentDedupe'
+import { backfillDocumentHashes } from '@/documents/dedupeBackfill'
 import { sha256File } from '@/documents/fileHash'
 import { DocumentsRepository } from '@/documents/repository'
 import { createDocumentsRoutes, type DocumentsDedupeSubmit } from '@/documents/routes'
@@ -3183,6 +3184,33 @@ export async function createMainProcessControl(dependencies: {
     }
     const documentsDedupeSubmit: DocumentsDedupeSubmit = (input) =>
       submitWithDedupe(documentsDedupeDeps, input)
+    // 存量文档哈希回填：去重功能上线前入库的文档没有 documents_file_dedupes 行，
+    // 同内容文件再次提交（如自动扫描先入库、再手工上传）不会被拦截。仅在首次
+    // 升级到该能力时执行一次（settings 标记），失败不阻塞启动、下次启动重试。
+    if (providerSettings.getSetting<boolean>(DOCUMENTS_SETTINGS_KEYS.dedupeBackfillDone) !== true) {
+      void backfillDocumentHashes({
+        // listDocuments 默认 LIMIT 100，回填必须分页取全量
+        listBackfillDocuments: () => {
+          const pageSize = 200
+          const all: Array<{ id: string; fileUris: string[]; source: string }> = []
+          for (let offset = 0; ; offset += pageSize) {
+            const page = documentsRepository.listDocuments({ limit: pageSize, offset })
+            all.push(...page.map((d) => ({ id: d.id, fileUris: d.fileUris, source: d.source })))
+            if (page.length < pageSize) return all
+          }
+        },
+        sha256File,
+        findFileDedupeNames: (hashes) => documentsRepository.findFileDedupeNames(hashes),
+        insertFileDedupes: (rows) => documentsRepository.insertFileDedupes(rows),
+        bindFileDedupeDocument: (taskId, documentId) =>
+          documentsRepository.bindFileDedupeDocument(taskId, documentId)
+      })
+        .then((registered) => {
+          providerSettings.setSetting(DOCUMENTS_SETTINGS_KEYS.dedupeBackfillDone, true)
+          console.info(`[documents] dedupe backfill registered ${registered} content hashes`)
+        })
+        .catch((error) => console.error('[documents] dedupe backfill failed:', error))
+    }
     const documentsRoutes = createDocumentsRoutes(
       documentsRepository,
       documentExtractor,

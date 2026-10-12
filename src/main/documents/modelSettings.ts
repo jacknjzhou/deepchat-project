@@ -23,6 +23,7 @@ export const DOCUMENTS_SETTINGS_KEYS = {
   maxTokens: 'documents.maxTokens',
   autoWatch: 'documents.autoWatch',
   autoWatchState: 'documents.autoWatchState',
+  dedupeBackfillDone: 'documents.dedupeBackfillDone',
   migrated: 'documents.settingsMigrated'
 } as const
 
