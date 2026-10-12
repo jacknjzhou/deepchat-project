@@ -149,7 +149,7 @@ App composition → Desktop / Remote / Scheduler / Deeplink → Session → Agen
 
 | 模块 | 关键结构 | 职责要点 |
 | --- | --- | --- |
-| `provider/` | `settings.ts`、`providerDbLoader.ts`、`data/settingsTable.ts` | 模型供应商/模型配置与请求认证；provider DB 来源链：远端 `DEFAULT_PROVIDER_DB_URL` → 缓存 → 内置，`DEEPCHAT_PROVIDER_DB_OFFLINE` 固定离线；SQLite 表：`providers`/`provider_models`/`model_status`/`model_configs` |
+| `provider/` | `settings.ts`、`providerDbLoader.ts`、`data/settingsTable.ts` | 模型供应商/模型配置与请求认证；provider DB 默认仅读内置 `resources/model-db/providers.json` 快照（零外呼），`DEEPCHAT_PROVIDER_DB_ONLINE=1` 时启用远端刷新（远端 → 缓存 → 内置）；SQLite 表：`providers`/`provider_models`/`model_status`/`model_configs` |
 | `tool/` | `index.ts` | Tool 服务：汇总 MCP、Agent、Skill、Plugin、CodeMode、内置工具来源 + 权限 broker（permission broker）；保留 agent tool 名与外部文件访问策略 |
 | `mcp/` | `index.ts`、`serverManager.ts`、`settings.ts` | MCP 配置、server/client 生命周期（含 OAuth、in-memory server、MCP Apps sandbox registry）；内置 servers：builtinKnowledge、deep-research、auto-prompting、conversation-search；v1/v2 双 wire |
 | `skill/` | `discoveryWorker.ts`、`archive*.ts`、`sync/`、`skillTools.ts`、`skillExecutionAuthority.ts` | Skill 从文件夹/ZIP/URL 安装、扫描发现（worker）、与外部工具（Claude Code 等）互导同步、执行授权、贡献为 agent tools |

@@ -141,7 +141,7 @@ This fork ships as **SRIBD Office Agent** and extends upstream DeepChat with the
 - 🏢 **Office Automation Plugin & Baidu Search**
   - Bundled office automation MCP plugin with Baidu web search integration
 - 🔌 **Model Access Enhancements**
-  - Optional fixed offline provider database via `DEEPCHAT_PROVIDER_DB_OFFLINE`
+  - Offline-first provider database by default (bundled snapshot), opt-in remote refresh via `DEEPCHAT_PROVIDER_DB_ONLINE`
   - Multiple instances of the same provider and extra model selection in conversations
 - 🌏 **Localized Built-in Skills**
   - Chinese-localized GPT-Image-2, PDF image-text extraction, and web-scraper skills
