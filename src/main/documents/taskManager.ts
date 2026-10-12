@@ -144,6 +144,7 @@ export class RecognitionTaskManager {
         status: 'draft',
         now: this.deps.now?.()
       })
+      this.deps.repository.bindFileDedupeDocument(runningTask.id, document.id)
       this.publish(
         this.deps.repository.updateTask(runningTask.id, {
           status: 'done',
@@ -153,6 +154,7 @@ export class RecognitionTaskManager {
       )
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
+      this.deps.repository.deleteFileDedupesByTask(runningTask.id)
       this.publish(
         this.deps.repository.updateTask(runningTask.id, { status: 'failed', error: message }) ??
           runningTask

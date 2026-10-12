@@ -34,6 +34,8 @@ describe('RecognitionTaskManager', () => {
       documentId?: string | null
     }> = []
     const published: string[] = []
+    const bindFileDedupeDocument = vi.fn()
+    const deleteFileDedupesByTask = vi.fn()
     const manager = new RecognitionTaskManager({
       repository: {
         insertTasks: (inputs) =>
@@ -58,7 +60,9 @@ describe('RecognitionTaskManager', () => {
         listPendingTasks: () => [],
         markRunningTasksFailed: () => {},
         countTaskBatch: (batchId) => ({ done: 0, total: batchId === 'b1' ? 1 : 0 }),
-        insertDocument: () => ({ id: 'doc-1' })
+        insertDocument: () => ({ id: 'doc-1' }),
+        bindFileDedupeDocument,
+        deleteFileDedupesByTask
       },
       extractor: {
         extract: async () => ({
@@ -84,10 +88,13 @@ describe('RecognitionTaskManager', () => {
     expect(updates[1]?.typeKey).toBe('invoice_special')
     expect(updates[1]?.documentId).toBe('doc-1')
     expect(published).toEqual(['running', 'done'])
+    expect(bindFileDedupeDocument).toHaveBeenCalledWith(tasks[0]?.id, 'doc-1')
   })
 
   it('marks failed tasks with the error message', async () => {
     const updates: Array<{ status: string; error?: string | null }> = []
+    const deleteFileDedupesByTask = vi.fn()
+    const bindFileDedupeDocument = vi.fn()
     const manager = new RecognitionTaskManager({
       repository: {
         insertTasks: (inputs) => inputs.map((input, i) => makeTask({ id: `t${i}` })),
@@ -99,7 +106,9 @@ describe('RecognitionTaskManager', () => {
         listPendingTasks: () => [],
         markRunningTasksFailed: () => {},
         countTaskBatch: () => ({ done: 1, total: 1 }),
-        insertDocument: () => ({ id: 'doc-1' })
+        insertDocument: () => ({ id: 'doc-1' }),
+        bindFileDedupeDocument,
+        deleteFileDedupesByTask
       },
       extractor: {
         extract: async () => {
@@ -112,6 +121,7 @@ describe('RecognitionTaskManager', () => {
     await manager.idle()
     expect(updates.map((u) => u.status)).toEqual(['running', 'failed'])
     expect(updates[1]?.error).toBe('auto classification failed')
+    expect(deleteFileDedupesByTask).toHaveBeenCalledWith('t0')
   })
 
   it('processes with bounded concurrency', async () => {
@@ -125,7 +135,9 @@ describe('RecognitionTaskManager', () => {
         listPendingTasks: () => [],
         markRunningTasksFailed: () => {},
         countTaskBatch: () => ({ done: 0, total: 4 }),
-        insertDocument: () => ({ id: 'doc' })
+        insertDocument: () => ({ id: 'doc' }),
+        bindFileDedupeDocument: vi.fn(),
+        deleteFileDedupesByTask: vi.fn()
       },
       extractor: {
         extract: async () => {
@@ -166,7 +178,9 @@ describe('RecognitionTaskManager', () => {
         listPendingTasks: () => [],
         markRunningTasksFailed: () => {},
         countTaskBatch: () => ({ done: 0, total: 6 }),
-        insertDocument: () => ({ id: 'doc' })
+        insertDocument: () => ({ id: 'doc' }),
+        bindFileDedupeDocument: vi.fn(),
+        deleteFileDedupesByTask: vi.fn()
       },
       extractor: {
         extract: async () => {
@@ -221,7 +235,9 @@ describe('RecognitionTaskManager', () => {
           markedFailed = true
         },
         countTaskBatch: () => ({ done: 0, total: 1 }),
-        insertDocument: () => ({ id: 'doc' })
+        insertDocument: () => ({ id: 'doc' }),
+        bindFileDedupeDocument: vi.fn(),
+        deleteFileDedupesByTask: vi.fn()
       },
       extractor: {
         extract: async (input) => {
@@ -258,7 +274,9 @@ describe('RecognitionTaskManager', () => {
         listPendingTasks: () => [],
         markRunningTasksFailed: () => {},
         countTaskBatch: () => ({ done: 0, total: 2 }),
-        insertDocument: () => ({ id: 'doc' })
+        insertDocument: () => ({ id: 'doc' }),
+        bindFileDedupeDocument: vi.fn(),
+        deleteFileDedupesByTask: vi.fn()
       },
       extractor: {
         extract: async () => {
@@ -330,7 +348,9 @@ describe('RecognitionTaskManager', () => {
         listPendingTasks: () => [],
         markRunningTasksFailed: () => {},
         countTaskBatch: () => ({ done: 0, total: 1 }),
-        insertDocument: () => ({ id: 'doc-1' })
+        insertDocument: () => ({ id: 'doc-1' }),
+        bindFileDedupeDocument: vi.fn(),
+        deleteFileDedupesByTask: vi.fn()
       },
       extractor: {
         extract: async () => ({
@@ -391,7 +411,9 @@ describe('RecognitionTaskManager', () => {
         listPendingTasks: () => [],
         markRunningTasksFailed: () => {},
         countTaskBatch: () => ({ done: 0, total: 1 }),
-        insertDocument: () => ({ id: 'doc-1' })
+        insertDocument: () => ({ id: 'doc-1' }),
+        bindFileDedupeDocument: vi.fn(),
+        deleteFileDedupesByTask: vi.fn()
       },
       extractor: {
         extract: async (input) => {
@@ -435,7 +457,9 @@ describe('RecognitionTaskManager', () => {
         listPendingTasks: () => [],
         markRunningTasksFailed: () => {},
         countTaskBatch: () => ({ done: 0, total: 1 }),
-        insertDocument: () => ({ id: 'doc' })
+        insertDocument: () => ({ id: 'doc' }),
+        bindFileDedupeDocument: vi.fn(),
+        deleteFileDedupesByTask: vi.fn()
       },
       extractor: {
         extract: async () => ({
@@ -497,7 +521,9 @@ describe('RecognitionTaskManager', () => {
             fileUris: input.fileUris
           })
           return { id: 'doc-9' }
-        }
+        },
+        bindFileDedupeDocument: vi.fn(),
+        deleteFileDedupesByTask: vi.fn()
       },
       extractor: {
         extract: async (input) => {
@@ -538,7 +564,9 @@ describe('RecognitionTaskManager', () => {
         listPendingTasks: () => [],
         markRunningTasksFailed: () => {},
         countTaskBatch: () => ({ done: 0, total: 0 }),
-        insertDocument: () => ({ id: 'doc' })
+        insertDocument: () => ({ id: 'doc' }),
+        bindFileDedupeDocument: vi.fn(),
+        deleteFileDedupesByTask: vi.fn()
       },
       extractor: {
         extract: async () => {
