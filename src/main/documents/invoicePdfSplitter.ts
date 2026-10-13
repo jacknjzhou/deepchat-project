@@ -3,11 +3,8 @@ import type { DocumentExtractFileInput } from './extractor/documentExtractor'
 /** 发票号码模式：全电发票 20 位、增值税普票 8 位均以 8 位起步数字覆盖 */
 export const INVOICE_NO_PATTERN = /发票号码[:：]?\s*\d{8,}/
 
-/**
- * 文本层判定阈值。composition hasTextLayer 用 200，但真实发票单页去空白文本约 60 字符，
- * 两页合并件约 125；阈值取 100 以放行真实文本层合并件，同时拦截扫描件（无文本层文本近 0）。
- */
-const TEXT_LAYER_MIN_CHARS = 100
+/** 文本层判定阈值，与 composition extractPdfText 的 hasTextLayer 判定保持一致 */
+const TEXT_LAYER_MIN_CHARS = 200
 
 export interface InvoiceSplitDeps {
   /** 分页文本；null = 非 PDF 或读取/解析失败 */
