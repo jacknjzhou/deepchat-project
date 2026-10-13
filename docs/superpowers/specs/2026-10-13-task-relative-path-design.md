@@ -49,7 +49,7 @@ export const computeRelativePath = (filePath: string, scanDir: string): string |
 ### 4.2 提交链（src/main/documents/autoWatch.ts + taskManager.ts）
 
 - autoWatch `runOnce`：`collectCandidates` 产出的候选文件（绝对路径）对 `config.dir` 调 `computeRelativePath` 得到源文件相对路径；经 expandFiles 展开后，逐提交条目按 `sourceOf` 回溯源文件相对路径（未被拆分的条目即自身）。
-- `taskManager.submit` 入参（task input 形状）增加可选 `relativePath?: string | null`，原样透传给 `insertTasks`；manual/chat 提交路径不传 → null。
+- 提交链以**逐文件映射**透传：`RecognitionTaskSubmitInput` 增可选 `relativePathByPath?: Record<string, string | null>`（键为提交文件绝对路径）；`taskManager.submit` 落库时逐文件取 `relativePathByPath?.[file.path] ?? null` 传给 `insertTasks`；manual/chat 提交路径不传 → null。
 
 ### 4.3 repository 层（src/main/documents/repository.ts）
 
