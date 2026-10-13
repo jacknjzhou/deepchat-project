@@ -200,6 +200,59 @@ describeIfSqlite('listUnifiedTasks', () => {
     expect(tasks[0]!.batchId).toBe('bx')
     db.close()
   })
+
+  it('source=chat + status=failed → 空结果（chat 恒为 done，不可达组合早退）', () => {
+    const { db, repository } = makeRepo()
+    repository.insertDocument({
+      templateId: 't',
+      typeKey: 'invoice',
+      templateSnapshot: {},
+      fields: {},
+      fileUris: ['C:/chat.pdf'],
+      source: 'chat',
+      sessionId: null,
+      status: 'draft',
+      now: 1000
+    })
+    const { tasks, total } = repository.listUnifiedTasks({
+      source: 'chat',
+      status: 'failed',
+      limit: 10,
+      offset: 0
+    })
+    expect(tasks).toEqual([])
+    expect(total).toBe(0)
+    db.close()
+  })
+
+  it('混排 + status=failed → 行集与 total 均不含 chat（done）条目', () => {
+    const { db, repository } = makeRepo()
+    repository.insertTasks([
+      {
+        batchId: 'b1',
+        filePath: 'C:/ok.pdf',
+        fileName: 'ok.pdf',
+        templateId: 'auto',
+        source: 'manual'
+      }
+    ])
+    repository.insertDocument({
+      templateId: 't',
+      typeKey: 'invoice',
+      templateSnapshot: {},
+      fields: {},
+      fileUris: ['C:/chat.pdf'],
+      source: 'chat',
+      sessionId: null,
+      status: 'draft',
+      now: 1000
+    })
+    const { tasks, total } = repository.listUnifiedTasks({ status: 'failed', limit: 10, offset: 0 })
+    expect(tasks.every((t) => t.source !== 'chat')).toBe(true)
+    expect(tasks.every((t) => t.status === 'failed')).toBe(true)
+    expect(total).toBe(0)
+    db.close()
+  })
 })
 
 describeIfSqlite('listScanBatches / countScanBatches', () => {

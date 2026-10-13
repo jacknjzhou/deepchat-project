@@ -502,7 +502,10 @@ export class DocumentsRepository {
   }
 
   listUnifiedTasks(filter: UnifiedTaskListFilter): { tasks: UnifiedTaskEntry[]; total: number } {
+    // chat 恒为 status='done'：非 done 状态过滤下直接早退，避免可达的「chat×失败」误导组合
+    const chatExcluded = Boolean(filter.status && filter.status !== 'done')
     if (filter.source === 'chat') {
+      if (chatExcluded) return { tasks: [], total: 0 }
       const rows = this.database.documentsTable.listChatAsTasks(filter.limit, filter.offset)
       return {
         tasks: rows.map(toChatTaskEntry),
@@ -520,6 +523,12 @@ export class DocumentsRepository {
       .listFiltered({ ...filter, limit: window, offset: 0 })
       .map(toTask)
       .map(toUnifiedTaskEntry)
+    if (chatExcluded) {
+      return {
+        tasks: realRows.slice(filter.offset, filter.offset + filter.limit),
+        total: realTotal
+      }
+    }
     const chatRows = this.database.documentsTable.listChatAsTasks(window, 0).map(toChatTaskEntry)
     const merged = mergeByCreatedDesc([...realRows, ...chatRows])
     return {

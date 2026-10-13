@@ -97,7 +97,7 @@ export function createDocumentsClient(bridge: DeepchatBridge = getDeepchatBridge
       invokeRoute(bridge, documentsStatsRoute.name, input),
     createTasks: (input: z.input<typeof documentsTasksCreateRoute.input>) =>
       invokeRoute(bridge, documentsTasksCreateRoute.name, input),
-    listTasks: () => invokeRoute(bridge, documentsTasksListRoute.name, {}),
+    listTasks: () => invokeRoute(bridge, documentsTasksListRoute.name, { limit: 200 }),
     listTasksPaged: (input: z.input<typeof documentsTasksListRoute.input> = {}) =>
       invokeRoute(bridge, documentsTasksListRoute.name, input),
     listScanBatches: (input: z.input<typeof documentsTasksScanBatchesRoute.input> = {}) =>
