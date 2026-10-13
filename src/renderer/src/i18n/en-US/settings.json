@@ -363,6 +363,7 @@
       "status_done": "Done",
       "status_failed": "Failed",
       "colFile": "File",
+      "colRelativePath": "Relative Path",
       "colSource": "Source",
       "colType": "Type",
       "colStatus": "Status",

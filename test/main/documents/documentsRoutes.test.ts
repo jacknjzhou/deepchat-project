@@ -316,6 +316,7 @@ describe('documents route contracts', () => {
     const entry = {
       id: 't1',
       filePath: null,
+      relativePath: null,
       fileName: 'a.png',
       templateId: null,
       source: 'scheduled',
@@ -1103,6 +1104,7 @@ describe('documents unified task list and scanBatches handlers', () => {
         {
           id: 't1',
           filePath: null,
+          relativePath: null,
           fileName: 'a.png',
           templateId: null,
           source: 'scheduled',

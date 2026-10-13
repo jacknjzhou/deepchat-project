@@ -2870,6 +2870,7 @@
       "status_done": "Done",
       "status_failed": "Failed",
       "colFile": "File",
+      "colRelativePath": "檔案相對路徑",
       "colSource": "Source",
       "colType": "Type",
       "colStatus": "Status",

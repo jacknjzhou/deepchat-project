@@ -290,6 +290,7 @@ export const documentTaskSchema = z.object({
 export const unifiedTaskEntrySchema = z.object({
   id: z.string().min(1),
   filePath: z.string().min(1).nullable(),
+  relativePath: z.string().min(1).nullable(),
   fileName: z.string().min(1),
   templateId: z.string().min(1).nullable(),
   source: documentSourceSchema,

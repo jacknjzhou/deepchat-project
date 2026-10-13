@@ -255,6 +255,9 @@
           <thead class="border-b text-left text-xs text-muted-foreground">
             <tr>
               <th class="px-2 py-2 font-medium">{{ t('settings.documents.tasks.colFile') }}</th>
+              <th class="px-2 py-2 font-medium">
+                {{ t('settings.documents.tasks.colRelativePath') }}
+              </th>
               <th class="px-2 py-2 font-medium">{{ t('settings.documents.tasks.colSource') }}</th>
               <th class="px-2 py-2 font-medium">{{ t('settings.documents.tasks.colType') }}</th>
               <th class="px-2 py-2 font-medium">{{ t('settings.documents.tasks.colStatus') }}</th>
@@ -284,6 +287,9 @@
                 <span v-else class="truncate" :title="task.error ?? task.fileName">
                   {{ task.fileName }}
                 </span>
+              </td>
+              <td class="max-w-[200px] truncate px-2 py-2" :title="task.relativePath ?? ''">
+                {{ task.relativePath ?? '—' }}
               </td>
               <td class="px-2 py-2">
                 <DcBadge variant="outline">{{ taskSourceLabel(task.source) }}</DcBadge>
