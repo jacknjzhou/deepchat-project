@@ -3285,7 +3285,9 @@ export async function createMainProcessControl(dependencies: {
       listWatchedFiles: () => documentsRepository.listWatchedFiles(),
       upsertWatchedFile: (input) => documentsRepository.upsertWatchedFile(input),
       submit: async (input) => {
-        const result = await documentsDedupeSubmit(input)
+        // autoWatch 已在 expandFiles 中展开多发票合并件，这里直接走去重收口；
+        // 经 documentsDedupeSubmit 会对产物单页 PDF 做二次展开（N+1 次 pdfjs 解析白做）。
+        const result = await submitWithDedupe(documentsDedupeDeps, input)
         // 被内容去重拦截的自动监控文件：通知 renderer 提示用户（Task 7 订阅）
         if (result.duplicates.length > 0) {
           publishDeepchatEvent('documents.watch.duplicates', {
