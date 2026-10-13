@@ -4,6 +4,7 @@ import type { DocumentTask } from '@/documents/repository'
 import type { RecognitionTaskSubmitInput } from '@/documents/taskManager'
 import {
   filterDuplicateFiles,
+  mergeChatProductOutcomes,
   submitChatFileWithDedupe,
   submitWithDedupe
 } from '@/documents/contentDedupe'
@@ -201,5 +202,67 @@ describe('submitChatFileWithDedupe', () => {
     expect(deps.findFileDedupeNames).not.toHaveBeenCalled()
     expect(deps.insertFileDedupes).not.toHaveBeenCalled()
     expect(deps.bindFileDedupeDocument).not.toHaveBeenCalled()
+  })
+})
+
+describe('mergeChatProductOutcomes', () => {
+  const okOutcome = (documentId: string) => ({
+    status: 'ok' as const,
+    value: { documentId, document: { id: documentId }, meta: { issues: [] as string[] } }
+  })
+  const dupOutcome = (fileName: string, existingName: string) => ({
+    status: 'duplicate' as const,
+    fileName,
+    existingName
+  })
+
+  it('首个产物 duplicate + 第二个成功 → 返回 ok 与第二文档，issues 记录被拦截页', () => {
+    const merged = mergeChatProductOutcomes(
+      [dupOutcome('p1.pdf', 'existing.pdf'), okOutcome('doc-2')],
+      { split: true }
+    )
+    expect(merged).toEqual({
+      status: 'ok',
+      value: { documentId: 'doc-2', document: { id: 'doc-2' }, meta: { issues: [] } },
+      issues: [
+        'page 1 duplicate of existing document existing.pdf',
+        'merged multi-invoice pdf split into 1 documents'
+      ]
+    })
+  })
+
+  it('全部 duplicate → 返回首个 duplicate（无产物入库时整体拦截语义不变）', () => {
+    const merged = mergeChatProductOutcomes(
+      [dupOutcome('p1.pdf', 'a.pdf'), dupOutcome('p2.pdf', 'b.pdf')],
+      { split: true }
+    )
+    expect(merged).toEqual({ status: 'duplicate', fileName: 'p1.pdf', existingName: 'a.pdf' })
+  })
+
+  it('首个成功 + 后续 duplicate → 返回首文档且不丢失拦截页说明', () => {
+    const merged = mergeChatProductOutcomes([okOutcome('doc-1'), dupOutcome('p2.pdf', 'b.pdf')], {
+      split: true
+    })
+    expect(merged).toEqual({
+      status: 'ok',
+      value: { documentId: 'doc-1', document: { id: 'doc-1' }, meta: { issues: [] } },
+      issues: [
+        'page 2 duplicate of existing document b.pdf',
+        'merged multi-invoice pdf split into 1 documents'
+      ]
+    })
+  })
+
+  it('未拆分单文件成功 → issues 为空，不追加拆分与拦截说明', () => {
+    const merged = mergeChatProductOutcomes([okOutcome('doc-1')], { split: false })
+    expect(merged).toEqual({
+      status: 'ok',
+      value: { documentId: 'doc-1', document: { id: 'doc-1' }, meta: { issues: [] } },
+      issues: []
+    })
+  })
+
+  it('空产物 → empty（防御，由调用方抛错）', () => {
+    expect(mergeChatProductOutcomes([], { split: false })).toEqual({ status: 'empty' })
   })
 })

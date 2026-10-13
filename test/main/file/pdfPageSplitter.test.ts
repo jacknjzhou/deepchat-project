@@ -55,5 +55,7 @@ describe('splitPdfPagesToFile', () => {
     const b = await splitPdfPagesToFile(src, path.join(baseDir, 'det-b'))
     expect(sha256(await readFile(a[0]!))).toBe(sha256(await readFile(b[0]!)))
     expect(sha256(await readFile(a[1]!))).toBe(sha256(await readFile(b[1]!)))
+    // 页映射区分度：两页文本不同 → 产物哈希不同，锁定 p1 ← 源页 1 不退化
+    expect(sha256(await readFile(a[0]!))).not.toBe(sha256(await readFile(a[1]!)))
   })
 })

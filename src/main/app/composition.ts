@@ -214,6 +214,7 @@ import { expandSubmissionFiles, type InvoiceSplitDeps } from '@/documents/invoic
 import { splitPdfPagesToFile } from '@/file/adapters/pdfPageSplitter'
 import {
   filterDuplicateFiles,
+  mergeChatProductOutcomes,
   submitChatFileWithDedupe,
   submitWithDedupe,
   type DedupeSubmitDeps,
@@ -1841,30 +1842,22 @@ export async function createMainProcessControl(dependencies: {
           documentsSplitDeps
         )
         type ChatOutcome = Awaited<ReturnType<typeof extractAndInsert>>
-        type ChatValue = Extract<ChatOutcome, { status: 'ok' }>['value']
-        // 顺序=页序。首个命中去重的产物直接返回 duplicate（其后续产物本次不处理，与单文件
-        // 拦截语义一致）；全部成功时返回首个文档并在 meta.issues 注明拆分事实（工具层契约零改动）。
-        const issues: string[] = []
-        let first: ChatValue | null = null
+        // 顺序=页序：全部产物都过闸门，duplicate 不中断循环——已有产物入库后其余页被
+        // 拦截属部分成功语义，返回首个文档并在 meta.issues 逐条报告被拦截页（与 DB 实际
+        // 状态一致，工具层契约零改动）；全部被拦截（无任何产物入库）才整体返回 duplicate。
+        const outcomes: ChatOutcome[] = []
         for (const product of products) {
-          const outcome = await extractAndInsert(product)
-          if (outcome.status === 'duplicate') return outcome
-          if (first === null) {
-            first = outcome.value
-          } else {
-            issues.push(`additional invoice recognized: ${outcome.value.documentId}`)
-          }
+          outcomes.push(await extractAndInsert(product))
         }
-        if (first === null) {
+        const merged = mergeChatProductOutcomes(outcomes, { split: sourceOf.size > 0 })
+        if (merged.status === 'empty') {
           throw new Error('multi-invoice split produced no documents')
         }
-        if (sourceOf.size > 0) {
-          issues.push(`merged multi-invoice pdf split into ${products.length} documents`)
-        }
+        if (merged.status === 'duplicate') return merged
         return {
           status: 'ok',
-          document: first.document,
-          meta: { ...first.meta, issues: [...first.meta.issues, ...issues] }
+          document: merged.value.document,
+          meta: { ...merged.value.meta, issues: [...merged.value.meta.issues, ...merged.issues] }
         }
       },
       confirmDocument: async (input) => {

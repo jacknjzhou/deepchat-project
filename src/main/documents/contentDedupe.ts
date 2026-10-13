@@ -110,6 +110,11 @@ export type ChatDedupeOutcome<D> =
   | { status: 'duplicate'; fileName: string; existingName: string }
   | { status: 'ok'; value: D }
 
+export type ChatMultiProductMerge<D extends { documentId: string }> =
+  | { status: 'duplicate'; fileName: string; existingName: string }
+  | { status: 'ok'; value: D; issues: string[] }
+  | { status: 'empty' }
+
 /**
  * chat 单文件提交的内容去重（手动/定时批量提交走 submitWithDedupe）：
  * 提取前按哈希查 documents_file_dedupes，命中则拦截并返回 duplicate；
@@ -144,4 +149,50 @@ export async function submitChatFileWithDedupe<D extends { documentId: string }>
     deps.bindFileDedupeDocument(value.documentId, value.documentId)
   }
   return { status: 'ok', value }
+}
+
+/**
+ * chat 多产物（多发票拆分）闸门结果的合并，部分成功语义：
+ * - 任一产物入库成功 → 返回首个文档，issues 逐条记录被拦截页与后续文档（拆分时追加拆分说明）；
+ * - 全部被拦截（无任何产物入库）→ 返回首个 duplicate，整体拦截语义不变；
+ * - 空产物（理论不可达，防御）→ empty，由调用方抛错。
+ */
+export function mergeChatProductOutcomes<D extends { documentId: string }>(
+  outcomes: Array<ChatDedupeOutcome<D>>,
+  options: { split: boolean }
+): ChatMultiProductMerge<D> {
+  const issues: string[] = []
+  let first: D | null = null
+  let firstDuplicate: { fileName: string; existingName: string } | null = null
+  let okCount = 0
+  for (let idx = 0; idx < outcomes.length; idx++) {
+    const outcome = outcomes[idx]!
+    if (outcome.status === 'duplicate') {
+      issues.push(`page ${idx + 1} duplicate of existing document ${outcome.existingName}`)
+      if (firstDuplicate === null) {
+        firstDuplicate = { fileName: outcome.fileName, existingName: outcome.existingName }
+      }
+      continue
+    }
+    okCount += 1
+    if (first === null) {
+      first = outcome.value
+    } else {
+      issues.push(`additional invoice recognized: ${outcome.value.documentId}`)
+    }
+  }
+  if (first !== null) {
+    if (options.split) {
+      issues.push(`merged multi-invoice pdf split into ${okCount} documents`)
+    }
+    return { status: 'ok', value: first, issues }
+  }
+  if (firstDuplicate !== null) {
+    return {
+      status: 'duplicate',
+      fileName: firstDuplicate.fileName,
+      existingName: firstDuplicate.existingName
+    }
+  }
+  return { status: 'empty' }
 }
