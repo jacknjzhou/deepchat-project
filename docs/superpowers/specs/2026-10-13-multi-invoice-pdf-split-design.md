@@ -26,7 +26,7 @@
 expandSubmissionFiles(files, deps)
   ├─ 透传条件：非 PDF / 无文本层 / pageCount < 2 → 原样返回
   ├─ 检测命中 → pdf-lib 逐页导出单页 PDF → <userData>/documents_split/<uuid>/p{n}.pdf
-  │    物理文件名：<安全化stem>-p{n}.pdf
+  │    物理文件名：documents_split/<uuid>/p{n}.pdf
   │    任务显示名：<stem>（第n张）.pdf
   └─ 返回 { files: 展开后文件列表, sourceOf: Map<产物路径, 源文件路径> }
 ```
@@ -58,7 +58,7 @@ expandSubmissionFiles(files, deps)
 - 存放目录：`<userData>/documents_split/<uuid>/p{n}.pdf`（uuid 隔离每次提交）
 - 原始文件绝不移动或删除；产物文件由应用所有，作为拆分后任务的 `fileUris` 长期存在
 - 产物文件 GC：v1 不做（文档删除后产物文件成为孤儿，后续可选做启动期清理）；spec 记录为非目标
-- 确定性：pdf-lib 导出时不写入创建时间等元数据（不调用 `setCreationDate`/`setModificationDate`）→ 同页拆分产物字节确定，内容哈希可复现
+- 确定性：pdf-lib 导出时显式调用 `setCreationDate`/`setModificationDate` 固定为 epoch（不固定会被 pdf-lib 写入当前时间，破坏字节确定性）→ 同页拆分产物字节确定，内容哈希可复现
 
 ## 6. 去重交互
 
