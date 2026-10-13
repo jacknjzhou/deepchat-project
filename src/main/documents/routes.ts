@@ -25,6 +25,7 @@ import {
   documentsTasksClearFailedRoute,
   documentsTasksListRoute,
   documentsTasksRetryRoute,
+  documentsTasksScanBatchesRoute,
   documentsUpsertRoute
 } from '@shared/contracts/routes'
 import { REIMBURSEMENT_UNASSIGNED, type RecognitionDuplicate } from '@shared/documents'
@@ -212,8 +213,8 @@ export function createDocumentsRoutes(
     [
       documentsTasksListRoute.name,
       async (rawInput) => {
-        documentsTasksListRoute.input.parse(rawInput)
-        return documentsTasksListRoute.output.parse({ tasks: repository.listRecentTasks() })
+        const input = documentsTasksListRoute.input.parse(rawInput)
+        return documentsTasksListRoute.output.parse(repository.listUnifiedTasks(input))
       }
     ],
     [
@@ -234,6 +235,16 @@ export function createDocumentsRoutes(
         documentsTasksClearFailedRoute.input.parse(rawInput)
         return documentsTasksClearFailedRoute.output.parse({
           removed: repository.deleteFailedTasks()
+        })
+      }
+    ],
+    [
+      documentsTasksScanBatchesRoute.name,
+      async (rawInput) => {
+        const input = documentsTasksScanBatchesRoute.input.parse(rawInput)
+        return documentsTasksScanBatchesRoute.output.parse({
+          batches: repository.listScanBatches(input.limit, input.offset),
+          total: repository.countScanBatches()
         })
       }
     ],

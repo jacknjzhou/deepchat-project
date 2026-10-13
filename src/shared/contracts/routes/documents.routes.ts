@@ -277,12 +277,29 @@ export const documentTaskSchema = z.object({
   filePath: z.string().min(1),
   fileName: z.string().min(1),
   templateId: z.string().min(1),
+  source: documentSourceSchema,
   status: documentTaskStatusSchema,
   typeKey: z.string().min(1).nullable(),
   documentId: z.string().min(1).nullable(),
   error: z.string().nullable(),
   createdAt: timestampMsSchema,
   updatedAt: timestampMsSchema
+})
+
+/** 统一任务条目：识别任务与 chat 归档文档合并后的列表视图（Task 2 UnifiedTaskEntry 的契约面） */
+export const unifiedTaskEntrySchema = z.object({
+  id: z.string().min(1),
+  filePath: z.string().min(1).nullable(),
+  fileName: z.string().min(1),
+  templateId: z.string().min(1).nullable(),
+  source: documentSourceSchema,
+  status: documentTaskStatusSchema,
+  typeKey: z.string().min(1).nullable(),
+  documentId: z.string().min(1).nullable(),
+  error: z.string().nullable(),
+  createdAt: timestampMsSchema,
+  updatedAt: timestampMsSchema,
+  batchId: z.string().min(1).nullable()
 })
 
 /** 内容去重：提交时被拦截的重复文件（path 供自动监控登记使用，UI 只用 fileName/existingName） */
@@ -308,8 +325,37 @@ export const documentsTasksCreateRoute = defineRouteContract({
 
 export const documentsTasksListRoute = defineRouteContract({
   name: 'documents.tasks.list',
-  input: z.object({}),
-  output: z.object({ tasks: z.array(documentTaskSchema) })
+  input: z.object({
+    status: documentTaskStatusSchema.optional(),
+    source: documentSourceSchema.optional(),
+    batchId: z.string().min(1).optional(),
+    limit: z.number().int().min(1).max(200).default(50),
+    offset: z.number().int().min(0).default(0)
+  }),
+  output: z.object({
+    tasks: z.array(unifiedTaskEntrySchema),
+    total: z.number().int().nonnegative()
+  })
+})
+
+export const documentsTasksScanBatchesRoute = defineRouteContract({
+  name: 'documents.tasks.scanBatches',
+  input: z.object({
+    limit: z.number().int().min(1).max(200).default(50),
+    offset: z.number().int().min(0).default(0)
+  }),
+  output: z.object({
+    batches: z.array(
+      z.object({
+        batchId: z.string().min(1),
+        startedAt: timestampMsSchema,
+        total: z.number().int().nonnegative(),
+        done: z.number().int().nonnegative(),
+        failed: z.number().int().nonnegative()
+      })
+    ),
+    total: z.number().int().nonnegative()
+  })
 })
 
 export const documentsTasksRetryRoute = defineRouteContract({

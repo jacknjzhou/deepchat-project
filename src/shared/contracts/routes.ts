@@ -399,6 +399,7 @@ import {
   documentsStatsRoute,
   documentsTasksCreateRoute,
   documentsTasksListRoute,
+  documentsTasksScanBatchesRoute,
   documentsTasksRetryRoute,
   documentsTasksClearFailedRoute,
   documentsUpsertRoute
@@ -844,6 +845,7 @@ const DEEPCHAT_ROUTE_CATALOG_PART_1 = {
   [documentsStatsRoute.name]: documentsStatsRoute,
   [documentsTasksCreateRoute.name]: documentsTasksCreateRoute,
   [documentsTasksListRoute.name]: documentsTasksListRoute,
+  [documentsTasksScanBatchesRoute.name]: documentsTasksScanBatchesRoute,
   [documentsTasksRetryRoute.name]: documentsTasksRetryRoute,
   [documentsTasksClearFailedRoute.name]: documentsTasksClearFailedRoute,
   [documentsReimbursementGetConfigRoute.name]: documentsReimbursementGetConfigRoute,
