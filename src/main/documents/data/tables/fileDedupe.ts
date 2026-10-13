@@ -84,10 +84,10 @@ export class FileDedupeTable extends BaseTable {
     this.db.prepare('DELETE FROM documents_file_dedupe WHERE task_id = ?').run(taskId)
   }
 
-  bindDocument(taskId: string, documentId: string): void {
-    this.db
+  bindDocument(taskId: string, documentId: string): number {
+    return this.db
       .prepare('UPDATE documents_file_dedupe SET document_id = ? WHERE task_id = ?')
-      .run(documentId, taskId)
+      .run(documentId, taskId).changes
   }
 
   deleteByDocument(documentId: string): void {

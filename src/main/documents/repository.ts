@@ -105,7 +105,8 @@ export interface DocumentRepositoryTaskPort {
     }>
   ): void
   deleteFileDedupesByTask(taskId: string): void
-  bindFileDedupeDocument(taskId: string, documentId: string): void
+  /** Returns the number of hash rows bound (0 when the task has no rows left). */
+  bindFileDedupeDocument(taskId: string, documentId: string): number
 }
 
 const toTemplate = (row: DocumentTemplateRow): DocumentTemplate => ({
@@ -415,7 +416,7 @@ export class DocumentsRepository {
     this.database.fileDedupeTable.deleteByTask(taskId)
   }
 
-  bindFileDedupeDocument(taskId: string, documentId: string): void {
-    this.database.fileDedupeTable.bindDocument(taskId, documentId)
+  bindFileDedupeDocument(taskId: string, documentId: string): number {
+    return this.database.fileDedupeTable.bindDocument(taskId, documentId)
   }
 }

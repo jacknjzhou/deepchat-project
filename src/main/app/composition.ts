@@ -3159,6 +3159,7 @@ export async function createMainProcessControl(dependencies: {
     const recognitionTaskManager = new RecognitionTaskManager({
       repository: documentsRepository,
       extractor: documentExtractor,
+      sha256File,
       concurrency: resolveDocumentsModelSettings(
         readDocumentsModelSettings(providerSettings),
         managedStore.readConfig()

@@ -40,6 +40,7 @@ export interface RecognitionTaskManagerDeps {
   repository: DocumentRepositoryTaskPort
   extractor: RecognitionExtractorPort
   publishTaskUpdated: (payload: TaskPublishedPayload) => void
+  sha256File: (filePath: string) => Promise<string | null>
   concurrency?: number
   now?: () => number
 }
@@ -144,7 +145,10 @@ export class RecognitionTaskManager {
         status: 'draft',
         now: this.deps.now?.()
       })
-      this.deps.repository.bindFileDedupeDocument(runningTask.id, document.id)
+      const bound = this.deps.repository.bindFileDedupeDocument(runningTask.id, document.id)
+      if (bound === 0) {
+        await this.reRegisterDedupeAfterCleanup(runningTask, document.id)
+      }
       this.publish(
         this.deps.repository.updateTask(runningTask.id, {
           status: 'done',
@@ -159,6 +163,37 @@ export class RecognitionTaskManager {
         this.deps.repository.updateTask(runningTask.id, { status: 'failed', error: message }) ??
           runningTask
       )
+    }
+  }
+
+  // A retried task's hash rows were deleted by the failure hook (so a fresh
+  // submit of the same file can re-run), leaving bindFileDedupeDocument with
+  // no row to update. Re-register the hash so the document still participates
+  // in content dedupe. Best effort: the document is already stored, so a race
+  // with a concurrent submission (hash now owned elsewhere) must never turn a
+  // successful extraction into a failed task.
+  private async reRegisterDedupeAfterCleanup(
+    task: DocumentTask,
+    documentId: string
+  ): Promise<void> {
+    try {
+      const hash = await this.deps.sha256File(task.filePath)
+      if (!hash || this.deps.repository.findFileDedupeNames([hash]).has(hash)) {
+        return
+      }
+      this.deps.repository.insertFileDedupes([
+        {
+          contentHash: hash,
+          fileName: task.fileName,
+          filePath: task.filePath,
+          source: task.source,
+          taskId: task.id,
+          now: this.deps.now?.() ?? Date.now()
+        }
+      ])
+      this.deps.repository.bindFileDedupeDocument(task.id, documentId)
+    } catch {
+      // Ignore: dedupe registration is an optimization, not a task outcome.
     }
   }
 

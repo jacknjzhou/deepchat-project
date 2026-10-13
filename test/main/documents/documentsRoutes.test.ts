@@ -821,6 +821,7 @@ describeIfSqlite('documents stats and tasks route handlers', () => {
     }
     const taskManager = new RecognitionTaskManager({
       repository,
+      sha256File: async () => null,
       extractor: extractor as never,
       publishTaskUpdated: () => {}
     })
