@@ -699,14 +699,14 @@ function switchToTasks() {
 const TASK_SOURCES = ['manual', 'scheduled', 'chat'] as const
 const TASK_STATUSES = ['pending', 'running', 'done', 'failed'] as const
 
-const taskSourceOptions = [
+const taskSourceOptions = computed(() => [
   { value: undefined, label: t('settings.documents.tasks.sourceAll') },
   ...TASK_SOURCES.map((s) => ({ value: s, label: t(`settings.documents.tasks.source_${s}`) }))
-]
-const taskStatusOptions = [
+])
+const taskStatusOptions = computed(() => [
   { value: undefined, label: t('settings.documents.tasks.statusAll') },
   ...TASK_STATUSES.map((s) => ({ value: s, label: t(`settings.documents.tasks.status_${s}`) }))
-]
+])
 
 function taskSourceLabel(source: string): string {
   return t(`settings.documents.tasks.source_${source}`)

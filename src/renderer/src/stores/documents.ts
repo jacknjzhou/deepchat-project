@@ -356,6 +356,7 @@ export const useDocumentsStore = defineStore('documents', () => {
 
   async function clearFailedTaskList(client: DocumentsClient = defaultClient) {
     const removed = await client.clearFailedTasks()
+    tasks.value = tasks.value.filter((t) => t.status !== 'failed')
     await loadTaskList(taskPage.value, client)
     if (taskList.value.length === 0 && taskPage.value > 1) {
       await loadTaskList(taskPage.value - 1, client)
