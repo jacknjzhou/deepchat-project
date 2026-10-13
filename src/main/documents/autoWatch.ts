@@ -27,7 +27,11 @@ export interface AutoWatchDeps {
     taskId: string | null
     now: number
   }) => void
-  submit: (input: { files: DocumentExtractFileInput[]; source: 'scheduled' }) => Promise<{
+  submit: (input: {
+    files: DocumentExtractFileInput[]
+    source: 'scheduled'
+    relativePathByPath?: Record<string, string | null>
+  }) => Promise<{
     tasks: Array<{ id: string; filePath: string }>
     duplicates: Array<{ path: string }>
   }>
@@ -113,13 +117,23 @@ export class AutoWatchScheduler {
             mimeType: MIME_BY_EXTENSION[ext] ?? 'application/octet-stream'
           }
         })
+        const relBySource = new Map(
+          batch.map((f) => [path.normalize(f.path), computeRelativePath(f.path, config.dir)])
+        )
         // 多发票合并件在此展开为逐页产物；未注入 expandFiles 或未命中拆分时原样透传
         const expanded = this.deps.expandFiles
           ? await this.deps.expandFiles(batchInputs)
           : { files: batchInputs, sourceOf: new Map<string, string>() }
+        // 产物回溯源文件计算相对路径；未拆分文件以自身路径计算
+        const relativePathByPath: Record<string, string | null> = {}
+        for (const f of expanded.files) {
+          const source = expanded.sourceOf.get(f.path) ?? f.path
+          relativePathByPath[f.path] = relBySource.get(path.normalize(source)) ?? null
+        }
         const { tasks, duplicates } = await this.deps.submit({
           files: expanded.files,
-          source: 'scheduled'
+          source: 'scheduled',
+          relativePathByPath
         })
         // submit 返回按文件 1:1 产出任务；内容去重拦截的文件以 duplicates 报告。
         // 被拆分的源文件：产物已各自提交/拦截，源文件按 null taskId 登记 watched，
@@ -192,4 +206,12 @@ export class AutoWatchScheduler {
     await walk(rootDir, rootEntries)
     return files
   }
+}
+
+/** 计算文件相对扫描目录的层级路径（POSIX 分隔）；不在目录下/无法相对化返回 null */
+export const computeRelativePath = (filePath: string, scanDir: string): string | null => {
+  if (scanDir === '') return null
+  const rel = path.relative(path.normalize(scanDir), path.normalize(filePath))
+  if (rel === '' || rel.startsWith('..') || path.isAbsolute(rel)) return null
+  return rel.replace(/\\/g, '/')
 }

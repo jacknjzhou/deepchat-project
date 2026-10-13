@@ -12,6 +12,8 @@ export interface RecognitionTaskSubmitInput {
   // Omitted for scheduled submissions: the classifier resolves it per file.
   templateId?: string
   source: 'chat' | 'manual' | 'scheduled'
+  /** 仅 scheduled 提交携带：文件绝对路径 → 相对扫描目录的层级（快照落库） */
+  relativePathByPath?: Record<string, string | null>
 }
 
 export interface RecognitionExtractResult {
@@ -66,7 +68,8 @@ export class RecognitionTaskManager {
         // Scheduled submissions omit templateId; the row must always carry a
         // resolvable value ('auto' → classifier) so the DB binding never sees undefined.
         templateId: input.templateId ?? AUTO_TEMPLATE_ID,
-        source: input.source
+        source: input.source,
+        relativePath: input.relativePathByPath?.[file.path] ?? null
       }))
     )
     this.queue.push(...tasks)

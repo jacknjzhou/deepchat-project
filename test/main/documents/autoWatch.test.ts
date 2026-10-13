@@ -28,10 +28,15 @@ function makeDeps(overrides: Partial<Record<string, unknown>> = {}) {
       if (existing) existing.mtime_ms = input.mtimeMs
       else watched.push({ path: input.path, mtime_ms: input.mtimeMs })
     }),
-    submit: vi.fn(async (input: { files: Array<{ path: string }> }) => ({
-      tasks: input.files.map((f, i) => ({ id: `t${i + 1}`, filePath: f.path })),
-      duplicates: []
-    })),
+    submit: vi.fn(
+      async (input: {
+        files: Array<{ path: string }>
+        relativePathByPath?: Record<string, string | null>
+      }) => ({
+        tasks: input.files.map((f, i) => ({ id: `t${i + 1}`, filePath: f.path })),
+        duplicates: []
+      })
+    ),
     readdir: vi.fn(async () => files),
     stat: vi.fn(async (_p: string) => ({ mtimeMs: 111 })),
     now: vi.fn(() => 1_000_000)
@@ -284,6 +289,40 @@ describe('AutoWatchScheduler.runOnce', () => {
     expect(deps.expandFiles).toBeUndefined()
     // Windows 下 path.join 产出反斜杠分隔符，期望值按实际 join 结果构造
     expect(deps.submit.mock.calls[0][0].files[0].path).toBe(path.join('D:/scan', 'a.pdf'))
+  })
+
+  it('提交输入携带 relativePathByPath（按 config.dir 相对化）', async () => {
+    const deps = makeDeps()
+    const s = new AutoWatchScheduler(deps as never)
+    await s.runOnce()
+    const arg = deps.submit.mock.calls[0][0]
+    expect(arg.relativePathByPath).toBeDefined()
+    expect(arg.relativePathByPath[path.join('D:/scan', 'a.pdf')]).toBe('a.pdf')
+  })
+
+  it('拆分产物回溯源文件的相对路径', async () => {
+    const deps = makeDeps({
+      expandFiles: vi.fn(async (files: Array<{ path: string }>) => ({
+        files: files.map((f) => ({
+          ...f,
+          path: path.join('D:/split-out', `p-${path.basename(f.path)}`)
+        })),
+        sourceOf: new Map([[path.join('D:/split-out', 'p-a.pdf'), path.join('D:/scan', 'a.pdf')]])
+      }))
+    })
+    const s = new AutoWatchScheduler(deps as never)
+    await s.runOnce()
+    const arg = deps.submit.mock.calls[0][0]
+    expect(arg.relativePathByPath[path.join('D:/split-out', 'p-a.pdf')]).toBe('a.pdf')
+  })
+
+  it('computeRelativePath 语义', async () => {
+    const { computeRelativePath } = await import('@/documents/autoWatch')
+    expect(computeRelativePath('D:\\scan\\sub\\a.pdf', 'D:\\scan')).toBe('sub/a.pdf')
+    expect(computeRelativePath('D:\\scan\\a.pdf', 'D:\\scan')).toBe('a.pdf')
+    expect(computeRelativePath('D:\\other\\a.pdf', 'D:\\scan')).toBeNull()
+    expect(computeRelativePath('D:\\scan\\a.pdf', '')).toBeNull()
+    expect(computeRelativePath('C:\\scan\\a.pdf', 'D:\\scan')).toBeNull()
   })
 })
 
