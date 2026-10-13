@@ -31,6 +31,14 @@
         {{ t('settings.documents.reimbursement.viewDocuments') }}
       </DcButton>
       <DcButton
+        :variant="viewMode === 'tasks' ? 'default' : 'ghost'"
+        size="sm"
+        data-testid="archive-view-tasks"
+        @click="switchToTasks"
+      >
+        {{ t('settings.documents.tasks.title') }}
+      </DcButton>
+      <DcButton
         :variant="viewMode === 'reimbursement' ? 'default' : 'ghost'"
         size="sm"
         data-testid="archive-view-reimbursement"
@@ -206,6 +214,180 @@
       </div>
     </div>
 
+    <div v-if="viewMode === 'tasks'" class="flex min-h-0 flex-1 flex-col">
+      <div class="flex flex-wrap items-center gap-2 border-b px-6 py-2">
+        <DcButton
+          v-for="option in taskSourceOptions"
+          :key="option.value ?? 'all'"
+          size="sm"
+          :variant="store.taskFilter.source === option.value ? 'default' : 'ghost'"
+          :data-testid="`task-source-${option.value ?? 'all'}`"
+          @click="onTaskSourceChange(option.value)"
+        >
+          {{ option.label }}
+        </DcButton>
+        <DcButton
+          v-for="option in taskStatusOptions"
+          :key="option.value ?? 'all'"
+          size="sm"
+          :variant="store.taskFilter.status === option.value ? 'default' : 'ghost'"
+          :data-testid="`task-status-${option.value ?? 'all'}`"
+          @click="onTaskStatusChange(option.value)"
+        >
+          {{ option.label }}
+        </DcButton>
+        <select
+          v-if="store.taskFilter.source === 'scheduled'"
+          class="h-8 rounded-md border bg-background px-2 text-sm"
+          data-testid="task-batch-select"
+          :value="store.taskFilter.batchId ?? ''"
+          @change="onBatchChange(($event.target as HTMLSelectElement).value || undefined)"
+        >
+          <option value="">{{ t('settings.documents.tasks.allBatches') }}</option>
+          <option v-for="b in store.scanBatches" :key="b.batchId" :value="b.batchId">
+            {{ formatBatchLabel(b) }}
+          </option>
+        </select>
+      </div>
+
+      <div class="min-h-0 flex-1 overflow-auto px-6">
+        <table class="w-full text-sm" data-testid="task-list-table">
+          <thead class="border-b text-left text-xs text-muted-foreground">
+            <tr>
+              <th class="px-2 py-2 font-medium">{{ t('settings.documents.tasks.colFile') }}</th>
+              <th class="px-2 py-2 font-medium">{{ t('settings.documents.tasks.colSource') }}</th>
+              <th class="px-2 py-2 font-medium">{{ t('settings.documents.tasks.colType') }}</th>
+              <th class="px-2 py-2 font-medium">{{ t('settings.documents.tasks.colStatus') }}</th>
+              <th class="px-2 py-2 font-medium">
+                {{ t('settings.documents.archive.colCreatedAt') }}
+              </th>
+              <th class="px-2 py-2 font-medium">{{ t('settings.documents.tasks.colActions') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="task in store.taskList"
+              :key="task.id"
+              class="border-b"
+              :data-testid="`task-row-${task.id}`"
+            >
+              <td class="max-w-[240px] truncate px-2 py-2">
+                <button
+                  v-if="task.documentId"
+                  class="truncate hover:underline"
+                  :title="task.fileName"
+                  data-testid="task-open-document"
+                  @click="openTaskDocument(task)"
+                >
+                  {{ task.fileName }}
+                </button>
+                <span v-else class="truncate" :title="task.error ?? task.fileName">
+                  {{ task.fileName }}
+                </span>
+              </td>
+              <td class="px-2 py-2">
+                <DcBadge variant="outline">{{ taskSourceLabel(task.source) }}</DcBadge>
+              </td>
+              <td class="px-2 py-2 text-xs text-muted-foreground">
+                {{ typeNameFor(task.typeKey) ?? '—' }}
+              </td>
+              <td class="px-2 py-2">
+                <span class="flex items-center gap-1 text-xs">
+                  <Icon
+                    :icon="taskStatusIcon(task.status)"
+                    :class="task.status === 'running' ? 'animate-spin' : ''"
+                    class="size-3.5"
+                  />
+                  {{ taskStatusText(task.status) }}
+                </span>
+                <span
+                  v-if="task.error"
+                  class="block max-w-[200px] truncate text-xs text-destructive"
+                  :title="task.error"
+                >
+                  {{ task.error }}
+                </span>
+              </td>
+              <td class="px-2 py-2 text-xs text-muted-foreground">
+                {{ formatDateTime(task.createdAt) }}
+              </td>
+              <td class="px-2 py-2">
+                <DropdownMenu v-if="task.status === 'failed' && task.source !== 'chat'">
+                  <DropdownMenuTrigger as-child>
+                    <DcButton
+                      variant="outline"
+                      size="sm"
+                      :data-testid="`task-retry-${task.id}`"
+                      :disabled="retryingTaskIds.has(task.id)"
+                    >
+                      {{ t('settings.documents.archive.taskRetry') }}
+                    </DcButton>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      :data-testid="`task-retry-auto-${task.id}`"
+                      @click="onRetryTask(task, 'auto')"
+                    >
+                      {{ t('settings.documents.archive.autoClassify') }}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      v-for="tpl in store.templates"
+                      :key="tpl.id"
+                      @click="onRetryTask(task, tpl.id)"
+                    >
+                      {{ tpl.name }}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <p
+          v-if="store.taskList.length === 0 && !store.taskIsLoading"
+          class="py-10 text-center text-sm text-muted-foreground"
+          data-testid="task-list-empty"
+        >
+          {{ t('settings.documents.tasks.empty') }}
+        </p>
+      </div>
+
+      <div class="flex items-center justify-between border-t px-6 py-2">
+        <DcButton
+          v-if="taskFailedCount > 0"
+          variant="outline"
+          size="sm"
+          data-testid="task-view-clear-failed"
+          @click="onClearFailed"
+        >
+          {{ t('settings.documents.archive.taskClearFailed') }}
+        </DcButton>
+        <span v-else />
+        <div class="flex items-center gap-2 text-xs text-muted-foreground">
+          <span>{{ t('settings.documents.archive.totalCount', { total: store.taskTotal }) }}</span>
+          <DcButton
+            variant="outline"
+            size="sm"
+            :disabled="store.taskPage <= 1 || store.taskIsLoading"
+            data-testid="task-page-prev"
+            @click="store.loadTaskList(store.taskPage - 1)"
+          >
+            {{ t('settings.documents.archive.prevPage') }}
+          </DcButton>
+          <span>{{ store.taskPage }} / {{ store.taskTotalPages }}</span>
+          <DcButton
+            variant="outline"
+            size="sm"
+            :disabled="store.taskPage >= store.taskTotalPages || store.taskIsLoading"
+            data-testid="task-page-next"
+            @click="store.loadTaskList(store.taskPage + 1)"
+          >
+            {{ t('settings.documents.archive.nextPage') }}
+          </DcButton>
+        </div>
+      </div>
+    </div>
+
     <ReimbursementView v-else class="min-h-0 flex-1" />
 
     <DocumentDetailDialog
@@ -224,6 +406,12 @@ import { Icon } from '@iconify/vue'
 import { Input } from '@shadcn/components/ui/input'
 import { DcButton } from '@dc-ui/components/button'
 import { DcBadge } from '@dc-ui/components/badge'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from '@shadcn/components/ui/dropdown-menu'
 import { rendererNotificationManager } from '@renderer-notifications/rendererNotificationRuntime'
 import { createOcrClient } from '@api/OcrClient'
 import { useDocumentsStore } from '@/stores/documents'
@@ -238,7 +426,7 @@ import {
   resolveEffectiveReimbursement
 } from './documentArchive'
 import { summarizeDocument } from './documentSummary'
-import { documentsApi, type DocumentsTaskItem } from '@api/documentTasks'
+import { documentsApi } from '@api/documentTasks'
 import DocumentDetailDialog from './DocumentDetailDialog.vue'
 import DocumentRecognizeDialog from './DocumentRecognizeDialog.vue'
 import DocumentTaskStrip from './DocumentTaskStrip.vue'
@@ -259,7 +447,7 @@ const dateFromText = ref(defaultRange.from)
 const dateToText = ref(defaultRange.to)
 const keywordText = ref('')
 const activeTab = ref(ALL_TAB)
-const viewMode = ref<'documents' | 'reimbursement'>('documents')
+const viewMode = ref<'documents' | 'tasks' | 'reimbursement'>('documents')
 
 const selectedTypeKey = computed(() => store.archiveFilter.typeKey ?? null)
 
@@ -449,7 +637,7 @@ function typeNameFor(typeKey: string | null): string | null {
 const retryingTaskIds = ref(new Set<string>())
 const clearingFailedTasks = ref(false)
 
-async function onRetryTask(task: DocumentsTaskItem, templateId: string) {
+async function onRetryTask(task: { id: string }, templateId: string) {
   if (retryingTaskIds.value.has(task.id)) {
     return
   }
@@ -482,6 +670,117 @@ async function onClearFailedTasks() {
   clearingFailedTasks.value = true
   try {
     const removed = await store.clearFailedRecognitionTasks()
+    notifyTransient(
+      'success',
+      'documents.archive.taskClearFailedSuccess',
+      t('settings.documents.archive.taskClearFailedSuccess', { count: removed })
+    )
+  } catch (error) {
+    console.error('[DocumentsArchivePage] clear failed tasks error', error)
+    notifyTransient(
+      'error',
+      'documents.archive.taskClearFailedError',
+      t('settings.documents.archive.taskClearFailedError')
+    )
+  } finally {
+    clearingFailedTasks.value = false
+  }
+}
+
+function switchToTasks() {
+  viewMode.value = 'tasks'
+  void store.loadTaskList(1)
+  if (store.taskFilter.source === 'scheduled' && store.scanBatches.length === 0) {
+    void store.loadScanBatches()
+  }
+}
+
+const TASK_SOURCES = ['manual', 'scheduled', 'chat'] as const
+const TASK_STATUSES = ['pending', 'running', 'done', 'failed'] as const
+
+const taskSourceOptions = [
+  { value: undefined, label: t('settings.documents.tasks.sourceAll') },
+  ...TASK_SOURCES.map((s) => ({ value: s, label: t(`settings.documents.tasks.source_${s}`) }))
+]
+const taskStatusOptions = [
+  { value: undefined, label: t('settings.documents.tasks.statusAll') },
+  ...TASK_STATUSES.map((s) => ({ value: s, label: t(`settings.documents.tasks.status_${s}`) }))
+]
+
+function taskSourceLabel(source: string): string {
+  return t(`settings.documents.tasks.source_${source}`)
+}
+function taskStatusIcon(status: string): string {
+  if (status === 'running') return 'lucide:loader-2'
+  if (status === 'done') return 'lucide:check-circle-2'
+  if (status === 'failed') return 'lucide:x-circle'
+  return 'lucide:clock'
+}
+function taskStatusText(status: string): string {
+  if (status === 'running') return t('settings.documents.archive.taskRunning')
+  if (status === 'done') return t('settings.documents.archive.taskDone')
+  if (status === 'failed') return t('settings.documents.archive.taskFailed')
+  return t('settings.documents.archive.taskQueued')
+}
+
+const taskFailedCount = computed(() => store.taskList.filter((t) => t.status === 'failed').length)
+
+function formatDateTime(timestamp: number): string {
+  return new Date(timestamp).toLocaleString()
+}
+
+function onTaskSourceChange(value: 'chat' | 'manual' | 'scheduled' | undefined) {
+  store.taskFilter.source = value
+  if (value !== 'scheduled') {
+    store.taskFilter.batchId = undefined
+  }
+  void store.loadTaskList(1)
+  if (value === 'scheduled' && store.scanBatches.length === 0) {
+    void store.loadScanBatches()
+  }
+}
+function onTaskStatusChange(value: 'pending' | 'running' | 'done' | 'failed' | undefined) {
+  store.taskFilter.status = value
+  void store.loadTaskList(1)
+}
+function onBatchChange(batchId: string | undefined) {
+  store.taskFilter.batchId = batchId
+  void store.loadTaskList(1)
+}
+function formatBatchLabel(b: { startedAt: number; total: number; failed: number }): string {
+  return `${formatDateTime(b.startedAt)} · ${b.total}${
+    b.failed > 0 ? ` · ${t('settings.documents.tasks.failedCount', { failed: b.failed })}` : ''
+  }`
+}
+function openTaskDocument(task: { documentId: string | null }) {
+  if (!task.documentId) {
+    return
+  }
+  const existing = store.archiveDocuments.find((d) => d.id === task.documentId)
+  if (existing) {
+    openDetail(existing)
+    return
+  }
+  // The document may live outside the current archive page; fetch it on demand.
+  void documentsApi
+    .getDocument(task.documentId)
+    .then((result) => {
+      if (result.document) {
+        openDetail(result.document as DocumentRecord)
+      }
+    })
+    .catch((error) => {
+      console.error('[DocumentsArchivePage] open task document failed', error)
+    })
+}
+
+async function onClearFailed() {
+  if (clearingFailedTasks.value) {
+    return
+  }
+  clearingFailedTasks.value = true
+  try {
+    const removed = await store.clearFailedTaskList()
     notifyTransient(
       'success',
       'documents.archive.taskClearFailedSuccess',

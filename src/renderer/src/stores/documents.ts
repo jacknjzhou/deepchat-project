@@ -14,7 +14,9 @@ import type {
 import type { z } from 'zod'
 import type {
   documentsStatsEntrySchema,
+  documentsTasksScanBatchesRoute,
   documentsTemplateUpsertInputSchema,
+  unifiedTaskEntrySchema,
   ReimbursementConfig,
   ReimbursementTreeResult
 } from '@shared/contracts/routes'
@@ -226,6 +228,10 @@ export const useDocumentsStore = defineStore('documents', () => {
     }
     if (payload.status === 'done' || payload.status === 'failed') {
       scheduleArchiveRefresh()
+      // The tasks view refreshes alongside the archive once it has been opened.
+      if (taskList.value.length > 0 || taskPage.value > 1) {
+        scheduleTaskRefresh()
+      }
       // Once loaded, keep the reimbursement tree fresh for the session.
       if (reimbursementTree.value !== null) {
         scheduleReimbursementRefresh()
@@ -246,7 +252,7 @@ export const useDocumentsStore = defineStore('documents', () => {
   }
 
   async function retryRecognitionTask(
-    task: DocumentsTaskItem,
+    task: { id: string },
     options?: { templateId?: string },
     client: DocumentsClient = defaultClient
   ) {
@@ -271,6 +277,90 @@ export const useDocumentsStore = defineStore('documents', () => {
     const result = await client.clearFailedTasks()
     tasks.value = tasks.value.filter((t) => t.status !== 'failed')
     return result.removed
+  }
+
+  const TASK_PAGE_SIZE = 50
+  type UnifiedTaskItem = z.infer<typeof unifiedTaskEntrySchema>
+  type ScanBatchItem = z.infer<typeof documentsTasksScanBatchesRoute.output>['batches'][number]
+  type UnifiedSource = UnifiedTaskItem['source']
+
+  const taskList = ref<UnifiedTaskItem[]>([])
+  const taskTotal = ref(0)
+  const taskPage = ref(1)
+  const taskIsLoading = ref(false)
+  const taskLoadError = ref<string | null>(null)
+  const taskFilter = reactive({
+    source: undefined as UnifiedSource | undefined,
+    status: undefined as UnifiedTaskItem['status'] | undefined,
+    batchId: undefined as string | undefined
+  })
+  const scanBatches = ref<ScanBatchItem[]>([])
+  const taskTotalPages = computed(() => Math.max(1, Math.ceil(taskTotal.value / TASK_PAGE_SIZE)))
+
+  // Guards against out-of-order task-view responses: only the latest
+  // loadTaskList call may commit results or manage taskIsLoading.
+  let taskLoadSeq = 0
+  // Trailing-edge debounce so batch completion events refresh once, not per task.
+  const TASK_REFRESH_DEBOUNCE_MS = 300
+  let taskRefreshTimer: ReturnType<typeof setTimeout> | null = null
+
+  function scheduleTaskRefresh() {
+    if (taskRefreshTimer !== null) {
+      clearTimeout(taskRefreshTimer)
+    }
+    taskRefreshTimer = setTimeout(() => {
+      taskRefreshTimer = null
+      void loadTaskList(taskPage.value)
+    }, TASK_REFRESH_DEBOUNCE_MS)
+  }
+
+  async function loadTaskList(page = 1, client: DocumentsClient = defaultClient) {
+    const seq = ++taskLoadSeq
+    taskIsLoading.value = true
+    taskLoadError.value = null
+    try {
+      const result = await client.listTasksPaged({
+        status: taskFilter.status,
+        source: taskFilter.source,
+        batchId: taskFilter.batchId,
+        limit: TASK_PAGE_SIZE,
+        offset: (page - 1) * TASK_PAGE_SIZE
+      })
+      if (seq !== taskLoadSeq) {
+        return
+      }
+      taskList.value = result.tasks
+      taskTotal.value = result.total
+      taskPage.value = page
+    } catch (error) {
+      if (seq !== taskLoadSeq) {
+        return
+      }
+      console.error('[DocumentsStore] loadTaskList failed', error)
+      taskLoadError.value = 'settings.documents.tasks.loadFailed'
+    } finally {
+      if (seq === taskLoadSeq) {
+        taskIsLoading.value = false
+      }
+    }
+  }
+
+  async function loadScanBatches(client: DocumentsClient = defaultClient) {
+    try {
+      const result = await client.listScanBatches({ limit: 200, offset: 0 })
+      scanBatches.value = result.batches
+    } catch (error) {
+      console.error('[DocumentsStore] loadScanBatches failed', error)
+    }
+  }
+
+  async function clearFailedTaskList(client: DocumentsClient = defaultClient) {
+    const removed = await client.clearFailedTasks()
+    await loadTaskList(taskPage.value, client)
+    if (taskList.value.length === 0 && taskPage.value > 1) {
+      await loadTaskList(taskPage.value - 1, client)
+    }
+    return removed
   }
 
   function replaceArchiveDocument(document: DocumentRecord) {
@@ -466,6 +556,17 @@ export const useDocumentsStore = defineStore('documents', () => {
     loadArchiveDocuments,
     loadArchiveStats,
     loadArchiveTasks,
+    taskList,
+    taskTotal,
+    taskPage,
+    taskTotalPages,
+    taskIsLoading,
+    taskLoadError,
+    taskFilter,
+    scanBatches,
+    loadTaskList,
+    loadScanBatches,
+    clearFailedTaskList,
     handleTaskUpdated,
     createRecognitionTasks,
     retryRecognitionTask,

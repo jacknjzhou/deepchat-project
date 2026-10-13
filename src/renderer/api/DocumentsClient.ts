@@ -24,6 +24,7 @@ import {
   documentsTasksClearFailedRoute,
   documentsTasksListRoute,
   documentsTasksRetryRoute,
+  documentsTasksScanBatchesRoute,
   documentsUpsertRoute,
   type documentsListInputSchema,
   type documentsTemplateUpsertInputSchema,
@@ -97,6 +98,10 @@ export function createDocumentsClient(bridge: DeepchatBridge = getDeepchatBridge
     createTasks: (input: z.input<typeof documentsTasksCreateRoute.input>) =>
       invokeRoute(bridge, documentsTasksCreateRoute.name, input),
     listTasks: () => invokeRoute(bridge, documentsTasksListRoute.name, {}),
+    listTasksPaged: (input: z.input<typeof documentsTasksListRoute.input> = {}) =>
+      invokeRoute(bridge, documentsTasksListRoute.name, input),
+    listScanBatches: (input: z.input<typeof documentsTasksScanBatchesRoute.input> = {}) =>
+      invokeRoute(bridge, documentsTasksScanBatchesRoute.name, input),
     retryTask: (id: string, templateId?: string) =>
       invokeRoute(bridge, documentsTasksRetryRoute.name, {
         id,

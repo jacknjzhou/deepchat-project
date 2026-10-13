@@ -2851,7 +2851,30 @@
       "filesLimit": "Você pode selecionar até 20 arquivos",
       "colReimbursement": "Tipo de reembolso",
       "colGroup": "Grupo",
-      "reimbursementSetFailed": "Falha ao definir a classificação de reembolso"
+      "reimbursementSetFailed": "Falha ao definir a classificação de reembolso",
+      "prevPage": "Previous page",
+      "nextPage": "Next page"
+    },
+    "tasks": {
+      "title": "Tasks",
+      "loadFailed": "Failed to load tasks",
+      "empty": "No tasks",
+      "allBatches": "All batches",
+      "sourceAll": "All sources",
+      "source_manual": "Upload",
+      "source_scheduled": "Scan",
+      "source_chat": "Chat",
+      "statusAll": "All statuses",
+      "status_pending": "Queued",
+      "status_running": "Running",
+      "status_done": "Done",
+      "status_failed": "Failed",
+      "colFile": "File",
+      "colSource": "Source",
+      "colType": "Type",
+      "colStatus": "Status",
+      "colActions": "Actions",
+      "failedCount": "{failed} failed"
     },
     "reimbursement": {
       "viewDocuments": "Visualização de documentos",

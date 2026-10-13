@@ -344,7 +344,30 @@
       "filesLimit": "最多选择 20 个文件",
       "colReimbursement": "报销类型",
       "colGroup": "分组名称",
-      "reimbursementSetFailed": "报销归类设置失败"
+      "reimbursementSetFailed": "报销归类设置失败",
+      "prevPage": "上一页",
+      "nextPage": "下一页"
+    },
+    "tasks": {
+      "title": "任务",
+      "loadFailed": "任务加载失败",
+      "empty": "暂无任务",
+      "allBatches": "全部批次",
+      "sourceAll": "全部来源",
+      "source_manual": "手工上传",
+      "source_scheduled": "自动扫描",
+      "source_chat": "对话",
+      "statusAll": "全部状态",
+      "status_pending": "排队中",
+      "status_running": "识别中",
+      "status_done": "已完成",
+      "status_failed": "失败",
+      "colFile": "文件",
+      "colSource": "来源",
+      "colType": "类型",
+      "colStatus": "状态",
+      "colActions": "操作",
+      "failedCount": "{failed} 条失败"
     },
     "reimbursement": {
       "viewDocuments": "单据视图",

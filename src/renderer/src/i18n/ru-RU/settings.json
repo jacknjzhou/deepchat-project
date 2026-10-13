@@ -2851,7 +2851,30 @@
       "filesLimit": "Можно выбрать не более 20 файлов",
       "colReimbursement": "Тип возмещения",
       "colGroup": "Группа",
-      "reimbursementSetFailed": "Не удалось изменить классификацию возмещения"
+      "reimbursementSetFailed": "Не удалось изменить классификацию возмещения",
+      "prevPage": "Previous page",
+      "nextPage": "Next page"
+    },
+    "tasks": {
+      "title": "Tasks",
+      "loadFailed": "Failed to load tasks",
+      "empty": "No tasks",
+      "allBatches": "All batches",
+      "sourceAll": "All sources",
+      "source_manual": "Upload",
+      "source_scheduled": "Scan",
+      "source_chat": "Chat",
+      "statusAll": "All statuses",
+      "status_pending": "Queued",
+      "status_running": "Running",
+      "status_done": "Done",
+      "status_failed": "Failed",
+      "colFile": "File",
+      "colSource": "Source",
+      "colType": "Type",
+      "colStatus": "Status",
+      "colActions": "Actions",
+      "failedCount": "{failed} failed"
     },
     "reimbursement": {
       "viewDocuments": "Вид документов",
