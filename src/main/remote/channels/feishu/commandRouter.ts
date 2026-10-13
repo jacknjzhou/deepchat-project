@@ -169,7 +169,7 @@ export class FeishuCommandRouter {
               openResult.status === 'ok'
                 ? `Opened on desktop: ${this.formatSessionLabel(openResult.session)}`
                 : openResult.status === 'windowNotFound'
-                  ? 'Could not find a SRIBD Office Agent desktop window. Open SRIBD Office Agent and try /open again.'
+                  ? 'Could not find a Office Agent desktop window. Open Office Agent and try /open again.'
                   : 'No bound session. Send a message, /new, or /use first.'
             ]
           }
@@ -196,7 +196,7 @@ export class FeishuCommandRouter {
           return {
             replies: [
               [
-                'SRIBD Office Agent Feishu Remote',
+                'Office Agent Feishu Remote',
                 `Runtime: ${runtime.state}`,
                 `Default agent: ${defaultAgentId}`,
                 `Default workdir: ${normalizedWorkdir}`,
@@ -337,7 +337,7 @@ export class FeishuCommandRouter {
     return {
       replies: [
         [
-          `Agent switched to ${result.agent.agentName} [${result.agent.agentId}] (${result.agent.agentType === 'acp' ? 'ACP' : 'SRIBD Office Agent'}).`,
+          `Agent switched to ${result.agent.agentName} [${result.agent.agentId}] (${result.agent.agentType === 'acp' ? 'ACP' : 'Office Agent'}).`,
           `Started a new session: ${this.formatSessionLabel(result.session)}`,
           result.session.providerId
             ? `Provider / Model: ${result.session.providerId} / ${result.session.modelId || 'none'}`
@@ -490,7 +490,7 @@ export class FeishuCommandRouter {
       'Available agents:',
       ...agents.map(
         (agent) =>
-          `- ${agent.agentName} [${agent.agentId}] (${agent.agentType === 'acp' ? 'ACP' : 'SRIBD Office Agent'}${agent.source ? `, ${agent.source}` : ''})`
+          `- ${agent.agentName} [${agent.agentId}] (${agent.agentType === 'acp' ? 'ACP' : 'Office Agent'}${agent.source ? `, ${agent.source}` : ''})`
       )
     ].join('\n')
   }
@@ -523,20 +523,20 @@ export class FeishuCommandRouter {
   private formatStartMessage(isAuthorized: boolean): string {
     if (isAuthorized) {
       return [
-        'SRIBD Office Agent Feishu Remote is ready.',
+        'Office Agent Feishu Remote is ready.',
         'Send any message to continue the bound session, or /help for commands.'
       ].join('\n')
     }
 
     return [
-      'SRIBD Office Agent Feishu Remote is online.',
+      'Office Agent Feishu Remote is online.',
       'Pair first from a direct message with /pair <code> before using group control.'
     ].join('\n')
   }
 
   private formatHelpMessage(): string {
     return [
-      'SRIBD Office Agent Feishu Remote commands:',
+      'Office Agent Feishu Remote commands:',
       ...FEISHU_REMOTE_COMMANDS.map((item) => `/${item.command} - ${item.description}`),
       'Plain text sends to the current bound session unless a tool interaction is waiting.'
     ].join('\n')

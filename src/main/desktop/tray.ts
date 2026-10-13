@@ -35,7 +35,7 @@ export class TrayPresenter {
     }
 
     this.tray = new Tray(image)
-    this.tray.setToolTip('SRIBD办公智能体')
+    this.tray.setToolTip('办公智能体')
 
     // 获取当前系统语言
     const locale = this.settings.getLanguage()

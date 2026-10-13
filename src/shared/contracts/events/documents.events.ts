@@ -10,3 +10,9 @@ export const documentsTaskUpdatedEvent = defineEventContract({
     version: TimestampMsSchema
   })
 })
+
+/** 自动监控提交时被内容去重拦截的文件数量（renderer 用于提示用户） */
+export const documentsWatchDuplicatesEvent = defineEventContract({
+  name: 'documents.watch.duplicates',
+  payload: z.object({ count: z.number().int().nonnegative() })
+})

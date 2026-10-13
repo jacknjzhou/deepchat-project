@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 import {
   buildDefaultDateRangeTexts,
   buildFieldEditStates,
-  buildMoneyColumns,
   formatDateRangeToMs,
   formatDisplayValue,
   formatFieldValue,
@@ -106,40 +105,6 @@ describe('formatDisplayValue', () => {
 
   it('对象内嵌套数组递归可读化', () => {
     expect(formatDisplayValue({ skills: ['Java', 'Go'] })).toBe('skills: Java、Go')
-  })
-})
-
-describe('buildMoneyColumns', () => {
-  it('收集列表中出现过的金额类字段（跨类型按 key 去重）', () => {
-    const money = (key: string, label: string) => ({ ...field(key, label, 1) })
-    const documents = [
-      record({
-        fields: { total_amount: { value: 1, uncertain: false } }
-      }),
-      record({
-        id: 'd2',
-        typeKey: 'invoice_general',
-        templateId: 'tpl-2',
-        templateSnapshot: {
-          ...snapshot,
-          fields: [money('total_amount', '合计金额'), money('tax_amount', '税额')]
-        },
-        fields: {
-          total_amount: { value: 2, uncertain: false },
-          tax_amount: { value: 0.5, uncertain: true }
-        }
-      }),
-      record({
-        id: 'd3',
-        templateSnapshot: { ...snapshot, fields: [field('buyer', '购买方', 1)] },
-        fields: {}
-      })
-    ]
-    const columns = buildMoneyColumns(documents)
-    expect(columns).toEqual([
-      { key: 'total_amount', label: '价税合计' },
-      { key: 'tax_amount', label: '税额' }
-    ])
   })
 })
 

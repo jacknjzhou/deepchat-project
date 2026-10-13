@@ -69,7 +69,7 @@
     "moveAndDeleteAgent": "Pindahkan dan Hapus Agen",
     "moveConversation": "Pindahkan Percakapan",
     "agentType": {
-      "deepchat": "SRIBD Office Agent",
+      "deepchat": "Office Agent",
       "acp": "ACP"
     },
     "blockReason": {
@@ -84,7 +84,7 @@
       "draft": "Draf",
       "subagent": "Subagen"
     },
-    "deepChatTargetOnly": "Hanya agen SRIBD Office Agent yang dapat dipilih sebagai tujuan pemindahan. Percakapan ACP dapat dipindahkan ke SRIBD Office Agent, tetapi tidak ke ACP."
+    "deepChatTargetOnly": "Hanya agen Office Agent yang dapat dipilih sebagai tujuan pemindahan. Percakapan ACP dapat dipindahkan ke Office Agent, tetapi tidak ke ACP."
   },
   "deleteMessage": {
     "title": "Hapus pesan ini?",

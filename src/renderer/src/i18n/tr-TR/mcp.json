@@ -173,11 +173,11 @@
     },
     "buildInFileSystem": {
       "name": "Dosya Sistemi",
-      "desc": "SRIBD Office Agent öğesinin yerel dosya sistemiyle etkileşime girmesine izin verin."
+      "desc": "Office Agent öğesinin yerel dosya sistemiyle etkileşime girmesine izin verin."
     },
     "Artifacts": {
       "name": "Artifacts",
-      "desc": "SRIBD Office Agent'de daha zengin Artifacts üretin"
+      "desc": "Office Agent'de daha zengin Artifacts üretin"
     },
     "braveSearch": {
       "name": "Brave Ara",
@@ -197,15 +197,15 @@
     },
     "builtinKnowledge": {
       "name": "Yerleşik bilgi tabanı araması",
-      "desc": "SRIBD Office Agent SRIBD Office Agent belgeleri ve kılavuzları için yerleşik bilgi tabanında arama."
+      "desc": "Office Agent Office Agent belgeleri ve kılavuzları için yerleşik bilgi tabanında arama."
     },
     "deepchat-inmemory/custom-prompts-server": {
       "name": "Özel prompt",
-      "desc": "SRIBD Office Agent yerleşik özel prompts hizmeti"
+      "desc": "Office Agent yerleşik özel prompts hizmeti"
     },
     "deepchat-inmemory/deep-research-server": {
       "name": "Derin Araştırma",
-      "desc": "SRIBD Office Agent Bocha Arama tarafından desteklenen yerleşik derin araştırma. Uzun bağlamlı modeller tavsiye edilir."
+      "desc": "Office Agent Bocha Arama tarafından desteklenen yerleşik derin araştırma. Uzun bağlamlı modeller tavsiye edilir."
     },
     "deepchat-inmemory/auto-prompting-server": {
       "name": "Otomatik Şablon İstemi",
@@ -213,7 +213,7 @@
     },
     "deepchat-inmemory/conversation-search-server": {
       "name": "Konuşma Geçmişi Araması",
-      "desc": "SRIBD Office Agent geçmiş sohbetler ve mesajlar için yerleşik konuşma geçmişi araması."
+      "desc": "Office Agent geçmiş sohbetler ve mesajlar için yerleşik konuşma geçmişi araması."
     },
     "deepchat/apple-server": {
       "name": "macOS Sistem Asistanı",

@@ -288,9 +288,9 @@ describe('documents archive store', () => {
   })
 
   it('createRecognitionTasks 创建任务并插入列表头部', async () => {
-    createTasks.mockResolvedValue({ tasks: [makeTask()] })
+    createTasks.mockResolvedValue({ tasks: [makeTask()], duplicates: [] })
     const store = useDocumentsStore()
-    const created = await store.createRecognitionTasks({
+    const { created, duplicates } = await store.createRecognitionTasks({
       files: [{ path: 'C:\\a.png', name: 'a.png' }],
       templateId: 'auto'
     })
@@ -300,7 +300,22 @@ describe('documents archive store', () => {
       source: 'manual'
     })
     expect(created).toHaveLength(1)
+    expect(duplicates).toEqual([])
     expect(store.tasks[0]?.id).toBe('t1')
+  })
+
+  it('createRecognitionTasks 透传内容去重拦截的 duplicates', async () => {
+    createTasks.mockResolvedValue({
+      tasks: [],
+      duplicates: [{ fileName: 'b.pdf', existingName: 'a.pdf', path: 'C:\\b.pdf' }]
+    })
+    const store = useDocumentsStore()
+    const { created, duplicates } = await store.createRecognitionTasks({
+      files: [{ path: 'C:\\b.pdf', name: 'b.pdf' }],
+      templateId: 'auto'
+    })
+    expect(created).toHaveLength(0)
+    expect(duplicates).toEqual([{ fileName: 'b.pdf', existingName: 'a.pdf', path: 'C:\\b.pdf' }])
   })
 
   it('retryRecognitionTask 原位重置 failed 任务，不新建任务', async () => {

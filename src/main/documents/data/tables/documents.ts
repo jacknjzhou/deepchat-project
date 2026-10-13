@@ -24,7 +24,7 @@ export interface DocumentTableInsertInput {
   templateSnapshot: Record<string, unknown>
   fields: Record<string, unknown>
   fileUris: string[]
-  source: 'chat' | 'manual'
+  source: 'chat' | 'manual' | 'scheduled'
   sessionId: string | null
   status: 'draft' | 'confirmed'
   reimbursementOverride?: string | null
@@ -66,7 +66,7 @@ export class DocumentsTable extends BaseTable {
         template_snapshot_json TEXT NOT NULL DEFAULT '{}',
         fields_json TEXT NOT NULL DEFAULT '{}',
         file_uris_json TEXT NOT NULL DEFAULT '[]',
-        source TEXT NOT NULL CHECK(source IN ('chat', 'manual')),
+        source TEXT NOT NULL,
         session_id TEXT,
         reimbursement_override TEXT,
         reimbursement_group_override TEXT,
@@ -78,15 +78,73 @@ export class DocumentsTable extends BaseTable {
         ON documents(type_key, status, updated_at DESC);
       CREATE INDEX IF NOT EXISTS idx_documents_updated_at
         ON documents(updated_at DESC, id DESC);
+      CREATE INDEX IF NOT EXISTS idx_documents_source
+        ON documents(source, created_at DESC);
     `
   }
 
   getLatestVersion(): number {
-    return 1
+    return 2
   }
 
-  getMigrationSQL(_version: number): string | null {
-    return null
+  // v2: rebuild the table to drop the source CHECK constraint (SQLite cannot alter CHECK).
+  getMigrationSQL(version: number): string | null {
+    if (version !== 2) return null
+    return `
+      CREATE TABLE documents_v2 (
+        id TEXT PRIMARY KEY,
+        template_id TEXT NOT NULL,
+        type_key TEXT NOT NULL,
+        template_snapshot_json TEXT NOT NULL DEFAULT '{}',
+        fields_json TEXT NOT NULL DEFAULT '{}',
+        file_uris_json TEXT NOT NULL DEFAULT '[]',
+        source TEXT NOT NULL,
+        session_id TEXT,
+        reimbursement_override TEXT,
+        reimbursement_group_override TEXT,
+        status TEXT NOT NULL DEFAULT 'draft' CHECK(status IN ('draft', 'confirmed')),
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+      INSERT INTO documents_v2
+        (id, template_id, type_key, template_snapshot_json, fields_json,
+         file_uris_json, source, session_id, reimbursement_override,
+         reimbursement_group_override, status, created_at, updated_at)
+        SELECT id, template_id, type_key, template_snapshot_json, fields_json,
+               file_uris_json, source, session_id, reimbursement_override,
+               reimbursement_group_override, status, created_at, updated_at
+        FROM documents;
+      DROP TABLE documents;
+      ALTER TABLE documents_v2 RENAME TO documents;
+      CREATE INDEX IF NOT EXISTS idx_documents_type_key_status
+        ON documents(type_key, status, updated_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_documents_updated_at
+        ON documents(updated_at DESC, id DESC);
+      CREATE INDEX IF NOT EXISTS idx_documents_source
+        ON documents(source, created_at DESC);
+    `
+  }
+
+  // Ensure the table accepts scheduled-source rows; see
+  // DocumentTasksTable.ensureMigrated for the rationale (idempotent DDL detection,
+  // transactional rebuild). Assumes the startup repair has already added any missing
+  // columns before this runs. A trailing idempotent index guarantee covers databases
+  // migrated before the source index existed (see DocumentTasksTable.ensureMigrated).
+  ensureMigrated(): void {
+    if (!this.tableExists()) {
+      this.db.exec(this.getCreateTableSQL())
+      return
+    }
+    const ddl = this.db
+      .prepare(`SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?`)
+      .get(this.tableName) as { sql: string | null } | undefined
+    if (ddl?.sql && /CHECK\s*\(\s*source\s+IN/i.test(ddl.sql)) {
+      const sql = this.getMigrationSQL(2)
+      if (sql) this.db.transaction(() => this.db.exec(sql))()
+    }
+    this.db.exec(
+      'CREATE INDEX IF NOT EXISTS idx_documents_source ON documents(source, created_at DESC)'
+    )
   }
 
   private buildWhere(filter: DocumentListFilter): { where: string; params: unknown[] } {
@@ -131,6 +189,21 @@ export class DocumentsTable extends BaseTable {
     const row = this.db
       .prepare(`SELECT COUNT(*) AS count FROM documents ${where}`)
       .get(...params) as { count: number }
+    return row.count
+  }
+
+  listChatAsTasks(limit: number, offset: number): DocumentRow[] {
+    return this.db
+      .prepare(
+        `SELECT * FROM documents WHERE source = 'chat' ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?`
+      )
+      .all(limit, offset) as DocumentRow[]
+  }
+
+  countChatAsTasks(): number {
+    const row = this.db
+      .prepare(`SELECT COUNT(*) AS count FROM documents WHERE source = 'chat'`)
+      .get() as { count: number }
     return row.count
   }
 

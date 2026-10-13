@@ -377,6 +377,7 @@ import {
   cronJobsUpsertRoute
 } from './routes/cronJobs.routes'
 import {
+  documentAutoWatchChooseDirRoute,
   documentTemplatesDeleteRoute,
   documentTemplatesForkRoute,
   documentTemplatesGetRoute,
@@ -398,6 +399,7 @@ import {
   documentsStatsRoute,
   documentsTasksCreateRoute,
   documentsTasksListRoute,
+  documentsTasksScanBatchesRoute,
   documentsTasksRetryRoute,
   documentsTasksClearFailedRoute,
   documentsUpsertRoute
@@ -843,6 +845,7 @@ const DEEPCHAT_ROUTE_CATALOG_PART_1 = {
   [documentsStatsRoute.name]: documentsStatsRoute,
   [documentsTasksCreateRoute.name]: documentsTasksCreateRoute,
   [documentsTasksListRoute.name]: documentsTasksListRoute,
+  [documentsTasksScanBatchesRoute.name]: documentsTasksScanBatchesRoute,
   [documentsTasksRetryRoute.name]: documentsTasksRetryRoute,
   [documentsTasksClearFailedRoute.name]: documentsTasksClearFailedRoute,
   [documentsReimbursementGetConfigRoute.name]: documentsReimbursementGetConfigRoute,
@@ -851,6 +854,7 @@ const DEEPCHAT_ROUTE_CATALOG_PART_1 = {
   [documentsReimbursementSetOverrideRoute.name]: documentsReimbursementSetOverrideRoute,
   [documentsReimbursementSetGroupOverrideRoute.name]: documentsReimbursementSetGroupOverrideRoute,
   [documentsReimbursementExportRoute.name]: documentsReimbursementExportRoute,
+  [documentAutoWatchChooseDirRoute.name]: documentAutoWatchChooseDirRoute,
   [pluginsListRoute.name]: pluginsListRoute,
   [pluginsGetRoute.name]: pluginsGetRoute,
   [pluginsEnableRoute.name]: pluginsEnableRoute,

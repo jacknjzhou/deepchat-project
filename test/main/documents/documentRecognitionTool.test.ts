@@ -3,6 +3,7 @@ import {
   DocumentRecognitionToolHandler,
   documentRecognitionActionNeedsPermission
 } from '@/tool/agentTools/documentRecognitionTool'
+import type { AgentDocumentsToolPort } from '@/tool/runtimePorts'
 import { DOCUMENT_RECOGNITION_AGENT_TOOL_NAME } from '@shared/agentTools'
 
 const makePort = () => ({
@@ -16,16 +17,19 @@ const makePort = () => ({
       ]
     }
   ]),
-  extractAndDraft: vi.fn(async () => ({
-    document: {
-      id: 'd1',
-      typeKey: 'invoice_special',
-      status: 'draft',
-      fields: { invoice_code: { value: '123', uncertain: false } },
-      fileUris: ['/tmp/a.jpg']
-    },
-    meta: { route: 'vision', durationMs: 10, issues: [] }
-  })),
+  extractAndDraft: vi.fn(
+    async (): Promise<Awaited<ReturnType<AgentDocumentsToolPort['extractAndDraft']>>> => ({
+      status: 'ok',
+      document: {
+        id: 'd1',
+        typeKey: 'invoice_special',
+        status: 'draft',
+        fields: { invoice_code: { value: '123', uncertain: false } },
+        fileUris: ['/tmp/a.jpg']
+      },
+      meta: { route: 'vision', durationMs: 10, issues: [] }
+    })
+  ),
   confirmDocument: vi.fn(
     async (): Promise<{ id: string; status: string } | null> => ({
       id: 'd1',
@@ -68,6 +72,25 @@ describe('documentRecognitionTool', () => {
     const missing = await handler.call({ action: 'recognize' }, port)
     expect(missing.ok).toBe(false)
     expect(documentRecognitionActionNeedsPermission({ action: 'recognize' })).toBe(true)
+  })
+
+  it('recognize 内容重复时返回 DUPLICATE_CONTENT 错误并携带文件名', async () => {
+    const port = makePort()
+    port.extractAndDraft.mockResolvedValueOnce({
+      status: 'duplicate',
+      fileName: 'b.pdf',
+      existingName: 'a.pdf'
+    })
+    const result = await new DocumentRecognitionToolHandler().call(
+      { action: 'recognize', templateId: 'tpl-1', file: { path: '/tmp/b.pdf' } },
+      port
+    )
+    expect(result.ok).toBe(false)
+    expect(result.error?.code).toBe('DUPLICATE_CONTENT')
+    expect(result.error?.recoverable).toBe(true)
+    expect(result.error?.message).toContain('b.pdf')
+    expect(result.error?.message).toContain('a.pdf')
+    expect(result.data).toEqual({ fileName: 'b.pdf', existingName: 'a.pdf' })
   })
 
   it('confirm 需要 documentId；未找到返回错误', async () => {

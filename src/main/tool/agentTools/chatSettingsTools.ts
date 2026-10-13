@@ -32,11 +32,11 @@ const toggleSchema = z.strictObject({
 })
 
 const languageSchema = z.strictObject({
-  language: z.enum(REQUESTED_LOCALES).describe('SRIBD Office Agent language/locale.')
+  language: z.enum(REQUESTED_LOCALES).describe('Office Agent language/locale.')
 })
 
 const themeSchema = z.strictObject({
-  theme: z.enum(SUPPORTED_THEMES).describe('Theme mode for SRIBD Office Agent.')
+  theme: z.enum(SUPPORTED_THEMES).describe('Theme mode for Office Agent.')
 })
 
 const fontSizeSchema = z.strictObject({
@@ -211,7 +211,7 @@ export class ChatSettingsToolHandler {
     } catch (error) {
       return buildError(
         'apply_failed',
-        'Failed to apply SRIBD Office Agent toggle.',
+        'Failed to apply Office Agent toggle.',
         error instanceof Error ? error.message : String(error)
       )
     }
@@ -253,7 +253,7 @@ export class ChatSettingsToolHandler {
     } catch (error) {
       return buildError(
         'apply_failed',
-        'Failed to apply SRIBD Office Agent language.',
+        'Failed to apply Office Agent language.',
         error instanceof Error ? error.message : String(error)
       )
     }
@@ -291,7 +291,7 @@ export class ChatSettingsToolHandler {
     } catch (error) {
       return buildError(
         'apply_failed',
-        'Failed to apply SRIBD Office Agent theme.',
+        'Failed to apply Office Agent theme.',
         error instanceof Error ? error.message : String(error)
       )
     }
@@ -333,7 +333,7 @@ export class ChatSettingsToolHandler {
     } catch (error) {
       return buildError(
         'apply_failed',
-        'Failed to apply SRIBD Office Agent font size.',
+        'Failed to apply Office Agent font size.',
         error instanceof Error ? error.message : String(error)
       )
     }
@@ -417,7 +417,7 @@ export const buildChatSettingsToolDefinitions = (allowedTools: string[]): MCPToo
       type: 'function',
       function: {
         name: CHAT_SETTINGS_TOOL_NAMES.toggle,
-        description: 'Toggle a SRIBD Office Agent setting.',
+        description: 'Toggle a Office Agent setting.',
         parameters: toDeepChatJsonSchema(toggleSchema) as {
           type: string
           properties: Record<string, unknown>
@@ -427,7 +427,7 @@ export const buildChatSettingsToolDefinitions = (allowedTools: string[]): MCPToo
       server: {
         name: 'deepchat-settings',
         icons: 'settings',
-        description: 'SRIBD Office Agent settings control'
+        description: 'Office Agent settings control'
       }
     })
   }
@@ -438,7 +438,7 @@ export const buildChatSettingsToolDefinitions = (allowedTools: string[]): MCPToo
       type: 'function',
       function: {
         name: CHAT_SETTINGS_TOOL_NAMES.setLanguage,
-        description: 'Set SRIBD Office Agent language/locale.',
+        description: 'Set Office Agent language/locale.',
         parameters: toDeepChatJsonSchema(languageSchema) as {
           type: string
           properties: Record<string, unknown>
@@ -448,7 +448,7 @@ export const buildChatSettingsToolDefinitions = (allowedTools: string[]): MCPToo
       server: {
         name: 'deepchat-settings',
         icons: 'settings',
-        description: 'SRIBD Office Agent settings control'
+        description: 'Office Agent settings control'
       }
     })
   }
@@ -459,7 +459,7 @@ export const buildChatSettingsToolDefinitions = (allowedTools: string[]): MCPToo
       type: 'function',
       function: {
         name: CHAT_SETTINGS_TOOL_NAMES.setTheme,
-        description: 'Set SRIBD Office Agent theme mode.',
+        description: 'Set Office Agent theme mode.',
         parameters: toDeepChatJsonSchema(themeSchema) as {
           type: string
           properties: Record<string, unknown>
@@ -469,7 +469,7 @@ export const buildChatSettingsToolDefinitions = (allowedTools: string[]): MCPToo
       server: {
         name: 'deepchat-settings',
         icons: 'settings',
-        description: 'SRIBD Office Agent settings control'
+        description: 'Office Agent settings control'
       }
     })
   }
@@ -480,7 +480,7 @@ export const buildChatSettingsToolDefinitions = (allowedTools: string[]): MCPToo
       type: 'function',
       function: {
         name: CHAT_SETTINGS_TOOL_NAMES.setFontSize,
-        description: 'Set SRIBD Office Agent font size level.',
+        description: 'Set Office Agent font size level.',
         parameters: toDeepChatJsonSchema(fontSizeSchema) as {
           type: string
           properties: Record<string, unknown>
@@ -490,7 +490,7 @@ export const buildChatSettingsToolDefinitions = (allowedTools: string[]): MCPToo
       server: {
         name: 'deepchat-settings',
         icons: 'settings',
-        description: 'SRIBD Office Agent settings control'
+        description: 'Office Agent settings control'
       }
     })
   }
@@ -502,7 +502,7 @@ export const buildChatSettingsToolDefinitions = (allowedTools: string[]): MCPToo
       function: {
         name: CHAT_SETTINGS_TOOL_NAMES.open,
         description:
-          'Open SRIBD Office Agent settings only when the request cannot be fulfilled via other settings tools; do not call after the change is already applied.',
+          'Open Office Agent settings only when the request cannot be fulfilled via other settings tools; do not call after the change is already applied.',
         parameters: toDeepChatJsonSchema(openSchema) as {
           type: string
           properties: Record<string, unknown>
@@ -512,7 +512,7 @@ export const buildChatSettingsToolDefinitions = (allowedTools: string[]): MCPToo
       server: {
         name: 'deepchat-settings',
         icons: 'settings',
-        description: 'SRIBD Office Agent settings control'
+        description: 'Office Agent settings control'
       }
     })
   }

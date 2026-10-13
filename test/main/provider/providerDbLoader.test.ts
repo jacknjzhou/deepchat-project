@@ -81,6 +81,10 @@ describe('ProviderDbLoader', () => {
 
   const readMeta = () => JSON.parse(fs.readFileSync(getMetaFile(), 'utf-8'))
 
+  const enableOnlineRefresh = () => {
+    process.env.DEEPCHAT_PROVIDER_DB_ONLINE = '1'
+  }
+
   beforeEach(() => {
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'deepchat-provider-db-'))
     appRoot = path.join(tempRoot, 'app-root')
@@ -96,6 +100,7 @@ describe('ProviderDbLoader', () => {
     vi.unstubAllGlobals()
     delete process.env.PROVIDER_DB_TTL_HOURS
     delete process.env.PROVIDER_DB_URL
+    delete process.env.DEEPCHAT_PROVIDER_DB_ONLINE
   })
 
   afterEach(() => {
@@ -103,6 +108,7 @@ describe('ProviderDbLoader', () => {
     vi.restoreAllMocks()
     delete process.env.PROVIDER_DB_TTL_HOURS
     delete process.env.PROVIDER_DB_URL
+    delete process.env.DEEPCHAT_PROVIDER_DB_ONLINE
     fs.rmSync(tempRoot, { recursive: true, force: true })
   })
 
@@ -122,6 +128,7 @@ describe('ProviderDbLoader', () => {
   })
 
   it('initializes from cache and still triggers a startup refresh when cache is fresh', async () => {
+    enableOnlineRefresh()
     writeBuiltInDb(createAggregate(['builtin']))
     writeCachedDb(createAggregate(['openai']))
     const now = Date.now()
@@ -158,6 +165,7 @@ describe('ProviderDbLoader', () => {
   })
 
   it('skips the automatic startup refresh when privacy mode is enabled', async () => {
+    enableOnlineRefresh()
     writeBuiltInDb(createAggregate(['builtin']))
     writeCachedDb(createAggregate(['openai']))
 
@@ -175,6 +183,7 @@ describe('ProviderDbLoader', () => {
   })
 
   it('skips non-forced refreshes within the default 4-hour TTL', async () => {
+    enableOnlineRefresh()
     writeCachedDb(createAggregate(['openai']))
     const now = Date.now()
     writeMeta({
@@ -197,6 +206,7 @@ describe('ProviderDbLoader', () => {
   })
 
   it('treats 304 responses as fresh and avoids another fetch inside the TTL window', async () => {
+    enableOnlineRefresh()
     writeCachedDb(createAggregate(['openai']))
     const staleTimestamp = Date.now() - 10 * 3600 * 1000
     writeMeta({
@@ -235,6 +245,7 @@ describe('ProviderDbLoader', () => {
   })
 
   it('writes refreshed provider data and notifies catalog listeners on success', async () => {
+    enableOnlineRefresh()
     writeCachedDb(createAggregate(['openai']))
 
     const refreshedAggregate = createAggregate(['openai', 'anthropic'])
@@ -266,6 +277,7 @@ describe('ProviderDbLoader', () => {
   })
 
   it('uses the GitHub provider DB URL even when the legacy override env var is set', async () => {
+    enableOnlineRefresh()
     process.env.PROVIDER_DB_URL = 'https://cdn.example.invalid/provider-db.json'
     writeCachedDb(createAggregate(['openai']))
 
@@ -288,6 +300,7 @@ describe('ProviderDbLoader', () => {
   })
 
   it('keeps manual refresh available while privacy mode is enabled', async () => {
+    enableOnlineRefresh()
     writeCachedDb(createAggregate(['openai']))
 
     const refreshedAggregate = createAggregate(['openai', 'anthropic'])
@@ -313,6 +326,7 @@ describe('ProviderDbLoader', () => {
   })
 
   it('returns an error result and preserves the existing cache when refresh fails', async () => {
+    enableOnlineRefresh()
     const cachedAggregate = createAggregate(['openai'])
     writeCachedDb(cachedAggregate)
     const now = Date.now() - 10 * 3600 * 1000
@@ -334,5 +348,57 @@ describe('ProviderDbLoader', () => {
     expect(result.message).toBe('network down')
     expect(JSON.parse(fs.readFileSync(getCacheFile(), 'utf-8'))).toEqual(cachedAggregate)
     expect(readMeta().lastAttemptedAt).toBeGreaterThan(now)
+  })
+
+  it('uses the built-in snapshot only by default and purges the user cache', async () => {
+    writeBuiltInDb(createAggregate(['builtin']))
+    writeCachedDb(createAggregate(['openai']))
+
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+
+    const ProviderDbLoader = await importLoader()
+    const loader = new ProviderDbLoader()
+
+    await loader.initialize()
+
+    expect(loader.getDb()?.providers).toHaveProperty('builtin')
+    expect(loader.getDb()?.providers).not.toHaveProperty('openai')
+    expect(fs.existsSync(getCacheFile())).toBe(false)
+    expect(fs.existsSync(getMetaFile())).toBe(false)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('skips even forced refreshes by default while remote fetch is disabled', async () => {
+    writeBuiltInDb(createAggregate(['builtin']))
+
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+
+    const ProviderDbLoader = await importLoader()
+    const loader = new ProviderDbLoader()
+
+    const result = await loader.refreshIfNeeded(true)
+
+    expect(result.status).toBe('skipped')
+    expect(result.message).toBe('remote fetch disabled')
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('treats non-truthy DEEPCHAT_PROVIDER_DB_ONLINE values as disabled', async () => {
+    writeBuiltInDb(createAggregate(['builtin']))
+    process.env.DEEPCHAT_PROVIDER_DB_ONLINE = '0'
+
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+
+    const ProviderDbLoader = await importLoader()
+    const loader = new ProviderDbLoader()
+
+    const result = await loader.refreshIfNeeded(true)
+
+    expect(result.status).toBe('skipped')
+    expect(result.message).toBe('remote fetch disabled')
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 })

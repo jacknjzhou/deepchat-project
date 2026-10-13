@@ -483,8 +483,12 @@ describe('DocumentDetailDialog', () => {
     it('报销类型与分组初值来自单据快照', async () => {
       stubStore.reimbursementConfig = makeReimbursementConfig()
       const auto = await setup()
-      expect(categorySelectOf(auto.wrapper).element.value).toBe('__auto__')
+      // 未设置 override 时按 typeKey 联动回显生效类别
+      expect(categorySelectOf(auto.wrapper).element.value).toBe('cat-a')
       expect(groupSelectOf(auto.wrapper).element.value).toBe('__none__')
+
+      const unmapped = await setup({ typeKey: 'receipt' })
+      expect(categorySelectOf(unmapped.wrapper).element.value).toBe('__auto__')
 
       const overridden = await setup({
         reimbursementOverride: 'cat-a',
@@ -535,7 +539,8 @@ describe('DocumentDetailDialog', () => {
       await category.setValue('__auto__')
       await flushPromises()
       expect(stubStore.setReimbursementOverride).toHaveBeenCalledWith('d1', null)
-      expect(category.element.value).toBe('__auto__')
+      // 清除 override 后按 typeKey 联动回显生效类别
+      expect(category.element.value).toBe('cat-a')
       await category.setValue('__unassigned__')
       await flushPromises()
       expect(stubStore.setReimbursementOverride).toHaveBeenCalledWith('d1', 'unassigned')
@@ -584,7 +589,8 @@ describe('DocumentDetailDialog', () => {
       expect(wrapper.get('[data-testid="detail-feedback"]').text()).toContain(
         'settings.documents.archive.reimbursementSetFailed'
       )
-      expect(category.element.value).toBe('__auto__')
+      // 回退到变更前的显示值（未设置 override 时为联动解析的类别）
+      expect(category.element.value).toBe('cat-a')
       expect(groupSelectOf(wrapper).element.value).toBe('grp-1')
     })
 
@@ -620,10 +626,11 @@ describe('DocumentDetailDialog', () => {
       expect(stubStore.loadReimbursementConfig).not.toHaveBeenCalled()
     })
 
-    it('陈旧覆盖 id 播种为自动并按联动显示分组', async () => {
+    it('陈旧覆盖 id 按联动回退显示类别并显示分组', async () => {
       stubStore.reimbursementConfig = makeReimbursementConfig()
       const { wrapper } = await setup({ reimbursementOverride: 'cat-stale' })
-      expect(categorySelectOf(wrapper).element.value).toBe('__auto__')
+      // 失效 override 归档语义回退 typeKey 联动解析
+      expect(categorySelectOf(wrapper).element.value).toBe('cat-a')
       const group = groupSelectOf(wrapper)
       expect(group.findAll('option').map((option) => option.element.value)).toEqual([
         '__none__',

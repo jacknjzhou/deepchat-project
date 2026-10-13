@@ -9,6 +9,7 @@ import type { documentsTemplateUpsertInputSchema } from '@shared/contracts/route
 import type { DocumentsDatabase } from './data/database'
 import type { DocumentRow, DocumentTableInsertInput } from './data/tables/documents'
 import type { DocumentTaskRow } from './data/tables/documentTasks'
+import type { WatchedFileRow } from './data/tables/watchedFiles'
 import type {
   DocumentTemplateRow,
   DocumentTemplateTableUpsertInput
@@ -24,7 +25,7 @@ export interface DocumentInsertInput {
   templateSnapshot: DocumentTemplate
   fields: Record<string, { value: unknown; uncertain: boolean }>
   fileUris: string[]
-  source: 'chat' | 'manual'
+  source: 'chat' | 'manual' | 'scheduled'
   sessionId: string | null
   status: 'draft' | 'confirmed'
   now?: number
@@ -47,13 +48,46 @@ export interface DocumentTask {
   filePath: string
   fileName: string
   templateId: string
-  source: 'chat' | 'manual'
+  source: 'chat' | 'manual' | 'scheduled'
   status: DocumentTaskStatus
   typeKey: string | null
   documentId: string | null
   error: string | null
   createdAt: number
   updatedAt: number
+  relativePath: string | null
+}
+
+export interface UnifiedTaskEntry {
+  id: string
+  filePath: string | null
+  relativePath: string | null
+  fileName: string
+  templateId: string | null
+  source: 'chat' | 'manual' | 'scheduled'
+  status: DocumentTaskStatus
+  typeKey: string | null
+  documentId: string | null
+  error: string | null
+  createdAt: number
+  updatedAt: number
+  batchId: string | null
+}
+
+export interface UnifiedTaskListFilter {
+  status?: DocumentTaskStatus
+  source?: 'chat' | 'manual' | 'scheduled'
+  batchId?: string
+  limit: number
+  offset: number
+}
+
+export interface ScanBatchSummary {
+  batchId: string
+  startedAt: number
+  total: number
+  done: number
+  failed: number
 }
 
 export interface DocumentRepositoryTaskPort {
@@ -63,7 +97,8 @@ export interface DocumentRepositoryTaskPort {
       filePath: string
       fileName: string
       templateId: string
-      source?: 'chat' | 'manual'
+      source?: 'chat' | 'manual' | 'scheduled'
+      relativePath?: string | null
     }>
   ): DocumentTask[]
   updateTask(
@@ -87,11 +122,28 @@ export interface DocumentRepositoryTaskPort {
     templateSnapshot: unknown
     fields: Record<string, { value: unknown; uncertain: boolean }>
     fileUris: string[]
-    source: 'chat' | 'manual'
+    source: 'chat' | 'manual' | 'scheduled'
     sessionId: string | null
     status: 'draft' | 'confirmed'
     now?: number
   }): { id: string }
+  listUnifiedTasks(filter: UnifiedTaskListFilter): { tasks: UnifiedTaskEntry[]; total: number }
+  listScanBatches(limit: number, offset: number): ScanBatchSummary[]
+  countScanBatches(): number
+  findFileDedupeNames(hashes: string[]): Map<string, string>
+  insertFileDedupes(
+    rows: Array<{
+      contentHash: string
+      fileName: string
+      filePath: string
+      source: string
+      taskId: string
+      now: number
+    }>
+  ): void
+  deleteFileDedupesByTask(taskId: string): void
+  /** Returns the number of hash rows bound (0 when the task has no rows left). */
+  bindFileDedupeDocument(taskId: string, documentId: string): number
 }
 
 const toTemplate = (row: DocumentTemplateRow): DocumentTemplate => ({
@@ -138,8 +190,58 @@ const toTask = (row: DocumentTaskRow): DocumentTask => ({
   documentId: row.document_id,
   error: row.error,
   createdAt: row.created_at,
-  updatedAt: row.updated_at
+  updatedAt: row.updated_at,
+  relativePath: row.relative_path
 })
+
+const UNKNOWN_TASK_FILE_NAME = '(未知文件)'
+
+const toUnifiedTaskEntry = (task: DocumentTask): UnifiedTaskEntry => ({
+  id: task.id,
+  filePath: task.filePath,
+  relativePath: task.relativePath,
+  fileName: task.fileName,
+  templateId: task.templateId,
+  source: task.source,
+  status: task.status,
+  typeKey: task.typeKey,
+  documentId: task.documentId,
+  error: task.error,
+  createdAt: task.createdAt,
+  updatedAt: task.updatedAt,
+  batchId: task.batchId
+})
+
+const toChatTaskEntry = (row: DocumentRow): UnifiedTaskEntry => {
+  let rawPath: string | null = null
+  try {
+    const uris = JSON.parse(row.file_uris_json) as unknown
+    rawPath = Array.isArray(uris) && typeof uris[0] === 'string' ? uris[0] : null
+  } catch {
+    rawPath = null
+  }
+  const base = rawPath?.split(/[\\/]/).pop() ?? ''
+  return {
+    id: row.id,
+    filePath: rawPath,
+    relativePath: null,
+    fileName: base || UNKNOWN_TASK_FILE_NAME,
+    templateId: null,
+    source: 'chat',
+    status: 'done',
+    typeKey: row.type_key,
+    documentId: row.id,
+    error: null,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    batchId: null
+  }
+}
+
+const mergeByCreatedDesc = (entries: UnifiedTaskEntry[]): UnifiedTaskEntry[] =>
+  // 同毫秒按 id DESC 稳定排序，与两表 SQL 窗口（created_at DESC, id DESC）一致，
+  // 否则平局条目跨页归并会不重不漏失败。
+  entries.sort((a, b) => b.createdAt - a.createdAt || (a.id > b.id ? -1 : a.id < b.id ? 1 : 0))
 
 export class DocumentsRepository {
   constructor(private readonly database: DocumentsDatabase) {}
@@ -269,7 +371,11 @@ export class DocumentsRepository {
   }
 
   deleteDocument(id: string): void {
-    this.database.documentsTable.delete(id)
+    // 文档删除时级联清理其内容哈希行：手动重传同内容可再次识别。
+    this.database.getDatabase().transaction(() => {
+      this.database.documentsTable.delete(id)
+      this.database.fileDedupeTable.deleteByDocument(id)
+    })()
   }
 
   countDocumentsByTemplateId(templateId: string): number {
@@ -318,10 +424,19 @@ export class DocumentsRepository {
       filePath: string
       fileName: string
       templateId: string
-      source?: 'chat' | 'manual'
+      source?: 'chat' | 'manual' | 'scheduled'
+      relativePath?: string | null
     }>
   ): DocumentTask[] {
     return this.database.documentTasksTable.insertBatch(inputs).map(toTask)
+  }
+
+  listScheduledTasksWithoutRelativePath(): DocumentTask[] {
+    return this.database.documentTasksTable.listScheduledWithoutRelativePath().map(toTask)
+  }
+
+  updateTaskRelativePath(id: string, relativePath: string): void {
+    this.database.documentTasksTable.updateRelativePath(id, relativePath)
   }
 
   updateTask(
@@ -361,5 +476,93 @@ export class DocumentsRepository {
 
   countTaskBatch(batchId: string): { done: number; total: number } {
     return this.database.documentTasksTable.countBatch(batchId)
+  }
+
+  listWatchedFiles(): WatchedFileRow[] {
+    return this.database.watchedFilesTable.listAll()
+  }
+
+  upsertWatchedFile(input: {
+    path: string
+    mtimeMs: number
+    taskId: string | null
+    now?: number
+  }): void {
+    this.database.watchedFilesTable.upsert(input)
+  }
+
+  findFileDedupeNames(hashes: string[]): Map<string, string> {
+    return this.database.fileDedupeTable.findByHashes(hashes)
+  }
+
+  insertFileDedupes(
+    rows: Array<{
+      contentHash: string
+      fileName: string
+      filePath: string
+      source: string
+      taskId: string
+      now: number
+    }>
+  ): void {
+    this.database.fileDedupeTable.insertAll(rows)
+  }
+
+  deleteFileDedupesByTask(taskId: string): void {
+    this.database.fileDedupeTable.deleteByTask(taskId)
+  }
+
+  bindFileDedupeDocument(taskId: string, documentId: string): number {
+    return this.database.fileDedupeTable.bindDocument(taskId, documentId)
+  }
+
+  listUnifiedTasks(filter: UnifiedTaskListFilter): { tasks: UnifiedTaskEntry[]; total: number } {
+    // chat 恒为 status='done'：非 done 状态过滤下直接早退，避免可达的「chat×失败」误导组合
+    const chatExcluded = Boolean(filter.status && filter.status !== 'done')
+    if (filter.source === 'chat') {
+      if (chatExcluded) return { tasks: [], total: 0 }
+      const rows = this.database.documentsTable.listChatAsTasks(filter.limit, filter.offset)
+      return {
+        tasks: rows.map(toChatTaskEntry),
+        total: this.database.documentsTable.countChatAsTasks()
+      }
+    }
+    const realTotal = this.database.documentTasksTable.countFiltered(filter)
+    if (filter.source === 'manual' || filter.source === 'scheduled') {
+      const rows = this.database.documentTasksTable.listFiltered(filter)
+      return { tasks: rows.map(toTask).map(toUnifiedTaskEntry), total: realTotal }
+    }
+    // 混排：两表各取 [0, offset+limit) 窗口，内存归并后切页（数量级下无性能问题）
+    const window = filter.offset + filter.limit
+    const realRows = this.database.documentTasksTable
+      .listFiltered({ ...filter, limit: window, offset: 0 })
+      .map(toTask)
+      .map(toUnifiedTaskEntry)
+    if (chatExcluded) {
+      return {
+        tasks: realRows.slice(filter.offset, filter.offset + filter.limit),
+        total: realTotal
+      }
+    }
+    const chatRows = this.database.documentsTable.listChatAsTasks(window, 0).map(toChatTaskEntry)
+    const merged = mergeByCreatedDesc([...realRows, ...chatRows])
+    return {
+      tasks: merged.slice(filter.offset, filter.offset + filter.limit),
+      total: realTotal + this.database.documentsTable.countChatAsTasks()
+    }
+  }
+
+  listScanBatches(limit: number, offset: number): ScanBatchSummary[] {
+    return this.database.documentTasksTable.listScanBatches(limit, offset).map((b) => ({
+      batchId: b.batch_id,
+      startedAt: b.started_at,
+      total: b.total,
+      done: b.done,
+      failed: b.failed
+    }))
+  }
+
+  countScanBatches(): number {
+    return this.database.documentTasksTable.countScanBatches()
   }
 }

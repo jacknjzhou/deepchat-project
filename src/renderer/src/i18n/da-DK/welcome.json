@@ -2,7 +2,7 @@
   "steps": {
     "welcome": {
       "title": "Velkomst",
-      "description": "Lad os begynde at konfigurere SRIBD Office Agent"
+      "description": "Lad os begynde at konfigurere Office Agent"
     },
     "provider": {
       "title": "Udbyder",
@@ -17,7 +17,7 @@
       "description": "Alt er klar, og du kan starte!"
     }
   },
-  "title": "Velkommen til SRIBD Office Agent",
+  "title": "Velkommen til Office Agent",
   "description": "Vi guider dig gennem opsætningen.",
   "provider": {
     "select": "Vælg en udbyder",
@@ -35,7 +35,7 @@
     "back": "Tilbage"
   },
   "page": {
-    "title": "Velkommen til SRIBD Office Agent",
+    "title": "Velkommen til Office Agent",
     "description": "Tilslut en modeludbyder for at komme i gang",
     "guide": {
       "title": "Opsætningsguide",
@@ -72,8 +72,8 @@
   },
   "agentPage": {
     "title": "Vælg en agent for at begynde at skabe",
-    "deepchatType": "SRIBD Office Agent",
+    "deepchatType": "Office Agent",
     "acpType": "ACP-agent",
-    "manageAgents": "Administrer SRIBD Office Agent-agenter"
+    "manageAgents": "Administrer Office Agent-agenter"
   }
 }

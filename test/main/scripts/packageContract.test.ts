@@ -401,13 +401,13 @@ describe('CI package contract', () => {
     const runCommand = vi.fn(async (command: string, args: string[]) => {
       if (command === '/usr/bin/unzip') {
         return {
-          stdout: 'SRIBD办公智能体.app/\nSRIBD办公智能体.app/Contents/Info.plist\n',
+          stdout: '办公智能体.app/\n办公智能体.app/Contents/Info.plist\n',
           stderr: ''
         }
       }
       expect(command).toBe('/usr/bin/ditto')
       extractionRoot = args.at(-1)!
-      await mkdir(path.join(extractionRoot, 'SRIBD办公智能体.app'))
+      await mkdir(path.join(extractionRoot, '办公智能体.app'))
       return { stdout: '', stderr: '' }
     })
     const verifyCuaMacHelper = vi.fn(async () => {})
@@ -427,7 +427,7 @@ describe('CI package contract', () => {
       expect.any(Object)
     )
     expect(extractionRoot).not.toBe('')
-    const extractedAppPath = path.join(extractionRoot, 'SRIBD办公智能体.app')
+    const extractedAppPath = path.join(extractionRoot, '办公智能体.app')
     expect(verifyCuaMacHelper).toHaveBeenCalledWith(extractedAppPath, {
       teamId: 'Y7P5QLKLYG',
       runCommand
@@ -450,13 +450,13 @@ describe('CI package contract', () => {
         runCommand: async (command: string, args: string[]) => {
           if (command === '/usr/bin/unzip') {
             return {
-              stdout: 'SRIBD办公智能体.app/\nSRIBD办公智能体.app/Contents/Info.plist\n',
+              stdout: '办公智能体.app/\n办公智能体.app/Contents/Info.plist\n',
               stderr: ''
             }
           }
           extractionRoot = args.at(-1)!
           await Promise.all([
-            mkdir(path.join(extractionRoot, 'SRIBD办公智能体.app')),
+            mkdir(path.join(extractionRoot, '办公智能体.app')),
             writeFile(path.join(extractionRoot, 'unexpected.txt'), 'unexpected')
           ])
           return { stdout: '', stderr: '' }
@@ -464,7 +464,7 @@ describe('CI package contract', () => {
         verifyCuaMacHelper,
         verifyMacApp
       })
-    ).rejects.toThrow(/exactly one root SRIBD办公智能体.app/)
+    ).rejects.toThrow(/exactly one root 办公智能体.app/)
     expect(verifyCuaMacHelper).not.toHaveBeenCalled()
     expect(verifyMacApp).not.toHaveBeenCalled()
     expect(extractionRoot).not.toBe('')
@@ -473,16 +473,16 @@ describe('CI package contract', () => {
 
   it('rejects unsafe or ambiguous updater ZIP entry paths before extraction', () => {
     expect(
-      validateMacZipEntries('SRIBD办公智能体.app/\nSRIBD办公智能体.app/Contents/Info.plist\n')
-    ).toEqual(['SRIBD办公智能体.app/', 'SRIBD办公智能体.app/Contents/Info.plist'])
+      validateMacZipEntries('办公智能体.app/\n办公智能体.app/Contents/Info.plist\n')
+    ).toEqual(['办公智能体.app/', '办公智能体.app/Contents/Info.plist'])
 
     for (const unsafeEntries of [
-      '../SRIBD办公智能体.app/Contents/Info.plist\n',
-      '/SRIBD办公智能体.app/Contents/Info.plist\n',
-      'SRIBD办公智能体.app\\Contents\\Info.plist\n',
+      '../办公智能体.app/Contents/Info.plist\n',
+      '/办公智能体.app/Contents/Info.plist\n',
+      '办公智能体.app\\Contents\\Info.plist\n',
       'Other.app/Contents/Info.plist\n',
-      'SRIBD办公智能体.app/Contents/../escape\n',
-      'SRIBD办公智能体.app/Contents/Info.plist\nSRIBD办公智能体.app/Contents/Info.plist\n'
+      '办公智能体.app/Contents/../escape\n',
+      '办公智能体.app/Contents/Info.plist\n办公智能体.app/Contents/Info.plist\n'
     ]) {
       expect(() => validateMacZipEntries(unsafeEntries)).toThrow(/unsafe entry|duplicate entry/)
     }

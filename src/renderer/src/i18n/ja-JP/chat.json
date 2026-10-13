@@ -1,6 +1,6 @@
 {
   "input": {
-    "placeholder": "SRIBD Office Agent に何でも聞いてください。{'@'} でファイルをメンション、/ でコマンドを使用できます",
+    "placeholder": "Office Agent に何でも聞いてください。{'@'} でファイルをメンション、/ でコマンドを使用できます",
     "fileArea": "ファイルエリア",
     "inputArea": "入力エリア",
     "functionSwitch": "機能スイッチ",
@@ -33,7 +33,7 @@
     "voiceRecognitionUnsupportedTitle": "現在の環境は音声認識に対応していません",
     "voiceRecognitionUnsupportedDescription": "音声認識に対応したブラウザまたはデスクトップ環境でこの機能を使用してください。",
     "voiceRecognitionPermissionDeniedTitle": "マイクにアクセスできません",
-    "voiceRecognitionPermissionDeniedDescription": "SRIBD Office Agent にマイクの使用を許可してからもう一度お試しください。",
+    "voiceRecognitionPermissionDeniedDescription": "Office Agent にマイクの使用を許可してからもう一度お試しください。",
     "voiceRecognitionErrorTitle": "音声認識に失敗しました",
     "voiceRecognitionErrorDescription": "音声認識を完了できませんでした。しばらくしてからもう一度お試しください。",
     "send": "送信",
@@ -59,7 +59,7 @@
         "agentCore": "Agent Core",
         "agentImageGeneration": "画像生成",
         "agentSkills": "Agent Skills",
-        "deepchatSettings": "SRIBD Office Agent Settings",
+        "deepchatSettings": "Office Agent Settings",
         "yobrowser": "YoBrowser"
       }
     },
@@ -487,12 +487,12 @@
   },
   "onboarding": {
     "agentSwitch": {
-      "title": "SRIBD Office Agent に切り替える",
-      "description": "チャットを始める前に ACP から切り替え、組み込みの SRIBD Office Agent フローに戻ってください。",
+      "title": "Office Agent に切り替える",
+      "description": "チャットを始める前に ACP から切り替え、組み込みの Office Agent フローに戻ってください。",
       "caption": "続行するには、サイドバーでハイライトされたエージェントボタンをクリックしてください。"
     },
     "switchModel": {
-      "description": "最初の SRIBD Office Agent 会話で使用するモデルを選択してください。",
+      "description": "最初の Office Agent 会話で使用するモデルを選択してください。",
       "caption": "ハイライトされたモデル切り替えを使って、利用可能な任意のモデルを選んでください。"
     },
     "firstChat": {
@@ -669,7 +669,7 @@
       "reasons": {
         "session_unavailable": "このセッションは利用できなくなりました。",
         "agent_unavailable": "選択した Agent は利用できません。",
-        "deepchat_agent_required": "プロアクティブ連携には SRIBD Office Agent が必要です。",
+        "deepchat_agent_required": "プロアクティブ連携には Office Agent が必要です。",
         "regular_parent_required": "子セッションではプロアクティブ連携を利用できません。",
         "agent_policy_unavailable": "連携ポリシーを読み込めませんでした。",
         "subagents_disabled": "プロアクティブ連携を使用するには、この Agent の Subagent を有効にしてください。"

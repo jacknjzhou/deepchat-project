@@ -36,10 +36,10 @@
     "searchEngine": "Mecanismo de Busca",
     "searchEngineSelect": "Selecionar mecanismo de busca",
     "searchPreview": "Pré-visualização de Busca",
-    "launchAtLoginEnabled": "Iniciar o SRIBD Office Agent ao entrar no sistema",
+    "launchAtLoginEnabled": "Iniciar o Office Agent ao entrar no sistema",
     "autoScrollEnabled": "Rolagem automática durante a geração",
     "privacyMode": "Modo de Privacidade",
-    "privacyModeDescription": "Interrompe as solicitações automáticas de saída feitas pelo SRIBD Office Agent:",
+    "privacyModeDescription": "Interrompe as solicitações automáticas de saída feitas pelo Office Agent:",
     "privacyModeAutoUpdate": "Verificação de atualizações do aplicativo",
     "privacyModeProviderDb": "Atualização dos metadados de provedores e modelos",
     "privacyModeAcpRegistry": "Atualização do registro ACP e sincronização de ícones",
@@ -75,8 +75,8 @@
     "themeSystem": "Seguir o sistema",
     "closeToQuit": "Sair do aplicativo ao fechar a janela",
     "contentProtectionDialogTitle": "Confirmar Mudança na Proteção de Tela",
-    "contentProtectionEnableDesc": "Evita que aplicativos de compartilhamento de tela capturem a janela do SRIBD Office Agent para ajudar a proteger sua privacidade. Nem todos os aplicativos respeitam essa configuração; em alguns ambientes, uma janela preta pode permanecer.",
-    "contentProtectionDisableDesc": "Permite que aplicativos de compartilhamento de tela capturem a janela do SRIBD Office Agent.",
+    "contentProtectionEnableDesc": "Evita que aplicativos de compartilhamento de tela capturem a janela do Office Agent para ajudar a proteger sua privacidade. Nem todos os aplicativos respeitam essa configuração; em alguns ambientes, uma janela preta pode permanecer.",
+    "contentProtectionDisableDesc": "Permite que aplicativos de compartilhamento de tela capturem a janela do Office Agent.",
     "contentProtectionRestartNotice": "Alterar esta configuração reiniciará o aplicativo. Deseja continuar?",
     "copyWithCotEnabled": "Copiar Detalhes COT",
     "loggingEnabled": "Habilitar Registro (Logging)",
@@ -91,7 +91,7 @@
       "title": "Configurações de tecla de atalho"
     },
     "notifications": "Notificações do Sistema",
-    "notificationsDesc": "Quando o SRIBD Office Agent não estiver em primeiro plano, se uma sessão for gerada, uma notificação do sistema será enviada",
+    "notificationsDesc": "Quando o Office Agent não estiver em primeiro plano, se uma sessão for gerada, uma notificação do sistema será enviada",
     "contentProtection": "Proteção contra captura de tela",
     "traceDebugEnabled": "Rastreamento de Chamadas",
     "traceDebugEnabledDesc": "Enquanto ativado, armazena localmente o conteúdo das solicitações ao modelo. Cabeçalhos de autenticação de provedores conhecidos e campos de chave de API são mascarados, mas os prompts podem conter dados confidenciais.",
@@ -128,7 +128,7 @@
       "empty": "Ainda não há hooks. Adicione um para começar.",
       "defaultName": "Hook {index}",
       "guideTitle": "Como usar",
-      "guideDescription": "Quando um evento marcado é disparado, o SRIBD Office Agent executa o comando. O evento atual pode ser lido pelo JSON em stdin, por variáveis de ambiente e por placeholders de linha de comando.",
+      "guideDescription": "Quando um evento marcado é disparado, o Office Agent executa o comando. O evento atual pode ser lido pelo JSON em stdin, por variáveis de ambiente e por placeholders de linha de comando.",
       "deliveryTitle": "Como os dados são enviados",
       "deliveryStdin": "O payload completo é enviado ao stdin como JSON.",
       "deliveryPlaceholder": "Você pode usar placeholders de linha de comando diretamente no comando.",
@@ -276,7 +276,7 @@
       "summaryManualOnly": "{manual} problema(s) exigem atenção",
       "manualHint": "{count} problema(s) ainda exigem tratamento manual.",
       "toastSuggestedTitle": "Reparo do banco de dados recomendado",
-      "toastSuggestedDescription": "O SRIBD Office Agent detectou um problema de esquema ({reason}). Você pode executar o reparo do banco agora.",
+      "toastSuggestedDescription": "O Office Agent detectou um problema de esquema ({reason}). Você pode executar o reparo do banco agora.",
       "toastAction": "Ir para reparo",
       "toastHealthyTitle": "O banco de dados está íntegro",
       "toastHealthyDescription": "Nenhum problema de esquema foi encontrado.",
@@ -303,7 +303,7 @@
       "entryDescription": "Escaneia CC Switch, Alma, Cherry Studio, Hermes e OpenClaw em busca de credenciais de provider e listas de modelos.",
       "entryButton": "Importar de agentes",
       "dialogTitle": "Importar de outros agentes",
-      "dialogDescription": "Selecione primeiro os apps detectados e depois revise os providers que o SRIBD Office Agent pode importar.",
+      "dialogDescription": "Selecione primeiro os apps detectados e depois revise os providers que o Office Agent pode importar.",
       "toastTitle": "Importação de providers concluída",
       "toastDescription": "{count} provider(s) importado(s).",
       "steps": {
@@ -312,7 +312,7 @@
         "done": "Concluído"
       },
       "scanningTitle": "Escaneando agentes instalados",
-      "scanningDescription": "O SRIBD Office Agent verifica arquivos locais conhecidos sem enviar dados para lugar algum.",
+      "scanningDescription": "O Office Agent verifica arquivos locais conhecidos sem enviar dados para lugar algum.",
       "scanFailedTitle": "Falha ao escanear",
       "sourcesTitle": "Fontes detectadas",
       "sourcesDescription": "Escolha um ou mais agentes. Os agentes selecionados são processados na ordem exibida.",
@@ -321,14 +321,14 @@
       "noSourcesDescription": "Instale um dos agentes compatíveis ou configure primeiro as credenciais do provider nele.",
       "providersFound": "{count} provider(s)",
       "sourceProgress": "{current} de {total}",
-      "overwriteNote": "Se vários providers selecionados forem mapeados para o mesmo provider do SRIBD Office Agent, a fonte posterior sobrescreve a anterior.",
+      "overwriteNote": "Se vários providers selecionados forem mapeados para o mesmo provider do Office Agent, a fonte posterior sobrescreve a anterior.",
       "noProvidersTitle": "Nenhum dado de provider nesta fonte",
       "noProvidersDescription": "Este agente foi selecionado, mas nenhuma entrada de provider importável foi encontrada.",
       "apiKey": "Chave {value}",
       "noModels": "Sem lista de modelos",
       "modelsImported": "{count} modelo(s)",
       "importingTitle": "Importando providers",
-      "importingDescription": "O SRIBD Office Agent está gravando os providers selecionados e modelos personalizados.",
+      "importingDescription": "O Office Agent está gravando os providers selecionados e modelos personalizados.",
       "doneTitle": "Resumo da importação",
       "doneDescription": "{count} provider(s) importado(s). Revise abaixo o resultado por provider.",
       "badges": {
@@ -346,11 +346,11 @@
         "unsupported": "Não compatível"
       },
       "warnings": {
-        "already_configured": "Já configurado no SRIBD Office Agent, portanto não é selecionado por padrão.",
+        "already_configured": "Já configurado no Office Agent, portanto não é selecionado por padrão.",
         "missing_api_key": "Chave de API ou endpoint necessário ausente.",
-        "unsupported_provider": "O SRIBD Office Agent não consegue importar este provider automaticamente.",
+        "unsupported_provider": "O Office Agent não consegue importar este provider automaticamente.",
         "overwrites_previous_selection": "Esta seleção conflita com uma fonte anterior.",
-        "credential_only_import": "Somente a chave de API será importada; o SRIBD Office Agent mantém o endpoint e o runtime do provider integrado."
+        "credential_only_import": "Somente a chave de API será importada; o Office Agent mantém o endpoint e o runtime do provider integrado."
       },
       "conflicts": {
         "overridesPrevious": "Esta seleção sobrescreverá um provider selecionado anteriormente.",
@@ -407,7 +407,7 @@
       "newPassword": "Nova senha SQLite",
       "confirmPassword": "Confirmar senha",
       "passwordMismatch": "As senhas não coincidem",
-      "systemCredentialStore": "Quando o armazenamento seguro do sistema está disponível, o SRIBD Office Agent salva a senha SQLite criptografada no cofre de credenciais do sistema operacional (macOS Keychain, Windows Credential Vault ou um Linux secret store). Depois de um desbloqueio bem-sucedido, as próximas inicializações normalmente abrem automaticamente; você só precisará informar a chave de criptografia novamente após migração de dados, quando a credencial do sistema estiver ausente ou não puder ser descriptografada, ou quando o armazenamento seguro estiver indisponível.",
+      "systemCredentialStore": "Quando o armazenamento seguro do sistema está disponível, o Office Agent salva a senha SQLite criptografada no cofre de credenciais do sistema operacional (macOS Keychain, Windows Credential Vault ou um Linux secret store). Depois de um desbloqueio bem-sucedido, as próximas inicializações normalmente abrem automaticamente; você só precisará informar a chave de criptografia novamente após migração de dados, quando a credencial do sistema estiver ausente ou não puder ser descriptografada, ou quando o armazenamento seguro estiver indisponível.",
       "safeStorageUnavailable": "O Electron safeStorage não está disponível neste sistema. Depois de ativar a criptografia, será necessário informar a senha em toda inicialização.",
       "enableButton": "Ativar criptografia",
       "changeButton": "Alterar senha",
@@ -506,7 +506,7 @@
       "recordingStartedAtDescription": "O registro de uso mais antigo atualmente armazenado neste painel.",
       "withDeepChatDaysLabel": "Dias juntos",
       "withDeepChatDaysValue": "{days} dias",
-      "withDeepChatDaysSentence": "Você está no dia {days} com o SRIBD Office Agent.",
+      "withDeepChatDaysSentence": "Você está no dia {days} com o Office Agent.",
       "withDeepChatDaysDescription": "Com base no seu registro de uso mais antigo, em {date}.",
       "withDeepChatDaysDescriptionUnavailable": "Ainda não há registros de uso.",
       "tokenUsage": "Uso de tokens",
@@ -515,7 +515,7 @@
       "nostalgiaSessionsValue": "{count} sessões",
       "nostalgiaMessagesValue": "{count} mensagens",
       "nostalgiaDaysDetailLabel": "Tempo juntos",
-      "nostalgiaDaysDetail": "Você e o SRIBD Office Agent já passaram {days} dias juntos.",
+      "nostalgiaDaysDetail": "Você e o Office Agent já passaram {days} dias juntos.",
       "nostalgiaSessionsDetailLabel": "Sessões",
       "nostalgiaSessionsDetail": "Vocês compartilharam {count} sessões juntos.",
       "nostalgiaMessagesDetailLabel": "Mensagens",
@@ -548,7 +548,7 @@
     },
     "rtk": {
       "title": "Economia do RTK",
-      "description": "Estimativa de tokens que o RTK impediu de chegar ao contexto do modelo durante a execução nativa de comandos do SRIBD Office Agent.",
+      "description": "Estimativa de tokens que o RTK impediu de chegar ao contexto do modelo durante a execução nativa de comandos do Office Agent.",
       "actions": {
         "retry": "Verificar novamente"
       },
@@ -559,8 +559,8 @@
         "unhealthy": "Indisponível"
       },
       "descriptionDisabled": "O RTK está desativado nesta sessão do app, então os comandos seguem o fluxo normal de execução.",
-      "descriptionChecking": "O SRIBD Office Agent está verificando se o RTK pode ser executado corretamente no ambiente atual.",
-      "descriptionHealthy": "O RTK está ativo para a execução nativa de comandos do SRIBD Office Agent.",
+      "descriptionChecking": "O Office Agent está verificando se o RTK pode ser executado corretamente no ambiente atual.",
+      "descriptionHealthy": "O RTK está ativo para a execução nativa de comandos do Office Agent.",
       "descriptionUnhealthy": "A verificação de integridade do RTK na inicialização falhou e ele foi desativado nesta sessão do app.",
       "sourceLabel": "Origem do runtime: {source}",
       "source": {
@@ -651,7 +651,7 @@
         "description": "Controla se este modelo permite entrada por voz com transcrição local para texto."
       },
       "functionCall": {
-        "description": "Se o modelo suporta chamadas de função nativamente (o SRIBD Office Agent simulará automaticamente chamadas de função após desativar esta opção)",
+        "description": "Se o modelo suporta chamadas de função nativamente (o Office Agent simulará automaticamente chamadas de função após desativar esta opção)",
         "label": "Chamadas de Função"
       },
       "maxTokens": {
@@ -1079,7 +1079,7 @@
     "loggingIn": "Entrando...",
     "githubCopilotClientId": "Custom Client ID",
     "githubCopilotClientIdHint": "Optional. Leave empty to use the built-in default Client ID. Only affects GitHub Copilot auth.",
-    "githubCopilotLoginTip": "Autorize o SRIBD Office Agent a acessar sua assinatura do GitHub Copilot. As permissões 'read:user' e 'read:org' são necessárias para acessar a API do Copilot.",
+    "githubCopilotLoginTip": "Autorize o Office Agent a acessar sua assinatura do GitHub Copilot. As permissões 'read:user' e 'read:org' são necessárias para acessar a API do Copilot.",
     "openaiCodexAuth": "Autenticação do OpenAI Codex",
     "openaiCodexConnected": "OpenAI Codex conectado",
     "openaiCodexNotConnected": "OpenAI Codex não conectado",
@@ -1180,7 +1180,7 @@
     "operationSuccess": "Operação bem-sucedida",
     "settingsApplied": "Configurações aplicadas",
     "bedrockLimitTip": "* Apenas Anthropic Claude suportado (incluindo modelos Opus, Sonnet, Haiku)",
-    "bedrockVerifyTip": "O SRIBD Office Agent usa Claude 3.5 Sonnet para verificação. Se você não tiver permissão para invocar, a verificação falhará. Isso não afetará o uso de outros modelos.",
+    "bedrockVerifyTip": "O Office Agent usa Claude 3.5 Sonnet para verificação. Se você não tiver permissão para invocar, a verificação falhará. Isso não afetará o uso de outros modelos.",
     "center": {
       "title": "Provider Center",
       "description": "Manage provider connections, models, and advanced configuration.",
@@ -1201,7 +1201,7 @@
     },
     "openaiCodexPasteCallback": "Colar URL de callback",
     "openaiCodexCallbackTitle": "Concluir autenticação",
-    "openaiCodexCallbackDescription": "Depois que o navegador terminar, volte ao SRIBD Office Agent. Se o SRIBD Office Agent não atualizar, cole aqui a URL de callback completa.",
+    "openaiCodexCallbackDescription": "Depois que o navegador terminar, volte ao Office Agent. Se o Office Agent não atualizar, cole aqui a URL de callback completa.",
     "openaiCodexCallbackPlaceholder": "Cole a URL de callback completa",
     "openaiCodexCompleteAuthentication": "Concluir autenticação",
     "xaiGrokAuth": "xAI Grok OAuth",
@@ -1530,7 +1530,7 @@
       "removeCredential": "Remover credencial armazenada",
       "credentialConfiguredPlaceholder": "Uma credencial protegida já está configurada",
       "credentialConfigured": "Credencial configurada",
-      "credentialMemoryOnly": "Esta credencial é armazenada somente na memória e será perdida quando o SRIBD Office Agent for encerrado.",
+      "credentialMemoryOnly": "Esta credencial é armazenada somente na memória e será perdida quando o Office Agent for encerrado.",
       "credentialRemoveError": "Falha ao remover a credencial protegida",
       "credentialSaveError": "Falha ao salvar a credencial protegida"
     },
@@ -1606,7 +1606,7 @@
       "redetectFailed": "Falha na re-detecção",
       "redetectFailedDesc": "Não foi possível re-detectar o registro ideal, usará a configuração padrão"
     },
-    "managedServerReadOnly": "Serviço gerenciado pelo SRIBD Office Agent",
+    "managedServerReadOnly": "Serviço gerenciado pelo Office Agent",
     "managedServerReadOnlyDesc": "Gerencie a ativação e as permissões nas configurações do plugin responsável.",
     "center": {
       "title": "Central MCP",
@@ -1628,7 +1628,7 @@
     "authenticate": "Autenticar",
     "authFailed": "Falha na autenticação",
     "authCallbackTitle": "Concluir autenticação",
-    "authCallbackDescription": "Depois que o navegador terminar, volte ao SRIBD Office Agent. Se o SRIBD Office Agent não atualizar, cole aqui a URL de callback completa.",
+    "authCallbackDescription": "Depois que o navegador terminar, volte ao Office Agent. Se o Office Agent não atualizar, cole aqui a URL de callback completa.",
     "authCallbackPlaceholder": "Cole a URL de callback completa",
     "completeAuthentication": "Concluir autenticação",
     "saveSuccess": "Configuração salva",
@@ -1818,7 +1818,7 @@
     "command": "Ordem",
     "commandPlaceholder": "Arquivo executável ou caminho de script",
     "deleteSuccess": "Agente excluído",
-    "description": "Gerencie proxies locais do Agent Client Protocol lançados pelo SRIBD Office Agent.",
+    "description": "Gerencie proxies locais do Agent Client Protocol lançados pelo Office Agent.",
     "enableToAccess": "Ative primeiro o ACP para acessar a configuração do proxy",
     "enabledDescription": "Quando habilitado, o agente ACP configurado aparecerá como modelo no seletor de modelo.",
     "enabledTitle": "Habilitar ACP",
@@ -1884,7 +1884,7 @@
       "openTerminal": "Open terminal",
       "cancelSignIn": "Cancel sign-in",
       "unsupported": "This authentication method is not supported. Configure its environment variables manually.",
-      "noMethods": "The agent did not provide an authentication method that SRIBD Office Agent can use.",
+      "noMethods": "The agent did not provide an authentication method that Office Agent can use.",
       "status": {
         "required": "Authentication required",
         "running": "Signing in",
@@ -2008,7 +2008,7 @@
     "registryInstallAction": "Install",
     "registryUninstallAction": "Desinstalar",
     "registryUninstallConfirm": "Desinstalar o agente \"{name}\"?",
-    "registryUninstallDescription": "O SRIBD Office Agent vai desativar este agente e limpar, quando houver, os dados de instalação gerenciados localmente. Depois, você poderá instalá-lo novamente pelo ACP Registry.",
+    "registryUninstallDescription": "O Office Agent vai desativar este agente e limpar, quando houver, os dados de instalação gerenciados localmente. Depois, você poderá instalá-lo novamente pelo ACP Registry.",
     "registryUninstallFailed": "Falha ao desinstalar o agente",
     "registryInstallTitle": "ACP Registry",
     "registryInstallDescription": "Search, filter, and install ACP agents. Configure them back in settings after installation.",
@@ -2105,7 +2105,7 @@
     "agentImport": {
       "menuItem": "Importar de Agent externo",
       "title": "Importar de um Agent externo",
-      "description": "Importe Skills validados para o SRIBD Office Agent. Ative Agents na visualização de cada Skill.",
+      "description": "Importe Skills validados para o Office Agent. Ative Agents na visualização de cada Skill.",
       "resultPartial": "Importação concluída com erros",
       "resultSuccess": "Importação concluída",
       "sourceTitle": "Agent de origem",
@@ -2224,25 +2224,25 @@
       "env": "{count} env",
       "pythonShort": "Py",
       "nodeShort": "Node",
-      "enable": "Enable in SRIBD Office Agent",
-      "disable": "Disable in SRIBD Office Agent",
+      "enable": "Enable in Office Agent",
+      "disable": "Disable in Office Agent",
       "viewDetails": "Ver detalhes",
       "edit": "Editar",
       "installToAgent": "Instalar no Agent"
     },
     "enable": {
       "success": "Skill Enabled",
-      "successMessage": "Skill {name} is enabled in SRIBD Office Agent",
+      "successMessage": "Skill {name} is enabled in Office Agent",
       "failed": "Enable Failed"
     },
     "disable": {
       "success": "Skill Disabled",
-      "successMessage": "Skill {name} is disabled in SRIBD Office Agent",
+      "successMessage": "Skill {name} is disabled in Office Agent",
       "failed": "Disable Failed"
     },
     "git": {
       "title": "Git",
-      "description": "Verifique um repositório Git e instale as skills selecionadas no SRIBD Office Agent.",
+      "description": "Verifique um repositório Git e instale as skills selecionadas no Office Agent.",
       "placeholder": "https://github.com/user/repo",
       "scan": "Verificar",
       "detectedFormat": "Formato detectado:",
@@ -2258,7 +2258,7 @@
       "rename": "Renomear nova skill",
       "overwrite": "Substituir existente",
       "skip": "Ignorar existente",
-      "install": "Instalar no SRIBD Office Agent",
+      "install": "Instalar no Office Agent",
       "failed": "Falha na instalação Git",
       "success": "Instalação Git concluída",
       "successMessage": "{count} instaladas, {failed} falharam",
@@ -2317,8 +2317,8 @@
       "installToAgent": "Instalar no Agent",
       "enabled": "Ativado",
       "disabled": "Desativado",
-      "enable": "Ativar no SRIBD Office Agent",
-      "disable": "Desativar no SRIBD Office Agent",
+      "enable": "Ativar no Office Agent",
+      "disable": "Desativar no Office Agent",
       "preview": "Prévia",
       "edit": "Editar",
       "delete": "Excluir",
@@ -2333,7 +2333,7 @@
     },
     "installToAgent": {
       "title": "Instalar {name} no Agent",
-      "description": "Cria um link gerenciado pelo SRIBD Office Agent para este skill no diretorio skills de um agent local.",
+      "description": "Cria um link gerenciado pelo Office Agent para este skill no diretorio skills de um agent local.",
       "failed": "Falha ao instalar no Agent",
       "emptyAgents": "Nenhum agent local disponivel detectado.",
       "target": "Agent de destino",
@@ -2392,7 +2392,7 @@
       "moveBottom": "Mover para o fim",
       "archive": "Arquivar",
       "restore": "Restaurar",
-      "remove": "Remover do SRIBD Office Agent"
+      "remove": "Remover do Office Agent"
     },
     "badges": {
       "default": "Padrão",
@@ -2425,7 +2425,7 @@
     "confirm": {
       "archiveTitle": "Arquivar \"{name}\"?",
       "archiveDescription": "Ele sairá da lista de diretórios ativos e do seletor de novo chat, enquanto sessões, mensagens e a pasta real permanecem intactas.",
-      "removeTitle": "Remover \"{name}\" do SRIBD Office Agent?",
+      "removeTitle": "Remover \"{name}\" do Office Agent?",
       "removeDescription": "A pasta real e as mensagens não serão excluídas. Sessões comuns são movidas para Sem projeto; registros de diretório de trabalho ACP são mantidos para que sessões existentes possam continuar."
     }
   },
@@ -2454,7 +2454,7 @@
       "accessRule1": "Authorize yourself with /pair [code] in a direct bot chat, or use OAuth scan authorization for a manually configured app.",
       "accessRule2": "In groups and topics, the bot only reacts when an authorized user {'@'} mentions it.",
       "setupGuideTitle": "Finish app setup from the Echo Bot guide",
-      "setupGuideDescription": "SRIBD Office Agent can open the console and bot chat, but app creation, permission grants, event subscription, and version publishing still need confirmation in the Feishu / Lark console.",
+      "setupGuideDescription": "Office Agent can open the console and bot chat, but app creation, permission grants, event subscription, and version publishing still need confirmation in the Feishu / Lark console.",
       "setupStepCreateApp": "Create a self-built app and add the bot capability.",
       "setupStepPermissions": "Grant im:message.p2p_msg:readonly, im:message.group_at_msg:readonly, im:message:send_as_bot, plus the user-info permission required for scan binding.",
       "setupStepEvents": "Use long-connection event subscription and add im.message.receive_v1.",
@@ -2494,18 +2494,18 @@
       "installSessionMissing": "Install session is missing or has ended.",
       "installUserCode": "User code: {code}",
       "manualSetupTitle": "Manual app setup fallback",
-      "manualSetupDescription": "If PersonalAgent install is unavailable in your tenant, keep using the developer console flow below. SRIBD Office Agent no longer requires the local OAuth redirect URI for the primary install path.",
+      "manualSetupDescription": "If PersonalAgent install is unavailable in your tenant, keep using the developer console flow below. Office Agent no longer requires the local OAuth redirect URI for the primary install path.",
       "openInstallWeb": "Open web install",
       "showInstallQr": "QR install",
       "installQrTitle": "Scan official install QR",
       "installQrDescription": "This QR code is generated directly from the official install link returned by Feishu / Lark. Scan it in the mobile client and keep this dialog open.",
       "installQrAlt": "Feishu / Lark install QR code",
       "userAuthTitle": "Authorize remote-control users",
-      "userAuthDescription": "After the bot app is installed, authorized Feishu / Lark users can control SRIBD Office Agent. Use /pair in the bot chat, or use OAuth scan authorization for an existing manually configured app; both update the same authorized-principal list.",
+      "userAuthDescription": "After the bot app is installed, authorized Feishu / Lark users can control Office Agent. Use /pair in the bot chat, or use OAuth scan authorization for an existing manually configured app; both update the same authorized-principal list.",
       "pairAuthTitle": "/pair command",
       "pairAuthDescription": "Clique em Emparelhar abaixo e envie o código /pair em uma conversa direta com o bot. Este é o fluxo de autorização recomendado e continua funcionando com apps PersonalAgent instalados.",
       "streamingCards": "Cartões de Streaming CardKit",
-      "streamingCardsDescription": "Transmita respostas de IA pelo Feishu / Lark CardKit em tempo real. Requer permissões im:message e cardkit:card:write; SRIBD Office Agent volta para mensagens normais se o CardKit falhar."
+      "streamingCardsDescription": "Transmita respostas de IA pelo Feishu / Lark CardKit em tempo real. Requer permissões im:message e cardkit:card:write; Office Agent volta para mensagens normais se o CardKit falhar."
     },
     "sections": {
       "credentials": "Credenciais",
@@ -2514,10 +2514,10 @@
       "accessRules": "Regras de acesso"
     },
     "remoteControl": {
-      "description": "Vincule cada endpoint remoto a uma sessão do SRIBD Office Agent e mantenha essa sessão disponível entre os comandos.",
+      "description": "Vincule cada endpoint remoto a uma sessão do Office Agent e mantenha essa sessão disponível entre os comandos.",
       "allowedUserIds": "IDs de usuário permitidos",
       "allowedUserIdsPlaceholder": "ex.: 123456789, 987654321",
-      "defaultAgent": "Agente SRIBD Office Agent padrão",
+      "defaultAgent": "Agente Office Agent padrão",
       "defaultAgentPlaceholder": "Selecione um agente",
       "defaultWorkdir": "Diretório padrão",
       "defaultWorkdirPlaceholder": "Selecione o diretório padrão",
@@ -2540,7 +2540,7 @@
       "authorizedPrincipalsDescription": "Essas contas do {channel} estão autorizadas a fazer o pareamento e controlar sessões.",
       "authorizedPrincipalsEmpty": "Ainda não há identidades autorizadas.",
       "sessionBindingsTitle": "Vínculos de sessão",
-      "sessionBindingsDescription": "Cada ponto de acesso remoto abaixo está atualmente vinculado a uma sessão do SRIBD Office Agent.",
+      "sessionBindingsDescription": "Cada ponto de acesso remoto abaixo está atualmente vinculado a uma sessão do Office Agent.",
       "acpDefaultWorkdirRequiredTitle": "Diretório padrão obrigatório",
       "acpDefaultWorkdirRequiredDescription": "Agentes ACP precisam de um workspace local. Escolha um diretório padrão antes de salvar."
     },
@@ -2583,7 +2583,7 @@
       "title": "WeChat iLink",
       "description": "Conecte um bot WeChat iLink oficial via login por QR code e deixe o adaptador embutido cuidar das sessões de controle remoto.",
       "loginDescription": "Clique no botão abaixo para abrir a janela oficial de login do WeChat. Conclua ali a autorização do iLink Bot e a conta conectada será adicionada automaticamente à lista abaixo.",
-      "ownerOnlyNotice": "Nesta primeira versão, apenas a conta proprietária autenticada pelo QR pode controlar o SRIBD Office Agent.",
+      "ownerOnlyNotice": "Nesta primeira versão, apenas a conta proprietária autenticada pelo QR pode controlar o Office Agent.",
       "connectButton": "Abrir janela de login",
       "refreshQrCode": "Reabrir janela de login",
       "loginDialogTitle": "Conectar WeChat iLink",
@@ -2797,6 +2797,17 @@
       "colCreatedAt": "Criado em",
       "sourceChat": "Chat",
       "sourceManual": "Manual",
+      "sourceScheduled": "Reconhecimento automático",
+      "autoWatchTitle": "Reconhecimento automático",
+      "autoWatchEnable": "Ativar reconhecimento automático de pasta",
+      "autoWatchDir": "Pasta monitorada",
+      "autoWatchChooseDir": "Escolher pasta…",
+      "autoWatchIntervalHours": "Intervalo de varredura (horas)",
+      "autoWatchRoundLimit": "Limite de envio por rodada",
+      "autoWatchExtensions": "Extensões de arquivo",
+      "autoWatchLastRun": "Última varredura",
+      "autoWatchNeedDir": "Escolha uma pasta monitorada antes de ativar",
+      "autoWatchInvalidExtensions": "Selecione pelo menos uma extensão de arquivo",
       "detailTitle": "Detalhes do documento",
       "fieldsTitle": "Campos",
       "filesTitle": "Arquivos originais",
@@ -2840,7 +2851,31 @@
       "filesLimit": "Você pode selecionar até 20 arquivos",
       "colReimbursement": "Tipo de reembolso",
       "colGroup": "Grupo",
-      "reimbursementSetFailed": "Falha ao definir a classificação de reembolso"
+      "reimbursementSetFailed": "Falha ao definir a classificação de reembolso",
+      "prevPage": "Previous page",
+      "nextPage": "Next page"
+    },
+    "tasks": {
+      "title": "Tasks",
+      "loadFailed": "Failed to load tasks",
+      "empty": "No tasks",
+      "allBatches": "All batches",
+      "sourceAll": "All sources",
+      "source_manual": "Upload",
+      "source_scheduled": "Scan",
+      "source_chat": "Chat",
+      "statusAll": "All statuses",
+      "status_pending": "Queued",
+      "status_running": "Running",
+      "status_done": "Done",
+      "status_failed": "Failed",
+      "colFile": "File",
+      "colRelativePath": "Relative Path",
+      "colSource": "Source",
+      "colType": "Type",
+      "colStatus": "Status",
+      "colActions": "Actions",
+      "failedCount": "{failed} failed"
     },
     "reimbursement": {
       "viewDocuments": "Visualização de documentos",
@@ -2917,6 +2952,13 @@
       "issues": "Observações",
       "empty": "Envie uma amostra para ver os resultados",
       "fileRequired": "Não foi possível obter o caminho do arquivo. Selecione novamente"
+    },
+    "recognize": {
+      "duplicateSkipped": "{count} arquivo(s) com conteúdo duplicado ignorado(s)",
+      "duplicateOf": "Duplicado de {name}"
+    },
+    "autoWatch": {
+      "duplicatesNotice": "{count} arquivo(s) duplicado(s) ignorado(s) nesta rodada"
     }
   },
   "documentsModels": {
@@ -2962,11 +3004,11 @@
       "saveFailed": "Não foi possível salvar. As alterações foram mantidas.",
       "retry": "Tentar novamente"
     },
-    "title": "Agentes do SRIBD Office Agent",
-    "description": "Gerencie os agentes do SRIBD Office Agent e os padrões que eles aplicam às novas sessões.",
+    "title": "Agentes do Office Agent",
+    "description": "Gerencie os agentes do Office Agent e os padrões que eles aplicam às novas sessões.",
     "builtIn": "Integrado",
-    "editTitle": "Editar agente do SRIBD Office Agent",
-    "createTitle": "Criar agente do SRIBD Office Agent",
+    "editTitle": "Editar agente do Office Agent",
+    "createTitle": "Criar agente do Office Agent",
     "unnamed": "Agente sem nome",
     "name": "Nome",
     "namePlaceholder": "Por exemplo: Escrita / Pesquisa / Tradução",
@@ -2975,7 +3017,7 @@
     "descriptionPlaceholder": "Observação opcional sobre para que este agente serve",
     "avatarTitle": "Avatar",
     "avatarDefault": "Padrão",
-    "avatarDefaultDesc": "O SRIBD Office Agent mantém o ícone integrado. Os outros agentes usam um avatar textual.",
+    "avatarDefaultDesc": "O Office Agent mantém o ícone integrado. Os outros agentes usam um avatar textual.",
     "avatarLucide": "Ícone Lucide",
     "avatarLucideDesc": "Escolha um ícone Lucide e defina as cores para claro/escuro.",
     "avatarMonogram": "Monograma",
@@ -3018,10 +3060,10 @@
     "outputLimitsCommandHint": "Prévia em primeiro plano para exec e scripts de habilidades.",
     "compactionTitle": "Compactação automática",
     "compactionEnabled": "Ativar compactação automática",
-    "compactionDescription": "Esses padrões afetam apenas futuras sessões do SRIBD Office Agent.",
+    "compactionDescription": "Esses padrões afetam apenas futuras sessões do Office Agent.",
     "compactionThreshold": "Limite de ativação",
     "compactionRetainPairs": "Manter pares recentes",
-    "deleteConfirm": "Excluir o agente \"{name}\"? O histórico dele voltará para o agente SRIBD Office Agent integrado.",
+    "deleteConfirm": "Excluir o agente \"{name}\"? O histórico dele voltará para o agente Office Agent integrado.",
     "subagentsTitle": "Subagentes",
     "subagentsDescription": "Permita que este agente delegue subtarefas independentes. O modelo decide quando usar os slots configurados; a delegação consome tokens, tempo e recursos do sistema adicionais.",
     "subagentsEnabled": "Permitir que este agente delegue subtarefas",
@@ -3242,7 +3284,7 @@
   },
   "plugins": {
     "title": "Plugins",
-    "officialOnly": "Manage built-in official plugins included with this SRIBD Office Agent version.",
+    "officialOnly": "Manage built-in official plugins included with this Office Agent version.",
     "refresh": "Refresh",
     "empty": "No official plugins available",
     "loadFailed": "Failed to load plugins",
@@ -3253,7 +3295,7 @@
     "openSettings": "Settings",
     "testRuntime": "Testar runtime",
     "retryRuntime": "Tentar runtime novamente",
-    "quarantineDescription": "O SRIBD Office Agent interrompeu este runtime após um encerramento incorreto. Tente novamente apenas quando for seguro controlar a área de trabalho.",
+    "quarantineDescription": "O Office Agent interrompeu este runtime após um encerramento incorreto. Tente novamente apenas quando for seguro controlar a área de trabalho.",
     "runtime": "Runtime",
     "runtimeState": "Estado",
     "version": "Version",
@@ -3272,7 +3314,7 @@
       "error": "Error"
     },
     "emptyTitle": "No built-in plugins available",
-    "emptyDescription": "This platform has no built-in official plugins in this SRIBD Office Agent version.",
+    "emptyDescription": "This platform has no built-in official plugins in this Office Agent version.",
     "installFromFile": "Choose .dcplugin",
     "openRelease": "GitHub Release"
   },
@@ -3287,11 +3329,11 @@
     },
     "overview": {
       "title": "Settings Overview",
-      "description": "Review provider, MCP, SRIBD Office Agents, data, and usage status in one place.",
+      "description": "Review provider, MCP, Office Agents, data, and usage status in one place.",
       "searchPlaceholder": "Search settings, providers, models, agents, MCP...",
       "providers": "Providers",
       "mcp": "MCP",
-      "deepchatAgents": "SRIBD Office Agents",
+      "deepchatAgents": "Office Agents",
       "data": "Data",
       "enabledCount": "{count} enabled",
       "runningCount": "{count} running",
@@ -3352,12 +3394,12 @@
   },
   "memory": {
     "description": "Revise, configure e gerencie o que cada agente lembra entre sessões. A memória é separada por agente.",
-    "empty": "Nenhum agente SRIBD Office Agent disponível ainda.",
+    "empty": "Nenhum agente Office Agent disponível ainda.",
     "agentPicker": "Agente",
     "tabConfig": "Configuração",
     "tabManage": "Gerenciar",
     "config": {
-      "rootHint": "SRIBD Office Agent é um agente integrado protegido. Sua configuração é independente da configuração de todos os outros agentes.",
+      "rootHint": "Office Agent é um agente integrado protegido. Sua configuração é independente da configuração de todos os outros agentes.",
       "extractionModel": "Modelo da ferramenta de memória",
       "extractionModelHint": "Modelo usado para extrair e desduplicar memórias. Se não selecionado, usa o modelo de chat.",
       "injectionBudget": "Orçamento de injeção (tokens)",
@@ -3517,7 +3559,7 @@
     }
   },
   "pluginsHub": {
-    "subtitle": "Work with SRIBD Office Agent across skills, MCP servers, official plugins, and remote channels.",
+    "subtitle": "Work with Office Agent across skills, MCP servers, official plugins, and remote channels.",
     "available": "Plugins disponíveis",
     "add": "Adicionar",
     "manage": "Manage",
@@ -3525,11 +3567,11 @@
     "emptySearch": "Nenhum plugin disponível.",
     "pluginNotFound": "Plugin not found.",
     "actionResult": "Action result",
-    "cuaDescription": "Plugin ComputerUse do SRIBD Office Agent implementado com base no projeto trycua/cua.",
+    "cuaDescription": "Plugin ComputerUse do Office Agent implementado com base no projeto trycua/cua.",
     "acpUnavailableTitle": "Os plugins não estão disponíveis para agentes ACP",
-    "acpUnavailableDescription": "Os agentes ACP gerenciam ferramentas e extensões no próprio ambiente de execução. Selecione um agente SRIBD Office Agent para usar plugins.",
-    "agentScopeUnsupported": "As extensões por agente estão disponíveis apenas para agentes SRIBD Office Agent.",
-    "scopeGlobalPlugins": "Esta página é global do app: instalação, ativação e estado de processo dos plugins oficiais são compartilhados por todos os agentes SRIBD Office Agent.",
+    "acpUnavailableDescription": "Os agentes ACP gerenciam ferramentas e extensões no próprio ambiente de execução. Selecione um agente Office Agent para usar plugins.",
+    "agentScopeUnsupported": "As extensões por agente estão disponíveis apenas para agentes Office Agent.",
+    "scopeGlobalPlugins": "Esta página é global do app: instalação, ativação e estado de processo dos plugins oficiais são compartilhados por todos os agentes Office Agent.",
     "scopeCurrentAgent": "Esta página é política do agente: as alterações afetam apenas a disponibilidade de Skills/MCP de “{agent}”, não as instalações globais.",
     "currentAgentFallback": "agente atual"
   },
@@ -3554,13 +3596,13 @@
     }
   },
   "toolchains": {
-    "description": "Escolha de onde o SRIBD Office Agent obtém o Node e o uv. A origem não muda sozinha depois.",
+    "description": "Escolha de onde o Office Agent obtém o Node e o uv. A origem não muda sozinha depois.",
     "nodeTitle": "Node.js",
     "uvTitle": "uv",
     "source": "Origem",
     "sources": {
       "bundled": "Incluído no aplicativo",
-      "managed": "Instalado pelo SRIBD Office Agent",
+      "managed": "Instalado pelo Office Agent",
       "system": "Instalação do sistema",
       "custom": "Caminho personalizado",
       "unconfigured": "Não configurado",

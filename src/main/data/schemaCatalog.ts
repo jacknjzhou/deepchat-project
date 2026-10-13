@@ -39,6 +39,7 @@ import { SettingsActivityTable } from '@/settings/data/tables/settingsActivity'
 import { DocumentTemplatesTable } from '@/documents/data/tables/documentTemplates'
 import { DocumentsTable } from '@/documents/data/tables/documents'
 import { DocumentTasksTable } from '@/documents/data/tables/documentTasks'
+import { WatchedFilesTable } from '@/documents/data/tables/watchedFiles'
 import { ResumeScreeningResumesTable } from '@/resumeScreening/data/tables/resumeScreeningResumes'
 import { ResumeScreeningTasksTable } from '@/resumeScreening/data/tables/resumeScreeningTasks'
 import { CronJobsTable } from '@/scheduler/data/tables/cronJobs'
@@ -413,6 +414,10 @@ const CATALOG_DEFINITIONS: CatalogDefinition[] = [
   {
     name: 'document_tasks',
     createTable: (db) => new DocumentTasksTable(db)
+  },
+  {
+    name: 'documents_watched_files',
+    createTable: (db) => new WatchedFilesTable(db)
   },
   {
     name: 'resume_screening_tasks',

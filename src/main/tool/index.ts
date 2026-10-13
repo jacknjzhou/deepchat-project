@@ -2359,7 +2359,7 @@ export class ToolService implements ToolServicePort {
     const names = modelTools.map((tool) => `\`${tool.function.name}\``).join(', ')
     const lines = [
       '## Tape Tools',
-      `SRIBD Office Agent tape tools are available in this session: ${names}.`
+      `Office Agent tape tools are available in this session: ${names}.`
     ]
 
     if (toolNames.has(TAPE_TOOL_NAMES.search)) {
@@ -2394,8 +2394,8 @@ export class ToolService implements ToolServicePort {
 
     const names = tools.map((tool) => `\`${tool.function.name}\``).join(', ')
     return [
-      '## SRIBD Office Agent Settings Tools',
-      `SRIBD Office Agent settings tools are available in this session: ${names}.`,
+      '## Office Agent Settings Tools',
+      `Office Agent settings tools are available in this session: ${names}.`,
       'Prefer these tools over describing manual settings steps when a direct change is possible.'
     ].join('\n')
   }

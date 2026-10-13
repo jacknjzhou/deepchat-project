@@ -325,7 +325,11 @@ function validateExecutionPackage(
     Buffer.byteLength(canonicalJsonStringifyData(source), 'utf8') >
     MAX_SKILL_MATERIALIZATION_PACKAGE_ENCODED_BYTES
   ) {
-    throw new RangeError('Execution package encoded payload exceeds 7 MiB.')
+    throw new RangeError(
+      `Execution package encoded payload exceeds ${
+        MAX_SKILL_MATERIALIZATION_PACKAGE_ENCODED_BYTES / (1024 * 1024)
+      } MiB.`
+    )
   }
   const packageHash = hashJsonData(source)
   if (candidate.packageHash !== packageHash)
@@ -475,14 +479,22 @@ export function validateTapeSkillMaterializationBatch(
     }
     packageBytes += payload.executionPackage.byteCount
     if (packageBytes > MAX_SKILL_MATERIALIZATION_PACKAGE_BATCH_BYTES) {
-      throw new RangeError('Skill materialization package batch exceeds 16 MiB.')
+      throw new RangeError(
+        `Skill materialization package batch exceeds ${
+          MAX_SKILL_MATERIALIZATION_PACKAGE_BATCH_BYTES / (1024 * 1024)
+        } MiB.`
+      )
     }
     encodedPackageBytes += Buffer.byteLength(
       canonicalJsonStringifyData(payload.executionPackage),
       'utf8'
     )
     if (encodedPackageBytes > MAX_SKILL_MATERIALIZATION_PACKAGE_BATCH_ENCODED_BYTES) {
-      throw new RangeError('Skill materialization encoded package batch exceeds 28 MiB.')
+      throw new RangeError(
+        `Skill materialization encoded package batch exceeds ${
+          MAX_SKILL_MATERIALIZATION_PACKAGE_BATCH_ENCODED_BYTES / (1024 * 1024)
+        } MiB.`
+      )
     }
     return payload
   })

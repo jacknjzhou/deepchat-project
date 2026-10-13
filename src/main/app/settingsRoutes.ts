@@ -82,6 +82,8 @@ export function createAppSettingsRoutes(deps: {
     read('documents.concurrency')
     read('documents.temperature')
     read('documents.maxTokens')
+    read('documents.autoWatch')
+    read('documents.autoWatchState')
     return values
   }
   const readSnapshot = (): SettingsSnapshotValues => ({

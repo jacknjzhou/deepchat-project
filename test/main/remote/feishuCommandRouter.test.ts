@@ -240,7 +240,7 @@ describe('FeishuCommandRouter', () => {
 
     expect(result).toEqual({
       replies: [
-        'Could not find a SRIBD Office Agent desktop window. Open SRIBD Office Agent and try /open again.'
+        'Could not find a Office Agent desktop window. Open Office Agent and try /open again.'
       ]
     })
   })

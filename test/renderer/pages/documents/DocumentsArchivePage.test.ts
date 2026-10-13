@@ -242,65 +242,14 @@ describe('DocumentsArchivePage', () => {
   it('挂载时调用 loadArchiveDocuments 并渲染行', async () => {
     const { wrapper } = await setup()
     expect(stubStore.loadArchiveDocuments).toHaveBeenCalled()
-    expect(wrapper.text()).toContain('甲公司')
-    expect(wrapper.text()).toContain('购买方')
+    // 表格仅渲染固定列，行内容经摘要列可见
+    expect(wrapper.text()).toContain('购买方: 甲公司')
   })
 
   it('全部类型视图渲染摘要列', async () => {
     const { wrapper } = await setup()
     expect(wrapper.text()).toContain('settings.documents.archive.colSummary')
     expect(wrapper.text()).toContain('购买方: 甲公司')
-  })
-
-  it('数组/对象字段单元格渲染为可读文本并带 title', async () => {
-    const { wrapper } = await setup()
-    // setup 会重置 stub 数据，这里在挂载后注入含 array 字段的模板与档案
-    stubStore.templates = [
-      {
-        ...contractTemplate,
-        fields: [
-          ...contractTemplate.fields,
-          {
-            key: 'work_history',
-            label: '工作经历',
-            valueType: 'array',
-            required: false,
-            promptHint: null,
-            validation: null,
-            enumOptions: null,
-            order: 2
-          }
-        ]
-      }
-    ]
-    stubStore.archiveDocuments = [
-      makeRecord({
-        fields: {
-          buyer: { value: '甲公司', uncertain: false },
-          work_history: {
-            value: [
-              {
-                company: '大众计算机股份有限公司',
-                position: '软件研发助理',
-                start: '2022-09-01',
-                end: '2023-01-01'
-              }
-            ],
-            uncertain: false
-          }
-        }
-      })
-    ]
-    await flushPromises()
-    // work_history 不是金额字段，只在类型 Tab 视图（该模板全部字段列）下渲染
-    await wrapper.get('[data-testid="archive-tab-contract"]').trigger('click')
-    await flushPromises()
-    const expected = '大众计算机股份有限公司·软件研发助理（2022-09-01~2023-01-01）'
-    expect(wrapper.text()).toContain(expected)
-    const cell = wrapper
-      .findAll('td')
-      .find((node) => node.text().includes('大众计算机股份有限公司'))
-    expect(cell?.attributes('title')).toBe(expected)
   })
 
   it('表头渲染报销类型与分组列并在挂载时加载配置', async () => {
@@ -394,9 +343,9 @@ describe('DocumentsArchivePage', () => {
     expect(stubStore.archiveFilter.typeKey).toBe('contract')
     expect(stubStore.archiveFilter.status).toBeUndefined()
     expect(stubStore.loadArchiveDocuments).toHaveBeenCalledWith(1)
-    // 类型 Tab 下展示该模板全部字段列（不再渲染摘要列）
-    expect(wrapper.text()).toContain('购买方')
-    expect(wrapper.text()).not.toContain('settings.documents.archive.colSummary')
+    // 类型 Tab 下同样只渲染固定列（含摘要，不再有该模板字段列）
+    expect(wrapper.text()).toContain('settings.documents.archive.colSummary')
+    expect(wrapper.text()).toContain('购买方: 甲公司')
   })
 
   it('状态 chips 展示统计并可筛选', async () => {

@@ -13,114 +13,241 @@
       </p>
     </div>
 
-    <div data-testid="documents-models-model-card" class="rounded-lg border border-border p-4">
-      <div class="mb-3 text-sm font-medium">{{ t('settings.documentsModels.models.title') }}</div>
+    <div class="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
+      <div class="flex min-w-0 flex-col gap-4">
+        <div data-testid="documents-models-model-card" class="rounded-lg border border-border p-4">
+          <div class="mb-3 text-sm font-medium">
+            {{ t('settings.documentsModels.models.title') }}
+          </div>
 
-      <div class="flex flex-col gap-4">
-        <div class="flex flex-col gap-1.5">
-          <span class="text-xs font-medium text-muted-foreground">
-            {{ t('settings.documentsModels.textModel') }}
-          </span>
-          <Popover v-model:open="textSelectOpen">
-            <PopoverTrigger as-child>
-              <DcButton
-                data-testid="documents-text-model-trigger"
-                variant="outline"
-                :disabled="locked"
-                :class="[
-                  'h-8 w-[320px] justify-between text-sm',
-                  textInvalidReason
-                    ? 'border-destructive text-destructive hover:text-destructive'
-                    : 'border-border hover:bg-accent'
-                ]"
+          <div class="flex flex-col gap-4">
+            <div class="flex flex-col gap-1.5">
+              <span class="text-xs font-medium text-muted-foreground">
+                {{ t('settings.documentsModels.textModel') }}
+              </span>
+              <Popover v-model:open="textSelectOpen">
+                <PopoverTrigger as-child>
+                  <DcButton
+                    data-testid="documents-text-model-trigger"
+                    variant="outline"
+                    :disabled="locked"
+                    :class="[
+                      'h-8 w-full max-w-[320px] justify-between text-sm',
+                      textInvalidReason
+                        ? 'border-destructive text-destructive hover:text-destructive'
+                        : 'border-border hover:bg-accent'
+                    ]"
+                  >
+                    <span class="min-w-0 truncate">{{ textModelLabel }}</span>
+                    <Icon icon="lucide:chevron-down" class="h-4 w-4 shrink-0 opacity-50" />
+                  </DcButton>
+                </PopoverTrigger>
+                <PopoverContent class="w-[320px] p-0" align="start">
+                  <ModelSelect
+                    :exclude-providers="['acp']"
+                    :respect-chat-mode="false"
+                    :selected-provider-id="draftTextModel?.providerId ?? ''"
+                    :selected-model-id="draftTextModel?.modelId ?? ''"
+                    @update:model="selectTextModel"
+                  />
+                </PopoverContent>
+              </Popover>
+              <p
+                v-if="textInvalidReason"
+                data-testid="documents-text-model-invalid"
+                class="text-xs text-destructive"
               >
-                <span class="min-w-0 truncate">{{ textModelLabel }}</span>
-                <Icon icon="lucide:chevron-down" class="h-4 w-4 shrink-0 opacity-50" />
-              </DcButton>
-            </PopoverTrigger>
-            <PopoverContent class="w-[320px] p-0" align="start">
-              <ModelSelect
-                :exclude-providers="['acp']"
-                :respect-chat-mode="false"
-                :selected-provider-id="draftTextModel?.providerId ?? ''"
-                :selected-model-id="draftTextModel?.modelId ?? ''"
-                @update:model="selectTextModel"
-              />
-            </PopoverContent>
-          </Popover>
-          <p
-            v-if="textInvalidReason"
-            data-testid="documents-text-model-invalid"
-            class="text-xs text-destructive"
-          >
-            {{ t(`settings.documentsModels.invalid.${textInvalidReason}`) }}
-          </p>
+                {{ t(`settings.documentsModels.invalid.${textInvalidReason}`) }}
+              </p>
+            </div>
+
+            <div class="flex flex-col gap-1.5">
+              <span class="text-xs font-medium text-muted-foreground">
+                {{ t('settings.documentsModels.visionModel') }}
+              </span>
+              <Popover v-model:open="visionSelectOpen">
+                <PopoverTrigger as-child>
+                  <DcButton
+                    data-testid="documents-vision-model-trigger"
+                    variant="outline"
+                    :disabled="locked"
+                    :class="[
+                      'h-8 w-full max-w-[320px] justify-between text-sm',
+                      visionInvalidReason
+                        ? 'border-destructive text-destructive hover:text-destructive'
+                        : 'border-border hover:bg-accent'
+                    ]"
+                  >
+                    <span class="min-w-0 truncate">{{ visionModelLabel }}</span>
+                    <Icon icon="lucide:chevron-down" class="h-4 w-4 shrink-0 opacity-50" />
+                  </DcButton>
+                </PopoverTrigger>
+                <PopoverContent class="w-[320px] p-0" align="start">
+                  <ModelSelect
+                    :exclude-providers="['acp']"
+                    :respect-chat-mode="false"
+                    :vision-only="true"
+                    :selected-provider-id="draftVisionModel?.providerId ?? ''"
+                    :selected-model-id="draftVisionModel?.modelId ?? ''"
+                    @update:model="selectVisionModel"
+                  />
+                </PopoverContent>
+              </Popover>
+              <p
+                v-if="visionInvalidReason"
+                data-testid="documents-vision-model-invalid"
+                class="text-xs text-destructive"
+              >
+                {{ t(`settings.documentsModels.invalid.${visionInvalidReason}`) }}
+              </p>
+            </div>
+          </div>
         </div>
 
-        <div class="flex flex-col gap-1.5">
-          <span class="text-xs font-medium text-muted-foreground">
-            {{ t('settings.documentsModels.visionModel') }}
-          </span>
-          <Popover v-model:open="visionSelectOpen">
-            <PopoverTrigger as-child>
-              <DcButton
-                data-testid="documents-vision-model-trigger"
-                variant="outline"
-                :disabled="locked"
-                :class="[
-                  'h-8 w-[320px] justify-between text-sm',
-                  visionInvalidReason
-                    ? 'border-destructive text-destructive hover:text-destructive'
-                    : 'border-border hover:bg-accent'
-                ]"
-              >
-                <span class="min-w-0 truncate">{{ visionModelLabel }}</span>
-                <Icon icon="lucide:chevron-down" class="h-4 w-4 shrink-0 opacity-50" />
-              </DcButton>
-            </PopoverTrigger>
-            <PopoverContent class="w-[320px] p-0" align="start">
-              <ModelSelect
-                :exclude-providers="['acp']"
-                :respect-chat-mode="false"
-                :vision-only="true"
-                :selected-provider-id="draftVisionModel?.providerId ?? ''"
-                :selected-model-id="draftVisionModel?.modelId ?? ''"
-                @update:model="selectVisionModel"
-              />
-            </PopoverContent>
-          </Popover>
-          <p
-            v-if="visionInvalidReason"
-            data-testid="documents-vision-model-invalid"
-            class="text-xs text-destructive"
-          >
-            {{ t(`settings.documentsModels.invalid.${visionInvalidReason}`) }}
+        <div
+          data-testid="documents-models-concurrency-card"
+          class="rounded-lg border border-border p-4"
+        >
+          <div class="mb-2 text-sm font-medium">
+            {{ t('settings.documentsModels.concurrency.title') }}
+          </div>
+          <Input
+            data-testid="documents-concurrency-input"
+            type="number"
+            :min="1"
+            :max="10"
+            :step="1"
+            class="w-24"
+            :disabled="locked"
+            :model-value="String(concurrency)"
+            @update:model-value="onConcurrencyInput"
+          />
+          <p class="mt-1.5 text-xs text-muted-foreground">
+            {{ t('settings.documentsModels.concurrency.hint') }}
           </p>
         </div>
       </div>
-    </div>
 
-    <div
-      data-testid="documents-models-concurrency-card"
-      class="rounded-lg border border-border p-4"
-    >
-      <div class="mb-2 text-sm font-medium">
-        {{ t('settings.documentsModels.concurrency.title') }}
+      <div data-testid="documents-auto-watch-card" class="rounded-lg border border-border p-4">
+        <div class="mb-2 text-sm font-medium">
+          {{ t('settings.documents.archive.autoWatchTitle') }}
+        </div>
+        <div class="flex flex-col gap-3">
+          <div class="flex flex-wrap items-center gap-2">
+            <input
+              data-testid="auto-watch-enable"
+              type="checkbox"
+              class="size-4 accent-primary"
+              :checked="autoWatchEnabled"
+              @change="onAutoWatchEnabledChange"
+            />
+            <span class="text-xs font-medium text-muted-foreground">
+              {{ t('settings.documents.archive.autoWatchEnable') }}
+            </span>
+            <span class="text-xs text-muted-foreground">
+              {{ t('settings.documents.archive.autoWatchDir') }}:
+            </span>
+            <span data-testid="auto-watch-dir" class="min-w-0 flex-1 truncate text-xs">
+              {{ autoWatchDir || '—' }}
+            </span>
+            <DcButton
+              data-testid="auto-watch-choose-dir"
+              variant="outline"
+              @click="onChooseAutoWatchDir"
+            >
+              {{ t('settings.documents.archive.autoWatchChooseDir') }}
+            </DcButton>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-4">
+            <label class="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+              {{ t('settings.documents.archive.autoWatchIntervalHours') }}
+              <Input
+                data-testid="auto-watch-interval"
+                type="number"
+                :min="1"
+                :max="72"
+                :step="1"
+                class="w-20"
+                :model-value="autoWatchIntervalInput"
+                @update:model-value="onAutoWatchIntervalInput"
+              />
+            </label>
+            <label class="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+              {{ t('settings.documents.archive.autoWatchRoundLimit') }}
+              <Input
+                data-testid="auto-watch-round-limit"
+                type="number"
+                :min="1"
+                :max="20"
+                :step="1"
+                class="w-20"
+                :model-value="autoWatchRoundLimitInput"
+                @update:model-value="onAutoWatchRoundLimitInput"
+              />
+            </label>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-3">
+            <span class="text-xs font-medium text-muted-foreground">
+              {{ t('settings.documents.archive.autoWatchExtensions') }}
+            </span>
+            <label
+              v-for="ext in autoWatchExtensionOptions"
+              :key="ext"
+              class="flex items-center gap-1 text-xs text-muted-foreground"
+            >
+              <input
+                type="checkbox"
+                class="size-4 accent-primary"
+                :checked="autoWatchExtensions.includes(ext)"
+                :data-testid="`auto-watch-ext-${ext.slice(1)}`"
+                @change="onAutoWatchExtensionChange(ext, $event)"
+              />
+              {{ ext }}
+            </label>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+            <span data-testid="auto-watch-last-run">
+              {{ t('settings.documents.archive.autoWatchLastRun') }}:
+              {{ autoWatchLastRunText }}
+            </span>
+            <span
+              v-if="autoWatchState.lastError"
+              data-testid="auto-watch-error"
+              class="text-destructive"
+            >
+              {{ autoWatchState.lastError }}
+            </span>
+          </div>
+
+          <p
+            v-if="autoWatchValidationError"
+            data-testid="auto-watch-validation"
+            class="text-xs text-destructive"
+          >
+            {{ autoWatchValidationError }}
+          </p>
+          <p v-if="autoWatchSaveState === 'error'" class="text-xs text-destructive">
+            {{ t('settings.documentsModels.saveError') }}
+          </p>
+
+          <div>
+            <DcButton
+              data-testid="auto-watch-save"
+              :disabled="autoWatchSaving"
+              @click="saveAutoWatch"
+            >
+              {{
+                autoWatchSaveState === 'saved'
+                  ? t('settings.documentsModels.saved')
+                  : t('settings.documentsModels.save')
+              }}
+            </DcButton>
+          </div>
+        </div>
       </div>
-      <Input
-        data-testid="documents-concurrency-input"
-        type="number"
-        :min="1"
-        :max="10"
-        :step="1"
-        class="w-24"
-        :disabled="locked"
-        :model-value="String(concurrency)"
-        @update:model-value="onConcurrencyInput"
-      />
-      <p class="mt-1.5 text-xs text-muted-foreground">
-        {{ t('settings.documentsModels.concurrency.hint') }}
-      </p>
     </div>
 
     <details class="rounded-lg border border-border p-4">
@@ -196,14 +323,22 @@ import { useProviderStore } from '@/stores/providerStore'
 import { useModelStore } from '@/stores/modelStore'
 import { useManagedStore } from '@/stores/managedStore'
 import { createConfigClient } from '@api/ConfigClient'
+import { createDocumentsClient } from '@api/DocumentsClient'
+import {
+  DOCUMENTS_AUTO_WATCH_DEFAULT,
+  DOCUMENTS_AUTO_WATCH_EXTENSIONS,
+  type DocumentsAutoWatchConfig
+} from '@shared/documents'
 import type { RENDERER_MODEL_META } from '@shared/types/provider'
 
 type ModelRef = { providerId: string; modelId: string }
 type InvalidReason = 'providerMissing' | 'providerDisabled' | 'modelMissing'
 type SaveState = 'idle' | 'saved' | 'error'
+type AutoWatchState = { lastRunAt: number | null; lastError: string | null }
 
 const { t } = useI18n()
 const configClient = createConfigClient()
+const documentsClient = createDocumentsClient()
 const providerStore = useProviderStore()
 const modelStore = useModelStore()
 const managedStore = useManagedStore()
@@ -325,17 +460,152 @@ const save = async (): Promise<void> => {
   }
 }
 
+const AUTO_WATCH_EXT_PATTERN = /^\.[A-Za-z0-9]+$/
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null
+
+const normalizeAutoWatchConfig = (raw: unknown): DocumentsAutoWatchConfig => {
+  if (!isRecord(raw)) return { ...DOCUMENTS_AUTO_WATCH_DEFAULT }
+  const extensions = Array.isArray(raw.extensions)
+    ? raw.extensions.filter(
+        (ext): ext is string => typeof ext === 'string' && AUTO_WATCH_EXT_PATTERN.test(ext)
+      )
+    : DOCUMENTS_AUTO_WATCH_DEFAULT.extensions
+  return {
+    enabled: typeof raw.enabled === 'boolean' ? raw.enabled : DOCUMENTS_AUTO_WATCH_DEFAULT.enabled,
+    dir: typeof raw.dir === 'string' ? raw.dir : DOCUMENTS_AUTO_WATCH_DEFAULT.dir,
+    intervalHours:
+      typeof raw.intervalHours === 'number' && Number.isFinite(raw.intervalHours)
+        ? raw.intervalHours
+        : DOCUMENTS_AUTO_WATCH_DEFAULT.intervalHours,
+    extensions,
+    roundLimit:
+      typeof raw.roundLimit === 'number' && Number.isFinite(raw.roundLimit)
+        ? raw.roundLimit
+        : DOCUMENTS_AUTO_WATCH_DEFAULT.roundLimit
+  }
+}
+
+const normalizeAutoWatchState = (raw: unknown): AutoWatchState => {
+  if (!isRecord(raw)) return { lastRunAt: null, lastError: null }
+  return {
+    lastRunAt: typeof raw.lastRunAt === 'number' ? raw.lastRunAt : null,
+    lastError: typeof raw.lastError === 'string' ? raw.lastError : null
+  }
+}
+
+const autoWatchExtensionOptions = DOCUMENTS_AUTO_WATCH_EXTENSIONS
+const autoWatchEnabled = ref(DOCUMENTS_AUTO_WATCH_DEFAULT.enabled)
+const autoWatchDir = ref(DOCUMENTS_AUTO_WATCH_DEFAULT.dir)
+const autoWatchIntervalInput = ref(String(DOCUMENTS_AUTO_WATCH_DEFAULT.intervalHours))
+const autoWatchRoundLimitInput = ref(String(DOCUMENTS_AUTO_WATCH_DEFAULT.roundLimit))
+const autoWatchExtensions = ref<string[]>([...DOCUMENTS_AUTO_WATCH_DEFAULT.extensions])
+const autoWatchState = ref<AutoWatchState>({ lastRunAt: null, lastError: null })
+const autoWatchValidationError = ref<string | null>(null)
+const autoWatchSaveState = ref<SaveState>('idle')
+const autoWatchSaving = ref(false)
+
+const autoWatchLastRunText = computed(() =>
+  autoWatchState.value.lastRunAt === null
+    ? '—'
+    : new Date(autoWatchState.value.lastRunAt).toLocaleString()
+)
+
+const clampAutoWatchNumber = (raw: string | number, min: number, max: number): number => {
+  const parsed = typeof raw === 'number' ? raw : Number(raw)
+  if (!Number.isFinite(parsed)) return min
+  return Math.min(max, Math.max(min, Math.round(parsed)))
+}
+
+const onAutoWatchIntervalInput = (raw: string | number) => {
+  autoWatchIntervalInput.value = String(clampAutoWatchNumber(raw, 1, 72))
+}
+
+const onAutoWatchRoundLimitInput = (raw: string | number) => {
+  autoWatchRoundLimitInput.value = String(clampAutoWatchNumber(raw, 1, 20))
+}
+
+const onAutoWatchEnabledChange = (event: Event) => {
+  autoWatchEnabled.value = (event.target as HTMLInputElement).checked
+  autoWatchSaveState.value = 'idle'
+}
+
+const onAutoWatchExtensionChange = (ext: string, event: Event) => {
+  const checked = (event.target as HTMLInputElement).checked
+  autoWatchExtensions.value = checked
+    ? [...autoWatchExtensions.value, ext]
+    : autoWatchExtensions.value.filter((item) => item !== ext)
+  autoWatchSaveState.value = 'idle'
+}
+
+const onChooseAutoWatchDir = async (): Promise<void> => {
+  try {
+    const dir = await documentsClient.chooseAutoWatchDir()
+    if (dir) {
+      autoWatchDir.value = dir
+      autoWatchValidationError.value = null
+      autoWatchSaveState.value = 'idle'
+    }
+  } catch (error) {
+    console.error('[DocumentsModelsSettings] Failed to choose auto watch directory:', error)
+  }
+}
+
+const saveAutoWatch = async (): Promise<void> => {
+  if (autoWatchSaving.value) return
+  autoWatchValidationError.value = null
+  const dir = autoWatchDir.value.trim()
+  if (autoWatchEnabled.value && !dir) {
+    autoWatchValidationError.value = t('settings.documents.archive.autoWatchNeedDir')
+    return
+  }
+  const extensions = autoWatchExtensionOptions.filter((ext) =>
+    autoWatchExtensions.value.includes(ext)
+  )
+  if (extensions.length === 0) {
+    autoWatchValidationError.value = t('settings.documents.archive.autoWatchInvalidExtensions')
+    return
+  }
+  autoWatchSaving.value = true
+  autoWatchSaveState.value = 'idle'
+  try {
+    await configClient.setSetting('documents.autoWatch', {
+      enabled: autoWatchEnabled.value,
+      dir,
+      intervalHours: clampAutoWatchNumber(autoWatchIntervalInput.value, 1, 72),
+      extensions,
+      roundLimit: clampAutoWatchNumber(autoWatchRoundLimitInput.value, 1, 20)
+    })
+    autoWatchSaveState.value = 'saved'
+  } catch (error) {
+    console.error('[DocumentsModelsSettings] Failed to save auto watch settings:', error)
+    autoWatchSaveState.value = 'error'
+  } finally {
+    autoWatchSaving.value = false
+  }
+}
+
 onMounted(async () => {
   await managedStore.load()
 
-  const [textModel, visionModel, savedConcurrency, savedTemperature, savedMaxTokens] =
-    await Promise.all([
-      configClient.getSetting('documents.textModel'),
-      configClient.getSetting('documents.visionModel'),
-      configClient.getSetting('documents.concurrency'),
-      configClient.getSetting('documents.temperature'),
-      configClient.getSetting('documents.maxTokens')
-    ])
+  const [
+    textModel,
+    visionModel,
+    savedConcurrency,
+    savedTemperature,
+    savedMaxTokens,
+    savedAutoWatch,
+    savedAutoWatchState
+  ] = await Promise.all([
+    configClient.getSetting('documents.textModel'),
+    configClient.getSetting('documents.visionModel'),
+    configClient.getSetting('documents.concurrency'),
+    configClient.getSetting('documents.temperature'),
+    configClient.getSetting('documents.maxTokens'),
+    configClient.getSetting('documents.autoWatch'),
+    configClient.getSetting('documents.autoWatchState')
+  ])
 
   const userTextModel = textModel ?? null
   const userVisionModel = visionModel ?? null
@@ -343,6 +613,16 @@ onMounted(async () => {
     typeof savedConcurrency === 'number' ? clampConcurrency(savedConcurrency) : 4
   const userTemperature = typeof savedTemperature === 'number' ? String(savedTemperature) : ''
   const userMaxTokens = typeof savedMaxTokens === 'number' ? String(savedMaxTokens) : ''
+
+  const autoWatch = normalizeAutoWatchConfig(savedAutoWatch)
+  autoWatchEnabled.value = autoWatch.enabled
+  autoWatchDir.value = autoWatch.dir
+  autoWatchIntervalInput.value = String(clampAutoWatchNumber(autoWatch.intervalHours, 1, 72))
+  autoWatchRoundLimitInput.value = String(clampAutoWatchNumber(autoWatch.roundLimit, 1, 20))
+  autoWatchExtensions.value = autoWatch.extensions.filter((ext) =>
+    autoWatchExtensionOptions.includes(ext)
+  )
+  autoWatchState.value = normalizeAutoWatchState(savedAutoWatchState)
 
   savedTextModel.value = userTextModel
   savedVisionModel.value = userVisionModel

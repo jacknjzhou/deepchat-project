@@ -277,16 +277,25 @@ export interface AgentDocumentsToolPort {
     file: { path: string; name?: string; mimeType?: string }
     source?: 'chat' | 'manual'
     sessionId?: string
-  }) => Promise<{
-    document: {
-      id: string
-      typeKey: string
-      status: string
-      fields: Record<string, { value: unknown; uncertain: boolean }>
-      fileUris: string[]
-    }
-    meta: { route: string; durationMs: number; issues: string[] }
-  }>
+  }) => Promise<
+    | {
+        status: 'ok'
+        document: {
+          id: string
+          typeKey: string
+          status: string
+          fields: Record<string, { value: unknown; uncertain: boolean }>
+          fileUris: string[]
+        }
+        meta: { route: string; durationMs: number; issues: string[] }
+      }
+    | {
+        status: 'duplicate'
+        /** 与已入库内容重复被拦截；fileName 为本次文件名，existingName 为库内已登记文件名 */
+        fileName: string
+        existingName: string
+      }
+  >
   confirmDocument: (input: {
     id: string
     fields?: Record<string, { value: unknown; uncertain: boolean }>

@@ -1,6 +1,7 @@
 import { promises as fsp } from 'node:fs'
 import path from 'node:path'
 import {
+  documentAutoWatchChooseDirRoute,
   documentTemplatesDeleteRoute,
   documentTemplatesForkRoute,
   documentTemplatesGetRoute,
@@ -24,19 +25,25 @@ import {
   documentsTasksClearFailedRoute,
   documentsTasksListRoute,
   documentsTasksRetryRoute,
+  documentsTasksScanBatchesRoute,
   documentsUpsertRoute
 } from '@shared/contracts/routes'
-import { REIMBURSEMENT_UNASSIGNED } from '@shared/documents'
+import { REIMBURSEMENT_UNASSIGNED, type RecognitionDuplicate } from '@shared/documents'
 import { dialog } from 'electron'
 import { createRouteMap, type DeepchatRouteMap } from '@/routes/routeRegistry'
 import { buildDocumentsCsv, CSV_EXPORT_MAX_ROWS } from './csv'
-import type { DocumentExtractor } from './extractor/documentExtractor'
+import { AUTO_TEMPLATE_ID, type DocumentExtractor } from './extractor/documentExtractor'
 import type { DocumentsSettingsStore } from './modelSettings'
-import type { DocumentsRepository } from './repository'
+import type { DocumentTask, DocumentsRepository } from './repository'
 import { buildReimbursementTree, REIMBURSEMENT_TREE_MAX_DOCUMENTS } from './reimbursement'
 import { exportReimbursementPackage } from './reimbursementExport'
 import { readReimbursementConfig, writeReimbursementConfig } from './reimbursementConfig'
-import type { RecognitionTaskManager } from './taskManager'
+import type { RecognitionTaskManager, RecognitionTaskSubmitInput } from './taskManager'
+
+/** 内容去重提交包装器（composition 注入 submitWithDedupe 接线） */
+export type DocumentsDedupeSubmit = (
+  input: RecognitionTaskSubmitInput
+) => Promise<{ tasks: DocumentTask[]; duplicates: RecognitionDuplicate[] }>
 
 interface DocumentsCsvRouteDeps {
   showSaveDialog: (
@@ -84,7 +91,8 @@ export function createDocumentsRoutes(
   taskManager: RecognitionTaskManager,
   csvDeps: DocumentsCsvRouteDeps = defaultCsvDeps,
   configStore?: DocumentsSettingsStore,
-  reimbursementDeps: ReimbursementRouteDeps = defaultReimbursementDeps
+  reimbursementDeps: ReimbursementRouteDeps = defaultReimbursementDeps,
+  dedupeSubmit?: DocumentsDedupeSubmit
 ): DeepchatRouteMap {
   const requireConfigStore = (): DocumentsSettingsStore => {
     if (!configStore) {
@@ -187,19 +195,26 @@ export function createDocumentsRoutes(
       documentsTasksCreateRoute.name,
       async (rawInput) => {
         const input = documentsTasksCreateRoute.input.parse(rawInput)
-        const tasks = taskManager.submit({
+        // Scheduled submissions omit templateId: normalize to the auto classifier
+        // here so the task port never sees an undefined template binding.
+        const submitInput = {
           files: input.files,
-          templateId: input.templateId,
+          templateId: input.templateId ?? AUTO_TEMPLATE_ID,
           source: input.source
-        })
-        return documentsTasksCreateRoute.output.parse({ tasks })
+        }
+        // Content-level dedupe: composition injects the submitWithDedupe wrapper;
+        // without it the submit goes through directly with no duplicates reported.
+        const { tasks, duplicates } = dedupeSubmit
+          ? await dedupeSubmit(submitInput)
+          : { tasks: taskManager.submit(submitInput), duplicates: [] }
+        return documentsTasksCreateRoute.output.parse({ tasks, duplicates })
       }
     ],
     [
       documentsTasksListRoute.name,
       async (rawInput) => {
-        documentsTasksListRoute.input.parse(rawInput)
-        return documentsTasksListRoute.output.parse({ tasks: repository.listRecentTasks() })
+        const input = documentsTasksListRoute.input.parse(rawInput)
+        return documentsTasksListRoute.output.parse(repository.listUnifiedTasks(input))
       }
     ],
     [
@@ -220,6 +235,16 @@ export function createDocumentsRoutes(
         documentsTasksClearFailedRoute.input.parse(rawInput)
         return documentsTasksClearFailedRoute.output.parse({
           removed: repository.deleteFailedTasks()
+        })
+      }
+    ],
+    [
+      documentsTasksScanBatchesRoute.name,
+      async (rawInput) => {
+        const input = documentsTasksScanBatchesRoute.input.parse(rawInput)
+        return documentsTasksScanBatchesRoute.output.parse({
+          batches: repository.listScanBatches(input.limit, input.offset),
+          total: repository.countScanBatches()
         })
       }
     ],
@@ -498,6 +523,17 @@ export function createDocumentsRoutes(
           exportedFiles: output.exportedFiles,
           summaryPath: output.summaryPath
         })
+      }
+    ],
+    [
+      documentAutoWatchChooseDirRoute.name,
+      async (rawInput) => {
+        documentAutoWatchChooseDirRoute.input.parse(rawInput)
+        const picked = await reimbursementDeps.showOpenDialog({
+          properties: ['openDirectory']
+        })
+        const dir = picked.canceled ? null : (picked.filePaths[0] ?? null)
+        return documentAutoWatchChooseDirRoute.output.parse({ dir })
       }
     ]
   ])

@@ -42,6 +42,7 @@ const ModelSelectStub = defineComponent({
 
 const mountPage = async (options: {
   settings?: Record<string, unknown>
+  chooseDirResult?: string | null
   providers?: Array<{ id: string; name: string; enable: boolean }>
   providerModels?: Array<{
     providerId: string
@@ -58,6 +59,9 @@ const mountPage = async (options: {
       return Promise.resolve(value)
     })
   }
+  const documentsClient = {
+    chooseAutoWatchDir: vi.fn(() => Promise.resolve(options.chooseDirResult ?? null))
+  }
   const providerStore = {
     providers: options.providers ?? [],
     sortedProviders: (options.providers ?? []).filter((provider) => provider.enable)
@@ -72,6 +76,9 @@ const mountPage = async (options: {
 
   vi.doMock('@api/ConfigClient', () => ({
     createConfigClient: () => configClient
+  }))
+  vi.doMock('@api/DocumentsClient', () => ({
+    createDocumentsClient: () => documentsClient
   }))
   vi.doMock('@/stores/providerStore', () => ({
     useProviderStore: () => providerStore
@@ -118,7 +125,7 @@ const mountPage = async (options: {
 
   const viewModel = wrapper.vm as unknown as Record<string, unknown>
 
-  return { wrapper, configClient, viewModel }
+  return { wrapper, configClient, documentsClient, viewModel }
 }
 
 const getModelSelects = (wrapper: Awaited<ReturnType<typeof mountPage>>['wrapper']) =>
@@ -183,7 +190,9 @@ describe('DocumentsModelsSettings', () => {
       'documents.visionModel',
       'documents.concurrency',
       'documents.temperature',
-      'documents.maxTokens'
+      'documents.maxTokens',
+      'documents.autoWatch',
+      'documents.autoWatchState'
     ])
 
     expect(viewModel.savedTextModel).toEqual({ providerId: 'prov-a', modelId: 'model-a1' })
@@ -273,6 +282,138 @@ describe('DocumentsModelsSettings', () => {
 
     expect(viewModel.savedTextModel).toEqual({ providerId: 'prov-a', modelId: 'model-a1' })
     expect(viewModel.savedVisionModel).toEqual({ providerId: 'prov-b', modelId: 'model-b1' })
+
+    wrapper.unmount()
+  })
+})
+
+describe('DocumentsModelsSettings auto watch', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('renders auto watch defaults when setting is empty', async () => {
+    const { wrapper } = await mountPage({
+      settings: {},
+      ...fullSetup
+    })
+
+    const enable = wrapper.get('[data-testid="auto-watch-enable"]')
+    expect((enable.element as HTMLInputElement).checked).toBe(false)
+    expect(wrapper.get('[data-testid="auto-watch-dir"]').text()).not.toContain('\\')
+    expect(
+      (wrapper.get('[data-testid="auto-watch-interval"]').element as HTMLInputElement).value
+    ).toBe('1')
+    expect(
+      (wrapper.get('[data-testid="auto-watch-round-limit"]').element as HTMLInputElement).value
+    ).toBe('20')
+
+    for (const ext of ['pdf', 'png', 'jpg', 'jpeg']) {
+      const checkbox = wrapper.get(`[data-testid="auto-watch-ext-${ext}"]`)
+      expect((checkbox.element as HTMLInputElement).checked).toBe(true)
+    }
+    for (const ext of ['webp', 'gif']) {
+      const checkbox = wrapper.get(`[data-testid="auto-watch-ext-${ext}"]`)
+      expect((checkbox.element as HTMLInputElement).checked).toBe(false)
+    }
+
+    expect(wrapper.get('[data-testid="auto-watch-last-run"]').text()).toContain('—')
+    expect(wrapper.find('[data-testid="auto-watch-error"]').exists()).toBe(false)
+
+    wrapper.unmount()
+  })
+
+  it('saves auto watch config', async () => {
+    const { wrapper, configClient } = await mountPage({
+      settings: {
+        'documents.autoWatch': {
+          enabled: true,
+          dir: 'D:\\docs',
+          intervalHours: 2,
+          extensions: ['.pdf'],
+          roundLimit: 5
+        }
+      },
+      ...fullSetup
+    })
+
+    expect(
+      (wrapper.get('[data-testid="auto-watch-enable"]').element as HTMLInputElement).checked
+    ).toBe(true)
+    expect(wrapper.get('[data-testid="auto-watch-dir"]').text()).toContain('D:\\docs')
+
+    await wrapper.get('[data-testid="auto-watch-interval"]').setValue('3')
+    await wrapper.get('[data-testid="auto-watch-round-limit"]').setValue('7')
+
+    await wrapper.get('[data-testid="auto-watch-save"]').trigger('click')
+    await flushPromises()
+
+    const call = configClient.setSetting.mock.calls.find((c) => c[0] === 'documents.autoWatch')
+    expect(call).toEqual([
+      'documents.autoWatch',
+      { enabled: true, dir: 'D:\\docs', intervalHours: 3, extensions: ['.pdf'], roundLimit: 7 }
+    ])
+
+    wrapper.unmount()
+  })
+
+  it('blocks auto watch save when enabled without dir', async () => {
+    const { wrapper, configClient } = await mountPage({
+      settings: {
+        'documents.autoWatch': {
+          enabled: true,
+          dir: '',
+          intervalHours: 1,
+          extensions: ['.pdf'],
+          roundLimit: 20
+        }
+      },
+      ...fullSetup
+    })
+
+    await wrapper.get('[data-testid="auto-watch-save"]').trigger('click')
+    await flushPromises()
+
+    const calls = configClient.setSetting.mock.calls.filter((c) => c[0] === 'documents.autoWatch')
+    expect(calls).toHaveLength(0)
+    expect(wrapper.get('[data-testid="auto-watch-validation"]').text()).toBe(
+      'settings.documents.archive.autoWatchNeedDir'
+    )
+
+    wrapper.unmount()
+  })
+
+  it('fills auto watch dir via chooseAutoWatchDir', async () => {
+    const { wrapper, documentsClient } = await mountPage({
+      settings: {},
+      chooseDirResult: 'D:\\scanned',
+      ...fullSetup
+    })
+
+    await wrapper.get('[data-testid="auto-watch-choose-dir"]').trigger('click')
+    await flushPromises()
+
+    expect(documentsClient.chooseAutoWatchDir).toHaveBeenCalledTimes(1)
+    expect(wrapper.get('[data-testid="auto-watch-dir"]').text()).toContain('D:\\scanned')
+
+    wrapper.unmount()
+  })
+
+  it('shows auto watch state last run and error', async () => {
+    const lastRunAt = new Date('2026-01-02T03:04:05').getTime()
+    const { wrapper } = await mountPage({
+      settings: {
+        'documents.autoWatchState': { lastRunAt, lastError: 'boom' }
+      },
+      ...fullSetup
+    })
+
+    expect(wrapper.get('[data-testid="auto-watch-last-run"]').text()).toContain(
+      new Date(lastRunAt).toLocaleString()
+    )
+    const errorEl = wrapper.get('[data-testid="auto-watch-error"]')
+    expect(errorEl.text()).toBe('boom')
+    expect(errorEl.classes()).toContain('text-destructive')
 
     wrapper.unmount()
   })

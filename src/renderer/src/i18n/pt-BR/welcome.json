@@ -2,7 +2,7 @@
   "steps": {
     "welcome": {
       "title": "Bem-vindo",
-      "description": "Vamos começar a configurar o SRIBD Office Agent"
+      "description": "Vamos começar a configurar o Office Agent"
     },
     "provider": {
       "title": "Provedor",
@@ -17,7 +17,7 @@
       "description": "Tudo configurado e pronto para começar!"
     }
   },
-  "title": "Bem-vindo ao SRIBD Office Agent",
+  "title": "Bem-vindo ao Office Agent",
   "description": "Vamos guiá-lo através da configuração.",
   "provider": {
     "select": "Selecione um Provedor",
@@ -35,7 +35,7 @@
     "back": "Voltar"
   },
   "page": {
-    "title": "Boas-vindas ao SRIBD Office Agent",
+    "title": "Boas-vindas ao Office Agent",
     "description": "Conecte um provedor de modelo para começar",
     "guide": {
       "title": "Guia de configuração",
@@ -72,8 +72,8 @@
   },
   "agentPage": {
     "title": "Escolha um agente para começar a criar",
-    "deepchatType": "SRIBD Office Agent",
+    "deepchatType": "Office Agent",
     "acpType": "Agente ACP",
-    "manageAgents": "Gerenciar agentes do SRIBD Office Agent"
+    "manageAgents": "Gerenciar agentes do Office Agent"
   }
 }

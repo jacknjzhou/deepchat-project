@@ -34,6 +34,8 @@ describe('RecognitionTaskManager', () => {
       documentId?: string | null
     }> = []
     const published: string[] = []
+    const bindFileDedupeDocument = vi.fn()
+    const deleteFileDedupesByTask = vi.fn()
     const manager = new RecognitionTaskManager({
       repository: {
         insertTasks: (inputs) =>
@@ -58,8 +60,11 @@ describe('RecognitionTaskManager', () => {
         listPendingTasks: () => [],
         markRunningTasksFailed: () => {},
         countTaskBatch: (batchId) => ({ done: 0, total: batchId === 'b1' ? 1 : 0 }),
-        insertDocument: () => ({ id: 'doc-1' })
+        insertDocument: () => ({ id: 'doc-1' }),
+        bindFileDedupeDocument,
+        deleteFileDedupesByTask
       },
+      sha256File: vi.fn(async () => null),
       extractor: {
         extract: async () => ({
           template: { id: 'tpl1', typeKey: 'invoice_special' },
@@ -84,10 +89,13 @@ describe('RecognitionTaskManager', () => {
     expect(updates[1]?.typeKey).toBe('invoice_special')
     expect(updates[1]?.documentId).toBe('doc-1')
     expect(published).toEqual(['running', 'done'])
+    expect(bindFileDedupeDocument).toHaveBeenCalledWith(tasks[0]?.id, 'doc-1')
   })
 
   it('marks failed tasks with the error message', async () => {
     const updates: Array<{ status: string; error?: string | null }> = []
+    const deleteFileDedupesByTask = vi.fn()
+    const bindFileDedupeDocument = vi.fn()
     const manager = new RecognitionTaskManager({
       repository: {
         insertTasks: (inputs) => inputs.map((input, i) => makeTask({ id: `t${i}` })),
@@ -99,8 +107,11 @@ describe('RecognitionTaskManager', () => {
         listPendingTasks: () => [],
         markRunningTasksFailed: () => {},
         countTaskBatch: () => ({ done: 1, total: 1 }),
-        insertDocument: () => ({ id: 'doc-1' })
+        insertDocument: () => ({ id: 'doc-1' }),
+        bindFileDedupeDocument,
+        deleteFileDedupesByTask
       },
+      sha256File: vi.fn(async () => null),
       extractor: {
         extract: async () => {
           throw new Error('auto classification failed')
@@ -112,6 +123,7 @@ describe('RecognitionTaskManager', () => {
     await manager.idle()
     expect(updates.map((u) => u.status)).toEqual(['running', 'failed'])
     expect(updates[1]?.error).toBe('auto classification failed')
+    expect(deleteFileDedupesByTask).toHaveBeenCalledWith('t0')
   })
 
   it('processes with bounded concurrency', async () => {
@@ -125,8 +137,11 @@ describe('RecognitionTaskManager', () => {
         listPendingTasks: () => [],
         markRunningTasksFailed: () => {},
         countTaskBatch: () => ({ done: 0, total: 4 }),
-        insertDocument: () => ({ id: 'doc' })
+        insertDocument: () => ({ id: 'doc' }),
+        bindFileDedupeDocument: vi.fn(),
+        deleteFileDedupesByTask: vi.fn()
       },
+      sha256File: vi.fn(async () => null),
       extractor: {
         extract: async () => {
           inFlight += 1
@@ -166,8 +181,11 @@ describe('RecognitionTaskManager', () => {
         listPendingTasks: () => [],
         markRunningTasksFailed: () => {},
         countTaskBatch: () => ({ done: 0, total: 6 }),
-        insertDocument: () => ({ id: 'doc' })
+        insertDocument: () => ({ id: 'doc' }),
+        bindFileDedupeDocument: vi.fn(),
+        deleteFileDedupesByTask: vi.fn()
       },
+      sha256File: vi.fn(async () => null),
       extractor: {
         extract: async () => {
           inFlight += 1
@@ -221,8 +239,11 @@ describe('RecognitionTaskManager', () => {
           markedFailed = true
         },
         countTaskBatch: () => ({ done: 0, total: 1 }),
-        insertDocument: () => ({ id: 'doc' })
+        insertDocument: () => ({ id: 'doc' }),
+        bindFileDedupeDocument: vi.fn(),
+        deleteFileDedupesByTask: vi.fn()
       },
+      sha256File: vi.fn(async () => null),
       extractor: {
         extract: async (input) => {
           processed.push(input.templateId)
@@ -258,8 +279,11 @@ describe('RecognitionTaskManager', () => {
         listPendingTasks: () => [],
         markRunningTasksFailed: () => {},
         countTaskBatch: () => ({ done: 0, total: 2 }),
-        insertDocument: () => ({ id: 'doc' })
+        insertDocument: () => ({ id: 'doc' }),
+        bindFileDedupeDocument: vi.fn(),
+        deleteFileDedupesByTask: vi.fn()
       },
+      sha256File: vi.fn(async () => null),
       extractor: {
         extract: async () => {
           calls += 1
@@ -330,8 +354,11 @@ describe('RecognitionTaskManager', () => {
         listPendingTasks: () => [],
         markRunningTasksFailed: () => {},
         countTaskBatch: () => ({ done: 0, total: 1 }),
-        insertDocument: () => ({ id: 'doc-1' })
+        insertDocument: () => ({ id: 'doc-1' }),
+        bindFileDedupeDocument: vi.fn(),
+        deleteFileDedupesByTask: vi.fn()
       },
+      sha256File: vi.fn(async () => null),
       extractor: {
         extract: async () => ({
           template: { id: 'tpl1', typeKey: 'invoice_special' },
@@ -391,8 +418,11 @@ describe('RecognitionTaskManager', () => {
         listPendingTasks: () => [],
         markRunningTasksFailed: () => {},
         countTaskBatch: () => ({ done: 0, total: 1 }),
-        insertDocument: () => ({ id: 'doc-1' })
+        insertDocument: () => ({ id: 'doc-1' }),
+        bindFileDedupeDocument: vi.fn(),
+        deleteFileDedupesByTask: vi.fn()
       },
+      sha256File: vi.fn(async () => null),
       extractor: {
         extract: async (input) => {
           extractedTemplates.push(input.templateId)
@@ -418,6 +448,119 @@ describe('RecognitionTaskManager', () => {
     expect(updates.at(-1)).toMatchObject({ status: 'done', typeKey: 'contract_purchase' })
   })
 
+  it('defaults a missing templateId to the auto classifier', async () => {
+    const inserted: Array<{ templateId: string; source: string }> = []
+    const manager = new RecognitionTaskManager({
+      repository: {
+        insertTasks: (inputs) => {
+          for (const input of inputs) {
+            inserted.push({ templateId: input.templateId, source: input.source })
+          }
+          return inputs.map((input, i) =>
+            makeTask({ id: `t${i}`, templateId: input.templateId, source: input.source })
+          )
+        },
+        updateTask: (id, input) => makeTask({ id, status: input.status }),
+        listRecentTasks: () => [],
+        listPendingTasks: () => [],
+        markRunningTasksFailed: () => {},
+        countTaskBatch: () => ({ done: 0, total: 1 }),
+        insertDocument: () => ({ id: 'doc' }),
+        bindFileDedupeDocument: vi.fn(),
+        deleteFileDedupesByTask: vi.fn()
+      },
+      sha256File: vi.fn(async () => null),
+      extractor: {
+        extract: async () => ({
+          template: { id: 'tpl1', typeKey: 'invoice_special' },
+          route: 'text',
+          fields: {},
+          rawOutput: '',
+          durationMs: 1,
+          issues: []
+        })
+      },
+      publishTaskUpdated: () => {}
+    })
+    // Scheduled submissions omit templateId: it must be normalized to 'auto' before
+    // the row is written, otherwise the DB binding crashes on undefined.
+    manager.submit({ files: [{ path: 'C:\\a.png' }], source: 'scheduled' })
+    await manager.idle()
+    expect(inserted).toEqual([{ templateId: 'auto', source: 'scheduled' }])
+  })
+
+  it('archives a scheduled templateId-less task via auto classification', async () => {
+    const extractedTemplateIds: string[] = []
+    const insertedDocs: Array<{ templateId: string; source: string; fileUris: string[] }> = []
+    // Emulates the sqlite update contract: omitted fields keep their stored value.
+    const stored = new Map<string, DocumentTask>()
+    const manager = new RecognitionTaskManager({
+      repository: {
+        insertTasks: (inputs) =>
+          inputs.map((input, i) => {
+            const task = makeTask({
+              id: `t${i}`,
+              templateId: input.templateId,
+              source: input.source
+            })
+            stored.set(task.id, task)
+            return task
+          }),
+        updateTask: (id, input) => {
+          const existing = stored.get(id)
+          const task = makeTask({
+            id,
+            templateId: existing?.templateId,
+            source: existing?.source,
+            status: input.status,
+            typeKey: input.typeKey ?? null,
+            documentId: input.documentId ?? null
+          })
+          stored.set(id, task)
+          return task
+        },
+        listRecentTasks: () => [],
+        listPendingTasks: () => [],
+        markRunningTasksFailed: () => {},
+        countTaskBatch: () => ({ done: 0, total: 1 }),
+        insertDocument: (input) => {
+          insertedDocs.push({
+            templateId: input.templateId,
+            source: input.source,
+            fileUris: input.fileUris
+          })
+          return { id: 'doc-9' }
+        },
+        bindFileDedupeDocument: vi.fn(),
+        deleteFileDedupesByTask: vi.fn()
+      },
+      sha256File: vi.fn(async () => null),
+      extractor: {
+        extract: async (input) => {
+          extractedTemplateIds.push(input.templateId)
+          return {
+            template: { id: 'tpl-invoice', typeKey: 'invoice_special' },
+            route: 'text',
+            fields: { invoice_code: { value: '123', uncertain: false } },
+            rawOutput: '',
+            durationMs: 1,
+            issues: []
+          }
+        }
+      },
+      publishTaskUpdated: () => {}
+    })
+    manager.submit({ files: [{ path: 'C:\\a.png', name: 'a.png' }], source: 'scheduled' })
+    await manager.idle()
+    // The run chain uses the row's templateId (already normalized to 'auto').
+    expect(extractedTemplateIds).toEqual(['auto'])
+    // Archiving receives the classified template and the task's source, not an
+    // undefined or hardcoded value.
+    expect(insertedDocs).toEqual([
+      { templateId: 'tpl-invoice', source: 'scheduled', fileUris: ['C:\\a.png'] }
+    ])
+  })
+
   it('retryTask ignores tasks that are not failed or missing', async () => {
     const done = makeTask({ id: 't-done', status: 'done' })
     const manager = new RecognitionTaskManager({
@@ -431,8 +574,11 @@ describe('RecognitionTaskManager', () => {
         listPendingTasks: () => [],
         markRunningTasksFailed: () => {},
         countTaskBatch: () => ({ done: 0, total: 0 }),
-        insertDocument: () => ({ id: 'doc' })
+        insertDocument: () => ({ id: 'doc' }),
+        bindFileDedupeDocument: vi.fn(),
+        deleteFileDedupesByTask: vi.fn()
       },
+      sha256File: vi.fn(async () => null),
       extractor: {
         extract: async () => {
           throw new Error('should not extract')
@@ -442,5 +588,197 @@ describe('RecognitionTaskManager', () => {
     })
     expect(manager.retryTask(done.id)).toBeNull()
     expect(manager.retryTask('missing')).toBeNull()
+  })
+
+  it('re-registers the dedupe hash when a retried task succeeds after cleanup', async () => {
+    const stored = new Map<string, DocumentTask>()
+    let extractCalls = 0
+    const insertFileDedupes = vi.fn()
+    const findFileDedupeNames = vi.fn(() => new Map<string, string>())
+    const deleteFileDedupesByTask = vi.fn()
+    // 首次运行失败后哈希行已被清理：bind 无行可更新（changes = 0）
+    const bindFileDedupeDocument = vi.fn(() => 0)
+    const sha256File = vi.fn(async () => 'hash-retry')
+    const manager = new RecognitionTaskManager({
+      repository: {
+        insertTasks: (inputs) =>
+          inputs.map((input, i) => {
+            const task = makeTask({
+              id: `t${i}`,
+              filePath: input.filePath,
+              fileName: input.fileName
+            })
+            stored.set(task.id, task)
+            return task
+          }),
+        getTask: (id) => stored.get(id) ?? null,
+        updateTask: (id, input) => {
+          const task = makeTask({
+            id,
+            filePath: stored.get(id)?.filePath,
+            fileName: stored.get(id)?.fileName,
+            status: input.status,
+            documentId: input.documentId ?? null,
+            error: input.error ?? null
+          })
+          stored.set(id, task)
+          return task
+        },
+        listRecentTasks: () => [],
+        listPendingTasks: () => [],
+        markRunningTasksFailed: () => {},
+        countTaskBatch: () => ({ done: 0, total: 1 }),
+        insertDocument: () => ({ id: 'doc-1' }),
+        findFileDedupeNames,
+        insertFileDedupes,
+        bindFileDedupeDocument,
+        deleteFileDedupesByTask
+      },
+      sha256File,
+      extractor: {
+        extract: async () => {
+          extractCalls += 1
+          if (extractCalls === 1) {
+            throw new Error('first run fails')
+          }
+          return {
+            template: { id: 'tpl1', typeKey: 'k' },
+            route: 'vision',
+            fields: {},
+            rawOutput: '',
+            durationMs: 1,
+            issues: []
+          }
+        }
+      },
+      publishTaskUpdated: () => {}
+    })
+    manager.submit({ files: [{ path: 'C:\\a.png' }], templateId: 'auto', source: 'manual' })
+    await manager.idle()
+    expect(deleteFileDedupesByTask).toHaveBeenCalledWith('t0')
+    expect(manager.retryTask('t0')).toMatchObject({ status: 'pending' })
+    await manager.idle()
+    // 重试成功后哈希行被重新登记并绑定到新文档
+    expect(sha256File).toHaveBeenCalledWith('C:\\a.png')
+    expect(findFileDedupeNames).toHaveBeenCalledWith(['hash-retry'])
+    expect(insertFileDedupes).toHaveBeenCalledWith([
+      {
+        contentHash: 'hash-retry',
+        fileName: 'a.png',
+        filePath: 'C:\\a.png',
+        source: 'manual',
+        taskId: 't0',
+        now: expect.any(Number)
+      }
+    ])
+    expect(bindFileDedupeDocument).toHaveBeenLastCalledWith('t0', 'doc-1')
+  })
+
+  it('skips re-registration when the content hash is already owned by another file', async () => {
+    const insertFileDedupes = vi.fn()
+    const manager = new RecognitionTaskManager({
+      repository: {
+        insertTasks: (inputs) => inputs.map((input, i) => makeTask({ id: `t${i}` })),
+        updateTask: (id, input) => makeTask({ id, status: input.status }),
+        listRecentTasks: () => [],
+        listPendingTasks: () => [],
+        markRunningTasksFailed: () => {},
+        countTaskBatch: () => ({ done: 0, total: 1 }),
+        insertDocument: () => ({ id: 'doc-1' }),
+        findFileDedupeNames: () => new Map([['hash-1', 'other.pdf']]),
+        insertFileDedupes,
+        bindFileDedupeDocument: vi.fn(() => 0),
+        deleteFileDedupesByTask: vi.fn()
+      },
+      sha256File: vi.fn(async () => 'hash-1'),
+      extractor: {
+        extract: async () => ({
+          template: { id: 'tpl1', typeKey: 'k' },
+          route: 'vision',
+          fields: {},
+          rawOutput: '',
+          durationMs: 1,
+          issues: []
+        })
+      },
+      publishTaskUpdated: () => {}
+    })
+    manager.submit({ files: [{ path: 'C:\\a.png' }], templateId: 'auto', source: 'manual' })
+    await manager.idle()
+    // 哈希已被其他文件占用（重试窗口内新提交）：不抢占，任务照常完成
+    expect(insertFileDedupes).not.toHaveBeenCalled()
+  })
+
+  it('skips re-registration when the file hash cannot be computed', async () => {
+    const insertFileDedupes = vi.fn()
+    const findFileDedupeNames = vi.fn(() => new Map<string, string>())
+    const manager = new RecognitionTaskManager({
+      repository: {
+        insertTasks: (inputs) => inputs.map((input, i) => makeTask({ id: `t${i}` })),
+        updateTask: (id, input) => makeTask({ id, status: input.status }),
+        listRecentTasks: () => [],
+        listPendingTasks: () => [],
+        markRunningTasksFailed: () => {},
+        countTaskBatch: () => ({ done: 0, total: 1 }),
+        insertDocument: () => ({ id: 'doc-1' }),
+        findFileDedupeNames,
+        insertFileDedupes,
+        bindFileDedupeDocument: vi.fn(() => 0),
+        deleteFileDedupesByTask: vi.fn()
+      },
+      sha256File: vi.fn(async () => null),
+      extractor: {
+        extract: async () => ({
+          template: { id: 'tpl1', typeKey: 'k' },
+          route: 'vision',
+          fields: {},
+          rawOutput: '',
+          durationMs: 1,
+          issues: []
+        })
+      },
+      publishTaskUpdated: () => {}
+    })
+    manager.submit({ files: [{ path: 'C:\\a.png' }], templateId: 'auto', source: 'manual' })
+    await manager.idle()
+    expect(findFileDedupeNames).not.toHaveBeenCalled()
+    expect(insertFileDedupes).not.toHaveBeenCalled()
+  })
+
+  it('does not fail the task when re-registration races with another submission', async () => {
+    const statuses: string[] = []
+    const manager = new RecognitionTaskManager({
+      repository: {
+        insertTasks: (inputs) => inputs.map((input, i) => makeTask({ id: `t${i}` })),
+        updateTask: (id, input) => makeTask({ id, status: input.status }),
+        listRecentTasks: () => [],
+        listPendingTasks: () => [],
+        markRunningTasksFailed: () => {},
+        countTaskBatch: () => ({ done: 0, total: 1 }),
+        insertDocument: () => ({ id: 'doc-1' }),
+        // 查表无命中，但插入瞬间与并发提交撞主键：登记是 best-effort
+        findFileDedupeNames: () => new Map(),
+        insertFileDedupes: () => {
+          throw new Error('UNIQUE constraint failed')
+        },
+        bindFileDedupeDocument: vi.fn(() => 0),
+        deleteFileDedupesByTask: vi.fn()
+      },
+      sha256File: vi.fn(async () => 'hash-1'),
+      extractor: {
+        extract: async () => ({
+          template: { id: 'tpl1', typeKey: 'k' },
+          route: 'vision',
+          fields: {},
+          rawOutput: '',
+          durationMs: 1,
+          issues: []
+        })
+      },
+      publishTaskUpdated: ({ task }) => statuses.push(task.status)
+    })
+    manager.submit({ files: [{ path: 'C:\\a.png' }], templateId: 'auto', source: 'manual' })
+    await manager.idle()
+    expect(statuses).toEqual(['running', 'done'])
   })
 })

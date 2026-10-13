@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import {
+  documentAutoWatchChooseDirRoute,
   documentTemplatesDeleteRoute,
   documentTemplatesForkRoute,
   documentTemplatesGetRoute,
@@ -26,6 +27,7 @@ import {
   documentsTasksCreateRoute,
   documentsTasksListRoute,
   documentsTasksRetryRoute,
+  documentsTasksScanBatchesRoute,
   documentsUpsertRoute,
   type DeepchatRouteName
 } from '@shared/contracts/routes'
@@ -39,6 +41,7 @@ import {
 } from '@/documents/reimbursementExport'
 import { createDocumentsRoutes } from '@/documents/routes'
 import { DocumentsRepository } from '@/documents/repository'
+import { RecognitionTaskManager } from '@/documents/taskManager'
 import { DocumentsDatabase } from '@/documents/data/database'
 import { DocumentTasksTable } from '@/documents/data/tables/documentTasks'
 import { DocumentTemplatesTable } from '@/documents/data/tables/documentTemplates'
@@ -280,6 +283,7 @@ describe('documents route contracts', () => {
       filePath: 'C:\\a.png',
       fileName: 'a.png',
       templateId: 'auto',
+      source: 'manual',
       status: 'pending',
       typeKey: null,
       documentId: null,
@@ -287,8 +291,61 @@ describe('documents route contracts', () => {
       createdAt: 1,
       updatedAt: 1
     }
-    expect(documentsTasksCreateRoute.output.parse({ tasks: [task] }).tasks).toHaveLength(1)
-    expect(documentsTasksListRoute.output.parse({ tasks: [] }).tasks).toEqual([])
+    expect(
+      documentsTasksCreateRoute.output.parse({ tasks: [task], duplicates: [] }).tasks
+    ).toHaveLength(1)
+    expect(
+      documentsTasksCreateRoute.output.parse({
+        tasks: [],
+        duplicates: [{ fileName: 'a.png', existingName: 'b.png', path: 'C:\\a.png' }]
+      }).duplicates
+    ).toEqual([{ fileName: 'a.png', existingName: 'b.png', path: 'C:\\a.png' }])
+    // duplicates 为必填字段
+    expect(() => documentsTasksCreateRoute.output.parse({ tasks: [] })).toThrow()
+    expect(documentsTasksListRoute.output.parse({ tasks: [], total: 0 }).tasks).toEqual([])
+  })
+
+  it('documents.tasks.list/scanBatches 契约解析过滤分页输入与统一条目输出', () => {
+    const input = documentsTasksListRoute.input.parse({ source: 'scheduled', batchId: 'b1' })
+    expect(input.limit).toBe(50)
+    expect(input.offset).toBe(0)
+    expect(() => documentsTasksListRoute.input.parse({ limit: 0 })).toThrow()
+    expect(() => documentsTasksListRoute.input.parse({ limit: 201 })).toThrow()
+    expect(() => documentsTasksListRoute.input.parse({ offset: -1 })).toThrow()
+    expect(() => documentsTasksListRoute.input.parse({ source: 'unknown' })).toThrow()
+    const entry = {
+      id: 't1',
+      filePath: null,
+      relativePath: null,
+      fileName: 'a.png',
+      templateId: null,
+      source: 'scheduled',
+      status: 'pending',
+      typeKey: null,
+      documentId: null,
+      error: null,
+      createdAt: 1,
+      updatedAt: 1,
+      batchId: 'b1'
+    }
+    const output = documentsTasksListRoute.output.parse({ tasks: [entry], total: 1 })
+    expect(output.tasks[0]).toMatchObject({ id: 't1', source: 'scheduled', batchId: 'b1' })
+    expect(() => documentsTasksListRoute.output.parse({ tasks: [entry] })).toThrow()
+    const scanInput = documentsTasksScanBatchesRoute.input.parse({})
+    expect(scanInput.limit).toBe(50)
+    expect(scanInput.offset).toBe(0)
+    const scanOutput = documentsTasksScanBatchesRoute.output.parse({
+      batches: [{ batchId: 'b1', startedAt: 1000, total: 2, done: 1, failed: 0 }],
+      total: 1
+    })
+    expect(scanOutput.batches[0]).toEqual({
+      batchId: 'b1',
+      startedAt: 1000,
+      total: 2,
+      done: 1,
+      failed: 0
+    })
+    expect(() => documentsTasksScanBatchesRoute.output.parse({ batches: [] })).toThrow()
   })
 
   it('documents.tasks.retry/clearFailed 契约解析', () => {
@@ -310,6 +367,7 @@ describe('documents route contracts', () => {
       filePath: 'C:\\a.png',
       fileName: 'a.png',
       templateId: 'auto',
+      source: 'manual',
       status: 'running',
       typeKey: null,
       documentId: null,
@@ -759,6 +817,7 @@ describeIfSqlite('documents stats and tasks route handlers', () => {
       filePath: 'C:\\a.png',
       fileName: 'a.png',
       templateId: 'auto',
+      source: 'manual',
       status: 'pending',
       typeKey: null,
       documentId: null,
@@ -781,7 +840,65 @@ describeIfSqlite('documents stats and tasks route handlers', () => {
     })
   })
 
-  it('documents.tasks.list returns recent tasks from repository', async () => {
+  it('documents.tasks.create runs a scheduled templateId-less task end to end', async () => {
+    const repository = makeRepository()
+    const extractor = {
+      extract: vi.fn(async () => ({
+        template: {
+          id: 'tpl-1',
+          typeKey: 'invoice_special',
+          name: '增值税专用发票',
+          icon: null,
+          category: '发票类',
+          fields: [],
+          extractionMode: 'auto',
+          promptPreset: null,
+          isBuiltin: true,
+          builtinSourceId: null,
+          version: 1,
+          createdAt: 1,
+          updatedAt: 1
+        },
+        route: 'vision',
+        fields: { invoice_code: { value: '123456789012', uncertain: false } },
+        rawOutput: '{"fields":{}}',
+        durationMs: 42,
+        issues: []
+      }))
+    }
+    const taskManager = new RecognitionTaskManager({
+      repository,
+      sha256File: async () => null,
+      extractor: extractor as never,
+      publishTaskUpdated: () => {}
+    })
+    const routes = createDocumentsRoutes(repository, extractor as never, taskManager)
+    const handler = getRouteHandler(routes, documentsTasksCreateRoute.name)
+    const output = documentsTasksCreateRoute.output.parse(
+      await handler({ files: [{ path: 'C:\\a.png', name: 'a.png' }], source: 'scheduled' })
+    )
+    await taskManager.idle()
+    const taskId = output.tasks[0]?.id
+    expect(taskId).toBeTruthy()
+    // Omitting templateId no longer crashes at the DB layer (undefined binding):
+    // the row is normalized to 'auto' and the task completes.
+    expect(repository.getTask(taskId!)).toMatchObject({
+      templateId: 'auto',
+      status: 'done',
+      typeKey: 'invoice_special'
+    })
+    expect(repository.getTask(taskId!)?.documentId).toBeTruthy()
+    // Archiving receives the classified result with the task's scheduled source.
+    const documents = repository.listDocuments({})
+    expect(documents).toHaveLength(1)
+    expect(documents[0]).toMatchObject({
+      source: 'scheduled',
+      typeKey: 'invoice_special',
+      status: 'draft'
+    })
+  })
+
+  it('documents.tasks.list returns unified task entries from repository', async () => {
     const repository = makeRepository()
     repository.insertTasks([
       { batchId: 'b1', filePath: 'C:\\a.png', fileName: 'a.png', templateId: 'auto' }
@@ -789,8 +906,14 @@ describeIfSqlite('documents stats and tasks route handlers', () => {
     const routes = createDocumentsRoutes(repository, fakeExtractor, fakeTaskManager)
     const handler = getRouteHandler(routes, documentsTasksListRoute.name)
     const output = documentsTasksListRoute.output.parse(await handler({}))
+    expect(output.total).toBe(1)
     expect(output.tasks).toHaveLength(1)
-    expect(output.tasks[0]).toMatchObject({ filePath: 'C:\\a.png', status: 'pending' })
+    expect(output.tasks[0]).toMatchObject({
+      filePath: 'C:\\a.png',
+      status: 'pending',
+      source: 'manual',
+      batchId: 'b1'
+    })
   })
 
   it('documents.tasks.retry delegates to task manager and returns the task', async () => {
@@ -863,6 +986,180 @@ describeIfSqlite('documents stats and tasks route handlers', () => {
     )
     expect(remaining.tasks).toHaveLength(1)
     expect(remaining.tasks[0]).toMatchObject({ filePath: 'C:\\b.png', status: 'pending' })
+  })
+})
+
+// These handlers never touch the database (the repository is a placeholder),
+// so they run without the sqlite native module.
+describe('documents scheduled submit and autoWatch chooseDir handlers', () => {
+  it('documents.tasks.create forwards scheduled source without templateId to the task manager', async () => {
+    const task = {
+      id: 't1',
+      batchId: 'b1',
+      filePath: 'D:/scan/a.pdf',
+      fileName: 'a.pdf',
+      templateId: 'auto',
+      source: 'scheduled',
+      status: 'pending',
+      typeKey: null,
+      documentId: null,
+      error: null,
+      createdAt: 1,
+      updatedAt: 1
+    }
+    const submit = vi.fn().mockReturnValue([task])
+    const taskManager = { submit, resumePending: vi.fn() }
+    const routes = createDocumentsRoutes({} as never, fakeExtractor, taskManager as never)
+    const handler = getRouteHandler(routes, documentsTasksCreateRoute.name)
+    const output = documentsTasksCreateRoute.output.parse(
+      await handler({ files: [{ path: 'D:/scan/a.pdf' }], source: 'scheduled' })
+    )
+    expect(output.tasks).toEqual([task])
+    // The handler normalizes the omitted templateId; the port no longer sees undefined.
+    expect(submit).toHaveBeenCalledWith({
+      files: [{ path: 'D:/scan/a.pdf' }],
+      templateId: 'auto',
+      source: 'scheduled'
+    })
+  })
+
+  it('documents.tasks.create routes through the dedupe wrapper and returns duplicates', async () => {
+    const task = {
+      id: 't1',
+      batchId: 'b1',
+      filePath: 'C:\\a.png',
+      fileName: 'a.png',
+      templateId: 'auto',
+      source: 'manual',
+      status: 'pending',
+      typeKey: null,
+      documentId: null,
+      error: null,
+      createdAt: 1,
+      updatedAt: 1
+    }
+    const submit = vi.fn().mockReturnValue([task])
+    const taskManager = { submit, resumePending: vi.fn() }
+    const dedupeSubmit = vi.fn(async (input: { files: unknown[] }) => ({
+      tasks: [task],
+      duplicates: [{ fileName: 'a.png', existingName: 'b.png', path: 'C:\\a.png' }]
+    }))
+    const routes = createDocumentsRoutes(
+      {} as never,
+      fakeExtractor,
+      taskManager as never,
+      undefined,
+      undefined,
+      undefined,
+      dedupeSubmit as never
+    )
+    const handler = getRouteHandler(routes, documentsTasksCreateRoute.name)
+    const output = documentsTasksCreateRoute.output.parse(
+      await handler({ files: [{ path: 'C:\\a.png' }], templateId: 'auto' })
+    )
+    expect(output.duplicates).toEqual([
+      { fileName: 'a.png', existingName: 'b.png', path: 'C:\\a.png' }
+    ])
+    // The wrapper receives the normalized input (templateId defaulted by the handler).
+    expect(dedupeSubmit).toHaveBeenCalledWith({
+      files: [{ path: 'C:\\a.png' }],
+      templateId: 'auto',
+      source: 'manual'
+    })
+    // Direct submit is not called when the wrapper is injected.
+    expect(submit).not.toHaveBeenCalled()
+  })
+
+  it('documents.autoWatch.chooseDir returns the picked directory or null when canceled', async () => {
+    const routes = createDocumentsRoutes(
+      {} as never,
+      fakeExtractor,
+      fakeTaskManager,
+      undefined,
+      undefined,
+      { showOpenDialog: async () => ({ canceled: false, filePaths: ['D:/scan'] }) }
+    )
+    const handler = getRouteHandler(routes, documentAutoWatchChooseDirRoute.name)
+    expect(await handler({})).toEqual({ dir: 'D:/scan' })
+
+    const canceledRoutes = createDocumentsRoutes(
+      {} as never,
+      fakeExtractor,
+      fakeTaskManager,
+      undefined,
+      undefined,
+      { showOpenDialog: async () => ({ canceled: true, filePaths: [] }) }
+    )
+    const canceledHandler = getRouteHandler(canceledRoutes, documentAutoWatchChooseDirRoute.name)
+    expect(await canceledHandler({})).toEqual({ dir: null })
+  })
+})
+
+// These handlers only forward to the repository (stubbed below), so they run
+// without the sqlite native module.
+describe('documents unified task list and scanBatches handlers', () => {
+  const makeStubRepository = () => ({
+    listUnifiedTasks: vi.fn().mockReturnValue({
+      tasks: [
+        {
+          id: 't1',
+          filePath: null,
+          relativePath: null,
+          fileName: 'a.png',
+          templateId: null,
+          source: 'scheduled',
+          status: 'pending',
+          typeKey: null,
+          documentId: null,
+          error: null,
+          createdAt: 1,
+          updatedAt: 1,
+          batchId: 'b1'
+        }
+      ],
+      total: 1
+    }),
+    listScanBatches: vi
+      .fn()
+      .mockReturnValue([{ batchId: 'b1', startedAt: 1000, total: 2, done: 1, failed: 0 }]),
+    countScanBatches: vi.fn().mockReturnValue(1)
+  })
+
+  it('documents.tasks.list 透传过滤参数并返回统一条目 + total', async () => {
+    const repository = makeStubRepository()
+    const routes = createDocumentsRoutes(repository as never, fakeExtractor, fakeTaskManager)
+    const handler = getRouteHandler(routes, documentsTasksListRoute.name)
+    const output = documentsTasksListRoute.output.parse(
+      await handler({ source: 'scheduled', limit: 10, offset: 5 })
+    )
+    expect(repository.listUnifiedTasks).toHaveBeenCalledWith({
+      source: 'scheduled',
+      limit: 10,
+      offset: 5
+    })
+    expect(output.total).toBe(1)
+    expect(output.tasks[0]).toMatchObject({ id: 't1', source: 'scheduled', batchId: 'b1' })
+  })
+
+  it('documents.tasks.list 空入参默认 limit=50/offset=0', async () => {
+    const repository = makeStubRepository()
+    const routes = createDocumentsRoutes(repository as never, fakeExtractor, fakeTaskManager)
+    const handler = getRouteHandler(routes, documentsTasksListRoute.name)
+    await handler({})
+    expect(repository.listUnifiedTasks).toHaveBeenCalledWith({ limit: 50, offset: 0 })
+  })
+
+  it('documents.tasks.scanBatches 返回批次摘要 + total', async () => {
+    const repository = makeStubRepository()
+    const routes = createDocumentsRoutes(repository as never, fakeExtractor, fakeTaskManager)
+    const handler = getRouteHandler(routes, documentsTasksScanBatchesRoute.name)
+    const output = documentsTasksScanBatchesRoute.output.parse(await handler({}))
+    expect(repository.listScanBatches).toHaveBeenCalledWith(50, 0)
+    expect(repository.countScanBatches).toHaveBeenCalledTimes(1)
+    expect(output.batches).toEqual([
+      { batchId: 'b1', startedAt: 1000, total: 2, done: 1, failed: 0 }
+    ])
+    expect(output.total).toBe(1)
   })
 })
 

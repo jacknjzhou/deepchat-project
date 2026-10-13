@@ -2,13 +2,6 @@ import type { DocumentFieldEntry, DocumentRecord } from '@shared/documents'
 import type { ReimbursementConfig } from '@shared/contracts/routes'
 import { REIMBURSEMENT_UNASSIGNED } from '@shared/documents'
 
-const MONEY_FIELD_RE = /amount|total|tax|price|金额|合计|税|价格|价税/i
-
-export interface MoneyColumn {
-  key: string
-  label: string
-}
-
 export function orderedSnapshotFields(snapshot: DocumentRecord['templateSnapshot']) {
   return [...snapshot.fields].sort((a, b) => a.order - b.order)
 }
@@ -93,24 +86,6 @@ function formatDisplayObject(
   }
   flushRange()
   return parts.join(separator)
-}
-
-export function buildMoneyColumns(documents: DocumentRecord[]): MoneyColumn[] {
-  const seen = new Map<string, MoneyColumn>()
-  for (const document of documents) {
-    for (const field of document.templateSnapshot.fields) {
-      if (!MONEY_FIELD_RE.test(field.key) && !MONEY_FIELD_RE.test(field.label)) {
-        continue
-      }
-      if (document.fields[field.key]?.value == null) {
-        continue
-      }
-      if (!seen.has(field.key)) {
-        seen.set(field.key, { key: field.key, label: field.label })
-      }
-    }
-  }
-  return [...seen.values()]
 }
 
 export function formatDateRangeToMs(

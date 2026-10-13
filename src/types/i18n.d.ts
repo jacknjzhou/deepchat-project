@@ -35,6 +35,14 @@ declare module 'vue-i18n' {
       homeDir: string
       sid: string
     }
+    managedConfig: {
+      title: string
+      endpoint: string
+      sourceLabel: string
+      sourceEnv: string
+      sourceBuiltin: string
+      notConfigured: string
+    }
     clickToOpen: string
     codeSnippet: string
     function: string
@@ -1604,6 +1612,8 @@ declare module 'vue-i18n' {
       modelRequired: string
       modelProviderMissing: string
       modelMissing: string
+      reimbursementStoreUnavailable: string
+      reimbursementCategoryUnknown: string
       loadConfigFailed: string
       setEnabledFailed: string
       getServerStatusFailed: string
@@ -1634,6 +1644,10 @@ declare module 'vue-i18n' {
     settingsBanner: {
       required: string
       go: string
+    }
+    reimbursement: {
+      configSaved: string
+      configSaveFailed: string
     }
     loadError: string
     saveAs: string
@@ -2231,6 +2245,7 @@ declare module 'vue-i18n' {
     'settings-documents': string
     'settings-documents-models': string
     'settings-documents-template': string
+    'settings-documents-reimbursement': string
     documents: {
       description: string
       templates: {
@@ -2345,6 +2360,17 @@ declare module 'vue-i18n' {
         colCreatedAt: string
         sourceChat: string
         sourceManual: string
+        sourceScheduled: string
+        autoWatchTitle: string
+        autoWatchEnable: string
+        autoWatchDir: string
+        autoWatchChooseDir: string
+        autoWatchIntervalHours: string
+        autoWatchRoundLimit: string
+        autoWatchExtensions: string
+        autoWatchLastRun: string
+        autoWatchNeedDir: string
+        autoWatchInvalidExtensions: string
         detailTitle: string
         fieldsTitle: string
         filesTitle: string
@@ -2386,6 +2412,66 @@ declare module 'vue-i18n' {
         autoClassify: string
         taskQueuedToast: string
         filesLimit: string
+        colReimbursement: string
+        colGroup: string
+        reimbursementSetFailed: string
+      }
+      reimbursement: {
+        viewDocuments: string
+        viewReimbursement: string
+        unassigned: string
+        manageCategories: string
+        export: string
+        exportDone: string
+        exportWithCount: string
+        materialsTitle: string
+        materialCount: string
+        unknownPerson: string
+        unknownPeriod: string
+        autoCategory: string
+        forceUnassigned: string
+        empty: string
+        loading: string
+        loadFailed: string
+        retry: string
+        addGroup: string
+        groupNamePlaceholder: string
+        confirm: string
+        cancel: string
+        renameGroup: string
+        deleteGroup: string
+        expandGroup: string
+        collapseGroup: string
+        selectGroupForExport: string
+        customGroupsTitle: string
+        customGroupsEmpty: string
+        groupEmpty: string
+        groupNone: string
+        noGroupsHint: string
+        moveGroupFailed: string
+        groupSaveFailed: string
+        moveFailed: string
+        exportFailed: string
+        configTitle: string
+        categoriesTitle: string
+        addCategory: string
+        linkedTypeKeys: string
+        materials: string
+        addMaterial: string
+        materialLinkedPlaceholder: string
+        globalTitle: string
+        personFieldKeys: string
+        dateFieldKeys: string
+        amountFieldKeys: string
+        dateGrouping: string
+        groupByMonth: string
+        groupByDay: string
+        reset: string
+        save: string
+        errorNameRequired: string
+        errorNameDuplicate: string
+        errorMaterialName: string
+        errorTypeKeyInvalid: string
       }
       test: {
         title: string
@@ -2405,6 +2491,13 @@ declare module 'vue-i18n' {
         issues: string
         empty: string
         fileRequired: string
+      }
+      recognize: {
+        duplicateSkipped: string
+        duplicateOf: string
+      }
+      autoWatch: {
+        duplicatesNotice: string
       }
     }
     'settings-knowledge-base': string
@@ -3535,6 +3628,12 @@ declare module 'vue-i18n' {
         connectionFailed: string
         invalidBaseUrl: string
       }
+    }
+    managed: {
+      providerBadge: string
+      providerHint: string
+      documentsBadge: string
+      providerLocked: string
     }
     mcp: {
       title: string

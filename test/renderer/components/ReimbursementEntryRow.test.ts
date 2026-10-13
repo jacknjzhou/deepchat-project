@@ -21,6 +21,16 @@ const groups = [
   { id: 'grp-b', name: '分组二', sortOrder: 1 }
 ]
 
+const categories = [
+  {
+    category: { id: 'cat-a', name: '会议费', sortOrder: 1, customGroups: [], linkedTypeKeys: [] },
+    total: 1,
+    materials: [],
+    groups: [],
+    customGroups: []
+  }
+] as never
+
 // 注：测试环境 vue-i18n 被全局 mock（t 返回 key 本身），断言用 key 字符串而非中文文案。
 
 describe('ReimbursementEntryRow', () => {
@@ -62,5 +72,37 @@ describe('ReimbursementEntryRow', () => {
     await wrapper.find('[data-testid="reimbursement-group-d1"]').setValue('__none__')
     expect(wrapper.emitted('moveGroup')?.at(-1)?.[0]).toBe('d1')
     expect(wrapper.emitted('moveGroup')?.at(-1)?.[1]).toBe('__none__')
+  })
+
+  it('mirrors the owning category on typeKey-linked selects', () => {
+    const wrapper = mount(ReimbursementEntryRow, {
+      props: {
+        entry: { ...entry, isOverride: false },
+        groups: [],
+        categories,
+        categoryId: 'cat-a',
+        showGroupSelect: true
+      }
+    })
+    expect(
+      (wrapper.find('[data-testid="reimbursement-entry-category-d1"]').element as HTMLSelectElement)
+        .value
+    ).toBe('cat-a')
+  })
+
+  it('keeps the auto placeholder when no category resolves (unassigned view)', () => {
+    const wrapper = mount(ReimbursementEntryRow, {
+      props: {
+        entry: { ...entry, isOverride: false },
+        groups: [],
+        categories,
+        categoryId: null,
+        showGroupSelect: false
+      }
+    })
+    expect(
+      (wrapper.find('[data-testid="reimbursement-entry-category-d1"]').element as HTMLSelectElement)
+        .value
+    ).toBe('__auto__')
   })
 })

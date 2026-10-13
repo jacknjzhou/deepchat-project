@@ -80,4 +80,14 @@ describe('documents table reimbursement_override schema repair', () => {
     ).map((c) => c.name)
     expect(columns).toContain('reimbursement_group_override')
   })
+
+  it('registers documents_watched_files in the schema catalog', () => {
+    const spec = getSchemaCatalog().find((table) => table.name === 'documents_watched_files')
+    expect(spec).toBeDefined()
+    db.exec(spec!.createSql)
+    const columns = (
+      db.prepare('PRAGMA table_info(documents_watched_files)').all() as Array<{ name: string }>
+    ).map((c) => c.name)
+    expect(columns).toEqual(['path', 'mtime_ms', 'status', 'task_id', 'processed_at'])
+  })
 })

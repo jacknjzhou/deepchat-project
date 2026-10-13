@@ -1,5 +1,6 @@
 import type { DeepchatBridge } from '@shared/contracts/bridge'
 import {
+  documentAutoWatchChooseDirRoute,
   documentTemplatesDeleteRoute,
   documentTemplatesForkRoute,
   documentTemplatesGetRoute,
@@ -23,6 +24,7 @@ import {
   documentsTasksClearFailedRoute,
   documentsTasksListRoute,
   documentsTasksRetryRoute,
+  documentsTasksScanBatchesRoute,
   documentsUpsertRoute,
   type documentsListInputSchema,
   type documentsTemplateUpsertInputSchema,
@@ -32,7 +34,7 @@ import {
   type DeepchatRouteOutput,
   type ReimbursementConfig
 } from '@shared/contracts/routes'
-import { documentsTaskUpdatedEvent } from '@shared/contracts/events'
+import { documentsTaskUpdatedEvent, documentsWatchDuplicatesEvent } from '@shared/contracts/events'
 import type { z } from 'zod'
 import { getDeepchatBridge } from './core'
 
@@ -95,7 +97,11 @@ export function createDocumentsClient(bridge: DeepchatBridge = getDeepchatBridge
       invokeRoute(bridge, documentsStatsRoute.name, input),
     createTasks: (input: z.input<typeof documentsTasksCreateRoute.input>) =>
       invokeRoute(bridge, documentsTasksCreateRoute.name, input),
-    listTasks: () => invokeRoute(bridge, documentsTasksListRoute.name, {}),
+    listTasks: () => invokeRoute(bridge, documentsTasksListRoute.name, { limit: 200 }),
+    listTasksPaged: (input: z.input<typeof documentsTasksListRoute.input> = {}) =>
+      invokeRoute(bridge, documentsTasksListRoute.name, input),
+    listScanBatches: (input: z.input<typeof documentsTasksScanBatchesRoute.input> = {}) =>
+      invokeRoute(bridge, documentsTasksScanBatchesRoute.name, input),
     retryTask: (id: string, templateId?: string) =>
       invokeRoute(bridge, documentsTasksRetryRoute.name, {
         id,
@@ -117,9 +123,16 @@ export function createDocumentsClient(bridge: DeepchatBridge = getDeepchatBridge
       }),
     reimbursementExport: (input: z.input<typeof documentsReimbursementExportRoute.input> = {}) =>
       invokeRoute(bridge, documentsReimbursementExportRoute.name, input),
+    chooseAutoWatchDir: async (): Promise<string | null> => {
+      const out = await invokeRoute(bridge, documentAutoWatchChooseDirRoute.name, {})
+      return out.dir
+    },
     onTaskUpdated: (
       listener: (payload: z.infer<typeof documentsTaskUpdatedEvent.payload>) => void
-    ) => bridge.on(documentsTaskUpdatedEvent.name, listener)
+    ) => bridge.on(documentsTaskUpdatedEvent.name, listener),
+    onWatchDuplicates: (
+      listener: (payload: z.infer<typeof documentsWatchDuplicatesEvent.payload>) => void
+    ) => bridge.on(documentsWatchDuplicatesEvent.name, listener)
   }
 }
 

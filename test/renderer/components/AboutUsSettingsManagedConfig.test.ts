@@ -104,8 +104,8 @@ vi.mock('vue-i18n', () => ({
   useI18n: () => ({
     t: (key: string, params?: { version?: string; title?: string; count?: number }) => {
       const messages: Record<string, string> = {
-        'about.title': 'SRIBD Office Agent',
-        'about.description': 'SRIBD Office Agent description',
+        'about.title': 'Office Agent',
+        'about.description': 'Office Agent description',
         'about.website': 'Visit Our Website',
         'about.updateChannel': 'Update Channel',
         'about.stableChannel': 'Stable',
