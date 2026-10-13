@@ -31,6 +31,11 @@ export interface AutoWatchDeps {
     tasks: Array<{ id: string; filePath: string }>
     duplicates: Array<{ path: string }>
   }>
+  /** 可选：多发票合并件拆分展开（产物 path → 源 path，仅被拆分的源文件有条目） */
+  expandFiles?: (files: DocumentExtractFileInput[]) => Promise<{
+    files: DocumentExtractFileInput[]
+    sourceOf: Map<string, string>
+  }>
   readdir: (dir: string, options: { withFileTypes: true }) => Promise<Array<DirentLike>>
   stat: (p: string) => Promise<{ mtimeMs: number }>
   now?: () => number
@@ -100,23 +105,38 @@ export class AutoWatchScheduler {
       }
       const batch = pending.slice(0, config.roundLimit)
       if (batch.length > 0) {
+        const batchInputs = batch.map((f) => {
+          const ext = path.extname(f.path).toLowerCase()
+          return {
+            path: f.path,
+            name: path.basename(f.path),
+            mimeType: MIME_BY_EXTENSION[ext] ?? 'application/octet-stream'
+          }
+        })
+        // 多发票合并件在此展开为逐页产物；未注入 expandFiles 或未命中拆分时原样透传
+        const expanded = this.deps.expandFiles
+          ? await this.deps.expandFiles(batchInputs)
+          : { files: batchInputs, sourceOf: new Map<string, string>() }
         const { tasks, duplicates } = await this.deps.submit({
-          files: batch.map((f) => {
-            const ext = path.extname(f.path).toLowerCase()
-            return {
-              path: f.path,
-              name: path.basename(f.path),
-              mimeType: MIME_BY_EXTENSION[ext] ?? 'application/octet-stream'
-            }
-          }),
+          files: expanded.files,
           source: 'scheduled'
         })
         // submit 返回按文件 1:1 产出任务；内容去重拦截的文件以 duplicates 报告。
-        // 重复文件也登记 watched（taskId null），mtime 不变即不再重扫；
-        // 既不在 tasks 也不在 duplicates 的文件说明提交与登记间出现异常，保守跳过登记。
+        // 被拆分的源文件：产物已各自提交/拦截，源文件按 null taskId 登记 watched，
+        // mtime 不变即不再重扫；未拆分文件维持按 filePath zip 的既有登记逻辑。
         const taskIdByPath = new Map(tasks.map((t) => [t.filePath, t.id]))
         const dupPaths = new Set(duplicates.map((d) => d.path))
+        const splitSources = new Set([...expanded.sourceOf.values()].map((p) => path.normalize(p)))
         batch.forEach((f) => {
+          if (splitSources.has(path.normalize(f.path))) {
+            this.deps.upsertWatchedFile({
+              path: f.path,
+              mtimeMs: f.mtimeMs,
+              taskId: null,
+              now: now()
+            })
+            return
+          }
           const taskId = taskIdByPath.get(f.path) ?? null
           if (taskId === null && !dupPaths.has(f.path)) return
           this.deps.upsertWatchedFile({

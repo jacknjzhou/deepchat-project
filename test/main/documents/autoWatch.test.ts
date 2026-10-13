@@ -214,6 +214,77 @@ describe('AutoWatchScheduler.runOnce', () => {
     expect(deps.upsertWatchedFile).toHaveBeenCalledTimes(1)
     expect(deps.upsertWatchedFile).toHaveBeenCalledWith(expect.objectContaining({ taskId: 't1' }))
   })
+
+  it('expandFiles 拆分源文件：提交产物、源文件按 null taskId 登记 watched 且下轮不重扫', async () => {
+    const productFiles = [
+      { path: 'C:/split/u1/p1.pdf', name: 'merged（第1张）.pdf', mimeType: 'application/pdf' },
+      { path: 'C:/split/u1/p2.pdf', name: 'merged（第2张）.pdf', mimeType: 'application/pdf' }
+    ]
+    const sourceOf = new Map([
+      ['C:/split/u1/p1.pdf', 'D:/scan/merged.pdf'],
+      ['C:/split/u1/p2.pdf', 'D:/scan/merged.pdf']
+    ])
+    const deps = makeDeps({
+      readdir: vi.fn(async () => [{ name: 'merged.pdf', isFile: () => true }]),
+      expandFiles: vi.fn(async () => ({ files: productFiles, sourceOf }))
+    })
+    const s = new AutoWatchScheduler(deps as never)
+    await s.runOnce()
+    const submitted = deps.submit.mock.calls[0][0].files
+    expect(submitted.map((f: { path: string }) => f.path)).toEqual([
+      'C:/split/u1/p1.pdf',
+      'C:/split/u1/p2.pdf'
+    ])
+    // 源文件登记 watched（taskId null），产物任务路径不参与登记
+    expect(deps.upsertWatchedFile).toHaveBeenCalledTimes(1)
+    expect(deps.upsertWatchedFile).toHaveBeenCalledWith({
+      path: path.join('D:/scan', 'merged.pdf'),
+      mtimeMs: 111,
+      taskId: null,
+      now: 1_000_000
+    })
+    // 第二轮：mtime 不变 → 不再提交
+    await s.runOnce()
+    expect(deps.submit).toHaveBeenCalledTimes(1)
+  })
+
+  it('expandFiles 拆分后全部产物被去重拦截：源文件仍登记 watched', async () => {
+    const deps = makeDeps({
+      readdir: vi.fn(async () => [{ name: 'merged.pdf', isFile: () => true }]),
+      expandFiles: vi.fn(async () => ({
+        files: [
+          { path: 'C:/split/u1/p1.pdf', name: 'merged（第1张）.pdf', mimeType: 'application/pdf' },
+          { path: 'C:/split/u1/p2.pdf', name: 'merged（第2张）.pdf', mimeType: 'application/pdf' }
+        ],
+        sourceOf: new Map([
+          ['C:/split/u1/p1.pdf', 'D:/scan/merged.pdf'],
+          ['C:/split/u1/p2.pdf', 'D:/scan/merged.pdf']
+        ])
+      })),
+      submit: vi.fn(async () => ({
+        tasks: [],
+        duplicates: [{ path: 'C:/split/u1/p1.pdf' }, { path: 'C:/split/u1/p2.pdf' }]
+      }))
+    })
+    const s = new AutoWatchScheduler(deps as never)
+    await s.runOnce()
+    expect(deps.upsertWatchedFile).toHaveBeenCalledTimes(1)
+    expect(deps.upsertWatchedFile).toHaveBeenCalledWith({
+      path: path.join('D:/scan', 'merged.pdf'),
+      mtimeMs: 111,
+      taskId: null,
+      now: 1_000_000
+    })
+  })
+
+  it('未注入 expandFiles 时行为不变（回归）', async () => {
+    const deps = makeDeps()
+    const s = new AutoWatchScheduler(deps as never)
+    await s.runOnce()
+    expect(deps.expandFiles).toBeUndefined()
+    // Windows 下 path.join 产出反斜杠分隔符，期望值按实际 join 结果构造
+    expect(deps.submit.mock.calls[0][0].files[0].path).toBe(path.join('D:/scan', 'a.pdf'))
+  })
 })
 
 describe('nextRunAt', () => {
