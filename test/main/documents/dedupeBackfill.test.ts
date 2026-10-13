@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 const sqliteModule = await import('better-sqlite3-multiple-ciphers').catch(() => null)
 const databaseModule = sqliteModule
@@ -15,6 +15,7 @@ const Database = sqliteModule?.default
 const DocumentsDatabase = databaseModule?.DocumentsDatabase
 const DocumentsRepository = repositoryModule?.DocumentsRepository
 const backfillDocumentHashes = backfillModule?.backfillDocumentHashes
+const backfillTaskRelativePaths = backfillModule?.backfillTaskRelativePaths
 
 let sqliteAvailable = false
 if (Database) {
@@ -156,5 +157,52 @@ describeIfSqlite('dedupeBackfill', () => {
     const count = db.prepare('SELECT COUNT(*) n FROM documents_file_dedupe').get() as { n: number }
     expect(count.n).toBe(0)
     db.close()
+  })
+})
+
+describeIfSqlite('backfillTaskRelativePaths', () => {
+  it('按当前扫描目录回填 scheduled 任务的 NULL 相对路径', () => {
+    const updates: Array<{ id: string; relativePath: string }> = []
+    const updated = backfillTaskRelativePaths!({
+      listScheduledTasksWithoutRelativePath: () => [
+        { id: 't1', filePath: 'D:\\scan\\sub\\a.pdf' },
+        { id: 't2', filePath: 'D:\\scan\\b.pdf' }
+      ],
+      getAutoWatchDir: () => 'D:\\scan',
+      updateTaskRelativePath: (id: string, relativePath: string) => {
+        updates.push({ id, relativePath })
+      }
+    })
+    expect(updated).toBe(2)
+    expect(updates).toEqual([
+      { id: 't1', relativePath: 'sub/a.pdf' },
+      { id: 't2', relativePath: 'b.pdf' }
+    ])
+  })
+
+  it('目录外文件与空目录跳过（保持 NULL）', () => {
+    const updateTaskRelativePath = vi.fn()
+    const updated = backfillTaskRelativePaths!({
+      listScheduledTasksWithoutRelativePath: () => [
+        { id: 't1', filePath: 'D:\\other\\a.pdf' },
+        { id: 't2', filePath: 'D:\\scan\\b.pdf' }
+      ],
+      getAutoWatchDir: () => 'D:\\scan',
+      updateTaskRelativePath
+    })
+    expect(updated).toBe(1)
+    expect(updateTaskRelativePath).toHaveBeenCalledTimes(1)
+    expect(updateTaskRelativePath).toHaveBeenCalledWith('t2', 'b.pdf')
+  })
+
+  it('扫描目录为空时直接返回 0', () => {
+    const listScheduledTasksWithoutRelativePath = vi.fn()
+    const updated = backfillTaskRelativePaths!({
+      listScheduledTasksWithoutRelativePath,
+      getAutoWatchDir: () => '',
+      updateTaskRelativePath: vi.fn()
+    })
+    expect(updated).toBe(0)
+    expect(listScheduledTasksWithoutRelativePath).not.toHaveBeenCalled()
   })
 })

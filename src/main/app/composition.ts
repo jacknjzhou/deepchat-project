@@ -220,7 +220,7 @@ import {
   type DedupeSubmitDeps,
   type FileDedupeRow
 } from '@/documents/contentDedupe'
-import { backfillDocumentHashes } from '@/documents/dedupeBackfill'
+import { backfillDocumentHashes, backfillTaskRelativePaths } from '@/documents/dedupeBackfill'
 import { sha256File } from '@/documents/fileHash'
 import { DocumentsRepository } from '@/documents/repository'
 import { createDocumentsRoutes, type DocumentsDedupeSubmit } from '@/documents/routes'
@@ -3265,6 +3265,21 @@ export async function createMainProcessControl(dependencies: {
           console.info(`[documents] dedupe backfill registered ${registered} content hashes`)
         })
         .catch((error) => console.error('[documents] dedupe backfill failed:', error))
+    }
+    // 存量 scheduled 任务相对路径回填：幂等（只触碰 NULL 行），失败不阻塞启动。
+    try {
+      const backfilled = backfillTaskRelativePaths({
+        listScheduledTasksWithoutRelativePath: () =>
+          documentsRepository.listScheduledTasksWithoutRelativePath(),
+        getAutoWatchDir: () => readAutoWatchConfig(providerSettings).dir,
+        updateTaskRelativePath: (id, relativePath) =>
+          documentsRepository.updateTaskRelativePath(id, relativePath)
+      })
+      if (backfilled > 0) {
+        console.info(`[documents] relative path backfill updated ${backfilled} tasks`)
+      }
+    } catch (error) {
+      console.error('[documents] relative path backfill failed:', error)
     }
     const documentsRoutes = createDocumentsRoutes(
       documentsRepository,

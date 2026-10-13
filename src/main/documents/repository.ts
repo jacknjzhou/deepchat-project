@@ -431,6 +431,14 @@ export class DocumentsRepository {
     return this.database.documentTasksTable.insertBatch(inputs).map(toTask)
   }
 
+  listScheduledTasksWithoutRelativePath(): DocumentTask[] {
+    return this.database.documentTasksTable.listScheduledWithoutRelativePath().map(toTask)
+  }
+
+  updateTaskRelativePath(id: string, relativePath: string): void {
+    this.database.documentTasksTable.updateRelativePath(id, relativePath)
+  }
+
   updateTask(
     id: string,
     input: {

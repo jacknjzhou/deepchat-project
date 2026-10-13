@@ -1,3 +1,4 @@
+import { computeRelativePath } from './autoWatch'
 import type { FileDedupeRow } from './contentDedupe'
 
 export interface DedupeBackfillDeps {
@@ -62,4 +63,28 @@ export async function backfillDocumentHashes(deps: DedupeBackfillDeps): Promise<
   deps.insertFileDedupes(rows)
   for (const docId of boundDocIds) deps.bindFileDedupeDocument(docId, docId)
   return rows.length
+}
+
+export interface RelativePathBackfillDeps {
+  listScheduledTasksWithoutRelativePath: () => Array<{ id: string; filePath: string }>
+  getAutoWatchDir: () => string
+  updateTaskRelativePath: (id: string, relativePath: string) => void
+}
+
+/**
+ * 存量 scheduled 任务相对路径回填：relative_path 列上线前入库的自动扫描任务
+ * 没有该值。按**当前**配置的扫描目录计算；目录已变更导致算不出（.. 开头等）
+ * 保持 NULL（前端显示 —）。幂等：每次启动执行，只触碰 NULL 行，纯内存计算。
+ */
+export function backfillTaskRelativePaths(deps: RelativePathBackfillDeps): number {
+  const dir = deps.getAutoWatchDir()
+  if (dir === '') return 0
+  let updated = 0
+  for (const task of deps.listScheduledTasksWithoutRelativePath()) {
+    const rel = computeRelativePath(task.filePath, dir)
+    if (rel === null) continue
+    deps.updateTaskRelativePath(task.id, rel)
+    updated += 1
+  }
+  return updated
 }
