@@ -562,6 +562,47 @@ describeIfSqlite('documentTasksTable', () => {
     expect(table.update('nonexistent', { status: 'running' })).toBeUndefined()
     db.close()
   })
+
+  it('insert 带 relativePath 落库，缺省为 null', () => {
+    const db = makeDb()
+    const table = new DocumentTasksTableCtor(db)
+    const withRel = table.insert({
+      batchId: 'b1',
+      filePath: 'D:\\scan\\sub\\a.pdf',
+      fileName: 'a.pdf',
+      templateId: 'auto',
+      source: 'scheduled',
+      relativePath: 'sub/a.pdf'
+    })
+    expect(withRel.relative_path).toBe('sub/a.pdf')
+    const withoutRel = table.insert({
+      batchId: 'b1',
+      filePath: 'C:\\tmp\\b.pdf',
+      fileName: 'b.pdf',
+      templateId: 'auto'
+    })
+    expect(withoutRel.relative_path).toBeNull()
+    db.close()
+  })
+
+  it('ensureMigrated 为存量库补 relative_path 列且数据保留', () => {
+    const db = new DatabaseCtor(':memory:')
+    // 旧版 DDL：无 relative_path 的 v2 形态（无 source CHECK）
+    db.exec(`CREATE TABLE document_tasks (
+      id TEXT PRIMARY KEY, batch_id TEXT NOT NULL, file_path TEXT NOT NULL,
+      file_name TEXT NOT NULL, template_id TEXT NOT NULL,
+      source TEXT NOT NULL DEFAULT 'manual',
+      status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'running', 'done', 'failed')),
+      type_key TEXT, document_id TEXT, error TEXT,
+      created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
+      INSERT INTO document_tasks VALUES ('id1','b1','p','n','tpl','scheduled','done',NULL,NULL,NULL,1,1)`)
+    const table = new DocumentTasksTableCtor(db)
+    table.ensureMigrated()
+    const row = table.get('id1')!
+    expect(row.relative_path).toBeNull()
+    expect(row.file_path).toBe('p')
+    db.close()
+  })
 })
 
 describeIfWatched('WatchedFilesTable', () => {

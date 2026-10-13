@@ -55,11 +55,13 @@ export interface DocumentTask {
   error: string | null
   createdAt: number
   updatedAt: number
+  relativePath: string | null
 }
 
 export interface UnifiedTaskEntry {
   id: string
   filePath: string | null
+  relativePath: string | null
   fileName: string
   templateId: string | null
   source: 'chat' | 'manual' | 'scheduled'
@@ -96,6 +98,7 @@ export interface DocumentRepositoryTaskPort {
       fileName: string
       templateId: string
       source?: 'chat' | 'manual' | 'scheduled'
+      relativePath?: string | null
     }>
   ): DocumentTask[]
   updateTask(
@@ -187,7 +190,8 @@ const toTask = (row: DocumentTaskRow): DocumentTask => ({
   documentId: row.document_id,
   error: row.error,
   createdAt: row.created_at,
-  updatedAt: row.updated_at
+  updatedAt: row.updated_at,
+  relativePath: row.relative_path
 })
 
 const UNKNOWN_TASK_FILE_NAME = '(未知文件)'
@@ -195,6 +199,7 @@ const UNKNOWN_TASK_FILE_NAME = '(未知文件)'
 const toUnifiedTaskEntry = (task: DocumentTask): UnifiedTaskEntry => ({
   id: task.id,
   filePath: task.filePath,
+  relativePath: task.relativePath,
   fileName: task.fileName,
   templateId: task.templateId,
   source: task.source,
@@ -219,6 +224,7 @@ const toChatTaskEntry = (row: DocumentRow): UnifiedTaskEntry => {
   return {
     id: row.id,
     filePath: rawPath,
+    relativePath: null,
     fileName: base || UNKNOWN_TASK_FILE_NAME,
     templateId: null,
     source: 'chat',
@@ -419,6 +425,7 @@ export class DocumentsRepository {
       fileName: string
       templateId: string
       source?: 'chat' | 'manual' | 'scheduled'
+      relativePath?: string | null
     }>
   ): DocumentTask[] {
     return this.database.documentTasksTable.insertBatch(inputs).map(toTask)

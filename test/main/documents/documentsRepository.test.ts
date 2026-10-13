@@ -281,3 +281,37 @@ describeIfSqlite('listScanBatches / countScanBatches', () => {
     db.close()
   })
 })
+
+describeIfSqlite('DocumentsRepository relative path', () => {
+  it('insertTasks 透传 relativePath，listUnifiedTasks 条目携带；chat 条目恒 null', () => {
+    const { db, repository } = makeRepo()
+    const [task] = repository.insertTasks([
+      {
+        batchId: 'b1',
+        filePath: 'D:\\scan\\s\\a.pdf',
+        fileName: 'a.pdf',
+        templateId: 'auto',
+        source: 'scheduled',
+        relativePath: 's/a.pdf'
+      }
+    ])
+    expect(task!.relativePath).toBe('s/a.pdf')
+    const { tasks } = repository.listUnifiedTasks({ limit: 50, offset: 0 })
+    const entry = tasks.find((t) => t.id === task!.id)
+    expect(entry?.relativePath).toBe('s/a.pdf')
+    repository.insertDocument({
+      templateId: 't',
+      typeKey: 'invoice',
+      templateSnapshot: {},
+      fields: {},
+      fileUris: ['C:/chat.pdf'],
+      source: 'chat',
+      sessionId: null,
+      status: 'draft',
+      now: 1000
+    })
+    const chatEntry = repository.listUnifiedTasks({ source: 'chat', limit: 10, offset: 0 }).tasks[0]
+    expect(chatEntry?.relativePath).toBeNull()
+    db.close()
+  })
+})

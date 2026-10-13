@@ -15,6 +15,7 @@ export interface DocumentTaskRow {
   error: string | null
   created_at: number
   updated_at: number
+  relative_path: string | null
 }
 
 export interface DocumentTaskInsertInput {
@@ -23,6 +24,7 @@ export interface DocumentTaskInsertInput {
   fileName: string
   templateId: string
   source?: 'chat' | 'manual' | 'scheduled'
+  relativePath?: string | null
   now?: number
 }
 
@@ -62,7 +64,8 @@ export class DocumentTasksTable extends BaseTable {
         document_id TEXT,
         error TEXT,
         created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL
+        updated_at INTEGER NOT NULL,
+        relative_path TEXT
       );
       CREATE INDEX IF NOT EXISTS idx_document_tasks_status
         ON document_tasks(status, created_at DESC);
@@ -93,7 +96,8 @@ export class DocumentTasksTable extends BaseTable {
         document_id TEXT,
         error TEXT,
         created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL
+        updated_at INTEGER NOT NULL,
+        relative_path TEXT
       );
       INSERT INTO document_tasks_v2
         (id, batch_id, file_path, file_name, template_id, source, status,
@@ -137,6 +141,14 @@ export class DocumentTasksTable extends BaseTable {
     this.db.exec(
       'CREATE INDEX IF NOT EXISTS idx_document_tasks_source ON document_tasks(source, created_at DESC)'
     )
+    // relative_path 落库列同理不走版本升级：存量库在末尾幂等补列（ALTER TABLE ADD
+    // COLUMN 对已存在列会报错，因此先查 table_info）。
+    const columns = this.db.prepare('PRAGMA table_info(document_tasks)').all() as Array<{
+      name: string
+    }>
+    if (!columns.some((c) => c.name === 'relative_path')) {
+      this.db.exec('ALTER TABLE document_tasks ADD COLUMN relative_path TEXT')
+    }
   }
 
   get(id: string): DocumentTaskRow | undefined {
@@ -151,8 +163,8 @@ export class DocumentTasksTable extends BaseTable {
     this.db
       .prepare(
         `INSERT INTO document_tasks
-           (id, batch_id, file_path, file_name, template_id, source, status, type_key, document_id, error, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, 'pending', NULL, NULL, NULL, ?, ?)`
+           (id, batch_id, file_path, file_name, template_id, source, status, type_key, document_id, error, created_at, updated_at, relative_path)
+         VALUES (?, ?, ?, ?, ?, ?, 'pending', NULL, NULL, NULL, ?, ?, ?)`
       )
       .run(
         id,
@@ -162,7 +174,8 @@ export class DocumentTasksTable extends BaseTable {
         input.templateId,
         input.source ?? 'manual',
         now,
-        now
+        now,
+        input.relativePath ?? null
       )
     return this.get(id)!
   }
@@ -205,6 +218,18 @@ export class DocumentTasksTable extends BaseTable {
     return this.db
       .prepare('SELECT * FROM document_tasks ORDER BY created_at DESC, id DESC LIMIT ?')
       .all(limit) as DocumentTaskRow[]
+  }
+
+  listScheduledWithoutRelativePath(): DocumentTaskRow[] {
+    return this.db
+      .prepare("SELECT * FROM document_tasks WHERE source = 'scheduled' AND relative_path IS NULL")
+      .all() as DocumentTaskRow[]
+  }
+
+  updateRelativePath(id: string, relativePath: string): void {
+    this.db
+      .prepare('UPDATE document_tasks SET relative_path = ? WHERE id = ?')
+      .run(relativePath, id)
   }
 
   private buildFilterWhere(filter: Omit<DocumentTaskListFilter, 'limit' | 'offset'>): {
