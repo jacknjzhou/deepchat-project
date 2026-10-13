@@ -388,7 +388,7 @@
       </div>
     </div>
 
-    <ReimbursementView v-else class="min-h-0 flex-1" />
+    <ReimbursementView v-if="viewMode === 'reimbursement'" class="min-h-0 flex-1" />
 
     <DocumentDetailDialog
       v-model:open="detailOpen"
