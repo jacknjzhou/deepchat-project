@@ -57,6 +57,37 @@ export interface DocumentTask {
   updatedAt: number
 }
 
+export interface UnifiedTaskEntry {
+  id: string
+  filePath: string | null
+  fileName: string
+  templateId: string | null
+  source: 'chat' | 'manual' | 'scheduled'
+  status: DocumentTaskStatus
+  typeKey: string | null
+  documentId: string | null
+  error: string | null
+  createdAt: number
+  updatedAt: number
+  batchId: string | null
+}
+
+export interface UnifiedTaskListFilter {
+  status?: DocumentTaskStatus
+  source?: 'chat' | 'manual' | 'scheduled'
+  batchId?: string
+  limit: number
+  offset: number
+}
+
+export interface ScanBatchSummary {
+  batchId: string
+  startedAt: number
+  total: number
+  done: number
+  failed: number
+}
+
 export interface DocumentRepositoryTaskPort {
   insertTasks(
     inputs: Array<{
@@ -93,6 +124,9 @@ export interface DocumentRepositoryTaskPort {
     status: 'draft' | 'confirmed'
     now?: number
   }): { id: string }
+  listUnifiedTasks(filter: UnifiedTaskListFilter): { tasks: UnifiedTaskEntry[]; total: number }
+  listScanBatches(limit: number, offset: number): ScanBatchSummary[]
+  countScanBatches(): number
   findFileDedupeNames(hashes: string[]): Map<string, string>
   insertFileDedupes(
     rows: Array<{
@@ -155,6 +189,53 @@ const toTask = (row: DocumentTaskRow): DocumentTask => ({
   createdAt: row.created_at,
   updatedAt: row.updated_at
 })
+
+const UNKNOWN_TASK_FILE_NAME = '(未知文件)'
+
+const toUnifiedTaskEntry = (task: DocumentTask): UnifiedTaskEntry => ({
+  id: task.id,
+  filePath: task.filePath,
+  fileName: task.fileName,
+  templateId: task.templateId,
+  source: task.source,
+  status: task.status,
+  typeKey: task.typeKey,
+  documentId: task.documentId,
+  error: task.error,
+  createdAt: task.createdAt,
+  updatedAt: task.updatedAt,
+  batchId: task.batchId
+})
+
+const toChatTaskEntry = (row: DocumentRow): UnifiedTaskEntry => {
+  let rawPath: string | null = null
+  try {
+    const uris = JSON.parse(row.file_uris_json) as unknown
+    rawPath = Array.isArray(uris) && typeof uris[0] === 'string' ? uris[0] : null
+  } catch {
+    rawPath = null
+  }
+  const base = rawPath?.split(/[\\/]/).pop() ?? ''
+  return {
+    id: row.id,
+    filePath: rawPath,
+    fileName: base || UNKNOWN_TASK_FILE_NAME,
+    templateId: null,
+    source: 'chat',
+    status: 'done',
+    typeKey: row.type_key,
+    documentId: row.id,
+    error: null,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    batchId: null
+  }
+}
+
+const mergeByCreatedDesc = (entries: UnifiedTaskEntry[]): UnifiedTaskEntry[] =>
+  // 同毫秒按 id DESC 稳定排序，与两表 SQL 窗口（created_at DESC, id DESC）一致，
+  // 否则平局条目跨页归并会不重不漏失败。
+  entries.sort((a, b) => b.createdAt - a.createdAt || (a.id > b.id ? -1 : a.id < b.id ? 1 : 0))
 
 export class DocumentsRepository {
   constructor(private readonly database: DocumentsDatabase) {}
@@ -418,5 +499,46 @@ export class DocumentsRepository {
 
   bindFileDedupeDocument(taskId: string, documentId: string): number {
     return this.database.fileDedupeTable.bindDocument(taskId, documentId)
+  }
+
+  listUnifiedTasks(filter: UnifiedTaskListFilter): { tasks: UnifiedTaskEntry[]; total: number } {
+    if (filter.source === 'chat') {
+      const rows = this.database.documentsTable.listChatAsTasks(filter.limit, filter.offset)
+      return {
+        tasks: rows.map(toChatTaskEntry),
+        total: this.database.documentsTable.countChatAsTasks()
+      }
+    }
+    const realTotal = this.database.documentTasksTable.countFiltered(filter)
+    if (filter.source === 'manual' || filter.source === 'scheduled') {
+      const rows = this.database.documentTasksTable.listFiltered(filter)
+      return { tasks: rows.map(toTask).map(toUnifiedTaskEntry), total: realTotal }
+    }
+    // 混排：两表各取 [0, offset+limit) 窗口，内存归并后切页（数量级下无性能问题）
+    const window = filter.offset + filter.limit
+    const realRows = this.database.documentTasksTable
+      .listFiltered({ ...filter, limit: window, offset: 0 })
+      .map(toTask)
+      .map(toUnifiedTaskEntry)
+    const chatRows = this.database.documentsTable.listChatAsTasks(window, 0).map(toChatTaskEntry)
+    const merged = mergeByCreatedDesc([...realRows, ...chatRows])
+    return {
+      tasks: merged.slice(filter.offset, filter.offset + filter.limit),
+      total: realTotal + this.database.documentsTable.countChatAsTasks()
+    }
+  }
+
+  listScanBatches(limit: number, offset: number): ScanBatchSummary[] {
+    return this.database.documentTasksTable.listScanBatches(limit, offset).map((b) => ({
+      batchId: b.batch_id,
+      startedAt: b.started_at,
+      total: b.total,
+      done: b.done,
+      failed: b.failed
+    }))
+  }
+
+  countScanBatches(): number {
+    return this.database.documentTasksTable.countScanBatches()
   }
 }
