@@ -24,6 +24,7 @@ import {
 } from '@shared/contracts/events'
 import path from 'path'
 import { promises as fsp } from 'node:fs'
+import { randomUUID } from 'node:crypto'
 import { DialogService } from '../desktop/dialog'
 import { app, ipcMain, webContents as electronWebContents } from 'electron'
 import { DEEPCHAT_EVENT_CHANNEL } from '@shared/contracts/channels'
@@ -195,7 +196,10 @@ import { ProjectDatabase } from '@/project/data/database'
 import { SettingsDatabase } from '@/settings/data/database'
 import { SchedulerDatabase } from '@/scheduler/data/database'
 import { DocumentsDatabase } from '@/documents/data/database'
-import { DocumentExtractor } from '@/documents/extractor/documentExtractor'
+import {
+  DocumentExtractor,
+  type DocumentExtractFileInput
+} from '@/documents/extractor/documentExtractor'
 import {
   DOCUMENTS_SETTINGS_KEYS,
   DocumentsModelConfigError,
@@ -206,11 +210,14 @@ import {
   validateDocumentsModelRef
 } from '@/documents/modelSettings'
 import { AutoWatchScheduler } from '@/documents/autoWatch'
+import { expandSubmissionFiles, type InvoiceSplitDeps } from '@/documents/invoicePdfSplitter'
+import { splitPdfPagesToFile } from '@/file/adapters/pdfPageSplitter'
 import {
   filterDuplicateFiles,
   submitChatFileWithDedupe,
   submitWithDedupe,
-  type DedupeSubmitDeps
+  type DedupeSubmitDeps,
+  type FileDedupeRow
 } from '@/documents/contentDedupe'
 import { backfillDocumentHashes } from '@/documents/dedupeBackfill'
 import { sha256File } from '@/documents/fileHash'
@@ -1635,6 +1642,26 @@ export async function createMainProcessControl(dependencies: {
       })
     }
   }
+  const documentsMaxFileSize = () =>
+    dependencies.settingsStore.get<number>('maxFileSize') ?? 30 * 1024 * 1024
+
+  // 多发票合并件拆分依赖：分页文本与现有文本提取同源（PdfFileAdapter，含 maxFileSize 保护），
+  // 产物落 userData/documents_split/<uuid>/，原文件绝不移动或删除。
+  // 供 chat 路径（agentToolDependencies.documents.extractAndDraft，定义于下方对象字面量）与
+  // registerRoutes 内的 manual/scheduled 接线共同引用，故声明在 createMainProcessControl 作用域。
+  const documentsSplitDeps: InvoiceSplitDeps = {
+    extractPdfPagesText: async (filePath) => {
+      const adapter = new PdfFileAdapter(filePath, documentsMaxFileSize())
+      return (await adapter.getAllPagesMarkdown()) ?? null
+    },
+    splitPdfPages: (filePath, outDir) => splitPdfPagesToFile(filePath, outDir),
+    makeWorkDir: async () => {
+      const dir = path.join(app.getPath('userData'), 'documents_split', randomUUID())
+      await fsp.mkdir(dir, { recursive: true })
+      return dir
+    }
+  }
+
   const agentToolDependencies: AgentToolDependencies = {
     agentInvocationAdmission,
     sessions: {
@@ -1764,27 +1791,28 @@ export async function createMainProcessControl(dependencies: {
       extractAndDraft: async (input) => {
         // chat 路径内容去重（手动/定时批量提交走 documents.tasks.create 的 submitWithDedupe）：
         // 提取前按文件哈希查 documents_file_dedupes，命中则拦截；入库成功后登记 hash→document。
-        const outcome = await submitChatFileWithDedupe(
-          {
-            sha256File,
-            findFileDedupeNames: (hashes) => documentsRepository.findFileDedupeNames(hashes),
-            insertFileDedupes: (rows) => documentsRepository.insertFileDedupes(rows),
-            bindFileDedupeDocument: (taskId, documentId) =>
-              documentsRepository.bindFileDedupeDocument(taskId, documentId)
-          },
-          { file: input.file, source: input.source ?? 'chat' },
-          async () => {
+        const chatSource = input.source ?? 'chat'
+        const gateDeps = {
+          sha256File,
+          findFileDedupeNames: (hashes: string[]) =>
+            documentsRepository.findFileDedupeNames(hashes),
+          insertFileDedupes: (rows: FileDedupeRow[]) => documentsRepository.insertFileDedupes(rows),
+          bindFileDedupeDocument: (taskId: string, documentId: string) =>
+            documentsRepository.bindFileDedupeDocument(taskId, documentId)
+        }
+        const extractAndInsert = (file: DocumentExtractFileInput) =>
+          submitChatFileWithDedupe(gateDeps, { file, source: chatSource }, async () => {
             const result = await documentExtractor.extract({
               templateId: input.templateId,
-              file: input.file
+              file
             })
             const document = documentsRepository.insertDocument({
               templateId: result.template.id,
               typeKey: result.template.typeKey,
               templateSnapshot: result.template,
               fields: result.fields,
-              fileUris: [input.file.path],
-              source: input.source ?? 'chat',
+              fileUris: [file.path],
+              source: chatSource,
               sessionId: input.sessionId ?? null,
               status: 'draft',
               now: Date.now()
@@ -1804,10 +1832,40 @@ export async function createMainProcessControl(dependencies: {
                 issues: result.issues
               }
             }
-          }
+          })
+
+        // 多发票合并件先展开为逐页产物，每个产物独立过闸门（提取前查重、入库成功后登记）；
+        // 未命中拆分时 products 即 [input.file] 原样透传，行为与单文件路径一致（fail-open）。
+        const { files: products, sourceOf } = await expandSubmissionFiles(
+          [input.file],
+          documentsSplitDeps
         )
-        if (outcome.status === 'duplicate') return outcome
-        return { status: 'ok', document: outcome.value.document, meta: outcome.value.meta }
+        type ChatOutcome = Awaited<ReturnType<typeof extractAndInsert>>
+        type ChatValue = Extract<ChatOutcome, { status: 'ok' }>['value']
+        // 顺序=页序。首个命中去重的产物直接返回 duplicate（其后续产物本次不处理，与单文件
+        // 拦截语义一致）；全部成功时返回首个文档并在 meta.issues 注明拆分事实（工具层契约零改动）。
+        const issues: string[] = []
+        let first: ChatValue | null = null
+        for (const product of products) {
+          const outcome = await extractAndInsert(product)
+          if (outcome.status === 'duplicate') return outcome
+          if (first === null) {
+            first = outcome.value
+          } else {
+            issues.push(`additional invoice recognized: ${outcome.value.documentId}`)
+          }
+        }
+        if (first === null) {
+          throw new Error('multi-invoice split produced no documents')
+        }
+        if (sourceOf.size > 0) {
+          issues.push(`merged multi-invoice pdf split into ${products.length} documents`)
+        }
+        return {
+          status: 'ok',
+          document: first.document,
+          meta: { ...first.meta, issues: [...first.meta.issues, ...issues] }
+        }
       },
       confirmDocument: async (input) => {
         const updated = await documentsRepository.updateDocument(input.id, {
@@ -2974,8 +3032,7 @@ export async function createMainProcessControl(dependencies: {
     })
     const remoteRoutes = createRemoteRoutes(remoteService)
     const schedulerRoutes = createSchedulerRoutes(cronJobs)
-    const documentsMaxFileSize = () =>
-      dependencies.settingsStore.get<number>('maxFileSize') ?? 30 * 1024 * 1024
+    // documentsMaxFileSize 已提升至 createMainProcessControl 作用域（documentsSplitDeps 共用）
 
     // 启动链上的阻塞调用：设备信息获取失败（权限/WMI 不可用等）不得阻断启动
     const managedDevice = await resolveManagedDevice(deviceService)
@@ -3183,8 +3240,12 @@ export async function createMainProcessControl(dependencies: {
         }),
       register: (rows) => documentsRepository.insertFileDedupes(rows)
     }
-    const documentsDedupeSubmit: DocumentsDedupeSubmit = (input) =>
-      submitWithDedupe(documentsDedupeDeps, input)
+    const documentsDedupeSubmit: DocumentsDedupeSubmit = async (input) => {
+      // 多发票合并件先展开为逐页产物，再进内容去重收口（每张发票独立查表/登记）；
+      // 未命中拆分时原样透传（fail-open，行为与直提交一致）。
+      const { files } = await expandSubmissionFiles(input.files, documentsSplitDeps)
+      return submitWithDedupe(documentsDedupeDeps, { ...input, files })
+    }
     // 存量文档哈希回填：去重功能上线前入库的文档没有 documents_file_dedupes 行，
     // 同内容文件再次提交（如自动扫描先入库、再手工上传）不会被拦截。仅在首次
     // 升级到该能力时执行一次（settings 标记），失败不阻塞启动、下次启动重试。
@@ -3241,7 +3302,9 @@ export async function createMainProcessControl(dependencies: {
         return result
       },
       readdir: (dir, options) => fsp.readdir(dir, options),
-      stat: (p) => fsp.stat(p)
+      stat: (p) => fsp.stat(p),
+      // 多发票合并件：批量提交前先展开为逐页产物（源文件自动按 taskId: null 登记 watched）
+      expandFiles: (files) => expandSubmissionFiles(files, documentsSplitDeps)
     })
     autoWatchScheduler.start()
     const resumeScreeningService = new ResumeScreeningService({
