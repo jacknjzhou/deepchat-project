@@ -649,6 +649,7 @@ async function onRetryTask(task: { id: string }, templateId: string) {
       'documents.archive.taskRetryQueued',
       t('settings.documents.archive.taskRetryQueued')
     )
+    void store.loadTaskList(store.taskPage)
   } catch (error) {
     console.error('[DocumentsArchivePage] retry task failed', error)
     notifyTransient(
