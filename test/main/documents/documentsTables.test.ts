@@ -1271,3 +1271,178 @@ describeIfSeed('seedPresetTemplates', () => {
     db.close()
   })
 })
+
+describeIfSqlite('DocumentTasksTable listFiltered / scanBatches', () => {
+  const makeDb = () => {
+    const db = new DatabaseCtor(':memory:')
+    new DocumentTasksTableCtor(db).createTable()
+    return db
+  }
+
+  it('listFiltered 按 status/source/batchId 过滤且 created_at DESC 分页', () => {
+    const db = makeDb()
+    const table = new DocumentTasksTableCtor(db)
+    const t1 = table.insert({
+      batchId: 'b1',
+      filePath: 'C:/a.pdf',
+      fileName: 'a.pdf',
+      templateId: 'auto',
+      source: 'manual',
+      now: 1000
+    })
+    table.insert({
+      batchId: 'b2',
+      filePath: 'C:/b.pdf',
+      fileName: 'b.pdf',
+      templateId: 'auto',
+      source: 'scheduled',
+      now: 2000
+    })
+    table.insert({
+      batchId: 'b2',
+      filePath: 'C:/c.pdf',
+      fileName: 'c.pdf',
+      templateId: 'auto',
+      source: 'scheduled',
+      now: 3000
+    })
+    table.update(t1.id, { status: 'done' })
+    expect(
+      table.listFiltered({ source: 'scheduled', limit: 10, offset: 0 }).map((r) => r.file_name)
+    ).toEqual(['c.pdf', 'b.pdf'])
+    expect(table.listFiltered({ status: 'done', limit: 10, offset: 0 }).map((r) => r.id)).toEqual([
+      t1.id
+    ])
+    expect(
+      table.listFiltered({ batchId: 'b2', limit: 1, offset: 0 }).map((r) => r.file_name)
+    ).toEqual(['c.pdf'])
+    expect(
+      table.listFiltered({ batchId: 'b2', limit: 1, offset: 1 }).map((r) => r.file_name)
+    ).toEqual(['b.pdf'])
+    expect(table.countFiltered({ source: 'scheduled' })).toBe(2)
+    expect(table.countFiltered({})).toBe(3)
+    db.close()
+  })
+
+  it('listScanBatches 按批次聚合（startedAt/total/done/failed）且按 startedAt DESC 排序', () => {
+    const db = makeDb()
+    const table = new DocumentTasksTableCtor(db)
+    table.insert({
+      batchId: 'old',
+      filePath: 'C:/a.pdf',
+      fileName: 'a.pdf',
+      templateId: 'auto',
+      source: 'scheduled',
+      now: 1000
+    })
+    table.insert({
+      batchId: 'old',
+      filePath: 'C:/b.pdf',
+      fileName: 'b.pdf',
+      templateId: 'auto',
+      source: 'scheduled',
+      now: 1100
+    })
+    table.insert({
+      batchId: 'new',
+      filePath: 'C:/c.pdf',
+      fileName: 'c.pdf',
+      templateId: 'auto',
+      source: 'scheduled',
+      now: 2000
+    })
+    table.insert({
+      batchId: 'manual-mix',
+      filePath: 'C:/d.pdf',
+      fileName: 'd.pdf',
+      templateId: 'auto',
+      source: 'manual',
+      now: 1500
+    })
+    const batches = table.listScanBatches(10, 0)
+    expect(batches.map((b) => b.batch_id)).toEqual(['new', 'old'])
+    expect(batches[1]).toMatchObject({ started_at: 1000, total: 2, done: 0, failed: 0 })
+    expect(table.countScanBatches()).toBe(2)
+    db.close()
+  })
+
+  it('source 索引由 ensureMigrated 幂等创建（存量库无 getLatestVersion 变更）', () => {
+    // 存量 v1 库（含 source CHECK、无新索引）：ensureMigrated 重建后索引必须存在
+    const db = new DatabaseCtor(':memory:')
+    createV1Table(db)
+    const table = new DocumentTasksTableCtor(db)
+    table.ensureMigrated()
+    table.ensureMigrated()
+    const idx = db
+      .prepare(
+        `SELECT name FROM sqlite_master WHERE type='index' AND name='idx_document_tasks_source'`
+      )
+      .get()
+    expect(idx).toBeDefined()
+    db.close()
+  })
+})
+
+describeIfSqlite('DocumentsTable listChatAsTasks', () => {
+  const makeDb = () => {
+    const db = new DatabaseCtor(':memory:')
+    new DocumentsTableCtor(db).createTable()
+    return db
+  }
+
+  it('仅返回 source=chat 的行，created_at DESC 分页；countChatAsTasks 同口径', () => {
+    const db = makeDb()
+    const documents = new DocumentsTableCtor(db)
+    documents.insert({
+      templateId: 't',
+      typeKey: 'invoice',
+      templateSnapshot: {},
+      fields: {},
+      fileUris: ['C:/chat1.pdf'],
+      source: 'chat',
+      sessionId: 's1',
+      status: 'draft',
+      now: 1000
+    })
+    documents.insert({
+      templateId: 't',
+      typeKey: 'invoice',
+      templateSnapshot: {},
+      fields: {},
+      fileUris: ['C:/chat2.pdf'],
+      source: 'chat',
+      sessionId: 's2',
+      status: 'draft',
+      now: 2000
+    })
+    documents.insert({
+      templateId: 't',
+      typeKey: 'invoice',
+      templateSnapshot: {},
+      fields: {},
+      fileUris: ['C:/manual.pdf'],
+      source: 'manual',
+      sessionId: null,
+      status: 'draft',
+      now: 3000
+    })
+    const rows = documents.listChatAsTasks(10, 0)
+    expect(rows).toHaveLength(2)
+    expect(rows[0]!.file_uris_json).toContain('chat2.pdf')
+    expect(documents.countChatAsTasks()).toBe(2)
+    db.close()
+  })
+
+  it('documents.source 索引由 ensureMigrated 幂等创建', () => {
+    const db = new DatabaseCtor(':memory:')
+    createV1DocumentsTable(db)
+    const documents = new DocumentsTableCtor(db)
+    documents.ensureMigrated()
+    documents.ensureMigrated()
+    const idx = db
+      .prepare(`SELECT name FROM sqlite_master WHERE type='index' AND name='idx_documents_source'`)
+      .get()
+    expect(idx).toBeDefined()
+    db.close()
+  })
+})

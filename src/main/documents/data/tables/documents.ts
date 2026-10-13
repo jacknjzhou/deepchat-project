@@ -78,6 +78,8 @@ export class DocumentsTable extends BaseTable {
         ON documents(type_key, status, updated_at DESC);
       CREATE INDEX IF NOT EXISTS idx_documents_updated_at
         ON documents(updated_at DESC, id DESC);
+      CREATE INDEX IF NOT EXISTS idx_documents_source
+        ON documents(source, created_at DESC);
     `
   }
 
@@ -118,13 +120,16 @@ export class DocumentsTable extends BaseTable {
         ON documents(type_key, status, updated_at DESC);
       CREATE INDEX IF NOT EXISTS idx_documents_updated_at
         ON documents(updated_at DESC, id DESC);
+      CREATE INDEX IF NOT EXISTS idx_documents_source
+        ON documents(source, created_at DESC);
     `
   }
 
   // Ensure the table accepts scheduled-source rows; see
   // DocumentTasksTable.ensureMigrated for the rationale (idempotent DDL detection,
   // transactional rebuild). Assumes the startup repair has already added any missing
-  // columns before this runs.
+  // columns before this runs. A trailing idempotent index guarantee covers databases
+  // migrated before the source index existed (see DocumentTasksTable.ensureMigrated).
   ensureMigrated(): void {
     if (!this.tableExists()) {
       this.db.exec(this.getCreateTableSQL())
@@ -133,9 +138,13 @@ export class DocumentsTable extends BaseTable {
     const ddl = this.db
       .prepare(`SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?`)
       .get(this.tableName) as { sql: string | null } | undefined
-    if (!ddl?.sql || !/CHECK\s*\(\s*source\s+IN/i.test(ddl.sql)) return
-    const sql = this.getMigrationSQL(2)
-    if (sql) this.db.transaction(() => this.db.exec(sql))()
+    if (ddl?.sql && /CHECK\s*\(\s*source\s+IN/i.test(ddl.sql)) {
+      const sql = this.getMigrationSQL(2)
+      if (sql) this.db.transaction(() => this.db.exec(sql))()
+    }
+    this.db.exec(
+      'CREATE INDEX IF NOT EXISTS idx_documents_source ON documents(source, created_at DESC)'
+    )
   }
 
   private buildWhere(filter: DocumentListFilter): { where: string; params: unknown[] } {
@@ -180,6 +189,21 @@ export class DocumentsTable extends BaseTable {
     const row = this.db
       .prepare(`SELECT COUNT(*) AS count FROM documents ${where}`)
       .get(...params) as { count: number }
+    return row.count
+  }
+
+  listChatAsTasks(limit: number, offset: number): DocumentRow[] {
+    return this.db
+      .prepare(
+        `SELECT * FROM documents WHERE source = 'chat' ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?`
+      )
+      .all(limit, offset) as DocumentRow[]
+  }
+
+  countChatAsTasks(): number {
+    const row = this.db
+      .prepare(`SELECT COUNT(*) AS count FROM documents WHERE source = 'chat'`)
+      .get() as { count: number }
     return row.count
   }
 
