@@ -38,7 +38,7 @@
 - `listRecent` 保留；新增 `listFiltered(filter: { status?, source?, batchId?, limit, offset })`：WHERE 按 status/source/batchId 可选拼接，`ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?`。
 - 新增 `countFiltered(filter)`（同 WHERE，返回 total）。
 - 新增 `listScanBatches({ limit, offset })`：`WHERE source='scheduled' GROUP BY batch_id`，投影 `{ batchId, startedAt: MIN(created_at), total: COUNT(*), done: SUM(status='done'), failed: SUM(status='failed') }`，`ORDER BY startedAt DESC LIMIT ? OFFSET ?`；配套 `countScanBatches()`（GROUP BY 去重计数）。
-- 迁移：补索引 `idx_document_tasks_source(source, created_at DESC)`（复用 ensureMigrated 重建范式，迁移号顺延）。
+- 迁移：补索引 `idx_document_tasks_source(source, created_at DESC)`（复用 ensureMigrated 幂等 `CREATE INDEX IF NOT EXISTS` 重建范式，不 bump 版本号）。
 
 ### 4.2 documents 表 chat 伪任务投影（`src/main/documents/data/tables/documents.ts`）
 
@@ -80,7 +80,7 @@ UnifiedTaskEntry = {
 
 - **viewMode**：「文档 / 任务 / 报销」三段切换（`DocumentsArchivePage.vue`）。
 - **过滤行**：来源 chip（全部/手工/扫描/对话）+ 状态过滤（复用现有状态 chip）+ 扫描批次下拉（仅来源=扫描时显示；「全部批次」默认；懒加载——切到扫描来源才请求 scanBatches）。
-- **统一表格**：文件名 / 来源 badge / 类型（typeKey）/ 状态（图标+色，复用任务条映射）/ 创建时间；done 且有 documentId 的行文件名可点击跳文档预览（复用 previewFile 管线）。
+- **统一表格**：文件名 / 来源 badge / 类型（typeKey）/ 状态（图标+色，复用任务条映射）/ 创建时间；done 且有 documentId 的行文件名可点击，通过 `openDetail` 打开文档详情弹窗。
 - **操作**：failed 行重试下拉（换模板，复用任务条逻辑）；底部「清除失败记录」（failed>0 时显示）；chat 条目不渲染操作按钮。
 - **分页**：50/页 + 上一页/下一页 + total，独立页码状态（不与文档视图串页）；当前页空且 page>1 自动回退上一页。
 - **Pinia store**（`stores/documents.ts`）：`taskList/taskTotal/taskFilter/taskPage/scanBatches` + `loadTaskList(page)`（乱序守卫，镜像 `loadArchiveDocuments`）+ `loadScanBatches()`；`documents.task.updated` 事件在任务视图激活时刷新当前页。
