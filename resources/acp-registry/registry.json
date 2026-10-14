@@ -157,9 +157,30 @@
       "icon": "https://cdn.agentclientprotocol.com/registry/v1/latest/autohand.svg"
     },
     {
+      "id": "bob",
+      "name": "Bob",
+      "version": "2.0.7",
+      "description": "IBM Bob is your AI-Powered Development Partner",
+      "website": "https://bob.ibm.com",
+      "authors": [
+        "IBM"
+      ],
+      "license": "proprietary",
+      "license_url": "https://www.ibm.com/support/customer/csol/terms/?id=L-EBQG-R9G8MA",
+      "distribution": {
+        "npx": {
+          "package": "@ibm/bob@2.0.7",
+          "args": [
+            "acp"
+          ]
+        }
+      },
+      "icon": "https://cdn.agentclientprotocol.com/registry/v1/latest/bob.svg"
+    },
+    {
       "id": "claude-acp",
       "name": "Claude Agent",
-      "version": "0.89.1",
+      "version": "0.90.0",
       "description": "ACP wrapper for Anthropic's Claude",
       "repository": "https://github.com/agentclientprotocol/claude-agent-acp",
       "authors": [
@@ -171,7 +192,7 @@
       "license_url": "https://github.com/agentclientprotocol/claude-agent-acp/blob/main/LICENSE",
       "distribution": {
         "npx": {
-          "package": "@agentclientprotocol/claude-agent-acp@0.89.1"
+          "package": "@agentclientprotocol/claude-agent-acp@0.90.0"
         }
       },
       "icon": "https://cdn.agentclientprotocol.com/registry/v1/latest/claude-acp.svg"
@@ -179,7 +200,7 @@
     {
       "id": "cline",
       "name": "Cline",
-      "version": "3.0.70",
+      "version": "3.0.71",
       "description": "Autonomous coding agent CLI - capable of creating/editing files, running commands, using the browser, and more",
       "repository": "https://github.com/cline/cline",
       "website": "https://cline.bot/cli",
@@ -191,7 +212,7 @@
       "icon": "https://cdn.agentclientprotocol.com/registry/v1/latest/cline.svg",
       "distribution": {
         "npx": {
-          "package": "cline@3.0.70",
+          "package": "cline@3.0.71",
           "args": [
             "--acp"
           ]
@@ -576,7 +597,7 @@
     {
       "id": "factory-droid",
       "name": "Factory Droid",
-      "version": "0.240.0",
+      "version": "0.241.1",
       "description": "Factory Droid - AI coding agent powered by Factory AI",
       "website": "https://factory.ai/product/cli",
       "authors": [
@@ -586,7 +607,7 @@
       "license_url": "https://factory.ai/legal/terms",
       "distribution": {
         "npx": {
-          "package": "droid@0.240.0",
+          "package": "droid@0.241.1",
           "args": [
             "exec",
             "--output-format",
@@ -628,7 +649,7 @@
     {
       "id": "gemini",
       "name": "Gemini CLI",
-      "version": "0.63.0",
+      "version": "0.64.0",
       "description": "Google's official CLI for Gemini",
       "repository": "https://github.com/google-gemini/gemini-cli",
       "website": "https://geminicli.com",
@@ -639,7 +660,7 @@
       "license_url": "https://github.com/google-gemini/gemini-cli/blob/main/LICENSE",
       "distribution": {
         "npx": {
-          "package": "@google/gemini-cli@0.63.0",
+          "package": "@google/gemini-cli@0.64.0",
           "args": [
             "--acp"
           ]
@@ -650,7 +671,7 @@
     {
       "id": "github-copilot-cli",
       "name": "Copilot",
-      "version": "1.0.96",
+      "version": "1.0.97",
       "description": "GitHub's AI pair programmer",
       "repository": "https://github.com/github/copilot-cli",
       "website": "https://github.com/features/copilot/cli/",
@@ -661,7 +682,7 @@
       "license_url": "https://github.com/github/copilot-cli/blob/main/LICENSE.md",
       "distribution": {
         "npx": {
-          "package": "@github/copilot@1.0.96",
+          "package": "@github/copilot@1.0.97",
           "args": [
             "--acp"
           ]
@@ -672,7 +693,7 @@
     {
       "id": "glm-acp-agent",
       "name": "GLM Agent",
-      "version": "1.14.0",
+      "version": "1.15.0",
       "description": "ACP agent powered by Zhipu AI's GLM Coding Plan models (glm-5.1, glm-5-turbo, glm-4.7, glm-4.5-air). Supports streaming, tool calls, mid-session model switching, image input via Z.AI Coding Plan Vision MCP, and session load/fork/resume with on-disk persistence.",
       "repository": "https://github.com/stefandevo/glm-acp-agent",
       "authors": [
@@ -683,7 +704,7 @@
       "icon": "https://cdn.agentclientprotocol.com/registry/v1/latest/glm-acp-agent.svg",
       "distribution": {
         "npx": {
-          "package": "glm-acp-agent@1.14.0"
+          "package": "glm-acp-agent@1.15.0"
         }
       }
     },
@@ -748,7 +769,7 @@
     {
       "id": "grok-build",
       "name": "Grok Build",
-      "version": "1.0.54",
+      "version": "1.0.58",
       "description": "xAI's coding agent and CLI",
       "website": "https://x.ai/cli",
       "authors": [
@@ -758,7 +779,7 @@
       "license_url": "https://x.ai/legal/terms-of-service",
       "distribution": {
         "npx": {
-          "package": "@xai-official/grok@1.0.54",
+          "package": "@xai-official/grok@1.0.58",
           "args": [
             "agent",
             "stdio"
@@ -833,7 +854,7 @@
     {
       "id": "junie",
       "name": "Junie",
-      "version": "3579.7.0",
+      "version": "3659.4.0",
       "description": "AI Coding Agent by JetBrains",
       "repository": "https://github.com/JetBrains/junie-acp-release",
       "website": "https://junie.jetbrains.com",
@@ -845,42 +866,42 @@
       "distribution": {
         "binary": {
           "darwin-aarch64": {
-            "archive": "https://github.com/JetBrains/junie-acp-release/releases/download/3579.7/junie-release-3579.7-macos-aarch64.zip",
+            "archive": "https://github.com/JetBrains/junie-acp-release/releases/download/3659.4/junie-release-3659.4-macos-aarch64.zip",
             "cmd": "./Applications/junie.app/Contents/MacOS/junie",
             "args": [
               "--acp=true"
             ]
           },
           "darwin-x86_64": {
-            "archive": "https://github.com/JetBrains/junie-acp-release/releases/download/3579.7/junie-release-3579.7-macos-amd64.zip",
+            "archive": "https://github.com/JetBrains/junie-acp-release/releases/download/3659.4/junie-release-3659.4-macos-amd64.zip",
             "cmd": "./Applications/junie.app/Contents/MacOS/junie",
             "args": [
               "--acp=true"
             ]
           },
           "linux-aarch64": {
-            "archive": "https://github.com/JetBrains/junie-acp-release/releases/download/3579.7/junie-release-3579.7-linux-aarch64.zip",
+            "archive": "https://github.com/JetBrains/junie-acp-release/releases/download/3659.4/junie-release-3659.4-linux-aarch64.zip",
             "cmd": "./junie-app/bin/junie",
             "args": [
               "--acp=true"
             ]
           },
           "linux-x86_64": {
-            "archive": "https://github.com/JetBrains/junie-acp-release/releases/download/3579.7/junie-release-3579.7-linux-amd64.zip",
+            "archive": "https://github.com/JetBrains/junie-acp-release/releases/download/3659.4/junie-release-3659.4-linux-amd64.zip",
             "cmd": "./junie-app/bin/junie",
             "args": [
               "--acp=true"
             ]
           },
           "windows-x86_64": {
-            "archive": "https://github.com/JetBrains/junie-acp-release/releases/download/3579.7/junie-release-3579.7-windows-amd64.zip",
+            "archive": "https://github.com/JetBrains/junie-acp-release/releases/download/3659.4/junie-release-3659.4-windows-amd64.zip",
             "cmd": "./junie/junie.exe",
             "args": [
               "--acp=true"
             ]
           },
           "windows-aarch64": {
-            "archive": "https://github.com/JetBrains/junie-acp-release/releases/download/3579.7/junie-release-3579.7-windows-aarch64.zip",
+            "archive": "https://github.com/JetBrains/junie-acp-release/releases/download/3659.4/junie-release-3659.4-windows-aarch64.zip",
             "cmd": "./junie/junie.exe",
             "args": [
               "--acp=true"
@@ -1163,7 +1184,7 @@
     {
       "id": "nova",
       "name": "Nova",
-      "version": "1.1.52",
+      "version": "1.1.53",
       "description": "Nova by Compass AI - a fully-fledged software engineer at your command",
       "repository": "https://github.com/Compass-Agentic-Platform/nova",
       "website": "https://www.compassap.ai/portfolio/nova.html",
@@ -1175,7 +1196,7 @@
       "icon": "https://cdn.agentclientprotocol.com/registry/v1/latest/nova.svg",
       "distribution": {
         "npx": {
-          "package": "@compass-ai/nova@1.1.52",
+          "package": "@compass-ai/nova@1.1.53",
           "args": [
             "acp"
           ]
