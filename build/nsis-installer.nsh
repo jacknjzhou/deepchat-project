@@ -81,6 +81,25 @@
   Push $4
   Push $5 ; For redist URL
   Push $6 ; For redist file path
+  Push $R0 ; For previous install location
+
+  ; Default install directory for first-time installs: D:\SRIBD\OfficeAgent.
+  ; When a previous installation is found in the registry, keep its location
+  ; so upgrades stay where the user originally installed the app. Falls back
+  ; to the electron-builder default when the D: drive is not available.
+  SetRegView 64
+  ReadRegStr $R0 HKCU "${INSTALL_REGISTRY_KEY}" "InstallLocation"
+  ${If} $R0 == ""
+    ReadRegStr $R0 HKLM "${INSTALL_REGISTRY_KEY}" "InstallLocation"
+  ${EndIf}
+  SetRegView lastused
+  ${If} $R0 == ""
+    ${If} ${FileExists} "D:\*.*"
+      StrCpy $INSTDIR "D:\SRIBD\OfficeAgent"
+    ${EndIf}
+  ${EndIf}
+
+  Pop $R0
 
   ; 1. Check architecture compatibility
   Call checkArchitectureCompatibility
