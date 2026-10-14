@@ -92,6 +92,10 @@ electronLanguages:
   - he
 win:
   executableName: DeepChat
+  # nsis 必须列在 msiWrapped 之前：msiWrapped 会重新打包上一步产出的 NSIS exe
+  target:
+    - target: nsis
+    - target: msiWrapped
 nsis:
   artifactName: ${name}-${version}-windows-${arch}.${ext}
   shortcutName: ${productName}
@@ -100,6 +104,14 @@ nsis:
   allowToChangeInstallationDirectory: true
   oneClick: false
   include: build/nsis-installer.nsh
+# MSI 外壳（per-user，免管理员权限），内嵌执行上面的 NSIS 安装器：
+# 保留 customInit 的默认安装目录（D:\SRIBD\OfficeAgent）与 VCRedist 检查逻辑。
+# artifactName 必须与 nsis.artifactName 一致，msiWrapped 按此文件名查找待包装的 exe。
+msiWrapped:
+  artifactName: ${name}-${version}-windows-${arch}.${ext}
+  # 以触发安装的域用户身份运行内嵌 NSIS（默认 SYSTEM 会装错用户目录）
+  impersonate: true
+  warningsAsErrors: false
 afterSign: scripts/notarize.js
 artifactBuildCompleted: scripts/notarize-dmg.js
 afterPack: scripts/afterPack.js
