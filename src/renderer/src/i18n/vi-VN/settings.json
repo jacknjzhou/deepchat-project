@@ -349,7 +349,7 @@
       "nextPage": "Next page"
     },
     "tasks": {
-      "title": "Tasks",
+      "title": "Scan Tasks",
       "loadFailed": "Failed to load tasks",
       "empty": "No tasks",
       "allBatches": "All batches",
@@ -372,7 +372,7 @@
     },
     "reimbursement": {
       "viewDocuments": "Xem tài liệu",
-      "viewReimbursement": "Xem hoàn ứng",
+      "viewReimbursement": "File Groups",
       "unassigned": "Chưa phân loại",
       "manageCategories": "Quản lý danh mục",
       "export": "Xuất gói hồ sơ",

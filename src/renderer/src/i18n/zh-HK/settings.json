@@ -2856,7 +2856,7 @@
       "nextPage": "下一頁"
     },
     "tasks": {
-      "title": "Tasks",
+      "title": "掃描任務",
       "loadFailed": "Failed to load tasks",
       "empty": "No tasks",
       "allBatches": "All batches",
@@ -2879,7 +2879,7 @@
     },
     "reimbursement": {
       "viewDocuments": "單據視圖",
-      "viewReimbursement": "報銷整理",
+      "viewReimbursement": "檔案分組",
       "unassigned": "未分類",
       "manageCategories": "管理類別",
       "export": "匯出整理包",
@@ -2893,7 +2893,7 @@
       "forceUnassigned": "強制未分類",
       "empty": "該類別下暫無單據記錄",
       "loading": "載入中…",
-      "loadFailed": "報銷整理資料載入失敗",
+      "loadFailed": "檔案分組數據加載失敗",
       "retry": "重試",
       "addGroup": "新增分組",
       "groupNamePlaceholder": "輸入分組名稱",

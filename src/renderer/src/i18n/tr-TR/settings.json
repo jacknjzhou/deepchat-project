@@ -349,7 +349,7 @@
       "nextPage": "Next page"
     },
     "tasks": {
-      "title": "Tasks",
+      "title": "Scan Tasks",
       "loadFailed": "Failed to load tasks",
       "empty": "No tasks",
       "allBatches": "All batches",
@@ -372,7 +372,7 @@
     },
     "reimbursement": {
       "viewDocuments": "Belgeler görünümü",
-      "viewReimbursement": "Masraf görünümü",
+      "viewReimbursement": "File Groups",
       "unassigned": "Sınıflandırılmamış",
       "manageCategories": "Kategorileri yönet",
       "export": "Paketi dışa aktar",

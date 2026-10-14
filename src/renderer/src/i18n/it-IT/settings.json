@@ -349,7 +349,7 @@
       "nextPage": "Next page"
     },
     "tasks": {
-      "title": "Tasks",
+      "title": "Scan Tasks",
       "loadFailed": "Failed to load tasks",
       "empty": "No tasks",
       "allBatches": "All batches",
@@ -372,7 +372,7 @@
     },
     "reimbursement": {
       "viewDocuments": "Vista documenti",
-      "viewReimbursement": "Vista rimborsi",
+      "viewReimbursement": "File Groups",
       "unassigned": "Non classificato",
       "manageCategories": "Gestisci categorie",
       "export": "Esporta pacchetto",

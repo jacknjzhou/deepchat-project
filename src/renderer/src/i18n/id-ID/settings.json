@@ -349,7 +349,7 @@
       "nextPage": "Next page"
     },
     "tasks": {
-      "title": "Tasks",
+      "title": "Scan Tasks",
       "loadFailed": "Failed to load tasks",
       "empty": "No tasks",
       "allBatches": "All batches",
@@ -372,7 +372,7 @@
     },
     "reimbursement": {
       "viewDocuments": "Tampilan dokumen",
-      "viewReimbursement": "Tampilan penggantian",
+      "viewReimbursement": "File Groups",
       "unassigned": "Tidak terklasifikasi",
       "manageCategories": "Kelola kategori",
       "export": "Ekspor paket",

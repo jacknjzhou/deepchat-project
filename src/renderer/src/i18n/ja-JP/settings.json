@@ -2856,7 +2856,7 @@
       "nextPage": "Next page"
     },
     "tasks": {
-      "title": "Tasks",
+      "title": "Scan Tasks",
       "loadFailed": "Failed to load tasks",
       "empty": "No tasks",
       "allBatches": "All batches",
@@ -2879,7 +2879,7 @@
     },
     "reimbursement": {
       "viewDocuments": "ドキュメントビュー",
-      "viewReimbursement": "経費整理ビュー",
+      "viewReimbursement": "File Groups",
       "unassigned": "未分類",
       "manageCategories": "カテゴリを管理",
       "export": "整理パッケージをエクスポート",

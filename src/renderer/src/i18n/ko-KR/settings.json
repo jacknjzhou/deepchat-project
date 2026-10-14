@@ -2856,7 +2856,7 @@
       "nextPage": "Next page"
     },
     "tasks": {
-      "title": "Tasks",
+      "title": "Scan Tasks",
       "loadFailed": "Failed to load tasks",
       "empty": "No tasks",
       "allBatches": "All batches",
@@ -2879,7 +2879,7 @@
     },
     "reimbursement": {
       "viewDocuments": "문서 보기",
-      "viewReimbursement": "경비 정리",
+      "viewReimbursement": "File Groups",
       "unassigned": "미분류",
       "manageCategories": "카테고리 관리",
       "export": "정리 패키지 내보내기",

@@ -2856,7 +2856,7 @@
       "nextPage": "Next page"
     },
     "tasks": {
-      "title": "Tasks",
+      "title": "Scan Tasks",
       "loadFailed": "Failed to load tasks",
       "empty": "No tasks",
       "allBatches": "All batches",
@@ -2879,7 +2879,7 @@
     },
     "reimbursement": {
       "viewDocuments": "תצוגת מסמכים",
-      "viewReimbursement": "תצוגת החזרים",
+      "viewReimbursement": "File Groups",
       "unassigned": "לא מסווג",
       "manageCategories": "ניהול קטגוריות",
       "export": "ייצוא חבילה",

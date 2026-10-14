@@ -349,7 +349,7 @@
       "nextPage": "下一页"
     },
     "tasks": {
-      "title": "任务",
+      "title": "扫描任务",
       "loadFailed": "任务加载失败",
       "empty": "暂无任务",
       "allBatches": "全部批次",
@@ -372,7 +372,7 @@
     },
     "reimbursement": {
       "viewDocuments": "单据视图",
-      "viewReimbursement": "报销整理",
+      "viewReimbursement": "文件分组",
       "unassigned": "未分类",
       "manageCategories": "管理类别",
       "export": "导出整理包",
@@ -386,7 +386,7 @@
       "forceUnassigned": "强制未分类",
       "empty": "该类别下暂无单据记录",
       "loading": "加载中…",
-      "loadFailed": "报销整理数据加载失败",
+      "loadFailed": "文件分组数据加载失败",
       "retry": "重试",
       "addGroup": "添加分组",
       "groupNamePlaceholder": "输入分组名称",
