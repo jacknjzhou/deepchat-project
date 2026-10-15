@@ -66,7 +66,7 @@ interface SubmissionChannelAdapter {
 
 ## 6. 数据模型（2 张新表）
 
-迁移纪律与 documents 模块一致：**不进主 schema_versions 循环**，走 `getCreateTableSQL()` + `ensureMigrated()` 幂等修复。
+新建 `IntegrationsDatabase`/repository，复用项目 `BaseTable` 与 `src/main/data/schemaCatalog.ts` 的表注册方式；明确全新数据库的建表与既有数据库的幂等补建/索引路径。documents 的 `ensureMigrated()` 特例用于修复已有约束，不应机械照搬或绕开主 schema_versions 机制；若新表纳入主 schema catalog，按项目实际 schema version/repair 流程实施。
 
 ```sql
 CREATE TABLE IF NOT EXISTS submission_channels (
@@ -74,7 +74,8 @@ CREATE TABLE IF NOT EXISTS submission_channels (
   name TEXT NOT NULL,
   system_type TEXT NOT NULL DEFAULT 'oa',   -- 'oa'|'finance'|'research'|'contract'|'hr'，首版仅 oa
   endpoint_url TEXT NOT NULL,
-  auth_headers_json TEXT NOT NULL DEFAULT '{}',  -- {"Header-Name":"value"}，值可标记 secret
+  auth_secret_ref TEXT,                         -- 认证凭据引用安全存储，不保存明文 header/value
+  auth_scheme TEXT NOT NULL DEFAULT 'custom',   -- custom|bearer|basic|api-key（具体 header 由适配器决定）
   payload_template_json TEXT NOT NULL,
   type_key_filter_json TEXT NOT NULL DEFAULT '[]', -- 空=不过滤；非空=仅匹配模板 type_key 的单据纳入
   timeout_ms INTEGER NOT NULL DEFAULT 30000,
@@ -92,11 +93,12 @@ CREATE TABLE IF NOT EXISTS submission_batches (
   group_name TEXT,
   document_ids_json TEXT NOT NULL,
   payload_snapshot_json TEXT NOT NULL,      -- 渲染结果，审计依据
-  status TEXT NOT NULL CHECK(status IN ('pending','success','failed')),
+  status TEXT NOT NULL CHECK(status IN ('pending','success','failed','unknown')), -- unknown=超时/进程中断，需人工核实
   response_status INTEGER,
-  response_body_snippet TEXT,               -- 截断存储（如 4KB）
+  response_body_snippet TEXT,               -- 脱敏后截断存储（如 4KB）
   error_message TEXT,
   resubmitted_from TEXT,                    -- 重推来源批次 id，NULL=首发
+  idempotency_key TEXT NOT NULL,            -- 首发与重推沿用同一业务键，传给 OA（需对端支持）
   submitted_at INTEGER,
   created_at INTEGER NOT NULL
 );
@@ -104,24 +106,26 @@ CREATE TABLE IF NOT EXISTS submission_batches (
 
 ## 7. Payload 模板渲染（纯函数）
 
-占位符语法仅两种：**点路径取值** + **数组迭代**，不引入表达式引擎。
+占位符语法仅两种：**点路径取值** + **显式数组迭代节点**，不引入表达式引擎。
 
-上下文变量：`{{batch.id}}`、`{{group.name}}`、`{{group.categoryName}}`、`{{docs.length}}`；数组块内 `{{doc.typeKey}}`、`{{doc.fields.发票号码.value}}` 等。
+上下文变量：`{{batch.id}}`、`{{group.name}}`、`{{group.categoryName}}`、`{{docs.length}}`；数组块内 `{{doc.typeKey}}`、`{{doc.fields.invoice_no.value}}` 等。
 
 ```json
 {
   "batchNo": "{{batch.id}}",
   "groupName": "{{group.name}}",
-  "items": [
-    { "type": "{{doc.typeKey}}", "invoiceNo": "{{doc.fields.发票号码.value}}" }
-  ]
+  "items": {
+    "$each": "docs",
+    "template": { "type": "{{doc.typeKey}}", "invoiceNo": "{{doc.fields.invoice_no.value}}" }
+  }
 }
 ```
 
 规则：
 - 缺字段/空值 → 填 `null`，并在预览中**标黄警告**，不阻塞提交（fail-open，与识别哲学一致）
-- 模板必须是合法 JSON（管理员保存时校验），渲染只做字符串占位替换
-- 渲染在主进程、确认提交时执行；预览与最终提交使用**同一次渲染结果**（预览即所得）
+- 模板必须是合法 JSON（管理员保存时校验），渲染采用**解析后的 JSON 树递归替换**：整个字符串恰为单一占位符时保留原始 JSON 类型（缺值为真正的 `null`、数字仍为数字）；字符串内插值只允许标量且转成文本。数组迭代使用显式 `"$each": "docs"` 节点而非隐式识别单元素数组；不执行脚本/表达式。
+- 预览在主进程一次性生成 `previewId + payloadSnapshot + documentIds + documentUpdatedAt` 并保存有限时长；确认提交仅引用 previewId，在事务内核验单据、分组、通道配置未变后把**相同快照**落库发送；已过期/有变化时要求重新预览（避免预览与发送不一致）。
+- `fields` 按模板字段 key 取值（参见 `documentTemplateFieldSchema`），示例中的中文标签 `发票号码` 仅作示意，真实模板应使用稳定字段 key。
 
 ## 8. 提交流程与 UI
 
@@ -132,19 +136,22 @@ CREATE TABLE IF NOT EXISTS submission_batches (
   → 确认 → 主进程落批次(pending) → HTTP POST → success/failed 回写 → 刷新批次列表
 ```
 
-- UI 落点：`DocumentsArchivePage` 分组树节点操作 + 设置页「外部系统通道」分区（Phase 1 仅出站 tab）
-- 批次历史：通道详情内列表（状态、时间、响应摘要、来源分组）；failed 批次「重推」= 复制行生成新批次（`resubmitted_from` 指向旧批次），payload **按当前单据数据重新渲染**，旧批次永久保留
+- UI 落点：`DocumentsArchivePage` 分组树节点操作 + 独立设置窗口（`src/renderer/settings/`）「外部系统通道」分区（Phase 1 仅出站 tab）。主进程通过 `app/composition.ts` 装配服务与 `createRouteMap` 路由；共享契约需注册到 `src/shared/contracts/routes.ts`，并由对应 renderer client 调用。
+- 批次历史：通道详情内列表（状态、时间、响应摘要、来源分组）；failed 批次「重推」= 从**原始 payload 快照**复制出新尝试（`resubmitted_from` 指向旧批次），沿用原始 `idempotency_key`，旧批次永久保留。若需提交修改后的单据，必须走新预览、新业务批次（新键），不能称为「重推」。
+- 仅提交 `confirmed` 单据；分组成员在主进程从 repository + 当前报销配置重新解析，不能相信渲染器传入的单据列表。若组中存在 draft，预览明确显示排除数量；空组禁止提交。
 
 ## 9. 错误处理
 
-- 网络错误/超时/非 2xx 统一归 `failed`，记录 `error_message`（截断）与 `response_body_snippet`
-- 不做自动重试；对端幂等依赖 payload 快照中的 `batch.id`（每次提交生成新批次 id，重推与首发在对端视为不同批次，由对端业务去重）
-- 通道删除：软约束——有批次引用的通道禁止删除（UI 提示），避免批次悬挂
+- 明确未发出的网络连接失败/非 2xx 记为 `failed`；请求可能已送达但超时/连接中断记为 `unknown`，记录 `error_message`（脱敏、截断）与 `response_body_snippet`。
+- 不做自动重试。`unknown` 必须显示「结果未知，请先到 OA 核实」，禁止直接重推；核实后人工标注结果或二次提交。`failed` 的重推沿用 `idempotency_key` 并要求 OA 端具备幂等识别；**在 OA 接口尚未确认可幂等前，禁用一键重推，改为核实后人工确认的二次提交**，不得承诺 exactly-once。
+- 启动时滞留的 `pending` 转为 `unknown` 待核实，不能自动重新发送；同一批次并发确认/重推需要数据库状态条件更新或唯一约束拦截。
+- 通道删除：有批次引用的通道禁止删除（主进程强制检查，UI 提示），避免批次悬挂
 
 ## 10. 安全
 
-- `auth_headers_json` 的值可标记 secret：设置 UI 脱敏显示（`••••`）、契约路由返回时打码、仅主进程持有明文
-- 所有出站请求仅主进程发起；渲染器/服务层不触碰渲染上下文以外的用户数据
+- 凭据使用项目现有凭据保护方案（实施时核实其持久化与跨进程边界）或 OS 密钥链保存，`submission_channels` 仅存 `auth_secret_ref`，列表/路由不返回明文；如需额外自定义 header，仅允许非敏感 header 配置，拒绝 Authorization/Cookie 等敏感字段明文入库。实施前确认项目实际可用的凭据存储实现。
+- 所有出站请求仅主进程发起；生产默认仅允许 `https:`，本地开发 mock 可限定 `127.0.0.1`；禁止 file/ftp、任意环回/内网地址及重定向穿透。集团内网 OA 若确实仅提供 HTTP，必须经企业策略显式放行特定主机、端口和协议，说明明文传输风险；UI 输入的“管理员”配置不构成主机层面的信任边界。限制请求/响应体大小、超时、重定向次数，并脱敏日志及响应快照。
+- 渲染器只传分组 ID、通道 ID 和预览 ID；服务层不相信渲染器提供的 payload、单据列表或目标 URL。
 
 ## 11. 测试策略（Vitest，最小持久集）
 
