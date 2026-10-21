@@ -32,9 +32,10 @@ import {
   type DeepchatRouteName
 } from '@shared/contracts/routes'
 import type { DeepchatRouteMap } from '@/routes/routeRegistry'
-import { REIMBURSEMENT_UNASSIGNED, type DocumentTemplate } from '@shared/documents'
+import { REIMBURSEMENT_UNASSIGNED, type DocumentRecord, type DocumentTemplate } from '@shared/documents'
 import type { ReimbursementTreeResult } from '@/documents/reimbursement'
 import { defaultReimbursementConfig } from '@/documents/reimbursementConfig'
+import * as XLSX from 'xlsx'
 import {
   exportReimbursementPackage,
   type ReimbursementExportDeps
@@ -1566,6 +1567,7 @@ describe('reimbursementExport', () => {
     const mkdirs: string[] = []
     const copied: Array<{ src: string; dest: string }> = []
     const written: Array<{ file: string; data: string }> = []
+    const binaryWrites: Array<{ file: string; data: Uint8Array }> = []
     const deps: ReimbursementExportDeps = {
       copyFile: async (src, dest) => {
         copied.push({ src, dest })
@@ -1577,9 +1579,12 @@ describe('reimbursementExport', () => {
       writeFile: async (file, data) => {
         written.push({ file, data })
       },
+      writeFileBinary: async (file, data) => {
+        binaryWrites.push({ file, data })
+      },
       exists: async (target) => options?.existsMatches?.(target) ?? false
     }
-    return { deps, mkdirs, copied, written }
+    return { deps, mkdirs, copied, written, binaryWrites }
   }
 
   type Harness = ReturnType<typeof makeHarness>
@@ -1587,14 +1592,19 @@ describe('reimbursementExport', () => {
   const runExport = async (
     harness: Harness,
     result: ReimbursementTreeResult,
-    filesById: Map<string, string[]>
+    filesById: Map<string, string[]>,
+    extra?: {
+      documentsById?: Map<string, DocumentRecord>
+      invoiceTypeKeys?: Set<string>
+    }
   ) =>
     exportReimbursementPackage({
       rootDir: 'export-root',
       result,
       filesById,
       deps: harness.deps,
-      now: EXPORT_NOW
+      now: EXPORT_NOW,
+      ...extra
     })
 
   const summaryCsv = (harness: Harness, summaryPath: string): string => {
@@ -1708,5 +1718,187 @@ describe('reimbursementExport', () => {
     expect(harness.mkdirs).toContain(join(output.path, '会议费', '分组一', '2026-10'))
     const csv = summaryCsv(harness, output.summaryPath)
     expect(csv).toContain('会议费,分组一,李四,2026-10,会议纪要,c.jpg,120.5,否,否')
+  })
+
+  const makeCustomGroupTree = (): ReimbursementTreeResult => ({
+    tree: [
+      {
+        category: {
+          id: 'cat-1',
+          name: '会议费',
+          requiredMaterials: [],
+          linkedTypeKeys: [],
+          customGroups: [],
+          sortOrder: 1
+        },
+        total: 2,
+        materials: [],
+        groups: [],
+        customGroups: [
+          {
+            group: { id: 'grp-a', name: '重点会议', sortOrder: 0 },
+            buckets: [
+              {
+                period: '2026-09',
+                documents: [
+                  makeEntry('张三'),
+                  {
+                    ...makeEntry('李四'),
+                    id: 'doc-inv',
+                    typeKey: 'invoice_vat_special',
+                    templateName: '增值税专用发票',
+                    amount: 113,
+                    fileNames: ['发票A.pdf']
+                  }
+                ]
+              },
+              {
+                period: '2026-10',
+                documents: [
+                  {
+                    ...makeEntry('王五'),
+                    id: 'doc-inv-2',
+                    typeKey: 'invoice_vat_special',
+                    templateName: '增值税专用发票',
+                    amount: 226,
+                    fileNames: ['发票B.pdf']
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    unassigned: [],
+    summary: []
+  })
+
+  const invoiceDocument = (id: string, fields: Record<string, { value: unknown }>): DocumentRecord =>
+    ({
+      id,
+      templateId: 'tpl-inv',
+      typeKey: 'invoice_vat_special',
+      source: 'upload',
+      status: 'recognized',
+      createdAt: 0,
+      updatedAt: 0,
+      fileUris: [],
+      templateSnapshot: { fields: [] },
+      fields
+    }) as unknown as DocumentRecord
+
+  const INVOICE_FIELDS = {
+    invoice_number: { value: '24312000000012345678' },
+    invoice_date: { value: '2026-09-15' },
+    seller_name: { value: '甲公司' },
+    seller_tax_no: { value: '91330100MA2XXXXXXX' },
+    buyer_name: { value: '乙公司' },
+    buyer_tax_no: { value: '91330100MA2YYYYYYY' },
+    total_amount: { value: 113 },
+    tax_amount: { value: 13 },
+    amount_ex_tax: { value: 100 },
+    tax_rate: { value: '13%' }
+  }
+
+  describe('reimbursementExport invoice summaries', () => {
+    const readInvoiceSheet = (data: Uint8Array) => {
+      const book = XLSX.read(data, { type: 'array' })
+      return XLSX.utils.sheet_to_json<unknown[]>(book.Sheets['发票汇总']!, { header: 1 })
+    }
+
+    it('writes an invoice summary xlsx inside the custom group directory', async () => {
+      const harness = makeHarness()
+      const output = await runExport(
+        harness,
+        makeCustomGroupTree(),
+        new Map([
+          ['doc-1', ['/src/a.jpg', '/src/b.jpg']],
+          ['doc-inv', ['/src/inv-a.pdf']],
+          ['doc-inv-2', ['/src/inv-b.pdf']]
+        ]),
+        {
+          documentsById: new Map([
+            ['doc-inv', invoiceDocument('doc-inv', INVOICE_FIELDS)],
+            ['doc-inv-2', invoiceDocument('doc-inv-2', {
+              ...INVOICE_FIELDS,
+              invoice_number: { value: '22222222' },
+              total_amount: { value: 226 },
+              tax_amount: { value: 26 },
+              amount_ex_tax: { value: 200 }
+            })]
+          ]),
+          invoiceTypeKeys: new Set(['invoice_vat_special'])
+        }
+      )
+      const write = harness.binaryWrites.find((item) => item.file.endsWith(join('会议费', '重点会议', '发票汇总.xlsx')))
+      expect(write).toBeDefined()
+      const grid = readInvoiceSheet(write!.data)
+      expect(grid[0]![7]).toBe('价税合计')
+      expect(grid[1]![1]).toBe('24312000000012345678')
+      expect(grid[1]![13]).toBe('2026-09/发票A.pdf') // 文件相对路径列
+      expect(grid[2]![13]).toBe('2026-10/发票B.pdf') // 跨期间聚合进同一份
+      expect(grid[3]![0]).toBe('合计')
+      expect(grid[3]![7]).toBe(339)
+      expect(output.invoiceSummaries).toEqual(['会议费/重点会议/发票汇总.xlsx'])
+      expect(output.issues).toEqual([])
+    })
+
+    it('skips the summary when the group has no invoice documents', async () => {
+      const harness = makeHarness()
+      const output = await runExport(
+        harness,
+        { ...makeCustomGroupTree(), tree: [{ ...makeCustomGroupTree().tree[0]!, customGroups: [{ group: { id: 'grp-a', name: '重点会议', sortOrder: 0 }, buckets: [{ period: '2026-09', documents: [makeEntry('张三')] }] }] }] },
+        new Map(),
+        { documentsById: new Map(), invoiceTypeKeys: new Set(['invoice_vat_special']) }
+      )
+      expect(harness.binaryWrites).toEqual([])
+      expect(output.invoiceSummaries).toEqual([])
+    })
+
+    it('does not generate summaries without invoiceTypeKeys (backward compatible)', async () => {
+      const harness = makeHarness()
+      const output = await runExport(harness, makeCustomGroupTree(), new Map())
+      expect(harness.binaryWrites).toEqual([])
+      expect(output.invoiceSummaries).toEqual([])
+    })
+
+    it('keeps missing-file markers in the path column and still counts the money', async () => {
+      const harness = makeHarness({ existsMatches: () => false })
+      const tree = makeCustomGroupTree()
+      // filesById 不含 doc-inv 映射 → 发票A.pdf 无源文件，路径列保留缺失标记
+      const output = await runExport(harness, tree, new Map(), {
+        documentsById: new Map([['doc-inv', invoiceDocument('doc-inv', INVOICE_FIELDS)]]),
+        invoiceTypeKeys: new Set(['invoice_vat_special'])
+      })
+      const write = harness.binaryWrites.find((item) => item.file.endsWith('发票汇总.xlsx'))
+      const grid = readInvoiceSheet(write!.data)
+      // 行存在且路径列为缺失标记；金额照计
+      expect(grid[1]![7]).toBe(113)
+      expect(grid[1]![13]).toBe('缺失:发票A.pdf')
+      expect(output.issues).toContain('缺失:发票A.pdf')
+    })
+
+    it('records an issue instead of failing the export when xlsx write throws', async () => {
+      const harness = makeHarness()
+      harness.deps.writeFileBinary = async () => {
+        throw new Error('disk full')
+      }
+      const output = await runExport(
+        harness,
+        makeCustomGroupTree(),
+        new Map([
+          ['doc-1', ['/src/a.jpg', '/src/b.jpg']],
+          ['doc-inv', ['/src/inv-a.pdf']],
+          ['doc-inv-2', ['/src/inv-b.pdf']]
+        ]),
+        {
+          documentsById: new Map([['doc-inv', invoiceDocument('doc-inv', INVOICE_FIELDS)]]),
+          invoiceTypeKeys: new Set(['invoice_vat_special'])
+        }
+      )
+      expect(output.issues).toEqual([expect.stringContaining('汇总失败')])
+      expect(output.invoiceSummaries).toEqual([])
+    })
   })
 })

@@ -507,6 +507,7 @@ export function createDocumentsRoutes(
             copyFile: (src, dest) => fsp.copyFile(src, dest),
             mkdir: (dir, options) => fsp.mkdir(dir, options),
             writeFile: (file, data, encoding) => fsp.writeFile(file, data, encoding),
+            writeFileBinary: (file, data) => fsp.writeFile(file, data),
             exists: async (target) => {
               try {
                 await fsp.access(target)
