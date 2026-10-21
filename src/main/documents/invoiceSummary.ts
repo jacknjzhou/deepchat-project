@@ -93,10 +93,10 @@ export function buildInvoiceRow(input: InvoiceRowInput): InvoiceRow {
   }
 }
 
-const INVOICE_HEADER = [
+const INVOICE_HEADER: string[] = [
   '序号', '发票号码', '开票日期', '销售方名称', '销售方税号', '购买方名称',
   '购买方税号', '价税合计', '税额', '不含税金额', '税率', '金额存疑', '备注', '文件相对路径'
-] as const
+]
 
 type MoneyKey = 'totalAmount' | 'taxAmount' | 'amountExTax'
 
