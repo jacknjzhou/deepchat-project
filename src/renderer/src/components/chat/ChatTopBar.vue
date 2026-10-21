@@ -281,6 +281,8 @@ const { t } = useI18n()
 const sessionStore = useSessionStore()
 const agentStore = useAgentStore()
 const digitalEmployeeStore = useDigitalEmployeeStore()
+// 徽标数据源兜底：冷启动直接进入会话时广场页未挂载过，此处幂等加载一次（已加载则直接返回）
+void digitalEmployeeStore.ensureLoaded()
 const sidepanelStore = useSidepanelStore()
 const sidebarStore = useSidebarStore()
 const uiSettingsStore = useUiSettingsStore()

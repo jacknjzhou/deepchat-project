@@ -133,6 +133,26 @@ export const useDigitalEmployeeStore = defineStore('digitalEmployee', () => {
     await Promise.all([fetchEmployees(), loadPersistedState()])
   }
 
+  const initialized = ref(false)
+  let ensureLoadedPromise: Promise<void> | null = null
+
+  // 幂等加载：仅员工列表加载成功后置位 initialized；并发调用共享同一 promise；
+  // 失败不抛出（error 已由 fetchEmployees 记录），下次调用可重试
+  function ensureLoaded(): Promise<void> {
+    if (initialized.value) return Promise.resolve()
+    if (!ensureLoadedPromise) {
+      ensureLoadedPromise = loadInitialData()
+        .then(() => {
+          if (!error.value) initialized.value = true
+        })
+        .catch(() => undefined)
+        .finally(() => {
+          ensureLoadedPromise = null
+        })
+    }
+    return ensureLoadedPromise
+  }
+
   async function startConversation(
     employee: DigitalEmployee,
     options?: DigitalEmployeeConversationOptions
@@ -180,6 +200,7 @@ export const useDigitalEmployeeStore = defineStore('digitalEmployee', () => {
     employees,
     loading,
     error,
+    initialized,
     selectedDigitalEmployeeId,
     favorites,
     sessionBindings,
@@ -187,6 +208,7 @@ export const useDigitalEmployeeStore = defineStore('digitalEmployee', () => {
     selectedDigitalEmployee,
     fetchEmployees,
     loadInitialData,
+    ensureLoaded,
     setSelectedDigitalEmployee,
     toggleFavorite,
     bindSession,

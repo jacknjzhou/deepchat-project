@@ -12,6 +12,10 @@ const knowledgeClientMock = vi.hoisted(() => ({
   similarityQuery: vi.fn()
 }))
 
+const digitalEmployeeClientMock = vi.hoisted(() => ({
+  list: vi.fn()
+}))
+
 vi.mock('../../../src/renderer/src/stores/ui/session', () => ({
   useSessionStore: () => sessionStoreMock
 }))
@@ -29,22 +33,7 @@ import {
 import type { DigitalEmployee } from '../../../src/shared/contracts/routes/digitalEmployee.routes'
 
 vi.mock('../../../src/renderer/api/DigitalEmployeeClient', () => ({
-  createDigitalEmployeeClient: () => ({
-    list: vi.fn().mockResolvedValue({
-      employees: [
-        {
-          id: 'finance', name: '财务', role: '财务', description: '', avatar: null,
-          capabilities: [], greeting: '你好，我是财务助手', systemPrompt: 'p',
-          sops: [{ title: '报销流程', content: '先提交申请单' }],
-          knowledgeBaseIds: ['kb-1'], skillIds: ['skill-a'], tools: ['filesystem_read'],
-          enabled: true, updatedAt: '2026-10-21'
-        },
-        { id: 'hr', name: '人事', role: '人事', description: '', avatar: null, capabilities: [], greeting: null, systemPrompt: 'p', sops: [], knowledgeBaseIds: [], skillIds: [], tools: [], enabled: false, updatedAt: '2026-10-21' }
-      ],
-      fetchedAt: '2026-10-21T00:00:00.000Z'
-    }),
-    get: vi.fn()
-  })
+  createDigitalEmployeeClient: () => digitalEmployeeClientMock
 }))
 
 vi.mock('../../../src/renderer/api/ConfigClient', () => ({
@@ -61,6 +50,22 @@ const makeEmployee = (id: string): DigitalEmployee => ({
 })
 
 describe('digitalEmployeeStore', () => {
+  const mockEmployees = () => {
+    digitalEmployeeClientMock.list.mockResolvedValue({
+      employees: [
+        {
+          id: 'finance', name: '财务', role: '财务', description: '', avatar: null,
+          capabilities: [], greeting: '你好，我是财务助手', systemPrompt: 'p',
+          sops: [{ title: '报销流程', content: '先提交申请单' }],
+          knowledgeBaseIds: ['kb-1'], skillIds: ['skill-a'], tools: ['filesystem_read'],
+          enabled: true, updatedAt: '2026-10-21'
+        },
+        { id: 'hr', name: '人事', role: '人事', description: '', avatar: null, capabilities: [], greeting: null, systemPrompt: 'p', sops: [], knowledgeBaseIds: [], skillIds: [], tools: [], enabled: false, updatedAt: '2026-10-21' }
+      ],
+      fetchedAt: '2026-10-21T00:00:00.000Z'
+    })
+  }
+
   beforeEach(() => {
     setActivePinia(createPinia())
     sessionStoreMock.createSession.mockReset()
@@ -69,6 +74,29 @@ describe('digitalEmployeeStore', () => {
     knowledgeClientMock.similarityQuery.mockResolvedValue([
       { id: 'k1', metadata: { from: '', filePath: '', content: '片段A' }, distance: 0.1 }
     ])
+    digitalEmployeeClientMock.list.mockReset()
+    mockEmployees()
+  })
+
+  it('ensureLoaded fetches the client only once across repeated invocations', async () => {
+    const store = useDigitalEmployeeStore()
+    await Promise.all([store.ensureLoaded(), store.ensureLoaded()])
+    await store.ensureLoaded()
+    expect(digitalEmployeeClientMock.list).toHaveBeenCalledTimes(1)
+    expect(store.employees).toHaveLength(2)
+    expect(store.initialized).toBe(true)
+  })
+
+  it('ensureLoaded swallows fetch errors and allows retry on next call', async () => {
+    const store = useDigitalEmployeeStore()
+    digitalEmployeeClientMock.list.mockRejectedValueOnce(new Error('boom'))
+    await expect(store.ensureLoaded()).resolves.toBeUndefined()
+    expect(store.error).toContain('Failed to load digital employees')
+    expect(store.initialized).toBe(false)
+    await store.ensureLoaded()
+    expect(digitalEmployeeClientMock.list).toHaveBeenCalledTimes(2)
+    expect(store.employees).toHaveLength(2)
+    expect(store.initialized).toBe(true)
   })
 
   it('fetchEmployees loads list and filters enabledEmployees', async () => {

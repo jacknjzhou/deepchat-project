@@ -45,8 +45,16 @@ const stores = vi.hoisted(() => ({
 
 const notifyRenderer = vi.hoisted(() => vi.fn())
 
+const digitalEmployeeStoreMock = vi.hoisted(() => ({
+  employeeForSession: vi.fn<() => { id: string; name: string } | null>(() => null),
+  ensureLoaded: vi.fn()
+}))
+
 vi.mock('@/stores/ui/session', () => ({
   useSessionStore: () => stores.session
+}))
+vi.mock('@/stores/digitalEmployeeStore', () => ({
+  useDigitalEmployeeStore: () => digitalEmployeeStoreMock
 }))
 vi.mock('@/stores/ui/agent', () => ({
   useAgentStore: () => stores.agent
@@ -211,6 +219,28 @@ describe('ChatTopBar action buttons', () => {
     stores.uiSettings.traceDebugEnabled = false
     const hiddenWrapper = mountTopBar()
     expect(hiddenWrapper.find('[data-testid="open-tape-inspector-button"]').exists()).toBe(false)
+  })
+})
+
+describe('ChatTopBar digital employee badge', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    digitalEmployeeStoreMock.employeeForSession.mockReturnValue(null)
+  })
+
+  it('hides badge when no employee is bound and ensures the store is loaded on mount', () => {
+    const wrapper = mountTopBar()
+
+    expect(wrapper.find('[data-testid="chat-digital-employee-badge"]').exists()).toBe(false)
+    expect(digitalEmployeeStoreMock.ensureLoaded).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows the bound digital employee name in the badge', () => {
+    digitalEmployeeStoreMock.employeeForSession.mockReturnValue({ id: 'finance', name: '财务助手' })
+    const wrapper = mountTopBar()
+
+    const badge = wrapper.get('[data-testid="chat-digital-employee-badge"]')
+    expect(badge.text()).toContain('财务助手')
   })
 })
 
