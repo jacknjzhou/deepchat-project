@@ -76,7 +76,7 @@ export class SkillTools {
       return {
         success: false,
         name: requestedSkillName,
-        error: 'No SRIBD Office Agent context available'
+        error: 'No Office Agent context available'
       }
     }
 

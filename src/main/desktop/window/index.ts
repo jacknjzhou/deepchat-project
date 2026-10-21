@@ -1323,7 +1323,7 @@ export class WindowPresenter implements IWindowPresenter {
       fullscreenable: false,
 
       icon: iconFile,
-      title: 'SRIBD办公智能体 - 设置',
+      title: '办公智能体 - 设置',
       titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : undefined,
       transparent: process.platform === 'darwin',
       vibrancy: process.platform === 'darwin' ? 'under-window' : undefined,

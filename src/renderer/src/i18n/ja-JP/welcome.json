@@ -2,7 +2,7 @@
   "steps": {
     "welcome": {
       "title": "ようこそ",
-      "description": "SRIBD Office Agentの設定を始めましょう"
+      "description": "Office Agentの設定を始めましょう"
     },
     "provider": {
       "title": "モデルプロバイダー",
@@ -17,7 +17,7 @@
       "description": "すべての準備が整いました！"
     }
   },
-  "title": "SRIBD Office Agentへようこそ",
+  "title": "Office Agentへようこそ",
   "description": "セットアップを完了しましょう",
   "provider": {
     "select": "プロバイダーを選択",
@@ -35,7 +35,7 @@
     "back": "戻る"
   },
   "page": {
-    "title": "SRIBD Office Agentへようこそ",
+    "title": "Office Agentへようこそ",
     "description": "始めるにはモデルプロバイダーを接続してください",
     "guide": {
       "title": "セットアップガイド",
@@ -72,8 +72,8 @@
   },
   "agentPage": {
     "title": "エージェントを選んで作成を始める",
-    "deepchatType": "SRIBD Office Agent",
+    "deepchatType": "Office Agent",
     "acpType": "ACPエージェント",
-    "manageAgents": "SRIBD Office Agentエージェントを管理"
+    "manageAgents": "Office Agentエージェントを管理"
   }
 }

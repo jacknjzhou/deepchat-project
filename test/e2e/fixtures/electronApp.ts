@@ -60,7 +60,7 @@ const isMainAppWindow = async (page: Page): Promise<boolean> => {
   }
 
   const title = await page.title().catch(() => '')
-  return title === 'SRIBD办公智能体' && !url.includes('/renderer/')
+  return title === '办公智能体' && !url.includes('/renderer/')
 }
 
 const waitForMainAppWindow = async (electronApp: ElectronApplication): Promise<Page> => {

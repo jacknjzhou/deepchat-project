@@ -2,7 +2,7 @@
   "steps": {
     "welcome": {
       "title": "Добро пожаловать",
-      "description": "Начнем настройку SRIBD Office Agent"
+      "description": "Начнем настройку Office Agent"
     },
     "provider": {
       "title": "Провайдер моделей",
@@ -17,7 +17,7 @@
       "description": "Всё готово к работе!"
     }
   },
-  "title": "Добро пожаловать в SRIBD Office Agent",
+  "title": "Добро пожаловать в Office Agent",
   "description": "Давайте завершим процесс настройки",
   "provider": {
     "select": "Выбрать провайдера",
@@ -35,7 +35,7 @@
     "back": "Назад"
   },
   "page": {
-    "title": "Добро пожаловать в SRIBD Office Agent",
+    "title": "Добро пожаловать в Office Agent",
     "description": "Подключите провайдера моделей, чтобы начать",
     "guide": {
       "title": "Гид по настройке",
@@ -72,8 +72,8 @@
   },
   "agentPage": {
     "title": "Выберите агента, чтобы начать работу",
-    "deepchatType": "SRIBD Office Agent",
+    "deepchatType": "Office Agent",
     "acpType": "Агент ACP",
-    "manageAgents": "Управление агентами SRIBD Office Agent"
+    "manageAgents": "Управление агентами Office Agent"
   }
 }

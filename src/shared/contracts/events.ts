@@ -35,7 +35,7 @@ import {
   contextMenuTranslateRequestedEvent
 } from './events/context-menu.events'
 import { dialogRequestedEvent } from './events/dialog.events'
-import { documentsTaskUpdatedEvent } from './events/documents.events'
+import { documentsTaskUpdatedEvent, documentsWatchDuplicatesEvent } from './events/documents.events'
 import { knowledgeFileProgressEvent, knowledgeFileUpdatedEvent } from './events/knowledge.events'
 import { memoryUpdatedEvent } from './events/memory.events'
 import {
@@ -294,6 +294,7 @@ export const DEEPCHAT_EVENT_CATALOG = {
   [upgradeErrorEvent.name]: upgradeErrorEvent,
   [dialogRequestedEvent.name]: dialogRequestedEvent,
   [documentsTaskUpdatedEvent.name]: documentsTaskUpdatedEvent,
+  [documentsWatchDuplicatesEvent.name]: documentsWatchDuplicatesEvent,
   [toolchainsProgressEvent.name]: toolchainsProgressEvent,
   [toolchainsMissingEvent.name]: toolchainsMissingEvent,
   [toolchainsChangedEvent.name]: toolchainsChangedEvent,

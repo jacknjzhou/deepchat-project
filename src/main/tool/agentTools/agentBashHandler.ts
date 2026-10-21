@@ -178,11 +178,11 @@ export class AgentBashHandler {
       (!options.conversationId || background || yieldMs !== undefined)
     ) {
       throw new Error(
-        'SRIBD Office Agent Programmatic Tool commands must remain attached and foreground.'
+        'Office Agent Programmatic Tool commands must remain attached and foreground.'
       )
     }
     if (!isProgrammaticInvocation && options.stdin !== undefined) {
-      throw new Error('Owned stdin is limited to SRIBD Office Agent Programmatic Tool commands.')
+      throw new Error('Owned stdin is limited to Office Agent Programmatic Tool commands.')
     }
     const cwd = this.resolveWorkingDirectory(
       requestedCwd,

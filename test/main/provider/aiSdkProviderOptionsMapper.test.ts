@@ -922,7 +922,7 @@ describe('AI SDK provider options', () => {
     })
 
     expect(result.providerOptions?.openai).toMatchObject({
-      instructions: 'You are SRIBD Office Agent, an AI assistant. Follow the user instructions.',
+      instructions: 'You are Office Agent, an AI assistant. Follow the user instructions.',
       store: false
     })
   })

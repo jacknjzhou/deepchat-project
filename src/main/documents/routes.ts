@@ -1,6 +1,7 @@
 import { promises as fsp } from 'node:fs'
 import path from 'node:path'
 import {
+  documentAutoWatchChooseDirRoute,
   documentTemplatesDeleteRoute,
   documentTemplatesForkRoute,
   documentTemplatesGetRoute,
@@ -13,24 +14,47 @@ import {
   documentsGetRoute,
   documentsListRoute,
   documentsPreviewFileRoute,
+  documentsReimbursementExportRoute,
+  documentsReimbursementGetConfigRoute,
+  documentsReimbursementSetConfigRoute,
+  documentsReimbursementSetGroupOverrideRoute,
+  documentsReimbursementSetOverrideRoute,
+  documentsReimbursementTreeRoute,
   documentsStatsRoute,
   documentsTasksCreateRoute,
   documentsTasksClearFailedRoute,
   documentsTasksListRoute,
   documentsTasksRetryRoute,
+  documentsTasksScanBatchesRoute,
   documentsUpsertRoute
 } from '@shared/contracts/routes'
+import { REIMBURSEMENT_UNASSIGNED, type RecognitionDuplicate } from '@shared/documents'
 import { dialog } from 'electron'
 import { createRouteMap, type DeepchatRouteMap } from '@/routes/routeRegistry'
 import { buildDocumentsCsv, CSV_EXPORT_MAX_ROWS } from './csv'
-import type { DocumentExtractor } from './extractor/documentExtractor'
-import type { DocumentsRepository } from './repository'
-import type { RecognitionTaskManager } from './taskManager'
+import { AUTO_TEMPLATE_ID, type DocumentExtractor } from './extractor/documentExtractor'
+import type { DocumentsSettingsStore } from './modelSettings'
+import type { DocumentTask, DocumentsRepository } from './repository'
+import { buildReimbursementTree, REIMBURSEMENT_TREE_MAX_DOCUMENTS } from './reimbursement'
+import { exportReimbursementPackage } from './reimbursementExport'
+import { readReimbursementConfig, writeReimbursementConfig } from './reimbursementConfig'
+import type { RecognitionTaskManager, RecognitionTaskSubmitInput } from './taskManager'
+
+/** 内容去重提交包装器（composition 注入 submitWithDedupe 接线） */
+export type DocumentsDedupeSubmit = (
+  input: RecognitionTaskSubmitInput
+) => Promise<{ tasks: DocumentTask[]; duplicates: RecognitionDuplicate[] }>
 
 interface DocumentsCsvRouteDeps {
   showSaveDialog: (
     options: Electron.SaveDialogOptions
   ) => Promise<{ canceled: boolean; filePath?: string }>
+}
+
+interface ReimbursementRouteDeps {
+  showOpenDialog: (
+    options: Electron.OpenDialogOptions
+  ) => Promise<{ canceled: boolean; filePaths: string[] }>
 }
 
 const PREVIEW_MIME_BY_EXTENSION: Record<string, string> = {
@@ -48,6 +72,10 @@ const defaultCsvDeps: DocumentsCsvRouteDeps = {
   showSaveDialog: (options) => dialog.showSaveDialog(options)
 }
 
+const defaultReimbursementDeps: ReimbursementRouteDeps = {
+  showOpenDialog: (options) => dialog.showOpenDialog(options)
+}
+
 function resolvePreviewMimeType(filePath: string): string {
   const extension = path.extname(filePath).toLowerCase()
   const mimeType = PREVIEW_MIME_BY_EXTENSION[extension]
@@ -61,8 +89,17 @@ export function createDocumentsRoutes(
   repository: DocumentsRepository,
   extractor: DocumentExtractor,
   taskManager: RecognitionTaskManager,
-  csvDeps: DocumentsCsvRouteDeps = defaultCsvDeps
+  csvDeps: DocumentsCsvRouteDeps = defaultCsvDeps,
+  configStore?: DocumentsSettingsStore,
+  reimbursementDeps: ReimbursementRouteDeps = defaultReimbursementDeps,
+  dedupeSubmit?: DocumentsDedupeSubmit
 ): DeepchatRouteMap {
+  const requireConfigStore = (): DocumentsSettingsStore => {
+    if (!configStore) {
+      throw new Error('[documents.reimbursement.storeUnavailable]')
+    }
+    return configStore
+  }
   return createRouteMap([
     [
       documentTemplatesListRoute.name,
@@ -158,19 +195,26 @@ export function createDocumentsRoutes(
       documentsTasksCreateRoute.name,
       async (rawInput) => {
         const input = documentsTasksCreateRoute.input.parse(rawInput)
-        const tasks = taskManager.submit({
+        // Scheduled submissions omit templateId: normalize to the auto classifier
+        // here so the task port never sees an undefined template binding.
+        const submitInput = {
           files: input.files,
-          templateId: input.templateId,
+          templateId: input.templateId ?? AUTO_TEMPLATE_ID,
           source: input.source
-        })
-        return documentsTasksCreateRoute.output.parse({ tasks })
+        }
+        // Content-level dedupe: composition injects the submitWithDedupe wrapper;
+        // without it the submit goes through directly with no duplicates reported.
+        const { tasks, duplicates } = dedupeSubmit
+          ? await dedupeSubmit(submitInput)
+          : { tasks: taskManager.submit(submitInput), duplicates: [] }
+        return documentsTasksCreateRoute.output.parse({ tasks, duplicates })
       }
     ],
     [
       documentsTasksListRoute.name,
       async (rawInput) => {
-        documentsTasksListRoute.input.parse(rawInput)
-        return documentsTasksListRoute.output.parse({ tasks: repository.listRecentTasks() })
+        const input = documentsTasksListRoute.input.parse(rawInput)
+        return documentsTasksListRoute.output.parse(repository.listUnifiedTasks(input))
       }
     ],
     [
@@ -191,6 +235,16 @@ export function createDocumentsRoutes(
         documentsTasksClearFailedRoute.input.parse(rawInput)
         return documentsTasksClearFailedRoute.output.parse({
           removed: repository.deleteFailedTasks()
+        })
+      }
+    ],
+    [
+      documentsTasksScanBatchesRoute.name,
+      async (rawInput) => {
+        const input = documentsTasksScanBatchesRoute.input.parse(rawInput)
+        return documentsTasksScanBatchesRoute.output.parse({
+          batches: repository.listScanBatches(input.limit, input.offset),
+          total: repository.countScanBatches()
         })
       }
     ],
@@ -306,6 +360,180 @@ export function createDocumentsRoutes(
           mimeType,
           name: path.basename(uri)
         })
+      }
+    ],
+    [
+      documentsReimbursementGetConfigRoute.name,
+      async (rawInput) => {
+        documentsReimbursementGetConfigRoute.input.parse(rawInput)
+        const store = requireConfigStore()
+        return documentsReimbursementGetConfigRoute.output.parse({
+          config: readReimbursementConfig(store)
+        })
+      }
+    ],
+    [
+      documentsReimbursementSetConfigRoute.name,
+      async (rawInput) => {
+        const input = documentsReimbursementSetConfigRoute.input.parse(rawInput)
+        const store = requireConfigStore()
+        return documentsReimbursementSetConfigRoute.output.parse({
+          config: writeReimbursementConfig(store, input.config)
+        })
+      }
+    ],
+    [
+      documentsReimbursementTreeRoute.name,
+      async (rawInput) => {
+        const input = documentsReimbursementTreeRoute.input.parse(rawInput)
+        const store = requireConfigStore()
+        const config = readReimbursementConfig(store)
+        const documents = repository.listDocuments({
+          status: input.status,
+          dateFrom: input.dateFrom,
+          dateTo: input.dateTo,
+          limit: REIMBURSEMENT_TREE_MAX_DOCUMENTS
+        })
+        const templateNameById = new Map(repository.listTemplates().map((t) => [t.id, t.name]))
+        return documentsReimbursementTreeRoute.output.parse(
+          buildReimbursementTree(documents, config, templateNameById)
+        )
+      }
+    ],
+    [
+      documentsReimbursementSetOverrideRoute.name,
+      async (rawInput) => {
+        const input = documentsReimbursementSetOverrideRoute.input.parse(rawInput)
+        const store = requireConfigStore()
+        // fail-fast：陈旧的 categoryId 若静默降级为未分类，会丢失用户的手动归类意图
+        if (
+          input.categoryId !== null &&
+          input.categoryId !== REIMBURSEMENT_UNASSIGNED &&
+          !readReimbursementConfig(store).categories.some(
+            (category) => category.id === input.categoryId
+          )
+        ) {
+          throw new Error(`[documents.reimbursement.categoryUnknown:${input.categoryId}]`)
+        }
+        return documentsReimbursementSetOverrideRoute.output.parse({
+          document: repository.setReimbursementOverride(input.documentId, input.categoryId) ?? null
+        })
+      }
+    ],
+    [
+      documentsReimbursementSetGroupOverrideRoute.name,
+      async (rawInput) => {
+        const input = documentsReimbursementSetGroupOverrideRoute.input.parse(rawInput)
+        const store = requireConfigStore()
+        // fail-fast：陈旧的 groupId 若静默降级为未分组，会丢失用户的手动分组意图
+        if (
+          input.groupId !== null &&
+          !readReimbursementConfig(store).categories.some((category) =>
+            category.customGroups.some((group) => group.id === input.groupId)
+          )
+        ) {
+          throw new Error(`[documents.reimbursement.groupUnknown:${input.groupId}]`)
+        }
+        return documentsReimbursementSetGroupOverrideRoute.output.parse({
+          document:
+            repository.setReimbursementGroupOverride(input.documentId, input.groupId) ?? null
+        })
+      }
+    ],
+    [
+      documentsReimbursementExportRoute.name,
+      async (rawInput) => {
+        const input = documentsReimbursementExportRoute.input.parse(rawInput)
+        const store = requireConfigStore()
+        const config = readReimbursementConfig(store)
+        // 勾选分组导出：在弹目录选择框之前 fail-fast 校验类别与分组 id，避免无效参数先弹框；
+        // 分组 id 按类别内校验，严于 setGroupOverride 的全局校验（同 id 分组可能存在于多个类别）
+        const selectedGroupIds =
+          input.categoryId !== undefined && input.groupIds !== undefined ? input.groupIds : null
+        const selectedCategory =
+          selectedGroupIds === null
+            ? null
+            : (config.categories.find((category) => category.id === input.categoryId) ?? null)
+        if (selectedGroupIds !== null) {
+          if (selectedCategory === null) {
+            throw new Error(`[documents.reimbursement.categoryUnknown:${input.categoryId}]`)
+          }
+          for (const groupId of selectedGroupIds) {
+            if (!selectedCategory.customGroups.some((group) => group.id === groupId)) {
+              throw new Error(`[documents.reimbursement.groupUnknown:${groupId}]`)
+            }
+          }
+        }
+        const { canceled, filePaths } = await reimbursementDeps.showOpenDialog({
+          properties: ['openDirectory', 'createDirectory'],
+          title: '选择报销整理包导出目录'
+        })
+        const rootDir = canceled ? undefined : filePaths[0]
+        if (!rootDir) {
+          return documentsReimbursementExportRoute.output.parse({ canceled: true })
+        }
+        const documents = repository.listDocuments({
+          status: input.status,
+          dateFrom: input.dateFrom,
+          dateTo: input.dateTo,
+          limit: REIMBURSEMENT_TREE_MAX_DOCUMENTS
+        })
+        const templateNameById = new Map(repository.listTemplates().map((t) => [t.id, t.name]))
+        const treeResult = buildReimbursementTree(documents, config, templateNameById)
+        // 勾选分组导出：只保留勾选类别的一个节点，清空 person→period 组与未分类，
+        // customGroups 仅保留勾选分组；total/materials/summary 不被导出消费，保持原样
+        const exportResult =
+          selectedCategory !== null && selectedGroupIds !== null
+            ? {
+                ...treeResult,
+                tree: treeResult.tree
+                  .filter((node) => node.category.id === selectedCategory.id)
+                  .map((node) => ({
+                    ...node,
+                    groups: [],
+                    customGroups: node.customGroups.filter((item) =>
+                      selectedGroupIds.includes(item.group.id)
+                    )
+                  })),
+                unassigned: []
+              }
+            : treeResult
+        const filesById = new Map(documents.map((document) => [document.id, document.fileUris]))
+        const output = await exportReimbursementPackage({
+          rootDir,
+          result: exportResult,
+          filesById,
+          deps: {
+            copyFile: (src, dest) => fsp.copyFile(src, dest),
+            mkdir: (dir, options) => fsp.mkdir(dir, options),
+            writeFile: (file, data, encoding) => fsp.writeFile(file, data, encoding),
+            exists: async (target) => {
+              try {
+                await fsp.access(target)
+                return true
+              } catch {
+                return false
+              }
+            }
+          }
+        })
+        return documentsReimbursementExportRoute.output.parse({
+          canceled: false,
+          path: output.path,
+          exportedFiles: output.exportedFiles,
+          summaryPath: output.summaryPath
+        })
+      }
+    ],
+    [
+      documentAutoWatchChooseDirRoute.name,
+      async (rawInput) => {
+        documentAutoWatchChooseDirRoute.input.parse(rawInput)
+        const picked = await reimbursementDeps.showOpenDialog({
+          properties: ['openDirectory']
+        })
+        const dir = picked.canceled ? null : (picked.filePaths[0] ?? null)
+        return documentAutoWatchChooseDirRoute.output.parse({ dir })
       }
     ]
   ])

@@ -8,12 +8,17 @@ import type {
   DocumentTemplateCategory,
   DocumentRecord,
   DocumentFieldEntry,
-  DocumentStatus
+  DocumentStatus,
+  RecognitionDuplicate
 } from '@shared/documents'
 import type { z } from 'zod'
 import type {
   documentsStatsEntrySchema,
-  documentsTemplateUpsertInputSchema
+  documentsTasksScanBatchesRoute,
+  documentsTemplateUpsertInputSchema,
+  unifiedTaskEntrySchema,
+  ReimbursementConfig,
+  ReimbursementTreeResult
 } from '@shared/contracts/routes'
 import type { documentsTaskUpdatedEvent } from '@shared/contracts/events'
 import { documentsApi, type DocumentsTaskItem } from '@api/documentTasks'
@@ -223,6 +228,14 @@ export const useDocumentsStore = defineStore('documents', () => {
     }
     if (payload.status === 'done' || payload.status === 'failed') {
       scheduleArchiveRefresh()
+      // The tasks view refreshes alongside the archive once it has been opened.
+      if (taskList.value.length > 0 || taskPage.value > 1) {
+        scheduleTaskRefresh()
+      }
+      // Once loaded, keep the reimbursement tree fresh for the session.
+      if (reimbursementTree.value !== null) {
+        scheduleReimbursementRefresh()
+      }
     }
   }
 
@@ -233,11 +246,13 @@ export const useDocumentsStore = defineStore('documents', () => {
     const result = await client.createTasks({ ...input, source: 'manual' })
     const created = result.tasks as DocumentsTaskItem[]
     tasks.value = [...created, ...tasks.value]
-    return created
+    // Content-dedupe skips: tolerate clients that predate the duplicates field.
+    const duplicates = (result as { duplicates?: RecognitionDuplicate[] }).duplicates ?? []
+    return { created, duplicates }
   }
 
   async function retryRecognitionTask(
-    task: DocumentsTaskItem,
+    task: { id: string },
     options?: { templateId?: string },
     client: DocumentsClient = defaultClient
   ) {
@@ -264,12 +279,107 @@ export const useDocumentsStore = defineStore('documents', () => {
     return result.removed
   }
 
+  const TASK_PAGE_SIZE = 50
+  type UnifiedTaskItem = z.infer<typeof unifiedTaskEntrySchema>
+  type ScanBatchItem = z.infer<typeof documentsTasksScanBatchesRoute.output>['batches'][number]
+  type UnifiedSource = UnifiedTaskItem['source']
+
+  const taskList = ref<UnifiedTaskItem[]>([])
+  const taskTotal = ref(0)
+  const taskPage = ref(1)
+  const taskIsLoading = ref(false)
+  const taskLoadError = ref<string | null>(null)
+  const taskFilter = reactive({
+    source: undefined as UnifiedSource | undefined,
+    status: undefined as UnifiedTaskItem['status'] | undefined,
+    batchId: undefined as string | undefined
+  })
+  const scanBatches = ref<ScanBatchItem[]>([])
+  const taskTotalPages = computed(() => Math.max(1, Math.ceil(taskTotal.value / TASK_PAGE_SIZE)))
+
+  // Guards against out-of-order task-view responses: only the latest
+  // loadTaskList call may commit results or manage taskIsLoading.
+  let taskLoadSeq = 0
+  // Trailing-edge debounce so batch completion events refresh once, not per task.
+  const TASK_REFRESH_DEBOUNCE_MS = 300
+  let taskRefreshTimer: ReturnType<typeof setTimeout> | null = null
+
+  function scheduleTaskRefresh() {
+    if (taskRefreshTimer !== null) {
+      clearTimeout(taskRefreshTimer)
+    }
+    taskRefreshTimer = setTimeout(() => {
+      taskRefreshTimer = null
+      void loadTaskList(taskPage.value)
+    }, TASK_REFRESH_DEBOUNCE_MS)
+  }
+
+  async function loadTaskList(page = 1, client: DocumentsClient = defaultClient) {
+    const seq = ++taskLoadSeq
+    taskIsLoading.value = true
+    taskLoadError.value = null
+    try {
+      const result = await client.listTasksPaged({
+        status: taskFilter.status,
+        source: taskFilter.source,
+        batchId: taskFilter.batchId,
+        limit: TASK_PAGE_SIZE,
+        offset: (page - 1) * TASK_PAGE_SIZE
+      })
+      if (seq !== taskLoadSeq) {
+        return
+      }
+      taskList.value = result.tasks
+      taskTotal.value = result.total
+      taskPage.value = page
+    } catch (error) {
+      if (seq !== taskLoadSeq) {
+        return
+      }
+      console.error('[DocumentsStore] loadTaskList failed', error)
+      taskLoadError.value = 'settings.documents.tasks.loadFailed'
+    } finally {
+      if (seq === taskLoadSeq) {
+        taskIsLoading.value = false
+      }
+    }
+  }
+
+  async function loadScanBatches(client: DocumentsClient = defaultClient) {
+    try {
+      const result = await client.listScanBatches({ limit: 200, offset: 0 })
+      scanBatches.value = result.batches
+    } catch (error) {
+      console.error('[DocumentsStore] loadScanBatches failed', error)
+    }
+  }
+
+  async function clearFailedTaskList(client: DocumentsClient = defaultClient) {
+    const removed = await client.clearFailedTasks()
+    tasks.value = tasks.value.filter((t) => t.status !== 'failed')
+    await loadTaskList(taskPage.value, client)
+    if (taskList.value.length === 0 && taskPage.value > 1) {
+      await loadTaskList(taskPage.value - 1, client)
+    }
+    return removed
+  }
+
   function replaceArchiveDocument(document: DocumentRecord) {
     const index = archiveDocuments.value.findIndex((d) => d.id === document.id)
     if (index >= 0) {
       archiveDocuments.value[index] = document
     } else {
       archiveDocuments.value.unshift(document)
+    }
+  }
+
+  // In-place-only sibling of replaceArchiveDocument: never prepends, so
+  // reimbursement calls made from views without the archive list loaded cannot
+  // inject orphan rows into an unloaded/filtered list.
+  function replaceArchiveDocumentInPlace(document: DocumentRecord) {
+    const index = archiveDocuments.value.findIndex((d) => d.id === document.id)
+    if (index >= 0) {
+      archiveDocuments.value[index] = document
     }
   }
 
@@ -319,6 +429,111 @@ export const useDocumentsStore = defineStore('documents', () => {
     return client.previewFile({ documentId, uriIndex })
   }
 
+  const reimbursementConfig = ref<ReimbursementConfig | null>(null)
+  const reimbursementTree = ref<ReimbursementTreeResult | null>(null)
+  const reimbursementIsLoading = ref(false)
+  const reimbursementLoadError = ref<string | null>(null)
+
+  async function loadReimbursementConfig(client: DocumentsClient = defaultClient) {
+    const result = await client.reimbursementGetConfig()
+    reimbursementConfig.value = result.config
+    return result.config
+  }
+
+  async function saveReimbursementConfig(
+    config: ReimbursementConfig,
+    client: DocumentsClient = defaultClient
+  ) {
+    const result = await client.reimbursementSetConfig(config)
+    reimbursementConfig.value = result.config
+    return result.config
+  }
+
+  // Guards against out-of-order reimbursement responses: only the latest
+  // loadReimbursementTree call may commit results or manage isLoading.
+  let reimbursementLoadSeq = 0
+  // Trailing-edge debounce so batch completion events refresh the tree once,
+  // mirroring scheduleArchiveRefresh; guarded by reimbursementLoadSeq.
+  const REIMBURSEMENT_REFRESH_DEBOUNCE_MS = 300
+  let reimbursementRefreshTimer: ReturnType<typeof setTimeout> | null = null
+
+  function scheduleReimbursementRefresh() {
+    if (reimbursementRefreshTimer !== null) {
+      clearTimeout(reimbursementRefreshTimer)
+    }
+    reimbursementRefreshTimer = setTimeout(() => {
+      reimbursementRefreshTimer = null
+      void loadReimbursementTree()
+    }, REIMBURSEMENT_REFRESH_DEBOUNCE_MS)
+  }
+
+  async function loadReimbursementTree(client: DocumentsClient = defaultClient) {
+    const seq = ++reimbursementLoadSeq
+    reimbursementIsLoading.value = true
+    reimbursementLoadError.value = null
+    try {
+      const result = await client.reimbursementTree({
+        status: archiveFilter.status,
+        dateFrom: archiveFilter.dateFrom,
+        dateTo: archiveFilter.dateTo
+      })
+      if (seq !== reimbursementLoadSeq) {
+        return
+      }
+      reimbursementTree.value = result
+    } catch (error) {
+      if (seq !== reimbursementLoadSeq) {
+        return
+      }
+      console.error('[DocumentsStore] loadReimbursementTree failed', error)
+      reimbursementLoadError.value = 'settings.documents.reimbursement.loadFailed'
+    } finally {
+      if (seq === reimbursementLoadSeq) {
+        reimbursementIsLoading.value = false
+      }
+    }
+  }
+
+  async function setReimbursementOverride(
+    documentId: string,
+    categoryId: string | null,
+    client: DocumentsClient = defaultClient
+  ): Promise<DocumentRecord | null> {
+    const result = await client.reimbursementSetOverride(documentId, categoryId)
+    const document = result.document as DocumentRecord | null
+    if (document) {
+      replaceArchiveDocumentInPlace(document)
+    }
+    await loadReimbursementTree(client)
+    return document
+  }
+
+  async function setReimbursementGroupOverride(
+    documentId: string,
+    groupId: string | null,
+    client: DocumentsClient = defaultClient
+  ): Promise<DocumentRecord | null> {
+    const result = await client.reimbursementSetGroupOverride(documentId, groupId)
+    const document = result.document as DocumentRecord | null
+    if (document) {
+      replaceArchiveDocumentInPlace(document)
+    }
+    await loadReimbursementTree(client)
+    return document
+  }
+
+  async function exportReimbursementPackage(
+    selection?: { categoryId: string; groupIds: string[] },
+    client: DocumentsClient = defaultClient
+  ) {
+    return client.reimbursementExport({
+      status: archiveFilter.status,
+      dateFrom: archiveFilter.dateFrom,
+      dateTo: archiveFilter.dateTo,
+      ...(selection ? { categoryId: selection.categoryId, groupIds: selection.groupIds } : {})
+    })
+  }
+
   return {
     templates,
     isLoading,
@@ -342,6 +557,17 @@ export const useDocumentsStore = defineStore('documents', () => {
     loadArchiveDocuments,
     loadArchiveStats,
     loadArchiveTasks,
+    taskList,
+    taskTotal,
+    taskPage,
+    taskTotalPages,
+    taskIsLoading,
+    taskLoadError,
+    taskFilter,
+    scanBatches,
+    loadTaskList,
+    loadScanBatches,
+    clearFailedTaskList,
     handleTaskUpdated,
     createRecognitionTasks,
     retryRecognitionTask,
@@ -350,6 +576,16 @@ export const useDocumentsStore = defineStore('documents', () => {
     removeArchiveDocument,
     recognizeDocument,
     exportArchiveCsv,
-    previewArchiveFile
+    previewArchiveFile,
+    reimbursementConfig,
+    reimbursementTree,
+    reimbursementIsLoading,
+    reimbursementLoadError,
+    loadReimbursementConfig,
+    saveReimbursementConfig,
+    loadReimbursementTree,
+    setReimbursementOverride,
+    setReimbursementGroupOverride,
+    exportReimbursementPackage
   }
 })

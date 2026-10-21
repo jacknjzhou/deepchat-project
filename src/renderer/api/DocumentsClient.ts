@@ -1,5 +1,6 @@
 import type { DeepchatBridge } from '@shared/contracts/bridge'
 import {
+  documentAutoWatchChooseDirRoute,
   documentTemplatesDeleteRoute,
   documentTemplatesForkRoute,
   documentTemplatesGetRoute,
@@ -12,20 +13,28 @@ import {
   documentsGetRoute,
   documentsListRoute,
   documentsPreviewFileRoute,
+  documentsReimbursementExportRoute,
+  documentsReimbursementGetConfigRoute,
+  documentsReimbursementSetConfigRoute,
+  documentsReimbursementSetGroupOverrideRoute,
+  documentsReimbursementSetOverrideRoute,
+  documentsReimbursementTreeRoute,
   documentsStatsRoute,
   documentsTasksCreateRoute,
   documentsTasksClearFailedRoute,
   documentsTasksListRoute,
   documentsTasksRetryRoute,
+  documentsTasksScanBatchesRoute,
   documentsUpsertRoute,
   type documentsListInputSchema,
   type documentsTemplateUpsertInputSchema,
   type documentsUpsertInputSchema,
   type DeepchatRouteInput,
   type DeepchatRouteName,
-  type DeepchatRouteOutput
+  type DeepchatRouteOutput,
+  type ReimbursementConfig
 } from '@shared/contracts/routes'
-import { documentsTaskUpdatedEvent } from '@shared/contracts/events'
+import { documentsTaskUpdatedEvent, documentsWatchDuplicatesEvent } from '@shared/contracts/events'
 import type { z } from 'zod'
 import { getDeepchatBridge } from './core'
 
@@ -88,16 +97,42 @@ export function createDocumentsClient(bridge: DeepchatBridge = getDeepchatBridge
       invokeRoute(bridge, documentsStatsRoute.name, input),
     createTasks: (input: z.input<typeof documentsTasksCreateRoute.input>) =>
       invokeRoute(bridge, documentsTasksCreateRoute.name, input),
-    listTasks: () => invokeRoute(bridge, documentsTasksListRoute.name, {}),
+    listTasks: () => invokeRoute(bridge, documentsTasksListRoute.name, { limit: 200 }),
+    listTasksPaged: (input: z.input<typeof documentsTasksListRoute.input> = {}) =>
+      invokeRoute(bridge, documentsTasksListRoute.name, input),
+    listScanBatches: (input: z.input<typeof documentsTasksScanBatchesRoute.input> = {}) =>
+      invokeRoute(bridge, documentsTasksScanBatchesRoute.name, input),
     retryTask: (id: string, templateId?: string) =>
       invokeRoute(bridge, documentsTasksRetryRoute.name, {
         id,
         ...(templateId ? { templateId } : {})
       }),
     clearFailedTasks: () => invokeRoute(bridge, documentsTasksClearFailedRoute.name, {}),
+    reimbursementGetConfig: () =>
+      invokeRoute(bridge, documentsReimbursementGetConfigRoute.name, {}),
+    reimbursementSetConfig: (config: ReimbursementConfig) =>
+      invokeRoute(bridge, documentsReimbursementSetConfigRoute.name, { config }),
+    reimbursementTree: (input: z.input<typeof documentsReimbursementTreeRoute.input> = {}) =>
+      invokeRoute(bridge, documentsReimbursementTreeRoute.name, input),
+    reimbursementSetOverride: (documentId: string, categoryId: string | null) =>
+      invokeRoute(bridge, documentsReimbursementSetOverrideRoute.name, { documentId, categoryId }),
+    reimbursementSetGroupOverride: (documentId: string, groupId: string | null) =>
+      invokeRoute(bridge, documentsReimbursementSetGroupOverrideRoute.name, {
+        documentId,
+        groupId
+      }),
+    reimbursementExport: (input: z.input<typeof documentsReimbursementExportRoute.input> = {}) =>
+      invokeRoute(bridge, documentsReimbursementExportRoute.name, input),
+    chooseAutoWatchDir: async (): Promise<string | null> => {
+      const out = await invokeRoute(bridge, documentAutoWatchChooseDirRoute.name, {})
+      return out.dir
+    },
     onTaskUpdated: (
       listener: (payload: z.infer<typeof documentsTaskUpdatedEvent.payload>) => void
-    ) => bridge.on(documentsTaskUpdatedEvent.name, listener)
+    ) => bridge.on(documentsTaskUpdatedEvent.name, listener),
+    onWatchDuplicates: (
+      listener: (payload: z.infer<typeof documentsWatchDuplicatesEvent.payload>) => void
+    ) => bridge.on(documentsWatchDuplicatesEvent.name, listener)
   }
 }
 

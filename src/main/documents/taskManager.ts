@@ -1,12 +1,19 @@
 import { randomUUID } from 'node:crypto'
 import type { DocumentFieldEntry } from '@shared/documents'
-import type { DocumentExtractFileInput, DocumentExtractRoute } from './extractor/documentExtractor'
+import {
+  AUTO_TEMPLATE_ID,
+  type DocumentExtractFileInput,
+  type DocumentExtractRoute
+} from './extractor/documentExtractor'
 import type { DocumentRepositoryTaskPort, DocumentTask } from './repository'
 
 export interface RecognitionTaskSubmitInput {
   files: DocumentExtractFileInput[]
-  templateId: string
-  source: 'chat' | 'manual'
+  // Omitted for scheduled submissions: the classifier resolves it per file.
+  templateId?: string
+  source: 'chat' | 'manual' | 'scheduled'
+  /** 仅 scheduled 提交携带：文件绝对路径 → 相对扫描目录的层级（快照落库） */
+  relativePathByPath?: Record<string, string | null>
 }
 
 export interface RecognitionExtractResult {
@@ -35,6 +42,7 @@ export interface RecognitionTaskManagerDeps {
   repository: DocumentRepositoryTaskPort
   extractor: RecognitionExtractorPort
   publishTaskUpdated: (payload: TaskPublishedPayload) => void
+  sha256File: (filePath: string) => Promise<string | null>
   concurrency?: number
   now?: () => number
 }
@@ -57,8 +65,11 @@ export class RecognitionTaskManager {
         batchId,
         filePath: file.path,
         fileName: file.name ?? file.path.split(/[\\/]/).pop() ?? file.path,
-        templateId: input.templateId,
-        source: input.source
+        // Scheduled submissions omit templateId; the row must always carry a
+        // resolvable value ('auto' → classifier) so the DB binding never sees undefined.
+        templateId: input.templateId ?? AUTO_TEMPLATE_ID,
+        source: input.source,
+        relativePath: input.relativePathByPath?.[file.path] ?? null
       }))
     )
     this.queue.push(...tasks)
@@ -137,6 +148,10 @@ export class RecognitionTaskManager {
         status: 'draft',
         now: this.deps.now?.()
       })
+      const bound = this.deps.repository.bindFileDedupeDocument(runningTask.id, document.id)
+      if (bound === 0) {
+        await this.reRegisterDedupeAfterCleanup(runningTask, document.id)
+      }
       this.publish(
         this.deps.repository.updateTask(runningTask.id, {
           status: 'done',
@@ -146,10 +161,42 @@ export class RecognitionTaskManager {
       )
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
+      this.deps.repository.deleteFileDedupesByTask(runningTask.id)
       this.publish(
         this.deps.repository.updateTask(runningTask.id, { status: 'failed', error: message }) ??
           runningTask
       )
+    }
+  }
+
+  // A retried task's hash rows were deleted by the failure hook (so a fresh
+  // submit of the same file can re-run), leaving bindFileDedupeDocument with
+  // no row to update. Re-register the hash so the document still participates
+  // in content dedupe. Best effort: the document is already stored, so a race
+  // with a concurrent submission (hash now owned elsewhere) must never turn a
+  // successful extraction into a failed task.
+  private async reRegisterDedupeAfterCleanup(
+    task: DocumentTask,
+    documentId: string
+  ): Promise<void> {
+    try {
+      const hash = await this.deps.sha256File(task.filePath)
+      if (!hash || this.deps.repository.findFileDedupeNames([hash]).has(hash)) {
+        return
+      }
+      this.deps.repository.insertFileDedupes([
+        {
+          contentHash: hash,
+          fileName: task.fileName,
+          filePath: task.filePath,
+          source: task.source,
+          taskId: task.id,
+          now: this.deps.now?.() ?? Date.now()
+        }
+      ])
+      this.deps.repository.bindFileDedupeDocument(task.id, documentId)
+    } catch {
+      // Ignore: dedupe registration is an optimization, not a task outcome.
     }
   }
 

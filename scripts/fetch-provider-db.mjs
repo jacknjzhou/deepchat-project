@@ -12,18 +12,18 @@ const DEFAULT_URL =
 const MAX_PROVIDER_DB_PAYLOAD_BYTES = 10 * 1024 * 1024
 
 /**
- * Build-time hard stop. When DEEPCHAT_PROVIDER_DB_OFFLINE=1 we treat the bundled
- * `resources/model-db/providers.json` as the single source of truth and skip
- * the upstream fetch entirely. Used by private distributions that ship a fixed
- * provider catalog and want to guarantee `prebuild` does not overwrite it.
+ * Build-time hard stop. Remote fetch is disabled by default: the bundled
+ * `resources/model-db/providers.json` is the single source of truth and
+ * `prebuild` must not overwrite it. Opt in via DEEPCHAT_PROVIDER_DB_ONLINE=1
+ * (or true/yes) to refresh the snapshot from the upstream URL.
  *
  * Mirrors the runtime short-circuit in `src/main/provider/providerDbLoader.ts`.
  */
 function shouldSkipRemoteFetch() {
-  const raw = process.env.DEEPCHAT_PROVIDER_DB_OFFLINE
-  if (!raw) return false
+  const raw = process.env.DEEPCHAT_PROVIDER_DB_ONLINE
+  if (!raw) return true
   const normalized = raw.trim().toLowerCase()
-  return normalized === '1' || normalized === 'true' || normalized === 'yes'
+  return !(normalized === '1' || normalized === 'true' || normalized === 'yes')
 }
 
 const log = (...args) => console.log('[fetch-provider-db]', ...args)
@@ -301,13 +301,13 @@ async function main() {
     )
     if (!fs.existsSync(outFile)) {
       error(
-        'DEEPCHAT_PROVIDER_DB_OFFLINE=1 but no built-in providers.json exists at',
+        'Remote fetch is disabled but no built-in providers.json exists at',
         outFile
       )
       process.exit(1)
     }
     log(
-      'DEEPCHAT_PROVIDER_DB_OFFLINE=1 — skipping remote fetch, using existing built-in snapshot:',
+      'Remote fetch is disabled (set DEEPCHAT_PROVIDER_DB_ONLINE=1 to refresh) — keeping built-in snapshot:',
       outFile
     )
     return

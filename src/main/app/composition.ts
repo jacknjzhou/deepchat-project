@@ -24,6 +24,7 @@ import {
 } from '@shared/contracts/events'
 import path from 'path'
 import { promises as fsp } from 'node:fs'
+import { randomUUID } from 'node:crypto'
 import { DialogService } from '../desktop/dialog'
 import { app, ipcMain, webContents as electronWebContents } from 'electron'
 import { DEEPCHAT_EVENT_CHANNEL } from '@shared/contracts/channels'
@@ -195,16 +196,34 @@ import { ProjectDatabase } from '@/project/data/database'
 import { SettingsDatabase } from '@/settings/data/database'
 import { SchedulerDatabase } from '@/scheduler/data/database'
 import { DocumentsDatabase } from '@/documents/data/database'
-import { DocumentExtractor } from '@/documents/extractor/documentExtractor'
 import {
+  DocumentExtractor,
+  type DocumentExtractFileInput
+} from '@/documents/extractor/documentExtractor'
+import {
+  DOCUMENTS_SETTINGS_KEYS,
   DocumentsModelConfigError,
   migrateDocumentsModelSettings,
+  readAutoWatchConfig,
   readDocumentsModelSettings,
   resolveDocumentsModelSettings,
   validateDocumentsModelRef
 } from '@/documents/modelSettings'
+import { AutoWatchScheduler } from '@/documents/autoWatch'
+import { expandSubmissionFiles, type InvoiceSplitDeps } from '@/documents/invoicePdfSplitter'
+import { splitPdfPagesToFile } from '@/file/adapters/pdfPageSplitter'
+import {
+  filterDuplicateFiles,
+  mergeChatProductOutcomes,
+  submitChatFileWithDedupe,
+  submitWithDedupe,
+  type DedupeSubmitDeps,
+  type FileDedupeRow
+} from '@/documents/contentDedupe'
+import { backfillDocumentHashes, backfillTaskRelativePaths } from '@/documents/dedupeBackfill'
+import { sha256File } from '@/documents/fileHash'
 import { DocumentsRepository } from '@/documents/repository'
-import { createDocumentsRoutes } from '@/documents/routes'
+import { createDocumentsRoutes, type DocumentsDedupeSubmit } from '@/documents/routes'
 import { RecognitionTaskManager } from '@/documents/taskManager'
 import { seedPresetTemplates } from '@/documents/seed'
 import { ResumeScreeningDatabase } from '@/resumeScreening/data/database'
@@ -650,6 +669,7 @@ export async function createMainProcessControl(dependencies: {
   let acpAsLlmProviderSessionControl: AcpAsLlmProviderSessionControlPort
   let acpAsLlmProviderPermission: AcpAsLlmProviderPermissionPort
   let routeDispatcher: RouteDispatcher | undefined
+  let autoWatchScheduler: AutoWatchScheduler | undefined
   let cliComputeService: CliComputeService
   let cliAudioTranscriptionService: CliAudioTranscriptionService
   let cliOcrService: CliOcrService
@@ -1623,6 +1643,26 @@ export async function createMainProcessControl(dependencies: {
       })
     }
   }
+  const documentsMaxFileSize = () =>
+    dependencies.settingsStore.get<number>('maxFileSize') ?? 30 * 1024 * 1024
+
+  // 多发票合并件拆分依赖：分页文本与现有文本提取同源（PdfFileAdapter，含 maxFileSize 保护），
+  // 产物落 userData/documents_split/<uuid>/，原文件绝不移动或删除。
+  // 供 chat 路径（agentToolDependencies.documents.extractAndDraft，定义于下方对象字面量）与
+  // registerRoutes 内的 manual/scheduled 接线共同引用，故声明在 createMainProcessControl 作用域。
+  const documentsSplitDeps: InvoiceSplitDeps = {
+    extractPdfPagesText: async (filePath) => {
+      const adapter = new PdfFileAdapter(filePath, documentsMaxFileSize())
+      return (await adapter.getAllPagesMarkdown()) ?? null
+    },
+    splitPdfPages: (filePath, outDir) => splitPdfPagesToFile(filePath, outDir),
+    makeWorkDir: async () => {
+      const dir = path.join(app.getPath('userData'), 'documents_split', randomUUID())
+      await fsp.mkdir(dir, { recursive: true })
+      return dir
+    }
+  }
+
   const agentToolDependencies: AgentToolDependencies = {
     agentInvocationAdmission,
     sessions: {
@@ -1750,34 +1790,74 @@ export async function createMainProcessControl(dependencies: {
             }))
         })),
       extractAndDraft: async (input) => {
-        const result = await documentExtractor.extract({
-          templateId: input.templateId,
-          file: input.file
-        })
-        const document = documentsRepository.insertDocument({
-          templateId: result.template.id,
-          typeKey: result.template.typeKey,
-          templateSnapshot: result.template,
-          fields: result.fields,
-          fileUris: [input.file.path],
-          source: input.source ?? 'chat',
-          sessionId: input.sessionId ?? null,
-          status: 'draft',
-          now: Date.now()
-        })
+        // chat 路径内容去重（手动/定时批量提交走 documents.tasks.create 的 submitWithDedupe）：
+        // 提取前按文件哈希查 documents_file_dedupes，命中则拦截；入库成功后登记 hash→document。
+        const chatSource = input.source ?? 'chat'
+        const gateDeps = {
+          sha256File,
+          findFileDedupeNames: (hashes: string[]) =>
+            documentsRepository.findFileDedupeNames(hashes),
+          insertFileDedupes: (rows: FileDedupeRow[]) => documentsRepository.insertFileDedupes(rows),
+          bindFileDedupeDocument: (taskId: string, documentId: string) =>
+            documentsRepository.bindFileDedupeDocument(taskId, documentId)
+        }
+        const extractAndInsert = (file: DocumentExtractFileInput) =>
+          submitChatFileWithDedupe(gateDeps, { file, source: chatSource }, async () => {
+            const result = await documentExtractor.extract({
+              templateId: input.templateId,
+              file
+            })
+            const document = documentsRepository.insertDocument({
+              templateId: result.template.id,
+              typeKey: result.template.typeKey,
+              templateSnapshot: result.template,
+              fields: result.fields,
+              fileUris: [file.path],
+              source: chatSource,
+              sessionId: input.sessionId ?? null,
+              status: 'draft',
+              now: Date.now()
+            })
+            return {
+              documentId: document.id,
+              document: {
+                id: document.id,
+                typeKey: document.typeKey,
+                status: document.status,
+                fields: document.fields,
+                fileUris: document.fileUris
+              },
+              meta: {
+                route: result.route,
+                durationMs: result.durationMs,
+                issues: result.issues
+              }
+            }
+          })
+
+        // 多发票合并件先展开为逐页产物，每个产物独立过闸门（提取前查重、入库成功后登记）；
+        // 未命中拆分时 products 即 [input.file] 原样透传，行为与单文件路径一致（fail-open）。
+        const { files: products, sourceOf } = await expandSubmissionFiles(
+          [input.file],
+          documentsSplitDeps
+        )
+        type ChatOutcome = Awaited<ReturnType<typeof extractAndInsert>>
+        // 顺序=页序：全部产物都过闸门，duplicate 不中断循环——已有产物入库后其余页被
+        // 拦截属部分成功语义，返回首个文档并在 meta.issues 逐条报告被拦截页（与 DB 实际
+        // 状态一致，工具层契约零改动）；全部被拦截（无任何产物入库）才整体返回 duplicate。
+        const outcomes: ChatOutcome[] = []
+        for (const product of products) {
+          outcomes.push(await extractAndInsert(product))
+        }
+        const merged = mergeChatProductOutcomes(outcomes, { split: sourceOf.size > 0 })
+        if (merged.status === 'empty') {
+          throw new Error('multi-invoice split produced no documents')
+        }
+        if (merged.status === 'duplicate') return merged
         return {
-          document: {
-            id: document.id,
-            typeKey: document.typeKey,
-            status: document.status,
-            fields: document.fields,
-            fileUris: document.fileUris
-          },
-          meta: {
-            route: result.route,
-            durationMs: result.durationMs,
-            issues: result.issues
-          }
+          status: 'ok',
+          document: merged.value.document,
+          meta: { ...merged.value.meta, issues: [...merged.value.meta.issues, ...merged.issues] }
         }
       },
       confirmDocument: async (input) => {
@@ -2860,6 +2940,7 @@ export async function createMainProcessControl(dependencies: {
     await runDestroyStep('ocrRuntimeService.close', () => ocrRuntimeService.close())
     await runDestroyStep('providerRuntime.shutdown', () => providerRuntime.shutdown())
     await runDestroyStep('acpRuntime.shutdown', () => acpRuntimeOwner.shutdown())
+    await runDestroyStep('autoWatchScheduler.stop', () => autoWatchScheduler?.stop())
     await runDestroyStep('mainDatabase.close', () => mainDatabase.close())
     await runDestroyStep('shortcutPresenter.destroy', () => shortcutPresenter.destroy())
     await runDestroyStep('notificationService.clearAllNotifications', () =>
@@ -2944,8 +3025,7 @@ export async function createMainProcessControl(dependencies: {
     })
     const remoteRoutes = createRemoteRoutes(remoteService)
     const schedulerRoutes = createSchedulerRoutes(cronJobs)
-    const documentsMaxFileSize = () =>
-      dependencies.settingsStore.get<number>('maxFileSize') ?? 30 * 1024 * 1024
+    // documentsMaxFileSize 已提升至 createMainProcessControl 作用域（documentsSplitDeps 共用）
 
     // 启动链上的阻塞调用：设备信息获取失败（权限/WMI 不可用等）不得阻断启动
     const managedDevice = await resolveManagedDevice(deviceService)
@@ -3129,6 +3209,7 @@ export async function createMainProcessControl(dependencies: {
     const recognitionTaskManager = new RecognitionTaskManager({
       repository: documentsRepository,
       extractor: documentExtractor,
+      sha256File,
       concurrency: resolveDocumentsModelSettings(
         readDocumentsModelSettings(providerSettings),
         managedStore.readConfig()
@@ -3141,13 +3222,101 @@ export async function createMainProcessControl(dependencies: {
           version: Date.now()
         })
     })
+    // 提交收口：先做内容去重过滤，再提交并登记 hash→task_id（documents_file_dedupes）。
+    // 手动提交（documents.tasks.create）与自动监控提交共用同一份依赖接线。
+    const documentsDedupeDeps: DedupeSubmitDeps = {
+      submit: (input) => recognitionTaskManager.submit(input),
+      filter: (files, source) =>
+        filterDuplicateFiles(files, source, {
+          sha256File,
+          findFileDedupeNames: (hashes) => documentsRepository.findFileDedupeNames(hashes)
+        }),
+      register: (rows) => documentsRepository.insertFileDedupes(rows)
+    }
+    const documentsDedupeSubmit: DocumentsDedupeSubmit = async (input) => {
+      // 多发票合并件先展开为逐页产物，再进内容去重收口（每张发票独立查表/登记）；
+      // 未命中拆分时原样透传（fail-open，行为与直提交一致）。
+      const { files } = await expandSubmissionFiles(input.files, documentsSplitDeps)
+      return submitWithDedupe(documentsDedupeDeps, { ...input, files })
+    }
+    // 存量文档哈希回填：去重功能上线前入库的文档没有 documents_file_dedupes 行，
+    // 同内容文件再次提交（如自动扫描先入库、再手工上传）不会被拦截。仅在首次
+    // 升级到该能力时执行一次（settings 标记），失败不阻塞启动、下次启动重试。
+    if (providerSettings.getSetting<boolean>(DOCUMENTS_SETTINGS_KEYS.dedupeBackfillDone) !== true) {
+      void backfillDocumentHashes({
+        // listDocuments 默认 LIMIT 100，回填必须分页取全量
+        listBackfillDocuments: () => {
+          const pageSize = 200
+          const all: Array<{ id: string; fileUris: string[]; source: string }> = []
+          for (let offset = 0; ; offset += pageSize) {
+            const page = documentsRepository.listDocuments({ limit: pageSize, offset })
+            all.push(...page.map((d) => ({ id: d.id, fileUris: d.fileUris, source: d.source })))
+            if (page.length < pageSize) return all
+          }
+        },
+        sha256File,
+        findFileDedupeNames: (hashes) => documentsRepository.findFileDedupeNames(hashes),
+        insertFileDedupes: (rows) => documentsRepository.insertFileDedupes(rows),
+        bindFileDedupeDocument: (taskId, documentId) =>
+          documentsRepository.bindFileDedupeDocument(taskId, documentId)
+      })
+        .then((registered) => {
+          providerSettings.setSetting(DOCUMENTS_SETTINGS_KEYS.dedupeBackfillDone, true)
+          console.info(`[documents] dedupe backfill registered ${registered} content hashes`)
+        })
+        .catch((error) => console.error('[documents] dedupe backfill failed:', error))
+    }
+    // 存量 scheduled 任务相对路径回填：幂等（只触碰 NULL 行），失败不阻塞启动。
+    try {
+      const backfilled = backfillTaskRelativePaths({
+        listScheduledTasksWithoutRelativePath: () =>
+          documentsRepository.listScheduledTasksWithoutRelativePath(),
+        getAutoWatchDir: () => readAutoWatchConfig(providerSettings).dir,
+        updateTaskRelativePath: (id, relativePath) =>
+          documentsRepository.updateTaskRelativePath(id, relativePath)
+      })
+      if (backfilled > 0) {
+        console.info(`[documents] relative path backfill updated ${backfilled} tasks`)
+      }
+    } catch (error) {
+      console.error('[documents] relative path backfill failed:', error)
+    }
     const documentsRoutes = createDocumentsRoutes(
       documentsRepository,
       documentExtractor,
-      recognitionTaskManager
+      recognitionTaskManager,
+      undefined, // csvDeps 走默认值（dialog.showSaveDialog）
+      providerSettings,
+      undefined, // reimbursementDeps 走默认值（dialog.showOpenDialog）
+      documentsDedupeSubmit
     )
     // Resume interrupted recognition tasks from the previous run.
     void recognitionTaskManager.resumePending()
+    // Auto watch: periodically scan the configured directory and submit new files for recognition.
+    autoWatchScheduler = new AutoWatchScheduler({
+      readConfig: () => readAutoWatchConfig(providerSettings),
+      writeState: (state) =>
+        providerSettings.setSetting(DOCUMENTS_SETTINGS_KEYS.autoWatchState, state),
+      listWatchedFiles: () => documentsRepository.listWatchedFiles(),
+      upsertWatchedFile: (input) => documentsRepository.upsertWatchedFile(input),
+      submit: async (input) => {
+        // autoWatch 已在 expandFiles 中展开多发票合并件，这里直接走去重收口；
+        // 经 documentsDedupeSubmit 会对产物单页 PDF 做二次展开（N+1 次 pdfjs 解析白做）。
+        const result = await submitWithDedupe(documentsDedupeDeps, input)
+        // 被内容去重拦截的自动监控文件：通知 renderer 提示用户（Task 7 订阅）
+        if (result.duplicates.length > 0) {
+          publishDeepchatEvent('documents.watch.duplicates', {
+            count: result.duplicates.length
+          })
+        }
+        return result
+      },
+      readdir: (dir, options) => fsp.readdir(dir, options),
+      stat: (p) => fsp.stat(p),
+      // 多发票合并件：批量提交前先展开为逐页产物（源文件自动按 taskId: null 登记 watched）
+      expandFiles: (files) => expandSubmissionFiles(files, documentsSplitDeps)
+    })
+    autoWatchScheduler.start()
     const resumeScreeningService = new ResumeScreeningService({
       database: resumeScreeningDatabase,
       invoker: new ResumeLlmInvoker({

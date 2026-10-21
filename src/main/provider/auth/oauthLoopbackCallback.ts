@@ -2,7 +2,7 @@ import * as http from 'http'
 import { URL } from 'url'
 
 export const OAUTH_CALLBACK_COMPLETE_TEXT =
-  'Authentication complete. You can return to SRIBD Office Agent. If SRIBD Office Agent does not update, copy the full URL from your browser and paste it into SRIBD Office Agent.'
+  'Authentication complete. You can return to Office Agent. If Office Agent does not update, copy the full URL from your browser and paste it into Office Agent.'
 
 export type OAuthLoopbackCallbackResolution =
   | { kind: 'not-found' }
@@ -32,7 +32,7 @@ function writeCallbackPage(response: http.ServerResponse, success: boolean): voi
   const title = success ? 'Authentication complete' : 'Authentication failed'
   const message = success
     ? OAUTH_CALLBACK_COMPLETE_TEXT
-    : 'SRIBD Office Agent rejected this authentication callback. Return to SRIBD Office Agent and try again.'
+    : 'Office Agent rejected this authentication callback. Return to Office Agent and try again.'
   response.writeHead(success ? 200 : 400, {
     'Content-Type': 'text/html; charset=utf-8',
     'Cache-Control': 'no-store',

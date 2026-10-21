@@ -467,7 +467,7 @@ export class SkillService implements SkillServicePort {
     const normalizedAgentId = assertSafeSkillAgentId(agentId)
     this.assertAgentScopeActive(normalizedAgentId)
     if (this.agentScopePort && !(await this.agentScopePort.isDeepChatAgent(normalizedAgentId))) {
-      throw new Error(`SRIBD Office Agent not found: ${normalizedAgentId}`)
+      throw new Error(`Office Agent not found: ${normalizedAgentId}`)
     }
     this.assertServiceActive()
     this.assertAgentScopeActive(normalizedAgentId)
@@ -509,7 +509,7 @@ export class SkillService implements SkillServicePort {
 
   private assertAgentScopeActive(agentId: string): void {
     if (this.deletedAgentScopes.has(agentId)) {
-      throw new Error(`SRIBD Office Agent Skill bindings are being deleted: ${agentId}`)
+      throw new Error(`Office Agent Skill bindings are being deleted: ${agentId}`)
     }
   }
 
@@ -2047,13 +2047,25 @@ export class SkillService implements SkillServicePort {
           throw new Error('effective content batch exceeds 2 MiB')
         }
         if (packageBytes > SKILL_EXECUTION_PACKAGE_MAX_BATCH_BYTES) {
-          throw new Error('execution package batch exceeds 16 MiB')
+          throw new Error(
+            `execution package batch exceeds ${
+              SKILL_EXECUTION_PACKAGE_MAX_BATCH_BYTES / (1024 * 1024)
+            } MiB`
+          )
         }
         if (currentEncodedBytes > SKILL_EXECUTION_PACKAGE_MAX_ENCODED_BYTES) {
-          throw new Error('execution package encoding exceeds 7 MiB')
+          throw new Error(
+            `execution package encoding exceeds ${
+              SKILL_EXECUTION_PACKAGE_MAX_ENCODED_BYTES / (1024 * 1024)
+            } MiB`
+          )
         }
         if (encodedPackageBytes > SKILL_EXECUTION_PACKAGE_MAX_BATCH_ENCODED_BYTES) {
-          throw new Error('execution package encoded batch exceeds 28 MiB')
+          throw new Error(
+            `execution package encoded batch exceeds ${
+              SKILL_EXECUTION_PACKAGE_MAX_BATCH_ENCODED_BYTES / (1024 * 1024)
+            } MiB`
+          )
         }
         resolutions.push(resolution)
       } catch (error) {
@@ -2264,7 +2276,9 @@ export class SkillService implements SkillServicePort {
       )
       packageBytes += bytes.byteLength
       if (packageBytes > SKILL_EXECUTION_PACKAGE_MAX_BYTES) {
-        throw new Error('execution package exceeds 4 MiB')
+        throw new Error(
+          `execution package exceeds ${SKILL_EXECUTION_PACKAGE_MAX_BYTES / (1024 * 1024)} MiB`
+        )
       }
       files.push({
         relativePath,
@@ -2891,7 +2905,7 @@ export class SkillService implements SkillServicePort {
         action: 'install',
         draftId: normalizedDraftId,
         skillName: viewed.skillName,
-        error: 'No SRIBD Office Agent context available for draft installation'
+        error: 'No Office Agent context available for draft installation'
       }
     }
     const result = await this.installFromDirectory(draftPath, {
@@ -2968,7 +2982,7 @@ export class SkillService implements SkillServicePort {
   ): string {
     const scripts = scriptInventory.filter((script) => script.enabled)
     const lines = [
-      '## SRIBD Office Agent Runtime Context',
+      '## Office Agent Runtime Context',
       `- Skill root: \`${metadata.skillRoot}\`.`,
       '- Relative paths mentioned by this skill are relative to the skill root unless stated otherwise.',
       '- When this skill needs script execution, prefer `skill_run` over `exec`.'
@@ -4522,7 +4536,7 @@ export class SkillService implements SkillServicePort {
     if (!fs.existsSync(readmePath)) {
       fs.writeFileSync(
         readmePath,
-        '# SRIBD Office Agent Skills\n\nThis directory stores portable SRIBD Office Agent skills under `skills/`.\n',
+        '# Office Agent Skills\n\nThis directory stores portable Office Agent skills under `skills/`.\n',
         'utf-8'
       )
     }
@@ -4813,7 +4827,7 @@ export class SkillService implements SkillServicePort {
   async cleanupAgentSkills(agentId: string): Promise<void> {
     const normalizedAgentId = assertSafeSkillAgentId(agentId)
     if (normalizedAgentId === BUILTIN_SKILL_AGENT_ID) {
-      throw new Error('The built-in SRIBD Office Agent Skill bindings cannot be deleted')
+      throw new Error('The built-in Office Agent Skill bindings cannot be deleted')
     }
 
     this.deletedAgentScopes.add(normalizedAgentId)

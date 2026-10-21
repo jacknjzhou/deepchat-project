@@ -19,7 +19,7 @@ export const DOCUMENT_TEMPLATE_CATEGORIES = [
 ] as const
 export type DocumentTemplateCategory = (typeof DOCUMENT_TEMPLATE_CATEGORIES)[number]
 
-export const DOCUMENT_SOURCES = ['chat', 'manual'] as const
+export const DOCUMENT_SOURCES = ['chat', 'manual', 'scheduled'] as const
 export type DocumentSource = (typeof DOCUMENT_SOURCES)[number]
 
 export const DOCUMENT_STATUSES = ['draft', 'confirmed'] as const
@@ -57,6 +57,16 @@ export interface DocumentFieldEntry {
   uncertain: boolean
 }
 
+/** 内容去重：提交时被拦截的重复文件（path 供自动监控登记使用，UI 只用 fileName/existingName） */
+export interface RecognitionDuplicate {
+  fileName: string
+  existingName: string
+  path: string
+}
+
+/** 报销“未分类”哨兵：可写入 reimbursementOverride 强制不归类；报销类别 id 不得占用该值 */
+export const REIMBURSEMENT_UNASSIGNED = 'unassigned'
+
 export interface DocumentRecord {
   id: string
   templateId: string
@@ -67,6 +77,10 @@ export interface DocumentRecord {
   source: DocumentSource
   sessionId: string | null
   status: DocumentStatus
+  /** 手动报销归类：null=自动；'unassigned'=强制未分类；其余=类别 id */
+  reimbursementOverride: string | null
+  /** 手动报销细分项分组：null=未分组；其余=所属类别下自定义分组 id */
+  reimbursementGroupOverride: string | null
   createdAt: number
   updatedAt: number
 }
@@ -78,6 +92,7 @@ export const PRESET_TEMPLATE_TYPE_KEY_MAP: Record<string, string> = {
   租赁合同模板: 'lease_contract',
   补充说明模板: 'contract_supplement',
   行程单模板: 'travel_itinerary',
+  打车行程单模板: 'ride_hailing_itinerary',
   住宿单模板: 'hotel_receipt',
   餐饮流水单模板: 'catering_receipt',
   订购单模板: 'purchase_order',
@@ -103,3 +118,26 @@ export const SEED_VALUE_TYPE_MAP: Record<string, DocumentFieldValueType> = {
   array: 'array',
   enum: 'enum'
 }
+
+/** 「智能信息提取」目录自动识别配置（主进程 scheduler 与渲染端设置页共用） */
+export interface DocumentsAutoWatchConfig {
+  enabled: boolean
+  dir: string
+  /** 扫描间隔（小时），1-72 */
+  intervalHours: number
+  /** 识别后缀，格式 /^\.[A-Za-z0-9]+$/ */
+  extensions: string[]
+  /** 每轮提交上限，1-20 */
+  roundLimit: number
+}
+
+export const DOCUMENTS_AUTO_WATCH_DEFAULT: DocumentsAutoWatchConfig = {
+  enabled: false,
+  dir: '',
+  intervalHours: 1,
+  extensions: ['.pdf', '.png', '.jpg', '.jpeg'],
+  roundLimit: 20
+}
+
+/** 设置页可勾选的后缀候选（默认值是其子集） */
+export const DOCUMENTS_AUTO_WATCH_EXTENSIONS = ['.pdf', '.png', '.jpg', '.jpeg', '.webp', '.gif']

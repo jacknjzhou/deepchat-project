@@ -106,6 +106,21 @@ const AcpManualAgentInputSchema = z.looseObject({
 
 const AcpManualAgentUpdateSchema = AcpManualAgentInputSchema.partial()
 
+// Mirror of DocumentsAutoWatchConfig in @shared/documents; keep ranges in sync
+// with renderer clamp and modelSettings sanitize.
+const DocumentsAutoWatchConfigSchema = z.object({
+  enabled: z.boolean(),
+  dir: z.string(),
+  intervalHours: z.number().int().min(1).max(72),
+  extensions: z.array(z.string().regex(/^\.[A-Za-z0-9]+$/)),
+  roundLimit: z.number().int().min(1).max(20)
+})
+
+const DocumentsAutoWatchStateSchema = z.object({
+  lastRunAt: z.number().nullable(),
+  lastError: z.string().nullable()
+})
+
 export const CONFIG_ENTRY_KEYS = [
   'init_complete',
   'assistantModel',
@@ -128,7 +143,9 @@ export const CONFIG_ENTRY_KEYS = [
   'documents.visionModel',
   'documents.concurrency',
   'documents.temperature',
-  'documents.maxTokens'
+  'documents.maxTokens',
+  'documents.autoWatch',
+  'documents.autoWatchState'
 ] as const
 
 // Cached verification result for a provider's current connection configuration.
@@ -165,7 +182,9 @@ export const ConfigEntryValuesSchema = z.object({
   'documents.visionModel': ModelSelectionSchema.nullable(),
   'documents.concurrency': z.number().int().min(1).max(10),
   'documents.temperature': z.number().nullable(),
-  'documents.maxTokens': z.number().int().nullable()
+  'documents.maxTokens': z.number().int().nullable(),
+  'documents.autoWatch': DocumentsAutoWatchConfigSchema,
+  'documents.autoWatchState': DocumentsAutoWatchStateSchema
 })
 
 export const ConfigEntryChangeSchema = z.discriminatedUnion('key', [
@@ -256,6 +275,14 @@ export const ConfigEntryChangeSchema = z.discriminatedUnion('key', [
   z.object({
     key: z.literal('documents.maxTokens'),
     value: z.number().int().nullable()
+  }),
+  z.object({
+    key: z.literal('documents.autoWatch'),
+    value: DocumentsAutoWatchConfigSchema
+  }),
+  z.object({
+    key: z.literal('documents.autoWatchState'),
+    value: DocumentsAutoWatchStateSchema
   })
 ])
 

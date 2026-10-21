@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import {
+  documentAutoWatchChooseDirRoute,
   documentTemplatesDeleteRoute,
   documentTemplatesForkRoute,
   documentTemplatesGetRoute,
@@ -15,18 +16,32 @@ import {
   documentsGetRoute,
   documentsListRoute,
   documentsPreviewFileRoute,
+  documentsReimbursementExportRoute,
+  documentsReimbursementGetConfigRoute,
+  documentsReimbursementSetConfigRoute,
+  documentsReimbursementSetGroupOverrideRoute,
+  documentsReimbursementSetOverrideRoute,
+  documentsReimbursementTreeRoute,
   documentsStatsRoute,
   documentsTasksClearFailedRoute,
   documentsTasksCreateRoute,
   documentsTasksListRoute,
   documentsTasksRetryRoute,
+  documentsTasksScanBatchesRoute,
   documentsUpsertRoute,
   type DeepchatRouteName
 } from '@shared/contracts/routes'
 import type { DeepchatRouteMap } from '@/routes/routeRegistry'
-import type { DocumentTemplate } from '@shared/documents'
+import { REIMBURSEMENT_UNASSIGNED, type DocumentTemplate } from '@shared/documents'
+import type { ReimbursementTreeResult } from '@/documents/reimbursement'
+import { defaultReimbursementConfig } from '@/documents/reimbursementConfig'
+import {
+  exportReimbursementPackage,
+  type ReimbursementExportDeps
+} from '@/documents/reimbursementExport'
 import { createDocumentsRoutes } from '@/documents/routes'
 import { DocumentsRepository } from '@/documents/repository'
+import { RecognitionTaskManager } from '@/documents/taskManager'
 import { DocumentsDatabase } from '@/documents/data/database'
 import { DocumentTasksTable } from '@/documents/data/tables/documentTasks'
 import { DocumentTemplatesTable } from '@/documents/data/tables/documentTemplates'
@@ -153,6 +168,8 @@ describe('documents route contracts', () => {
       source: 'chat' as const,
       sessionId: 's1',
       status: 'draft' as const,
+      reimbursementOverride: null,
+      reimbursementGroupOverride: null,
       createdAt: 1,
       updatedAt: 2
     }
@@ -194,6 +211,26 @@ describe('documents route contracts', () => {
       documentsExportCsvRoute.output.parse({ canceled: false, path: 'C:\\out\\a.csv' }).path
     ).toBe('C:\\out\\a.csv')
     expect(() => documentsExportCsvRoute.output.parse({ canceled: false })).toThrow()
+  })
+
+  it('documents.reimbursement.export 契约要求 categoryId 与 groupIds 成对出现', () => {
+    const input = documentsReimbursementExportRoute.input.parse({
+      categoryId: 'cat-meeting',
+      groupIds: ['grp-a']
+    })
+    expect(input.categoryId).toBe('cat-meeting')
+    expect(input.groupIds).toEqual(['grp-a'])
+    expect(documentsReimbursementExportRoute.input.parse({}).groupIds).toBeUndefined()
+    expect(() =>
+      documentsReimbursementExportRoute.input.parse({ categoryId: 'cat-meeting' })
+    ).toThrow()
+    expect(() => documentsReimbursementExportRoute.input.parse({ groupIds: ['grp-a'] })).toThrow()
+    expect(() =>
+      documentsReimbursementExportRoute.input.parse({ categoryId: 'cat-meeting', groupIds: [] })
+    ).toThrow()
+    expect(() =>
+      documentsReimbursementExportRoute.input.parse({ categoryId: 'cat-meeting', groupIds: [''] })
+    ).toThrow()
   })
 
   it('documents.previewFile 契约解析定位输入与 base64 输出', () => {
@@ -246,6 +283,7 @@ describe('documents route contracts', () => {
       filePath: 'C:\\a.png',
       fileName: 'a.png',
       templateId: 'auto',
+      source: 'manual',
       status: 'pending',
       typeKey: null,
       documentId: null,
@@ -253,8 +291,61 @@ describe('documents route contracts', () => {
       createdAt: 1,
       updatedAt: 1
     }
-    expect(documentsTasksCreateRoute.output.parse({ tasks: [task] }).tasks).toHaveLength(1)
-    expect(documentsTasksListRoute.output.parse({ tasks: [] }).tasks).toEqual([])
+    expect(
+      documentsTasksCreateRoute.output.parse({ tasks: [task], duplicates: [] }).tasks
+    ).toHaveLength(1)
+    expect(
+      documentsTasksCreateRoute.output.parse({
+        tasks: [],
+        duplicates: [{ fileName: 'a.png', existingName: 'b.png', path: 'C:\\a.png' }]
+      }).duplicates
+    ).toEqual([{ fileName: 'a.png', existingName: 'b.png', path: 'C:\\a.png' }])
+    // duplicates 为必填字段
+    expect(() => documentsTasksCreateRoute.output.parse({ tasks: [] })).toThrow()
+    expect(documentsTasksListRoute.output.parse({ tasks: [], total: 0 }).tasks).toEqual([])
+  })
+
+  it('documents.tasks.list/scanBatches 契约解析过滤分页输入与统一条目输出', () => {
+    const input = documentsTasksListRoute.input.parse({ source: 'scheduled', batchId: 'b1' })
+    expect(input.limit).toBe(50)
+    expect(input.offset).toBe(0)
+    expect(() => documentsTasksListRoute.input.parse({ limit: 0 })).toThrow()
+    expect(() => documentsTasksListRoute.input.parse({ limit: 201 })).toThrow()
+    expect(() => documentsTasksListRoute.input.parse({ offset: -1 })).toThrow()
+    expect(() => documentsTasksListRoute.input.parse({ source: 'unknown' })).toThrow()
+    const entry = {
+      id: 't1',
+      filePath: null,
+      relativePath: null,
+      fileName: 'a.png',
+      templateId: null,
+      source: 'scheduled',
+      status: 'pending',
+      typeKey: null,
+      documentId: null,
+      error: null,
+      createdAt: 1,
+      updatedAt: 1,
+      batchId: 'b1'
+    }
+    const output = documentsTasksListRoute.output.parse({ tasks: [entry], total: 1 })
+    expect(output.tasks[0]).toMatchObject({ id: 't1', source: 'scheduled', batchId: 'b1' })
+    expect(() => documentsTasksListRoute.output.parse({ tasks: [entry] })).toThrow()
+    const scanInput = documentsTasksScanBatchesRoute.input.parse({})
+    expect(scanInput.limit).toBe(50)
+    expect(scanInput.offset).toBe(0)
+    const scanOutput = documentsTasksScanBatchesRoute.output.parse({
+      batches: [{ batchId: 'b1', startedAt: 1000, total: 2, done: 1, failed: 0 }],
+      total: 1
+    })
+    expect(scanOutput.batches[0]).toEqual({
+      batchId: 'b1',
+      startedAt: 1000,
+      total: 2,
+      done: 1,
+      failed: 0
+    })
+    expect(() => documentsTasksScanBatchesRoute.output.parse({ batches: [] })).toThrow()
   })
 
   it('documents.tasks.retry/clearFailed 契约解析', () => {
@@ -276,6 +367,7 @@ describe('documents route contracts', () => {
       filePath: 'C:\\a.png',
       fileName: 'a.png',
       templateId: 'auto',
+      source: 'manual',
       status: 'running',
       typeKey: null,
       documentId: null,
@@ -725,6 +817,7 @@ describeIfSqlite('documents stats and tasks route handlers', () => {
       filePath: 'C:\\a.png',
       fileName: 'a.png',
       templateId: 'auto',
+      source: 'manual',
       status: 'pending',
       typeKey: null,
       documentId: null,
@@ -747,7 +840,65 @@ describeIfSqlite('documents stats and tasks route handlers', () => {
     })
   })
 
-  it('documents.tasks.list returns recent tasks from repository', async () => {
+  it('documents.tasks.create runs a scheduled templateId-less task end to end', async () => {
+    const repository = makeRepository()
+    const extractor = {
+      extract: vi.fn(async () => ({
+        template: {
+          id: 'tpl-1',
+          typeKey: 'invoice_special',
+          name: '增值税专用发票',
+          icon: null,
+          category: '发票类',
+          fields: [],
+          extractionMode: 'auto',
+          promptPreset: null,
+          isBuiltin: true,
+          builtinSourceId: null,
+          version: 1,
+          createdAt: 1,
+          updatedAt: 1
+        },
+        route: 'vision',
+        fields: { invoice_code: { value: '123456789012', uncertain: false } },
+        rawOutput: '{"fields":{}}',
+        durationMs: 42,
+        issues: []
+      }))
+    }
+    const taskManager = new RecognitionTaskManager({
+      repository,
+      sha256File: async () => null,
+      extractor: extractor as never,
+      publishTaskUpdated: () => {}
+    })
+    const routes = createDocumentsRoutes(repository, extractor as never, taskManager)
+    const handler = getRouteHandler(routes, documentsTasksCreateRoute.name)
+    const output = documentsTasksCreateRoute.output.parse(
+      await handler({ files: [{ path: 'C:\\a.png', name: 'a.png' }], source: 'scheduled' })
+    )
+    await taskManager.idle()
+    const taskId = output.tasks[0]?.id
+    expect(taskId).toBeTruthy()
+    // Omitting templateId no longer crashes at the DB layer (undefined binding):
+    // the row is normalized to 'auto' and the task completes.
+    expect(repository.getTask(taskId!)).toMatchObject({
+      templateId: 'auto',
+      status: 'done',
+      typeKey: 'invoice_special'
+    })
+    expect(repository.getTask(taskId!)?.documentId).toBeTruthy()
+    // Archiving receives the classified result with the task's scheduled source.
+    const documents = repository.listDocuments({})
+    expect(documents).toHaveLength(1)
+    expect(documents[0]).toMatchObject({
+      source: 'scheduled',
+      typeKey: 'invoice_special',
+      status: 'draft'
+    })
+  })
+
+  it('documents.tasks.list returns unified task entries from repository', async () => {
     const repository = makeRepository()
     repository.insertTasks([
       { batchId: 'b1', filePath: 'C:\\a.png', fileName: 'a.png', templateId: 'auto' }
@@ -755,8 +906,14 @@ describeIfSqlite('documents stats and tasks route handlers', () => {
     const routes = createDocumentsRoutes(repository, fakeExtractor, fakeTaskManager)
     const handler = getRouteHandler(routes, documentsTasksListRoute.name)
     const output = documentsTasksListRoute.output.parse(await handler({}))
+    expect(output.total).toBe(1)
     expect(output.tasks).toHaveLength(1)
-    expect(output.tasks[0]).toMatchObject({ filePath: 'C:\\a.png', status: 'pending' })
+    expect(output.tasks[0]).toMatchObject({
+      filePath: 'C:\\a.png',
+      status: 'pending',
+      source: 'manual',
+      batchId: 'b1'
+    })
   })
 
   it('documents.tasks.retry delegates to task manager and returns the task', async () => {
@@ -829,5 +986,727 @@ describeIfSqlite('documents stats and tasks route handlers', () => {
     )
     expect(remaining.tasks).toHaveLength(1)
     expect(remaining.tasks[0]).toMatchObject({ filePath: 'C:\\b.png', status: 'pending' })
+  })
+})
+
+// These handlers never touch the database (the repository is a placeholder),
+// so they run without the sqlite native module.
+describe('documents scheduled submit and autoWatch chooseDir handlers', () => {
+  it('documents.tasks.create forwards scheduled source without templateId to the task manager', async () => {
+    const task = {
+      id: 't1',
+      batchId: 'b1',
+      filePath: 'D:/scan/a.pdf',
+      fileName: 'a.pdf',
+      templateId: 'auto',
+      source: 'scheduled',
+      status: 'pending',
+      typeKey: null,
+      documentId: null,
+      error: null,
+      createdAt: 1,
+      updatedAt: 1
+    }
+    const submit = vi.fn().mockReturnValue([task])
+    const taskManager = { submit, resumePending: vi.fn() }
+    const routes = createDocumentsRoutes({} as never, fakeExtractor, taskManager as never)
+    const handler = getRouteHandler(routes, documentsTasksCreateRoute.name)
+    const output = documentsTasksCreateRoute.output.parse(
+      await handler({ files: [{ path: 'D:/scan/a.pdf' }], source: 'scheduled' })
+    )
+    expect(output.tasks).toEqual([task])
+    // The handler normalizes the omitted templateId; the port no longer sees undefined.
+    expect(submit).toHaveBeenCalledWith({
+      files: [{ path: 'D:/scan/a.pdf' }],
+      templateId: 'auto',
+      source: 'scheduled'
+    })
+  })
+
+  it('documents.tasks.create routes through the dedupe wrapper and returns duplicates', async () => {
+    const task = {
+      id: 't1',
+      batchId: 'b1',
+      filePath: 'C:\\a.png',
+      fileName: 'a.png',
+      templateId: 'auto',
+      source: 'manual',
+      status: 'pending',
+      typeKey: null,
+      documentId: null,
+      error: null,
+      createdAt: 1,
+      updatedAt: 1
+    }
+    const submit = vi.fn().mockReturnValue([task])
+    const taskManager = { submit, resumePending: vi.fn() }
+    const dedupeSubmit = vi.fn(async (input: { files: unknown[] }) => ({
+      tasks: [task],
+      duplicates: [{ fileName: 'a.png', existingName: 'b.png', path: 'C:\\a.png' }]
+    }))
+    const routes = createDocumentsRoutes(
+      {} as never,
+      fakeExtractor,
+      taskManager as never,
+      undefined,
+      undefined,
+      undefined,
+      dedupeSubmit as never
+    )
+    const handler = getRouteHandler(routes, documentsTasksCreateRoute.name)
+    const output = documentsTasksCreateRoute.output.parse(
+      await handler({ files: [{ path: 'C:\\a.png' }], templateId: 'auto' })
+    )
+    expect(output.duplicates).toEqual([
+      { fileName: 'a.png', existingName: 'b.png', path: 'C:\\a.png' }
+    ])
+    // The wrapper receives the normalized input (templateId defaulted by the handler).
+    expect(dedupeSubmit).toHaveBeenCalledWith({
+      files: [{ path: 'C:\\a.png' }],
+      templateId: 'auto',
+      source: 'manual'
+    })
+    // Direct submit is not called when the wrapper is injected.
+    expect(submit).not.toHaveBeenCalled()
+  })
+
+  it('documents.autoWatch.chooseDir returns the picked directory or null when canceled', async () => {
+    const routes = createDocumentsRoutes(
+      {} as never,
+      fakeExtractor,
+      fakeTaskManager,
+      undefined,
+      undefined,
+      { showOpenDialog: async () => ({ canceled: false, filePaths: ['D:/scan'] }) }
+    )
+    const handler = getRouteHandler(routes, documentAutoWatchChooseDirRoute.name)
+    expect(await handler({})).toEqual({ dir: 'D:/scan' })
+
+    const canceledRoutes = createDocumentsRoutes(
+      {} as never,
+      fakeExtractor,
+      fakeTaskManager,
+      undefined,
+      undefined,
+      { showOpenDialog: async () => ({ canceled: true, filePaths: [] }) }
+    )
+    const canceledHandler = getRouteHandler(canceledRoutes, documentAutoWatchChooseDirRoute.name)
+    expect(await canceledHandler({})).toEqual({ dir: null })
+  })
+})
+
+// These handlers only forward to the repository (stubbed below), so they run
+// without the sqlite native module.
+describe('documents unified task list and scanBatches handlers', () => {
+  const makeStubRepository = () => ({
+    listUnifiedTasks: vi.fn().mockReturnValue({
+      tasks: [
+        {
+          id: 't1',
+          filePath: null,
+          relativePath: null,
+          fileName: 'a.png',
+          templateId: null,
+          source: 'scheduled',
+          status: 'pending',
+          typeKey: null,
+          documentId: null,
+          error: null,
+          createdAt: 1,
+          updatedAt: 1,
+          batchId: 'b1'
+        }
+      ],
+      total: 1
+    }),
+    listScanBatches: vi
+      .fn()
+      .mockReturnValue([{ batchId: 'b1', startedAt: 1000, total: 2, done: 1, failed: 0 }]),
+    countScanBatches: vi.fn().mockReturnValue(1)
+  })
+
+  it('documents.tasks.list 透传过滤参数并返回统一条目 + total', async () => {
+    const repository = makeStubRepository()
+    const routes = createDocumentsRoutes(repository as never, fakeExtractor, fakeTaskManager)
+    const handler = getRouteHandler(routes, documentsTasksListRoute.name)
+    const output = documentsTasksListRoute.output.parse(
+      await handler({ source: 'scheduled', limit: 10, offset: 5 })
+    )
+    expect(repository.listUnifiedTasks).toHaveBeenCalledWith({
+      source: 'scheduled',
+      limit: 10,
+      offset: 5
+    })
+    expect(output.total).toBe(1)
+    expect(output.tasks[0]).toMatchObject({ id: 't1', source: 'scheduled', batchId: 'b1' })
+  })
+
+  it('documents.tasks.list 空入参默认 limit=50/offset=0', async () => {
+    const repository = makeStubRepository()
+    const routes = createDocumentsRoutes(repository as never, fakeExtractor, fakeTaskManager)
+    const handler = getRouteHandler(routes, documentsTasksListRoute.name)
+    await handler({})
+    expect(repository.listUnifiedTasks).toHaveBeenCalledWith({ limit: 50, offset: 0 })
+  })
+
+  it('documents.tasks.scanBatches 返回批次摘要 + total', async () => {
+    const repository = makeStubRepository()
+    const routes = createDocumentsRoutes(repository as never, fakeExtractor, fakeTaskManager)
+    const handler = getRouteHandler(routes, documentsTasksScanBatchesRoute.name)
+    const output = documentsTasksScanBatchesRoute.output.parse(await handler({}))
+    expect(repository.listScanBatches).toHaveBeenCalledWith(50, 0)
+    expect(repository.countScanBatches).toHaveBeenCalledTimes(1)
+    expect(output.batches).toEqual([
+      { batchId: 'b1', startedAt: 1000, total: 2, done: 1, failed: 0 }
+    ])
+    expect(output.total).toBe(1)
+  })
+})
+
+describeIfSqlite('reimbursement routes', () => {
+  const makeRepository = () => {
+    const db = new DatabaseCtor(':memory:')
+    new DocumentTemplatesTableCtor(db).createTable()
+    new DocumentsTableCtor(db).createTable()
+    const database = new DocumentsDatabaseCtor({ getDatabase: () => db })
+    return new DocumentsRepository(database)
+  }
+
+  const makeStore = () => {
+    const map = new Map<string, unknown>()
+    return {
+      map,
+      getSetting: <T>(key: string) => map.get(key) as T | undefined,
+      setSetting: (key: string, value: unknown) => {
+        map.set(key, value)
+      }
+    }
+  }
+
+  const template: DocumentTemplate = {
+    id: 'tpl-meeting',
+    typeKey: 'meeting_minutes',
+    name: '会议纪要',
+    icon: null,
+    category: '会议类',
+    fields: [],
+    extractionMode: 'auto',
+    promptPreset: null,
+    isBuiltin: true,
+    builtinSourceId: null,
+    version: 1,
+    createdAt: 1,
+    updatedAt: 1
+  }
+
+  const insertMeetingDocument = (
+    repository: ReturnType<typeof makeRepository>,
+    fileUris: string[] = []
+  ) => {
+    repository.upsertTemplate(template)
+    return repository.insertDocument({
+      templateId: template.id,
+      typeKey: template.typeKey,
+      templateSnapshot: template,
+      fields: {},
+      fileUris,
+      source: 'manual',
+      sessionId: null,
+      status: 'draft',
+      now: 1000
+    })
+  }
+
+  const purchaseTemplate: DocumentTemplate = {
+    id: 'tpl-purchase',
+    typeKey: 'purchase_order',
+    name: '采购订单',
+    icon: null,
+    category: '办公用品',
+    fields: [],
+    extractionMode: 'auto',
+    promptPreset: null,
+    isBuiltin: true,
+    builtinSourceId: null,
+    version: 1,
+    createdAt: 1,
+    updatedAt: 1
+  }
+
+  // cat-meeting 内 grp-a、cat-office-supplies 内 grp-b（同 id 分组可存在于多个类别的负例来源）
+  const makeStoreWithGroups = () => {
+    const store = makeStore()
+    const config = defaultReimbursementConfig()
+    const meeting = config.categories.find((category) => category.id === 'cat-meeting')
+    const office = config.categories.find((category) => category.id === 'cat-office-supplies')
+    if (meeting) meeting.customGroups.push({ id: 'grp-a', name: '重点会议', sortOrder: 0 })
+    if (office) office.customGroups.push({ id: 'grp-b', name: '其他分组', sortOrder: 0 })
+    store.map.set('documents.reimbursementConfig', config)
+    return store
+  }
+
+  const insertDocumentWithFields = (
+    repository: ReturnType<typeof makeRepository>,
+    docTemplate: DocumentTemplate,
+    fileUris: string[]
+  ) => {
+    // upsertTemplate 首插后行 id 为随机 UUID，须按 typeKey 幂等取回并以库内真实 id 建档
+    const stored =
+      repository.getTemplateByTypeKey(docTemplate.typeKey) ?? repository.upsertTemplate(docTemplate)
+    return repository.insertDocument({
+      templateId: stored.id,
+      typeKey: stored.typeKey,
+      templateSnapshot: stored,
+      fields: {
+        name: { value: '张三', uncertain: false },
+        meeting_date: { value: '2026-09-01', uncertain: false }
+      },
+      fileUris,
+      source: 'manual',
+      sessionId: null,
+      status: 'draft',
+      now: 1000
+    })
+  }
+
+  it('getConfig returns seeded defaults', async () => {
+    const routes = createDocumentsRoutes(
+      makeRepository(),
+      fakeExtractor,
+      fakeTaskManager,
+      undefined,
+      makeStore()
+    )
+    const handler = getRouteHandler(routes, documentsReimbursementGetConfigRoute.name)
+    const output = documentsReimbursementGetConfigRoute.output.parse(await handler({}))
+    expect(output.config.version).toBe(1)
+    expect(output.config.categories.length).toBeGreaterThan(0)
+  })
+
+  it('setConfig persists and returns normalized config', async () => {
+    const store = makeStore()
+    const routes = createDocumentsRoutes(
+      makeRepository(),
+      fakeExtractor,
+      fakeTaskManager,
+      undefined,
+      store
+    )
+    const handler = getRouteHandler(routes, documentsReimbursementSetConfigRoute.name)
+    const config = defaultReimbursementConfig()
+    const output = documentsReimbursementSetConfigRoute.output.parse(await handler({ config }))
+    expect(output.config).toEqual(config)
+    expect(store.map.get('documents.reimbursementConfig')).toEqual(config)
+  })
+
+  it('setOverride validates and updates document', async () => {
+    const repository = makeRepository()
+    const document = insertMeetingDocument(repository)
+    const routes = createDocumentsRoutes(
+      repository,
+      fakeExtractor,
+      fakeTaskManager,
+      undefined,
+      makeStore()
+    )
+    const handler = getRouteHandler(routes, documentsReimbursementSetOverrideRoute.name)
+    const output = documentsReimbursementSetOverrideRoute.output.parse(
+      await handler({ documentId: document.id, categoryId: 'cat-meeting' })
+    )
+    expect(output.document).not.toBeNull()
+    expect(output.document?.reimbursementOverride).toBe('cat-meeting')
+  })
+
+  it('setOverride rejects unknown category id', async () => {
+    const repository = makeRepository()
+    const document = insertMeetingDocument(repository)
+    const routes = createDocumentsRoutes(
+      repository,
+      fakeExtractor,
+      fakeTaskManager,
+      undefined,
+      makeStore()
+    )
+    const handler = getRouteHandler(routes, documentsReimbursementSetOverrideRoute.name)
+    await expect(handler({ documentId: document.id, categoryId: 'cat-gone' })).rejects.toThrow(
+      '[documents.reimbursement.categoryUnknown:cat-gone]'
+    )
+  })
+
+  it('setGroupOverride persists assignment when the group id exists', async () => {
+    const repository = makeRepository()
+    const document = insertMeetingDocument(repository)
+    const store = makeStore()
+    const config = defaultReimbursementConfig()
+    config.categories[0].customGroups.push({ id: 'grp-a', name: '测试分组', sortOrder: 0 })
+    store.map.set('documents.reimbursementConfig', config)
+    const routes = createDocumentsRoutes(
+      repository,
+      fakeExtractor,
+      fakeTaskManager,
+      undefined,
+      store
+    )
+    const handler = getRouteHandler(routes, documentsReimbursementSetGroupOverrideRoute.name)
+    const output = documentsReimbursementSetGroupOverrideRoute.output.parse(
+      await handler({ documentId: document.id, groupId: 'grp-a' })
+    )
+    expect(output.document).not.toBeNull()
+    expect(output.document?.reimbursementGroupOverride).toBe('grp-a')
+  })
+
+  it('setGroupOverride rejects unknown group id', async () => {
+    const repository = makeRepository()
+    const document = insertMeetingDocument(repository)
+    const routes = createDocumentsRoutes(
+      repository,
+      fakeExtractor,
+      fakeTaskManager,
+      undefined,
+      makeStore()
+    )
+    const handler = getRouteHandler(routes, documentsReimbursementSetGroupOverrideRoute.name)
+    await expect(handler({ documentId: document.id, groupId: 'grp-gone' })).rejects.toThrow(
+      '[documents.reimbursement.groupUnknown:grp-gone]'
+    )
+  })
+
+  it('tree returns category nodes with mapped documents', async () => {
+    const repository = makeRepository()
+    insertMeetingDocument(repository)
+    const routes = createDocumentsRoutes(
+      repository,
+      fakeExtractor,
+      fakeTaskManager,
+      undefined,
+      makeStore()
+    )
+    const handler = getRouteHandler(routes, documentsReimbursementTreeRoute.name)
+    const output = documentsReimbursementTreeRoute.output.parse(await handler({}))
+    const meeting = output.tree.find((node) => node.category.id === 'cat-meeting')
+    expect(meeting?.total).toBe(1)
+    expect(output.unassigned).toHaveLength(0)
+  })
+
+  it('export canceled returns canceled only', async () => {
+    const routes = createDocumentsRoutes(
+      makeRepository(),
+      fakeExtractor,
+      fakeTaskManager,
+      undefined,
+      makeStore(),
+      { showOpenDialog: async () => ({ canceled: true, filePaths: [] }) }
+    )
+    const handler = getRouteHandler(routes, documentsReimbursementExportRoute.name)
+    expect(await handler({})).toEqual({ canceled: true })
+  })
+
+  it('export with missing files completes with zero copied files', async () => {
+    const repository = makeRepository()
+    insertMeetingDocument(repository, ['/nonexistent/a.jpg'])
+    const routes = createDocumentsRoutes(
+      repository,
+      fakeExtractor,
+      fakeTaskManager,
+      undefined,
+      makeStore(),
+      { showOpenDialog: async () => ({ canceled: false, filePaths: [tmpdir()] }) }
+    )
+    const handler = getRouteHandler(routes, documentsReimbursementExportRoute.name)
+    const output = documentsReimbursementExportRoute.output.parse(await handler({}))
+    expect(output.canceled).toBe(false)
+    expect(output.exportedFiles).toBe(0)
+    expect(typeof output.path).toBe('string')
+    await fs.rm(output.path as string, { recursive: true, force: true })
+  })
+
+  it('export rejects unknown categoryId before opening dialog', async () => {
+    const showOpenDialog = vi.fn(async () => ({ canceled: false, filePaths: [tmpdir()] }))
+    const routes = createDocumentsRoutes(
+      makeRepository(),
+      fakeExtractor,
+      fakeTaskManager,
+      undefined,
+      makeStore(),
+      { showOpenDialog }
+    )
+    const handler = getRouteHandler(routes, documentsReimbursementExportRoute.name)
+    await expect(handler({ categoryId: 'cat-gone', groupIds: ['grp-a'] })).rejects.toThrow(
+      '[documents.reimbursement.categoryUnknown:cat-gone]'
+    )
+    expect(showOpenDialog).not.toHaveBeenCalled()
+  })
+
+  it('export rejects group id belonging to another category before opening dialog', async () => {
+    const showOpenDialog = vi.fn(async () => ({ canceled: false, filePaths: [tmpdir()] }))
+    const routes = createDocumentsRoutes(
+      makeRepository(),
+      fakeExtractor,
+      fakeTaskManager,
+      undefined,
+      makeStoreWithGroups(),
+      { showOpenDialog }
+    )
+    const handler = getRouteHandler(routes, documentsReimbursementExportRoute.name)
+    await expect(handler({ categoryId: 'cat-meeting', groupIds: ['grp-b'] })).rejects.toThrow(
+      '[documents.reimbursement.groupUnknown:grp-b]'
+    )
+    expect(showOpenDialog).not.toHaveBeenCalled()
+  })
+
+  it('export canceled with selected groups returns canceled only', async () => {
+    const routes = createDocumentsRoutes(
+      makeRepository(),
+      fakeExtractor,
+      fakeTaskManager,
+      undefined,
+      makeStoreWithGroups(),
+      { showOpenDialog: async () => ({ canceled: true, filePaths: [] }) }
+    )
+    const handler = getRouteHandler(routes, documentsReimbursementExportRoute.name)
+    expect(await handler({ categoryId: 'cat-meeting', groupIds: ['grp-a'] })).toEqual({
+      canceled: true
+    })
+  })
+
+  it('export with selected groups writes only selected custom group entries', async () => {
+    const sourceDir = await fs.mkdtemp(join(tmpdir(), 'export-selected-'))
+    const sourceFile = join(sourceDir, 'a.jpg')
+    await fs.writeFile(sourceFile, 'a')
+    try {
+      const repository = makeRepository()
+      // doc1：cat-meeting 内勾选分组 grp-a（应导出）
+      const grouped = insertDocumentWithFields(repository, template, [sourceFile])
+      // doc2：分组 id 属于 cat-office-supplies，在 cat-meeting 内视为未分组（不应导出）
+      const foreignGrouped = insertDocumentWithFields(repository, template, [sourceFile])
+      // doc3：cat-meeting 未分组条目（不应导出）
+      const ungrouped = insertDocumentWithFields(repository, template, [sourceFile])
+      // doc4：其他类别 cat-office-supplies（不应导出）
+      const otherCategory = insertDocumentWithFields(repository, purchaseTemplate, [sourceFile])
+      // doc5：强制未分类（不应导出）
+      const unassigned = insertDocumentWithFields(repository, template, [sourceFile])
+      repository.setReimbursementGroupOverride(grouped.id, 'grp-a')
+      repository.setReimbursementGroupOverride(foreignGrouped.id, 'grp-b')
+      repository.setReimbursementOverride(unassigned.id, REIMBURSEMENT_UNASSIGNED)
+      const routes = createDocumentsRoutes(
+        repository,
+        fakeExtractor,
+        fakeTaskManager,
+        undefined,
+        makeStoreWithGroups(),
+        { showOpenDialog: async () => ({ canceled: false, filePaths: [tmpdir()] }) }
+      )
+      const handler = getRouteHandler(routes, documentsReimbursementExportRoute.name)
+      const output = documentsReimbursementExportRoute.output.parse(
+        await handler({ categoryId: 'cat-meeting', groupIds: ['grp-a'] })
+      )
+      expect(output.canceled).toBe(false)
+      expect(output.exportedFiles).toBe(1)
+      const entries = await fs.readdir(output.path as string, { recursive: true })
+      const listing = entries.join('\n')
+      expect(listing).toContain(join('会议费', '重点会议', '2026-09'))
+      expect(listing).not.toContain('未分类')
+      expect(listing).not.toContain('办公用品')
+      const csv = await fs.readFile(output.summaryPath as string, 'utf-8')
+      expect(csv).toContain('会议费,重点会议,张三,2026-09,会议纪要,a.jpg')
+      expect(csv).not.toContain('会议费,,张三')
+      expect(csv).not.toContain('办公用品')
+      expect(csv).not.toContain('未分类')
+      await fs.rm(output.path as string, { recursive: true, force: true })
+    } finally {
+      await fs.rm(sourceDir, { recursive: true, force: true })
+    }
+  })
+})
+
+describe('reimbursementExport', () => {
+  const EXPORT_NOW = new Date('2026-01-02T03:04:00')
+
+  const makeEntry = (person: string | null) => ({
+    id: 'doc-1',
+    typeKey: 'meeting_minutes',
+    templateName: '会议纪要',
+    person,
+    period: '2026-09',
+    amount: 120.5,
+    amountUncertain: false,
+    uncertainCount: 0,
+    fileNames: ['a.jpg', 'b.jpg'],
+    isOverride: false,
+    groupId: null
+  })
+
+  const makeTreeResult = (person: string | null): ReimbursementTreeResult => ({
+    tree: [
+      {
+        category: {
+          id: 'cat-1',
+          name: '会议费',
+          requiredMaterials: [],
+          linkedTypeKeys: [],
+          customGroups: [],
+          sortOrder: 1
+        },
+        total: 1,
+        materials: [],
+        groups: [{ person, buckets: [{ period: '2026-09', documents: [makeEntry(person)] }] }],
+        customGroups: []
+      }
+    ],
+    unassigned: [
+      {
+        person: null,
+        buckets: [{ period: null, documents: [{ ...makeEntry(null), id: 'doc-2', fileNames: [] }] }]
+      }
+    ],
+    summary: []
+  })
+
+  const makeHarness = (options?: { existsMatches?: (target: string) => boolean }) => {
+    const mkdirs: string[] = []
+    const copied: Array<{ src: string; dest: string }> = []
+    const written: Array<{ file: string; data: string }> = []
+    const deps: ReimbursementExportDeps = {
+      copyFile: async (src, dest) => {
+        copied.push({ src, dest })
+      },
+      mkdir: async (dir) => {
+        mkdirs.push(dir)
+        return undefined
+      },
+      writeFile: async (file, data) => {
+        written.push({ file, data })
+      },
+      exists: async (target) => options?.existsMatches?.(target) ?? false
+    }
+    return { deps, mkdirs, copied, written }
+  }
+
+  type Harness = ReturnType<typeof makeHarness>
+
+  const runExport = async (
+    harness: Harness,
+    result: ReimbursementTreeResult,
+    filesById: Map<string, string[]>
+  ) =>
+    exportReimbursementPackage({
+      rootDir: 'export-root',
+      result,
+      filesById,
+      deps: harness.deps,
+      now: EXPORT_NOW
+    })
+
+  const summaryCsv = (harness: Harness, summaryPath: string): string => {
+    const entry = harness.written.find((item) => item.file === summaryPath)
+    if (!entry) {
+      throw new Error('summary csv not written')
+    }
+    return entry.data
+  }
+
+  it('copies mapped files and writes summary csv without issues', async () => {
+    const harness = makeHarness()
+    const output = await runExport(
+      harness,
+      makeTreeResult('张三'),
+      new Map([['doc-1', ['/src/a.jpg', '/src/b.jpg']]])
+    )
+    expect(output.exportedFiles).toBe(2)
+    expect(output.issues).toEqual([])
+    expect(harness.copied.map((item) => item.src)).toEqual(['/src/a.jpg', '/src/b.jpg'])
+    expect(harness.mkdirs[0]).toBe(output.path)
+    const csv = summaryCsv(harness, output.summaryPath)
+    expect(csv.startsWith('\uFEFF')).toBe(true)
+    expect(csv).toContain('类别,分组,人员,期间,单据模板,文件名,金额,金额存疑,手动指定')
+    expect(csv).toContain('会议费,,张三,2026-09,会议纪要,a.jpg,120.5,否,否')
+    expect(csv).toContain('会议费,,张三,2026-09,会议纪要,b.jpg,120.5,否,否')
+  })
+
+  it('renames colliding file names with a -1 suffix', async () => {
+    const harness = makeHarness({ existsMatches: (target) => target.endsWith('a.jpg') })
+    const output = await runExport(
+      harness,
+      makeTreeResult('张三'),
+      new Map([['doc-1', ['/src/a.jpg', '/src/b.jpg']]])
+    )
+    expect(output.exportedFiles).toBe(2)
+    expect(harness.copied[0]?.dest.endsWith('a-1.jpg')).toBe(true)
+    expect(harness.copied[1]?.dest.endsWith('b.jpg')).toBe(true)
+  })
+
+  it('sanitizes person directory segments against traversal and illegal chars', async () => {
+    const harness = makeHarness()
+    const result = makeTreeResult('..\\evil')
+    const meetingNode = result.tree[0]
+    if (meetingNode) {
+      meetingNode.groups.push({
+        person: 'a/b:c',
+        buckets: [{ period: '2026-09', documents: [] }]
+      })
+    }
+    const output = await runExport(
+      harness,
+      result,
+      new Map([['doc-1', ['/src/a.jpg', '/src/b.jpg']]])
+    )
+    expect(output.issues).toEqual([])
+    for (const dir of harness.mkdirs) {
+      expect(dir).not.toContain('/')
+      expect(dir).not.toContain(':')
+      for (const segment of dir.split(/[\\/]/)) {
+        expect(segment).not.toBe('..')
+        expect(segment).not.toBe('.')
+      }
+    }
+    const segments = harness.mkdirs.flatMap((dir) => dir.split(/[\\/]/))
+    expect(segments).toContain('.._evil')
+    expect(segments).toContain('a_b_c')
+  })
+
+  it('neutralizes formula-like csv cells with a single-quote prefix', async () => {
+    const harness = makeHarness()
+    const output = await runExport(
+      harness,
+      makeTreeResult('=cmd'),
+      new Map([['doc-1', ['/src/a.jpg', '/src/b.jpg']]])
+    )
+    const csv = summaryCsv(harness, output.summaryPath)
+    expect(csv).toContain("'=cmd")
+    expect(csv).not.toMatch(/(^|,)=cmd/)
+  })
+
+  it('records missing sources without copying', async () => {
+    const harness = makeHarness()
+    const output = await runExport(harness, makeTreeResult('张三'), new Map())
+    expect(output.exportedFiles).toBe(0)
+    expect(output.issues).toEqual(['缺失:a.jpg', '缺失:b.jpg'])
+    const csv = summaryCsv(harness, output.summaryPath)
+    expect(csv).toContain('会议费,,张三,2026-09,会议纪要,缺失:a.jpg,120.5,否,否')
+  })
+
+  it('writes custom group entries under group dirs and labels csv rows', async () => {
+    const harness = makeHarness()
+    const result = makeTreeResult('张三')
+    const node = result.tree[0]
+    if (!node) throw new Error('missing tree node')
+    node.customGroups = [
+      {
+        group: { id: 'grp-1', name: '分组一', sortOrder: 0 },
+        buckets: [
+          {
+            period: '2026-10',
+            documents: [
+              { ...makeEntry('李四'), id: 'doc-3', fileNames: ['c.jpg'], groupId: 'grp-1' }
+            ]
+          }
+        ]
+      }
+    ]
+    const output = await runExport(harness, result, new Map([['doc-3', ['/src/c.jpg']]]))
+    // 目录为 类别/分组名/年月/（分组目录不再按人员分层，人员只体现在 CSV 列）
+    expect(harness.mkdirs).toContain(join(output.path, '会议费', '分组一', '2026-10'))
+    const csv = summaryCsv(harness, output.summaryPath)
+    expect(csv).toContain('会议费,分组一,李四,2026-10,会议纪要,c.jpg,120.5,否,否')
   })
 })

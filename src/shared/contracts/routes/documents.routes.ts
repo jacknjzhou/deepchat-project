@@ -4,7 +4,8 @@ import {
   DOCUMENT_EXTRACTION_MODES,
   DOCUMENT_SOURCES,
   DOCUMENT_STATUSES,
-  DOCUMENT_FIELD_VALUE_TYPES
+  DOCUMENT_FIELD_VALUE_TYPES,
+  REIMBURSEMENT_UNASSIGNED
 } from '../../documents'
 
 const timestampMsSchema = z.number().int().nonnegative()
@@ -85,6 +86,8 @@ export const documentRecordSchema = z.object({
   source: documentSourceSchema,
   sessionId: z.string().min(1).nullable(),
   status: documentStatusSchema,
+  reimbursementOverride: z.string().nullable(),
+  reimbursementGroupOverride: z.string().nullable(),
   createdAt: timestampMsSchema,
   updatedAt: timestampMsSchema
 })
@@ -274,6 +277,7 @@ export const documentTaskSchema = z.object({
   filePath: z.string().min(1),
   fileName: z.string().min(1),
   templateId: z.string().min(1),
+  source: documentSourceSchema,
   status: documentTaskStatusSchema,
   typeKey: z.string().min(1).nullable(),
   documentId: z.string().min(1).nullable(),
@@ -282,20 +286,77 @@ export const documentTaskSchema = z.object({
   updatedAt: timestampMsSchema
 })
 
+/** 统一任务条目：识别任务与 chat 归档文档合并后的列表视图（Task 2 UnifiedTaskEntry 的契约面） */
+export const unifiedTaskEntrySchema = z.object({
+  id: z.string().min(1),
+  filePath: z.string().min(1).nullable(),
+  relativePath: z.string().min(1).nullable(),
+  fileName: z.string().min(1),
+  templateId: z.string().min(1).nullable(),
+  source: documentSourceSchema,
+  status: documentTaskStatusSchema,
+  typeKey: z.string().min(1).nullable(),
+  documentId: z.string().min(1).nullable(),
+  error: z.string().nullable(),
+  createdAt: timestampMsSchema,
+  updatedAt: timestampMsSchema,
+  batchId: z.string().min(1).nullable()
+})
+
+/** 内容去重：提交时被拦截的重复文件（path 供自动监控登记使用，UI 只用 fileName/existingName） */
+export const documentRecognitionDuplicateSchema = z.object({
+  fileName: z.string(),
+  existingName: z.string(),
+  path: z.string()
+})
+
 export const documentsTasksCreateRoute = defineRouteContract({
   name: 'documents.tasks.create',
   input: z.object({
     files: z.array(documentExtractFileSchema).min(1).max(20),
-    templateId: z.string().min(1),
+    // Scheduled submissions omit templateId: the classifier resolves it per file.
+    templateId: z.string().min(1).optional(),
     source: documentSourceSchema.default('manual')
   }),
-  output: z.object({ tasks: z.array(documentTaskSchema) })
+  output: z.object({
+    tasks: z.array(documentTaskSchema),
+    duplicates: z.array(documentRecognitionDuplicateSchema)
+  })
 })
 
 export const documentsTasksListRoute = defineRouteContract({
   name: 'documents.tasks.list',
-  input: z.object({}),
-  output: z.object({ tasks: z.array(documentTaskSchema) })
+  input: z.object({
+    status: documentTaskStatusSchema.optional(),
+    source: documentSourceSchema.optional(),
+    batchId: z.string().min(1).optional(),
+    limit: z.number().int().min(1).max(200).default(50),
+    offset: z.number().int().min(0).default(0)
+  }),
+  output: z.object({
+    tasks: z.array(unifiedTaskEntrySchema),
+    total: z.number().int().nonnegative()
+  })
+})
+
+export const documentsTasksScanBatchesRoute = defineRouteContract({
+  name: 'documents.tasks.scanBatches',
+  input: z.object({
+    limit: z.number().int().min(1).max(200).default(50),
+    offset: z.number().int().min(0).default(0)
+  }),
+  output: z.object({
+    batches: z.array(
+      z.object({
+        batchId: z.string().min(1),
+        startedAt: timestampMsSchema,
+        total: z.number().int().nonnegative(),
+        done: z.number().int().nonnegative(),
+        failed: z.number().int().nonnegative()
+      })
+    ),
+    total: z.number().int().nonnegative()
+  })
 })
 
 export const documentsTasksRetryRoute = defineRouteContract({
@@ -313,4 +374,189 @@ export const documentsTasksClearFailedRoute = defineRouteContract({
   name: 'documents.tasks.clearFailed',
   input: z.object({}),
   output: z.object({ removed: z.number().int().nonnegative() })
+})
+
+const reimbursementTypeKeySchema = z
+  .string()
+  .min(1)
+  .max(64)
+  .regex(/^[a-z][a-z0-9_]*$/)
+
+export const reimbursementMaterialSchema = z.object({
+  name: z.string().min(1).max(100),
+  linkedTypeKeys: z.array(reimbursementTypeKeySchema).max(50)
+})
+
+export const reimbursementCustomGroupSchema = z.object({
+  id: z.string().min(1).max(64),
+  name: z.string().min(1).max(50),
+  sortOrder: z.number().int().nonnegative()
+})
+
+export const reimbursementCategorySchema = z
+  .object({
+    id: z.string().min(1).max(64),
+    name: z.string().min(1).max(50),
+    requiredMaterials: z.array(reimbursementMaterialSchema).max(50),
+    linkedTypeKeys: z.array(reimbursementTypeKeySchema).max(50),
+    // 存量业务配置 JSON 无该字段时可解析：zod input 可缺省、output 恒为数组
+    customGroups: z.array(reimbursementCustomGroupSchema).max(50).default([]),
+    sortOrder: z.number().int().nonnegative()
+  })
+  .refine((category) => category.id !== REIMBURSEMENT_UNASSIGNED, {
+    message: "category id 'unassigned' is reserved"
+  })
+  .refine(
+    (category) => {
+      const ids = category.customGroups.map((group) => group.id)
+      return new Set(ids).size === ids.length
+    },
+    { message: 'duplicate custom group id' }
+  )
+
+export const reimbursementConfigSchema = z
+  .object({
+    version: z.literal(1),
+    categories: z.array(reimbursementCategorySchema).max(200),
+    personFieldKeys: z.array(z.string().min(1).max(64)).max(50),
+    dateFieldKeys: z.array(z.string().min(1).max(64)).max(50),
+    amountFieldKeys: z.array(z.string().min(1).max(64)).max(50),
+    dateGrouping: z.enum(['day', 'month'])
+  })
+  .refine(
+    (config) => {
+      const ids = config.categories.map((c) => c.id)
+      return new Set(ids).size === ids.length
+    },
+    { message: 'duplicate category id' }
+  )
+
+export type ReimbursementConfig = z.infer<typeof reimbursementConfigSchema>
+
+export const reimbursementDocumentEntrySchema = z.object({
+  id: z.string().min(1),
+  typeKey: z.string().min(1),
+  templateName: z.string().min(1),
+  person: z.string().nullable(),
+  period: z.string().nullable(),
+  amount: z.number().nullable(),
+  amountUncertain: z.boolean(),
+  uncertainCount: z.number().int().nonnegative(),
+  fileNames: z.array(z.string()),
+  isOverride: z.boolean(),
+  // 条目当前归属的自定义分组 id；未分组或分组 id 已失效时为 null
+  groupId: z.string().min(1).nullable()
+})
+
+export const reimbursementBucketSchema = z.object({
+  period: z.string().nullable(),
+  documents: z.array(reimbursementDocumentEntrySchema)
+})
+
+export const reimbursementGroupSchema = z.object({
+  person: z.string().nullable(),
+  buckets: z.array(reimbursementBucketSchema)
+})
+
+export const reimbursementMaterialStatSchema = reimbursementMaterialSchema.extend({
+  count: z.number().int().nonnegative()
+})
+
+export const reimbursementCategoryNodeSchema = z.object({
+  category: reimbursementCategorySchema,
+  total: z.number().int().nonnegative(),
+  materials: z.array(reimbursementMaterialStatSchema),
+  groups: z.array(reimbursementGroupSchema),
+  // 类别节点的自定义分组视图：与 category.customGroups 一一对应，每组携带独立的期间桶列表
+  customGroups: z.array(
+    z.object({
+      group: reimbursementCustomGroupSchema,
+      buckets: z.array(reimbursementBucketSchema)
+    })
+  )
+})
+
+export const documentsReimbursementGetConfigRoute = defineRouteContract({
+  name: 'documents.reimbursement.getConfig',
+  input: z.object({}),
+  output: z.object({ config: reimbursementConfigSchema })
+})
+
+export const documentsReimbursementSetConfigRoute = defineRouteContract({
+  name: 'documents.reimbursement.setConfig',
+  input: z.object({ config: reimbursementConfigSchema }),
+  output: z.object({ config: reimbursementConfigSchema })
+})
+
+export const documentsReimbursementTreeRoute = defineRouteContract({
+  name: 'documents.reimbursement.tree',
+  input: z.object({
+    status: documentStatusSchema.optional(),
+    dateFrom: timestampMsSchema.optional(),
+    dateTo: timestampMsSchema.optional()
+  }),
+  output: z.object({
+    tree: z.array(reimbursementCategoryNodeSchema),
+    unassigned: z.array(reimbursementGroupSchema),
+    summary: z.array(
+      z.object({
+        categoryId: z.string().min(1).nullable(),
+        total: z.number().int().nonnegative()
+      })
+    )
+  })
+})
+
+export type ReimbursementTreeResult = z.infer<typeof documentsReimbursementTreeRoute.output>
+
+export const documentsReimbursementSetOverrideRoute = defineRouteContract({
+  name: 'documents.reimbursement.setOverride',
+  input: z.object({
+    documentId: z.string().min(1),
+    // category id | 'unassigned'（强制未分类）| null（清除覆盖，恢复自动归类）
+    categoryId: z.string().min(1).nullable()
+  }),
+  output: z.object({ document: documentRecordSchema.nullable() })
+})
+
+export const documentsReimbursementSetGroupOverrideRoute = defineRouteContract({
+  name: 'documents.reimbursement.setGroupOverride',
+  input: z.object({
+    documentId: z.string().min(1),
+    // 自定义分组 id | null（清除分组，条目回到 人员→年月 列表）
+    groupId: z.string().min(1).nullable()
+  }),
+  output: z.object({ document: documentRecordSchema.nullable() })
+})
+
+export const documentsReimbursementExportRoute = defineRouteContract({
+  name: 'documents.reimbursement.export',
+  input: z
+    .object({
+      status: documentStatusSchema.optional(),
+      dateFrom: timestampMsSchema.optional(),
+      dateTo: timestampMsSchema.optional(),
+      // 勾选分组导出：categoryId 与 groupIds 必须成对出现，都缺省 = 全量导出
+      categoryId: z.string().min(1).max(64).optional(),
+      groupIds: z.array(z.string().min(1).max(64)).min(1).max(50).optional()
+    })
+    .refine((value) => (value.categoryId === undefined) === (value.groupIds === undefined), {
+      message: 'categoryId and groupIds must be provided together'
+    }),
+  output: z
+    .object({
+      canceled: z.boolean(),
+      path: z.string().min(1).optional(),
+      exportedFiles: z.number().int().nonnegative().optional(),
+      summaryPath: z.string().min(1).optional()
+    })
+    .refine((value) => value.canceled || typeof value.path === 'string', {
+      message: 'path is required when not canceled'
+    })
+})
+
+export const documentAutoWatchChooseDirRoute = defineRouteContract({
+  name: 'documents.autoWatch.chooseDir',
+  input: z.object({}).strict().default({}),
+  output: z.object({ dir: z.string().min(1).nullable() })
 })

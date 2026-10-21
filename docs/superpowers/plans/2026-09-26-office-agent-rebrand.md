@@ -1,10 +1,10 @@
-# SRIBD办公智能体 品牌重塑（显示层）实施计划
+# 办公智能体 品牌重塑（显示层）实施计划
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 把所有用户可见的 "DeepChat" 显示内容替换为品牌名（zh 语言包「SRIBD办公智能体」，其余语言 "SRIBD Office Agent"），内部标识符一律不动。
+**Goal:** 把所有用户可见的 "DeepChat" 显示内容替换为品牌名（zh 语言包「办公智能体」，其余语言 "Office Agent"），内部标识符一律不动。
 
-**Architecture:** 按 spec（`docs/superpowers/specs/2026-09-26-sribd-office-agent-rebrand-design.md`）采用方案 1 直接替换：i18n 语言包用一次性脚本按有序短语规则批量替换（大小写敏感 "DeepChat" 不会命中小写开头的 key），静态显示点逐处手工改，最后以 grep 审计 + i18n 校验收口。
+**Architecture:** 按 spec（`docs/superpowers/specs/2026-09-26-office-agent-rebrand-design.md`）采用方案 1 直接替换：i18n 语言包用一次性脚本按有序短语规则批量替换（大小写敏感 "DeepChat" 不会命中小写开头的 key），静态显示点逐处手工改，最后以 grep 审计 + i18n 校验收口。
 
 **Tech Stack:** Node 脚本（一次性）、grep 审计、vitest、electron-builder 配置。
 
@@ -30,8 +30,8 @@ import { readdirSync, readFileSync, writeFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
 const ROOT = 'src/renderer/src/i18n'
-const ZH = 'SRIBD办公智能体'
-const EN = 'SRIBD Office Agent'
+const ZH = '办公智能体'
+const EN = 'Office Agent'
 
 function rules(locale) {
   if (locale.startsWith('zh')) {
@@ -75,8 +75,8 @@ console.log(`updated files: ${files}`)
 ```
 
 短语规则说明（先长后短）：
-- zh：`DeepChat Agents` → `SRIBD办公智能体 Agent`（避免出现"智能体 Agents"）；其余 `DeepChat` → `SRIBD办公智能体`
-- 其他语言：`DeepChat Agents` → `SRIBD Office Agents`；`DeepChat Agent` → `SRIBD Office Agent`（避免 "SRIBD Office Agent Agent"）；其余 `DeepChat` → `SRIBD Office Agent`（属格形式如 `DeepChat's`、`DeepChats` 自然得到 `SRIBD Office Agent's` / `SRIBD Office Agents`，语义正确）
+- zh：`DeepChat Agents` → `办公智能体 Agent`（避免出现"智能体 Agents"）；其余 `DeepChat` → `办公智能体`
+- 其他语言：`DeepChat Agents` → `Office Agents`；`DeepChat Agent` → `Office Agent`（避免 "Office Agent Agent"）；其余 `DeepChat` → `Office Agent`（属格形式如 `DeepChat's`、`DeepChats` 自然得到 `Office Agent's` / `Office Agents`，语义正确）
 
 - [ ] **Step 2: 运行脚本**
 
@@ -97,11 +97,11 @@ Expected: **无任何匹配**（i18n key 全部为小写 `deepchat`/`deepChat` �
 - [ ] **Step 4: 抽查双语样例**
 
 ```powershell
-pnpm exec rg -n "SRIBD" src/renderer/src/i18n/zh-CN/settings.json | Select-Object -First 5
-pnpm exec rg -n "SRIBD Office Agent" src/renderer/src/i18n/en-US/chat.json | Select-Object -First 5
+pnpm exec rg -n "办公智能体" src/renderer/src/i18n/zh-CN/settings.json | Select-Object -First 5
+pnpm exec rg -n "Office Agent" src/renderer/src/i18n/en-US/chat.json | Select-Object -First 5
 ```
 
-Expected: zh-CN 显示「SRIBD办公智能体」，en-US 显示 "SRIBD Office Agent"；确认没有 "SRIBD Office Agent Agent"。
+Expected: zh-CN 显示「办公智能体」，en-US 显示 "Office Agent"；确认没有 "Office Agent Agent"。
 
 - [ ] **Step 5: 删除临时脚本**
 
@@ -144,7 +144,7 @@ git commit -m "feat(brand): rebrand i18n display copy"
 改为：
 
 ```html
-<title>SRIBD办公智能体</title>
+<title>办公智能体</title>
 ```
 
 - [ ] **Step 2: splash 页（静态点统一用中文品牌名，见 spec）**
@@ -155,15 +155,15 @@ git commit -m "feat(brand): rebrand i18n display copy"
 pnpm exec rg -n "DeepChat" src/renderer/splash/loading.vue
 ```
 
-所有 `DeepChat` → `SRIBD办公智能体`（含英文句子内联，如 `SRIBD办公智能体 is starting`，spec 规定静态点统一中文品牌名）。
+所有 `DeepChat` → `办公智能体`（含英文句子内联，如 `办公智能体 is starting`，spec 规定静态点统一中文品牌名）。
 
 - [ ] **Step 3: 主进程窗口/托盘/预览**
 
 | 文件:行 | 改前 | 改后 |
 | --- | --- | --- |
-| `src/main/desktop/window/index.ts:1326` | `title: 'DeepChat - Settings'` | `title: 'SRIBD办公智能体 - 设置'` |
-| `src/main/desktop/tray.ts:38` | `tray.setToolTip('DeepChat')` | `tray.setToolTip('SRIBD办公智能体')` |
-| `src/main/desktop/preview/AgentPreviewCoordinator.ts:389` | fallback `'DeepChat'` | fallback `'SRIBD办公智能体'` |
+| `src/main/desktop/window/index.ts:1326` | `title: 'DeepChat - Settings'` | `title: '办公智能体 - 设置'` |
+| `src/main/desktop/tray.ts:38` | `tray.setToolTip('DeepChat')` | `tray.setToolTip('办公智能体')` |
+| `src/main/desktop/preview/AgentPreviewCoordinator.ts:389` | fallback `'DeepChat'` | fallback `'办公智能体'` |
 
 - [ ] **Step 4: grep 审计**
 
@@ -179,7 +179,7 @@ Expected: 仅剩代码标识类匹配（如 import、类型名）；三处已知
 $env:ELECTRON_RUN_AS_NODE='1'; pnpm exec electron ./node_modules/vitest/vitest.mjs run test/main/desktop/preview/AgentPreviewCoordinator.test.ts --config vitest.config.ts
 ```
 
-Expected: 若该测试 stub/fallback 断言 `'DeepChat'`，更新为 `'SRIBD办公智能体'` 后 PASS（与 Task 6 联动）。
+Expected: 若该测试 stub/fallback 断言 `'DeepChat'`，更新为 `'办公智能体'` 后 PASS（与 Task 6 联动）。
 
 - [ ] **Step 6: Commit**
 
@@ -199,9 +199,9 @@ git commit -m "feat(brand): rebrand static ui titles"
 
 | 行 | 改后 |
 | --- | --- |
-| L45（zh-CN） | `showHide: '显示/隐藏 SRIBD办公智能体'` |
-| L78（zh-TW） | `showHide: '顯示/隱藏 SRIBD办公智能体'` |
-| L111 起 9 处（en/es/de/tr/id/ms/it/pl/vi） | 例：`showHide: 'Show/Hide SRIBD Office Agent'`、`'Mostrar/ocultar SRIBD Office Agent'`、`'SRIBD Office Agent ein-/ausblenden'`、`"SRIBD Office Agent'i göster/gizle"` 等，仅替换 `DeepChat` token，语序保持原译文 |
+| L45（zh-CN） | `showHide: '显示/隐藏 办公智能体'` |
+| L78（zh-TW） | `showHide: '顯示/隱藏 办公智能体'` |
+| L111 起 9 处（en/es/de/tr/id/ms/it/pl/vi） | 例：`showHide: 'Show/Hide Office Agent'`、`'Mostrar/ocultar Office Agent'`、`'Office Agent ein-/ausblenden'`、`"Office Agent'i göster/gizle"` 等，仅替换 `DeepChat` token，语序保持原译文 |
 
 - [ ] **Step 2: 审计**
 
@@ -249,7 +249,7 @@ pnpm exec rg -n "DeepChat" <file>
 ```
 
 按以下决策规则处理每一处：
-- **DISPLAY（替换，zh 品牌名 `SRIBD办公智能体`，组件内英文硬编码句子也统一中文品牌名）**：`<template>` 中文本/占位符/aria-label/title 属性；i18n 调用里的硬编码默认文案；CSS 注释以外的注释性用户文案。
+- **DISPLAY（替换，zh 品牌名 `办公智能体`，组件内英文硬编码句子也统一中文品牌名）**：`<template>` 中文本/占位符/aria-label/title 属性；i18n 调用里的硬编码默认文案；CSS 注释以外的注释性用户文案。
 - **CODE（不动）**：变量名、函数名、import、事件名、CSS 类、i18n **key**、日志前缀、API 字段（如 `brand: 'DeepChat'` 元数据、`deepchatAgent` 类型标识）。
 - **AMBIGUOUS（先查引用再定）**：如 `session.ts`、`ConfigClient.ts` 中的字符串若作为对外 API 标识/存储值使用则属 CODE 不动；仅纯展示用途才替换。
 
@@ -298,7 +298,7 @@ You are DeepChat —
 改为：
 
 ```text
-You are SRIBD Office Agent —
+You are Office Agent —
 ```
 
 （保留原句其余部分与破折号结构不变，仅替换 `DeepChat`。）
@@ -336,7 +336,7 @@ productName: DeepChat
 改为：
 
 ```yaml
-productName: SRIBD办公智能体
+productName: 办公智能体
 ```
 
 **不改**：`executableName: DeepChat`（可执行文件名，CI/更新器依赖）、`appId: com.wefonk.deepchat`、macOS helper 正则 `/Contents/Helpers/DeepChat Computer Use[.]app(?:/|$)`（已核实：helper 名在 4 个脚本中硬编码，不随 productName 变化——`scripts/build-cua-plugin-runtime.mjs:38`、`scripts/cua-macos-contract.mjs:1`、`scripts/package-plugin.mjs:10`、`scripts/plugin.mjs:6`，正则保持有效；helper 名属内部组件标识，本次不动）。
@@ -350,7 +350,7 @@ productName: SRIBD办公智能体
 改为：
 
 ```json
-"description": "SRIBD办公智能体，一个简单易用的 Agent 客户端"
+"description": "办公智能体，一个简单易用的 Agent 客户端"
 ```
 
 `name: "DeepChat"` 不改（artifactName `${name}`、npm 标识依赖）。
@@ -381,7 +381,7 @@ return title === 'DeepChat' && !url.includes('/renderer/')
 改为：
 
 ```ts
-return title === 'SRIBD办公智能体' && !url.includes('/renderer/')
+return title === '办公智能体' && !url.includes('/renderer/')
 ```
 
 **不改**：L34 `'DeepChat.exe'`（executableName 未变）、L139-146 userData `'DeepChat'` 路径（APP_NAME 未变）。
@@ -440,11 +440,11 @@ Expected: 打包成功，产物目录名/快捷方式使用新 productName；`@n
 
 - [ ] **Step 5: 人工验收清单（构建后启动应用）**
 
-1. 主窗口标题 = 「SRIBD办公智能体」；设置窗口标题 = 「SRIBD办公智能体 - 设置」
-2. 托盘 tooltip 与右键菜单「显示/隐藏 SRIBD办公智能体」
+1. 主窗口标题 = 「办公智能体」；设置窗口标题 = 「办公智能体 - 设置」
+2. 托盘 tooltip 与右键菜单「显示/隐藏 办公智能体」
 3. 解锁屏/加载页品牌标题
 4. 关于页标题与描述、聊天输入框占位符、欢迎页文案
-5. Windows 安装包：开始菜单名称、卸载列表显示名 = SRIBD办公智能体
+5. Windows 安装包：开始菜单名称、卸载列表显示名 = 办公智能体
 6. 回归：`%APPDATA%\DeepChat` 数据目录不变、历史会话正常加载（APP_NAME 未动）
 
 ---
@@ -453,4 +453,4 @@ Expected: 打包成功，产物目录名/快捷方式使用新 productName；`@n
 
 - **Spec 覆盖**：i18n（Task 1，welcome/update.json 为 spec 文件清单的自然延伸）、静态点（Task 2）、托盘菜单 shared/i18n.ts（Task 3，spec 中"渲染层散落文件"的补全）、组件文案（Task 4）、安装层（Task 6）、helper 正则核对结论已写入 Task 6、验证（Task 8）。Task 5（系统提示词）为 spec 外新发现，已在任务中标注补充理由。
 - **占位符**：无 TBD/TODO；Task 4 为按规则决策型任务，决策规则、已知判定与审计命令均已给全。
-- **类型/命名一致性**：品牌名常量 ZH=`SRIBD办公智能体`、EN=`SRIBD Office Agent` 全文一致；commit message 均 ≤50 字符。
+- **类型/命名一致性**：品牌名常量 ZH=`办公智能体`、EN=`Office Agent` 全文一致；commit message 均 ≤50 字符。

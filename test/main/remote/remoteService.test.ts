@@ -213,7 +213,7 @@ describe('RemoteService', () => {
     await vi.waitFor(() => {
       expect(notifications.showNotification).toHaveBeenCalledWith({
         id: 'remote-delivery-error:feishu',
-        title: 'SRIBD Office Agent Feishu Remote',
+        title: 'Office Agent Feishu Remote',
         body: 'Failed to deliver reply to Feishu.'
       })
     })

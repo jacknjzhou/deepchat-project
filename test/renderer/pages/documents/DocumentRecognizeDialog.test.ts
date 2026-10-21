@@ -27,7 +27,13 @@ const invoiceTemplate = makeTemplate('tpl-2', 'invoice', '发票模板')
 
 const stubStore = reactive({
   templates: [contractTemplate, invoiceTemplate] as Array<Record<string, unknown>>,
-  createRecognitionTasks: vi.fn(async () => [] as Array<Record<string, unknown>>),
+  createRecognitionTasks: vi.fn(
+    async () =>
+      ({
+        created: [] as Array<Record<string, unknown>>,
+        duplicates: [] as Array<Record<string, unknown>>
+      }) as unknown
+  ),
   loadTemplates: vi.fn(async () => {})
 })
 
@@ -170,7 +176,10 @@ describe('DocumentRecognizeDialog', () => {
   })
 
   it('多选文件并提交创建批量任务', async () => {
-    stubStore.createRecognitionTasks.mockResolvedValueOnce([{ id: 'task-1' }, { id: 'task-2' }])
+    stubStore.createRecognitionTasks.mockResolvedValueOnce({
+      created: [{ id: 'task-1' }, { id: 'task-2' }],
+      duplicates: []
+    })
     const { wrapper } = await setup()
     await selectFiles(wrapper, ['C:\\a.png', 'C:\\b.pdf'])
     expect(filesInputValue(wrapper)).toContain('2')
@@ -218,7 +227,7 @@ describe('DocumentRecognizeDialog', () => {
   })
 
   it('提交中按钮禁用', async () => {
-    let resolveTasks!: (value: Array<Record<string, unknown>>) => void
+    let resolveTasks!: (value: unknown) => void
     stubStore.createRecognitionTasks.mockImplementationOnce(
       () =>
         new Promise((resolve) => {
@@ -229,7 +238,7 @@ describe('DocumentRecognizeDialog', () => {
     await selectFiles(wrapper, ['C:\\a.png'])
     await wrapper.get('[data-testid="recognize-submit"]').trigger('click')
     expect(submitDisabled(wrapper)).toBe(true)
-    resolveTasks([{ id: 'task-1' }])
+    resolveTasks({ created: [{ id: 'task-1' }], duplicates: [] })
     await flushPromises()
   })
 
@@ -243,11 +252,60 @@ describe('DocumentRecognizeDialog', () => {
       'settings.documents.archive.recognizeFailed'
     )
     expect(wrapper.get('[data-testid="recognize-error"]').text()).toContain('create tasks failed')
-    stubStore.createRecognitionTasks.mockResolvedValueOnce([{ id: 'task-1' }])
+    stubStore.createRecognitionTasks.mockResolvedValueOnce({
+      created: [{ id: 'task-1' }],
+      duplicates: []
+    })
     await wrapper.get('[data-testid="recognize-submit"]').trigger('click')
     await flushPromises()
     expect(stubStore.createRecognitionTasks).toHaveBeenCalledTimes(2)
     expect(wrapper.emitted('submitted')?.[0]).toEqual([1])
     expect(wrapper.emitted('update:open')?.at(-1)).toEqual([false])
+  })
+
+  it('提交返回 duplicates 时内联提示跳过明细且不关闭弹窗', async () => {
+    stubStore.createRecognitionTasks.mockResolvedValueOnce({
+      created: [{ id: 'task-1' }],
+      duplicates: [{ fileName: 'b.pdf', existingName: 'a.pdf', path: 'C:\\b.pdf' }]
+    })
+    const { wrapper } = await setup()
+    await selectFiles(wrapper, ['C:\\a.png', 'C:\\b.pdf'])
+    await wrapper.get('[data-testid="recognize-submit"]').trigger('click')
+    await flushPromises()
+    const hint = wrapper.get('[data-testid="recognize-duplicates-hint"]')
+    expect(hint.text()).toContain('b.pdf')
+    expect(hint.text()).toContain('a.pdf')
+    expect(wrapper.emitted('update:open')).toBeUndefined()
+  })
+
+  it('全部被拦截时不发出 submitted(0)', async () => {
+    stubStore.createRecognitionTasks.mockResolvedValueOnce({
+      created: [],
+      duplicates: [{ fileName: 'b.pdf', existingName: 'a.pdf', path: 'C:\\b.pdf' }]
+    })
+    const { wrapper } = await setup()
+    await selectFiles(wrapper, ['C:\\a.png', 'C:\\b.pdf'])
+    await wrapper.get('[data-testid="recognize-submit"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.emitted('submitted')).toBeUndefined()
+    expect(wrapper.emitted('update:open')).toBeUndefined()
+    expect(wrapper.find('[data-testid="recognize-duplicates-hint"]').exists()).toBe(true)
+  })
+
+  it('重新提交时清空上一轮的重复提示', async () => {
+    stubStore.createRecognitionTasks.mockResolvedValueOnce({
+      created: [{ id: 'task-1' }],
+      duplicates: [{ fileName: 'b.pdf', existingName: 'a.pdf', path: 'C:\\b.pdf' }]
+    })
+    const { wrapper } = await setup()
+    await selectFiles(wrapper, ['C:\\a.png', 'C:\\b.pdf'])
+    await wrapper.get('[data-testid="recognize-submit"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="recognize-duplicates-hint"]').exists()).toBe(true)
+    stubStore.createRecognitionTasks.mockRejectedValueOnce(new Error('create tasks failed'))
+    await wrapper.get('[data-testid="recognize-submit"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="recognize-duplicates-hint"]').exists()).toBe(false)
+    expect(wrapper.get('[data-testid="recognize-error"]').text()).toContain('create tasks failed')
   })
 })

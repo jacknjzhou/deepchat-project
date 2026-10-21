@@ -1,10 +1,10 @@
 <p align='center'>
-<img src='./build/icon.png' width="150" height="150" alt="SRIBD办公智能体图标" />
+<img src='./build/icon.png' width="150" height="150" alt="办公智能体图标" />
 </p>
 
-<h1 align="center">SRIBD办公智能体 - 企业级 AI Agent 桌面客户端</h1>
+<h1 align="center">办公智能体 - 企业级 AI Agent 桌面客户端</h1>
 
-<p align="center">SRIBD办公智能体是一款本地优先、面向企业场景的 AI Agent 桌面客户端，基于开源项目 <a href="https://github.com/ThinkInAIXYZ/deepchat">DeepChat</a>（Apache License 2.0）构建。它围绕 Tape.systems 哲学提供丰富的 Agent 能力，支持 MCP、Skills、ACP 与 IM 远程控制，并新增了文档识别归档、简历筛选、办公自动化等一系列 SRIBD 企业增强功能。</p>
+<p align="center">办公智能体是一款本地优先、面向企业场景的 AI Agent 桌面客户端，基于开源项目 <a href="https://github.com/ThinkInAIXYZ/deepchat">DeepChat</a>（Apache License 2.0）构建。它围绕 Tape.systems 哲学提供丰富的 Agent 能力，支持 MCP、Skills、ACP 与 IM 远程控制，并新增了文档识别归档、简历筛选、办公自动化等一系列企业增强功能。</p>
 
 <p align="center">
   <a href="https://github.com/jacknjzhou/deepchat-project/stargazers"><img src="https://img.shields.io/github/stars/jacknjzhou/deepchat-project" alt="Stars Badge"/></a>
@@ -22,9 +22,9 @@
 
 - [📑 目录](#-目录)
 - [🚀 项目简介](#-项目简介)
-- [💡 为什么选择SRIBD办公智能体](#-为什么选择sribd办公智能体)
+- [💡 为什么选择办公智能体](#-为什么选择办公智能体)
 - [🔥 主要功能](#-主要功能)
-- [🏢 SRIBD 企业增强功能](#-sribd-企业增强功能)
+- [🏢 企业增强功能](#-企业增强功能)
 - [📼 Tape 与 Trace](#-tape-与-trace)
 - [🧠 Skills 支持](#-skills-支持)
 - [🧩 ACP 集成（Agent Client Protocol）](#-acp-集成agent-client-protocol)
@@ -48,22 +48,22 @@
 
 ## 🚀 项目简介
 
-SRIBD办公智能体是一款功能强大的本地优先 Agent 桌面客户端，将模型、工具、Skills、Agent Runtime、Tape 和长会话统一在一款桌面应用中。无论是云端 API 如 OpenAI、Gemini、Anthropic，还是本地部署的 Ollama 模型，SRIBD办公智能体都能提供流畅的用户体验。
+办公智能体是一款功能强大的本地优先 Agent 桌面客户端，将模型、工具、Skills、Agent Runtime、Tape 和长会话统一在一款桌面应用中。无论是云端 API 如 OpenAI、Gemini、Anthropic，还是本地部署的 Ollama 模型，办公智能体都能提供流畅的用户体验。
 
-SRIBD办公智能体的会话与 Agent 过程基于 Tape.systems 的哲学设计：把过程保留下来，让上下文、工具调用、请求与结果可恢复、可追踪、可审计。它同时提供出色的 MCP 支持、可安装 Skills、ACP Agent 集成，以及可接入 Telegram、飞书/Lark、QQBot、Discord、微信 iLink 等 IM 工具的远程控制能力。
+办公智能体的会话与 Agent 过程基于 Tape.systems 的哲学设计：把过程保留下来，让上下文、工具调用、请求与结果可恢复、可追踪、可审计。它同时提供出色的 MCP 支持、可安装 Skills、ACP Agent 集成，以及可接入 Telegram、飞书/Lark、QQBot、Discord、微信 iLink 等 IM 工具的远程控制能力。
 
-SRIBD办公智能体基于开源项目 DeepChat 构建——感谢上游社区打下的优秀基础。
+办公智能体基于开源项目 DeepChat 构建——感谢上游社区打下的优秀基础。
 
-## 💡 为什么选择SRIBD办公智能体
+## 💡 为什么选择办公智能体
 
-与其他AI工具相比，SRIBD办公智能体具有以下独特优势：
+与其他AI工具相比，办公智能体具有以下独特优势：
 
-- **本地优先 Agent 桌面客户端**：在一个本地应用里运行 SRIBD办公智能体 Agent、ACP Agent 和可远程控制的 Bot
+- **本地优先 Agent 桌面客户端**：在一个本地应用里运行 办公智能体 Agent、ACP Agent 和可远程控制的 Bot
 - **Tape.systems 哲学**：保留可恢复的会话历史，追踪请求上下文，并在复杂 Agent 任务中检查 token 预算
 - **可迁移的 Skills**：按会话安装、导入、导出和启用 Skills，覆盖代码审查、文档、前端、Office/PDF 等任务
 - **原生 ACP 集成**：将 ACP 兼容的编码/任务 Agent 作为一等“模型”使用
 - **出色的 MCP 支持**：支持 Resources、Prompts、Tools、多种传输协议、inMemory 服务和一键安装
-- **远程工作流**：支持通过 Telegram、飞书/Lark、QQBot、Discord 和微信 iLink 控制 SRIBD办公智能体会话
+- **远程工作流**：支持通过 Telegram、飞书/Lark、QQBot、Discord 和微信 iLink 控制 办公智能体会话
 - **多模型统一管理**：一个应用支持主流云端 LLM 和本地 Ollama 模型，无需在多个应用间切换
 - **注重隐私保护**：本地数据存储，支持网络代理，减少信息泄露风险
 - **开源友好**：基于 Apache License 2.0 协议，适合商业和个人使用
@@ -71,7 +71,7 @@ SRIBD办公智能体基于开源项目 DeepChat 构建——感谢上游社区�
 ## 🔥 主要功能
 
 - 🤖 **本地优先 Agent 桌面客户端**
-  - 从同一个类似模型选择器的入口选择 SRIBD办公智能体、ACP 和远程能力 Agent
+  - 从同一个类似模型选择器的入口选择 办公智能体、ACP 和远程能力 Agent
   - 支持项目目录、权限模式、工具输出和可恢复上下文，适合长时间运行任务
 - 📼 **Tape 与 Trace**
   - Session Tape 记录结构化工作历史，为恢复、续跑和未来 Agent 记忆流程打底
@@ -84,7 +84,7 @@ SRIBD办公智能体基于开源项目 DeepChat 构建——感谢上游社区�
   - 将 ACP 兼容 Agent（内置或自定义命令）作为可选“模型”使用
   - Agent 提供时，支持 ACP Workspace UI 展示结构化计划、工具调用与终端输出
 - 📡 **远程控制**
-  - 支持通过 Telegram、飞书/Lark、QQBot、Discord 和微信 iLink 控制 SRIBD办公智能体会话
+  - 支持通过 Telegram、飞书/Lark、QQBot、Discord 和微信 iLink 控制 办公智能体会话
   - 可绑定远程端点、切换模型、处理待确认交互、停止任务，并在桌面打开对应会话
 - 🌐 **多种云端LLM提供商支持**：DeepSeek、OpenAI、Moonshot/Kimi、Grok、Gemini、Anthropic等
 - 🏠 **本地模型部署支持**：
@@ -119,9 +119,9 @@ SRIBD办公智能体基于开源项目 DeepChat 构建——感谢上游社区�
   - 代码结构清晰，无论是模型供应商还是 MCP 服务都高度解耦，可以随意进行增删定制，成本极低
   - 架构合理，数据交互和UI行为分离，充分利用 Electron 的能力，拒绝简单的网页套壳，性能优异
 
-## 🏢 SRIBD 企业增强功能
+## 🏢 企业增强功能
 
-本分支以 **SRIBD Office Agent** 名义发布，在上游 DeepChat 能力之上新增以下企业级功能：
+本分支以 **Office Agent** 名义发布，在上游 DeepChat 能力之上新增以下企业级功能：
 
 - 📄 **文档识别归档**
   - 可视化提取模板编辑器：内置发票预设模板，支持自定义字段、提示词与试提取面板
@@ -140,7 +140,7 @@ SRIBD办公智能体基于开源项目 DeepChat 构建——感谢上游社区�
 - 🏢 **办公自动化插件与百度搜索**
   - 内置办公自动化 MCP 插件，集成百度网页搜索
 - 🔌 **模型接入增强**
-  - 支持通过 `DEEPCHAT_PROVIDER_DB_OFFLINE` 固定离线供应商数据库
+  - 默认使用内置离线供应商数据库（零外呼），可通过 `DEEPCHAT_PROVIDER_DB_ONLINE` 启用在线更新
   - 同一供应商支持多实例配置，会话中可选择扩展模型
 - 🌏 **内置技能中文化**
   - GPT-Image-2、PDF 图文提取、网页抓取等技能提供中文界面
@@ -149,11 +149,11 @@ SRIBD办公智能体基于开源项目 DeepChat 构建——感谢上游社区�
 
 ## 📼 Tape 与 Trace
 
-SRIBD办公智能体的 session Tape 继承 Tape.systems 的哲学，让 Agent 工作可恢复、可检查。Trace 预览可以查看请求序号、供应商/模型元数据、Tape 视图清单、包含/排除的上下文条目和 token 预算，让长会话更容易调试和续跑。
+办公智能体的 session Tape 继承 Tape.systems 的哲学，让 Agent 工作可恢复、可检查。Trace 预览可以查看请求序号、供应商/模型元数据、Tape 视图清单、包含/排除的上下文条目和 token 预算，让长会话更容易调试和续跑。
 
 ## 🧠 Skills 支持
 
-SRIBD办公智能体 Skills 是兼容标准 Agent Skills 规范的设计。一个 Skill 可以包含任务说明、参考资料、素材和可选脚本，让 Agent 在启用后更像某个领域的专门助手。
+办公智能体 Skills 是兼容标准 Agent Skills 规范的设计。一个 Skill 可以包含任务说明、参考资料、素材和可选脚本，让 Agent 在启用后更像某个领域的专门助手。
 
 你可以从文件夹、ZIP 文件或 URL 安装 Skills，也可以与 Claude Code、Codex、Cursor、Windsurf、GitHub Copilot、Kiro、Antigravity、OpenCode、Goose、Kilo Code 等兼容工具导入/导出。
 
@@ -167,7 +167,7 @@ SRIBD办公智能体 Skills 是兼容标准 Agent Skills 规范的设计。一�
 
 ## 🧩 ACP 集成（Agent Client Protocol）
 
-SRIBD办公智能体内置对 [Agent Client Protocol（ACP）](https://agentclientprotocol.com) 的支持，让你可以把外部 Agent Runtime 以原生体验接入。启用后，ACP Agent 会作为一等“模型”出现在模型选择器中，你可以直接在应用内使用编码/任务类 Agent，并配合 Workspace UI 进行交互。
+办公智能体内置对 [Agent Client Protocol（ACP）](https://agentclientprotocol.com) 的支持，让你可以把外部 Agent Runtime 以原生体验接入。启用后，ACP Agent 会作为一等“模型”出现在模型选择器中，你可以直接在应用内使用编码/任务类 Agent，并配合 Workspace UI 进行交互。
 
 快速上手：
 
@@ -179,7 +179,7 @@ ACP 生态中更多兼容 Agent/Client 参考：https://agentclientprotocol.com/
 
 ## 📡 远程控制
 
-SRIBD办公智能体可以通过聊天软件远程控制，让你离开桌面后也能继续使用同一个会话。配置入口在 **设置 → Remote**。
+办公智能体可以通过聊天软件远程控制，让你离开桌面后也能继续使用同一个会话。配置入口在 **设置 → Remote**。
 
 当前支持 Telegram、飞书/Lark、QQBot、Discord 和微信 iLink。远程端点可以绑定到一个会话，然后在远程聊天中创建新会话、列出和切换最近会话、停止生成、在桌面打开当前会话、回答待确认问题或权限请求、切换模型并查看运行状态。
 
@@ -393,7 +393,7 @@ SRIBD办公智能体可以通过聊天软件远程控制，让你离开桌面后
 
 ## 🔍 使用场景
 
-SRIBD办公智能体适用于多种AI应用场景：
+办公智能体适用于多种AI应用场景：
 
 - **日常助手**：回答问题、提供建议、辅助写作和创作
 - **开发辅助**：代码生成、调试、技术问题解答
@@ -411,11 +411,11 @@ SRIBD办公智能体适用于多种AI应用场景：
 - macOS: `.dmg`安装文件
 - Linux: `.AppImage`或`.deb`安装文件
 
-内部分发渠道由 SRIBD 团队维护，内部下载链接请联系维护者获取。
+内部分发渠道由维护团队维护，内部下载链接请联系维护者获取。
 
 ### 配置模型
 
-1. 启动SRIBD办公智能体应用
+1. 启动办公智能体应用
 2. 点击设置图标
 3. 选择"模型提供商"选项卡
 4. 添加您的API密钥或配置本地Ollama
@@ -493,7 +493,7 @@ $env:MAIN_VITE_MANAGED_CONFIG_URL='https://example.com/managed/config'; pnpm run
 
 ## 👥 社区与贡献
 
-SRIBD办公智能体由 SRIBD 团队维护，我们欢迎各种形式的贡献：
+办公智能体由维护团队维护，我们欢迎各种形式的贡献：
 
 - 🐛 [报告问题](https://github.com/jacknjzhou/deepchat-project/issues)
 - 💡 [提交功能建议](https://github.com/jacknjzhou/deepchat-project/issues)

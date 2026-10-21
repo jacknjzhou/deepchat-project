@@ -59,6 +59,35 @@ const makeRecord = (overrides = {}) => ({
 
 const notifyMock = vi.fn()
 
+const makeReimbursementConfig = () => ({
+  version: 1,
+  categories: [
+    {
+      id: 'cat-a',
+      name: '类别A',
+      requiredMaterials: [],
+      linkedTypeKeys: ['contract'],
+      customGroups: [
+        { id: 'grp-1', name: '分组1', sortOrder: 1 },
+        { id: 'grp-2', name: '分组2', sortOrder: 0 }
+      ],
+      sortOrder: 1
+    },
+    {
+      id: 'cat-b',
+      name: '类别B',
+      requiredMaterials: [],
+      linkedTypeKeys: [],
+      customGroups: [],
+      sortOrder: 0
+    }
+  ],
+  personFieldKeys: [],
+  dateFieldKeys: [],
+  amountFieldKeys: [],
+  dateGrouping: 'day'
+})
+
 const DetailDialogStub = defineComponent({
   name: 'DocumentDetailDialogStub',
   props: ['open', 'document'],
@@ -93,10 +122,12 @@ const stubStore = reactive({
     dateFrom: undefined as number | undefined,
     dateTo: undefined as number | undefined
   },
+  reimbursementConfig: null as Record<string, unknown> | null,
   loadTemplates: vi.fn(async () => {}),
   loadArchiveDocuments: vi.fn(async (_page = 1) => {}),
   loadArchiveStats: vi.fn(async () => {}),
   loadArchiveTasks: vi.fn(async () => {}),
+  loadReimbursementConfig: vi.fn(async () => {}),
   handleTaskUpdated: vi.fn(),
   createRecognitionTasks: vi.fn(),
   retryRecognitionTask: vi.fn(async () => []),
@@ -148,6 +179,7 @@ async function setup(options: { loadError?: string } = {}) {
   stubStore.archiveFilter.keyword = undefined
   stubStore.archiveFilter.dateFrom = undefined
   stubStore.archiveFilter.dateTo = undefined
+  stubStore.reimbursementConfig = null
   vi.doMock('@/stores/documents', () => ({
     useDocumentsStore: () => stubStore
   }))
@@ -182,6 +214,17 @@ async function setup(options: { loadError?: string } = {}) {
   return { wrapper }
 }
 
+// The reimbursement/group cells sit right before source/status/createdAt;
+// locate them from the row end so both tab layouts resolve.
+const reimbursementCells = (wrapper: Awaited<ReturnType<typeof setup>>['wrapper']) =>
+  wrapper.findAll('[data-testid="archive-row"]').map((row) => {
+    const tds = row.findAll('td')
+    return {
+      reimbursement: tds[tds.length - 5]?.text() ?? '',
+      group: tds[tds.length - 4]?.text() ?? ''
+    }
+  })
+
 describe('DocumentsArchivePage', () => {
   beforeEach(() => {
     notifyMock.mockClear()
@@ -189,6 +232,7 @@ describe('DocumentsArchivePage', () => {
     stubStore.loadArchiveDocuments.mockClear()
     stubStore.loadArchiveStats.mockClear()
     stubStore.loadArchiveTasks.mockClear()
+    stubStore.loadReimbursementConfig.mockClear()
     stubStore.handleTaskUpdated.mockClear()
     stubStore.createRecognitionTasks.mockClear()
     stubStore.retryRecognitionTask.mockClear()
@@ -198,8 +242,8 @@ describe('DocumentsArchivePage', () => {
   it('挂载时调用 loadArchiveDocuments 并渲染行', async () => {
     const { wrapper } = await setup()
     expect(stubStore.loadArchiveDocuments).toHaveBeenCalled()
-    expect(wrapper.text()).toContain('甲公司')
-    expect(wrapper.text()).toContain('购买方')
+    // 表格仅渲染固定列，行内容经摘要列可见
+    expect(wrapper.text()).toContain('购买方: 甲公司')
   })
 
   it('全部类型视图渲染摘要列', async () => {
@@ -208,55 +252,76 @@ describe('DocumentsArchivePage', () => {
     expect(wrapper.text()).toContain('购买方: 甲公司')
   })
 
-  it('数组/对象字段单元格渲染为可读文本并带 title', async () => {
+  it('表头渲染报销类型与分组列并在挂载时加载配置', async () => {
     const { wrapper } = await setup()
-    // setup 会重置 stub 数据，这里在挂载后注入含 array 字段的模板与档案
-    stubStore.templates = [
-      {
-        ...contractTemplate,
-        fields: [
-          ...contractTemplate.fields,
-          {
-            key: 'work_history',
-            label: '工作经历',
-            valueType: 'array',
-            required: false,
-            promptHint: null,
-            validation: null,
-            enumOptions: null,
-            order: 2
-          }
-        ]
-      }
-    ]
+    expect(wrapper.text()).toContain('settings.documents.archive.colReimbursement')
+    expect(wrapper.text()).toContain('settings.documents.archive.colGroup')
+    expect(stubStore.loadReimbursementConfig).toHaveBeenCalled()
+  })
+
+  it('报销类型列按 override/联动/未分类/无联动显示', async () => {
+    const { wrapper } = await setup()
+    stubStore.reimbursementConfig = makeReimbursementConfig()
     stubStore.archiveDocuments = [
       makeRecord({
-        fields: {
-          buyer: { value: '甲公司', uncertain: false },
-          work_history: {
-            value: [
-              {
-                company: '大众计算机股份有限公司',
-                position: '软件研发助理',
-                start: '2022-09-01',
-                end: '2023-01-01'
-              }
-            ],
-            uncertain: false
-          }
-        }
+        id: 'd-override',
+        reimbursementOverride: 'cat-a',
+        reimbursementGroupOverride: null
+      }),
+      makeRecord({ id: 'd-linked', reimbursementOverride: null, reimbursementGroupOverride: null }),
+      makeRecord({
+        id: 'd-unassigned',
+        reimbursementOverride: 'unassigned',
+        reimbursementGroupOverride: null
+      }),
+      makeRecord({
+        id: 'd-none',
+        typeKey: 'invoice',
+        reimbursementOverride: null,
+        reimbursementGroupOverride: null
       })
     ]
     await flushPromises()
-    // work_history 不是金额字段，只在类型 Tab 视图（该模板全部字段列）下渲染
-    await wrapper.get('[data-testid="archive-tab-contract"]').trigger('click')
+    const cells = reimbursementCells(wrapper)
+    expect(cells.map((cell) => cell.reimbursement)).toEqual([
+      '类别A',
+      '类别A',
+      'settings.documents.reimbursement.unassigned',
+      '—'
+    ])
+  })
+
+  it('分组列显示生效类别下的分组，陈旧或未设置降级为 —', async () => {
+    const { wrapper } = await setup()
+    stubStore.reimbursementConfig = makeReimbursementConfig()
+    stubStore.archiveDocuments = [
+      makeRecord({
+        id: 'd-g1',
+        reimbursementOverride: 'cat-a',
+        reimbursementGroupOverride: 'grp-1'
+      }),
+      makeRecord({
+        id: 'd-stale',
+        reimbursementOverride: 'cat-a',
+        reimbursementGroupOverride: 'grp-stale'
+      }),
+      makeRecord({ id: 'd-none', reimbursementOverride: 'cat-a', reimbursementGroupOverride: null })
+    ]
     await flushPromises()
-    const expected = '大众计算机股份有限公司·软件研发助理（2022-09-01~2023-01-01）'
-    expect(wrapper.text()).toContain(expected)
-    const cell = wrapper
-      .findAll('td')
-      .find((node) => node.text().includes('大众计算机股份有限公司'))
-    expect(cell?.attributes('title')).toBe(expected)
+    const cells = reimbursementCells(wrapper)
+    expect(cells.map((cell) => cell.group)).toEqual(['分组1', '—', '—'])
+    expect(cells.map((cell) => cell.reimbursement)).toEqual(['类别A', '类别A', '类别A'])
+  })
+
+  it('reimbursementConfig 为 null 时两列显示 — 不崩溃', async () => {
+    const { wrapper } = await setup()
+    stubStore.archiveDocuments = [
+      makeRecord({ reimbursementOverride: 'cat-a', reimbursementGroupOverride: 'grp-1' })
+    ]
+    await flushPromises()
+    const cells = reimbursementCells(wrapper)
+    expect(cells[0]?.reimbursement).toBe('—')
+    expect(cells[0]?.group).toBe('—')
   })
 
   it('默认日期为最近一周并加载第一页', async () => {
@@ -278,9 +343,9 @@ describe('DocumentsArchivePage', () => {
     expect(stubStore.archiveFilter.typeKey).toBe('contract')
     expect(stubStore.archiveFilter.status).toBeUndefined()
     expect(stubStore.loadArchiveDocuments).toHaveBeenCalledWith(1)
-    // 类型 Tab 下展示该模板全部字段列（不再渲染摘要列）
-    expect(wrapper.text()).toContain('购买方')
-    expect(wrapper.text()).not.toContain('settings.documents.archive.colSummary')
+    // 类型 Tab 下同样只渲染固定列（含摘要，不再有该模板字段列）
+    expect(wrapper.text()).toContain('settings.documents.archive.colSummary')
+    expect(wrapper.text()).toContain('购买方: 甲公司')
   })
 
   it('状态 chips 展示统计并可筛选', async () => {

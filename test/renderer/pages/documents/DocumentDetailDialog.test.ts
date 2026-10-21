@@ -41,6 +41,8 @@ const makeRecord = (overrides = {}) => ({
   source: 'manual',
   sessionId: null,
   status: 'draft',
+  reimbursementOverride: null,
+  reimbursementGroupOverride: null,
   createdAt: 1700000000000,
   updatedAt: 1700000100000,
   ...overrides
@@ -90,7 +92,45 @@ const stubStore = reactive({
     dataBase64: 'aGk=',
     mimeType: 'image/png',
     name: 'a.png'
-  }))
+  })),
+  reimbursementConfig: null as Record<string, unknown> | null,
+  loadReimbursementConfig: vi.fn(async (): Promise<null> => null),
+  setReimbursementOverride: vi.fn(
+    async (_id: string, _categoryId: string | null): Promise<unknown> => null
+  ),
+  setReimbursementGroupOverride: vi.fn(
+    async (_id: string, _groupId: string | null): Promise<unknown> => null
+  )
+})
+
+// cat-a 联动 contract 且带分组；cat-b 无分组且不联动任何 typeKey
+const makeReimbursementConfig = () => ({
+  version: 1,
+  categories: [
+    {
+      id: 'cat-a',
+      name: '类别A',
+      requiredMaterials: [],
+      linkedTypeKeys: ['contract'],
+      customGroups: [
+        { id: 'grp-1', name: '分组1', sortOrder: 1 },
+        { id: 'grp-2', name: '分组2', sortOrder: 0 }
+      ],
+      sortOrder: 1
+    },
+    {
+      id: 'cat-b',
+      name: '类别B',
+      requiredMaterials: [],
+      linkedTypeKeys: [],
+      customGroups: [],
+      sortOrder: 0
+    }
+  ],
+  personFieldKeys: [],
+  dateFieldKeys: [],
+  amountFieldKeys: [],
+  dateGrouping: 'day'
 })
 
 const inputStub = defineComponent({
@@ -219,6 +259,10 @@ describe('DocumentDetailDialog', () => {
     stubStore.removeArchiveDocument.mockClear()
     stubStore.recognizeDocument.mockClear()
     stubStore.previewArchiveFile.mockClear()
+    stubStore.setReimbursementOverride.mockClear()
+    stubStore.setReimbursementGroupOverride.mockClear()
+    stubStore.loadReimbursementConfig.mockClear()
+    stubStore.reimbursementConfig = null
   })
 
   it('按快照渲染字段控件并显示值', async () => {
@@ -359,8 +403,10 @@ describe('DocumentDetailDialog', () => {
 
   it('重新识别前手动切换类别后按新模板提取', async () => {
     const { wrapper, record } = await setup()
-    // SelectTrigger is stubbed as a fragment, target the native select element.
-    await wrapper.get('select').setValue('tpl-2')
+    // SelectTrigger is stubbed as a fragment; the 手工分组 selects render
+    // before the footer, so target the footer template select as the last one.
+    const selects = wrapper.findAll('select')
+    await selects[selects.length - 1].setValue('tpl-2')
     await wrapper.get('[data-testid="detail-re-recognize"]').trigger('click')
     await flushPromises()
     expect(stubStore.recognizeDocument).toHaveBeenCalledWith({
@@ -426,5 +472,221 @@ describe('DocumentDetailDialog', () => {
       URL.createObjectURL = originalCreate
       URL.revokeObjectURL = originalRevoke
     }
+  })
+
+  describe('手工分组', () => {
+    const categorySelectOf = (wrapper: Awaited<ReturnType<typeof setup>>['wrapper']) =>
+      wrapper.get('[data-testid="detail-reimbursement-category"]').find('select')
+    const groupSelectOf = (wrapper: Awaited<ReturnType<typeof setup>>['wrapper']) =>
+      wrapper.get('[data-testid="detail-reimbursement-group"]').find('select')
+
+    it('报销类型与分组初值来自单据快照', async () => {
+      stubStore.reimbursementConfig = makeReimbursementConfig()
+      const auto = await setup()
+      // 未设置 override 时按 typeKey 联动回显生效类别
+      expect(categorySelectOf(auto.wrapper).element.value).toBe('cat-a')
+      expect(groupSelectOf(auto.wrapper).element.value).toBe('__none__')
+
+      const unmapped = await setup({ typeKey: 'receipt' })
+      expect(categorySelectOf(unmapped.wrapper).element.value).toBe('__auto__')
+
+      const overridden = await setup({
+        reimbursementOverride: 'cat-a',
+        reimbursementGroupOverride: 'grp-1'
+      })
+      expect(categorySelectOf(overridden.wrapper).element.value).toBe('cat-a')
+      expect(groupSelectOf(overridden.wrapper).element.value).toBe('grp-1')
+
+      const unassigned = await setup({ reimbursementOverride: 'unassigned' })
+      expect(categorySelectOf(unassigned.wrapper).element.value).toBe('__unassigned__')
+    })
+
+    it('切到源文件页后手工分组仍固定显示', async () => {
+      stubStore.reimbursementConfig = makeReimbursementConfig()
+      const { wrapper } = await setup()
+      await wrapper.get('[data-testid="detail-tab-files"]').trigger('click')
+      expect(wrapper.get('[data-testid="detail-manual-grouping"]').exists()).toBe(true)
+      expect(categorySelectOf(wrapper).exists()).toBe(true)
+      expect(groupSelectOf(wrapper).exists()).toBe(true)
+    })
+
+    it('类别变更按映射调用 store 并以返回记录复位分组', async () => {
+      stubStore.reimbursementConfig = makeReimbursementConfig()
+      stubStore.setReimbursementOverride.mockResolvedValueOnce(
+        makeRecord({ reimbursementOverride: 'cat-a', reimbursementGroupOverride: null })
+      )
+      const { wrapper } = await setup({
+        reimbursementOverride: null,
+        reimbursementGroupOverride: 'grp-1'
+      })
+      const category = categorySelectOf(wrapper)
+      await category.setValue('cat-a')
+      await flushPromises()
+      expect(stubStore.setReimbursementOverride).toHaveBeenCalledWith('d1', 'cat-a')
+      expect(category.element.value).toBe('cat-a')
+      // 后端写类别时无条件清空分组覆盖，分组值以返回记录为准复位
+      expect(groupSelectOf(wrapper).element.value).toBe('__none__')
+    })
+
+    it('__auto__ 映射为 null、__unassigned__ 映射为 unassigned', async () => {
+      stubStore.reimbursementConfig = makeReimbursementConfig()
+      const echoOverride = async (_id: string, categoryId: string | null) =>
+        makeRecord({ reimbursementOverride: categoryId })
+      stubStore.setReimbursementOverride.mockImplementationOnce(echoOverride)
+      stubStore.setReimbursementOverride.mockImplementationOnce(echoOverride)
+      const { wrapper } = await setup({ reimbursementOverride: 'cat-a' })
+      const category = categorySelectOf(wrapper)
+      await category.setValue('__auto__')
+      await flushPromises()
+      expect(stubStore.setReimbursementOverride).toHaveBeenCalledWith('d1', null)
+      // 清除 override 后按 typeKey 联动回显生效类别
+      expect(category.element.value).toBe('cat-a')
+      await category.setValue('__unassigned__')
+      await flushPromises()
+      expect(stubStore.setReimbursementOverride).toHaveBeenCalledWith('d1', 'unassigned')
+      expect(category.element.value).toBe('__unassigned__')
+    })
+
+    it('分组变更按映射调用 store 并以返回记录为准', async () => {
+      stubStore.reimbursementConfig = makeReimbursementConfig()
+      stubStore.setReimbursementGroupOverride.mockResolvedValueOnce(
+        makeRecord({ reimbursementOverride: 'cat-a', reimbursementGroupOverride: 'grp-2' })
+      )
+      const { wrapper } = await setup({ reimbursementOverride: 'cat-a' })
+      const group = groupSelectOf(wrapper)
+      await group.setValue('grp-1')
+      await flushPromises()
+      expect(stubStore.setReimbursementGroupOverride).toHaveBeenCalledWith('d1', 'grp-1')
+      expect(group.element.value).toBe('grp-2')
+    })
+
+    it('__none__ 映射为 null 清除分组', async () => {
+      stubStore.reimbursementConfig = makeReimbursementConfig()
+      stubStore.setReimbursementGroupOverride.mockResolvedValueOnce(
+        makeRecord({ reimbursementOverride: 'cat-a', reimbursementGroupOverride: null })
+      )
+      const { wrapper } = await setup({
+        reimbursementOverride: 'cat-a',
+        reimbursementGroupOverride: 'grp-1'
+      })
+      const group = groupSelectOf(wrapper)
+      await group.setValue('__none__')
+      await flushPromises()
+      expect(stubStore.setReimbursementGroupOverride).toHaveBeenCalledWith('d1', null)
+      expect(group.element.value).toBe('__none__')
+    })
+
+    it('类别设置失败时提示错误并回退两个选择值', async () => {
+      stubStore.reimbursementConfig = makeReimbursementConfig()
+      stubStore.setReimbursementOverride.mockRejectedValueOnce(new Error('boom'))
+      const { wrapper } = await setup({
+        reimbursementOverride: null,
+        reimbursementGroupOverride: 'grp-1'
+      })
+      const category = categorySelectOf(wrapper)
+      await category.setValue('cat-a')
+      await flushPromises()
+      expect(wrapper.get('[data-testid="detail-feedback"]').text()).toContain(
+        'settings.documents.archive.reimbursementSetFailed'
+      )
+      // 回退到变更前的显示值（未设置 override 时为联动解析的类别）
+      expect(category.element.value).toBe('cat-a')
+      expect(groupSelectOf(wrapper).element.value).toBe('grp-1')
+    })
+
+    it('分组设置失败时提示错误并回退选择值', async () => {
+      stubStore.reimbursementConfig = makeReimbursementConfig()
+      stubStore.setReimbursementGroupOverride.mockRejectedValueOnce(new Error('boom'))
+      const { wrapper } = await setup({ reimbursementOverride: 'cat-a' })
+      const group = groupSelectOf(wrapper)
+      await group.setValue('grp-1')
+      await flushPromises()
+      expect(wrapper.get('[data-testid="detail-feedback"]').text()).toContain(
+        'settings.documents.archive.reimbursementSetFailed'
+      )
+      expect(group.element.value).toBe('__none__')
+    })
+
+    it('config 为 null 时两个下拉禁用', async () => {
+      stubStore.reimbursementConfig = null
+      const { wrapper } = await setup()
+      expect(categorySelectOf(wrapper).element.disabled).toBe(true)
+      expect(groupSelectOf(wrapper).element.disabled).toBe(true)
+    })
+
+    it('弹窗打开且 config 为 null 时加载报销配置', async () => {
+      stubStore.reimbursementConfig = null
+      await setup()
+      expect(stubStore.loadReimbursementConfig).toHaveBeenCalledTimes(1)
+    })
+
+    it('config 已加载时打开弹窗不重复加载', async () => {
+      stubStore.reimbursementConfig = makeReimbursementConfig()
+      await setup()
+      expect(stubStore.loadReimbursementConfig).not.toHaveBeenCalled()
+    })
+
+    it('陈旧覆盖 id 按联动回退显示类别并显示分组', async () => {
+      stubStore.reimbursementConfig = makeReimbursementConfig()
+      const { wrapper } = await setup({ reimbursementOverride: 'cat-stale' })
+      // 失效 override 归档语义回退 typeKey 联动解析
+      expect(categorySelectOf(wrapper).element.value).toBe('cat-a')
+      const group = groupSelectOf(wrapper)
+      expect(group.findAll('option').map((option) => option.element.value)).toEqual([
+        '__none__',
+        'grp-2',
+        'grp-1'
+      ])
+      expect(group.element.disabled).toBe(false)
+    })
+
+    it('强制未分类或 auto 未联动类别时分组禁用', async () => {
+      stubStore.reimbursementConfig = makeReimbursementConfig()
+      const unassigned = await setup({ reimbursementOverride: 'unassigned' })
+      expect(categorySelectOf(unassigned.wrapper).element.disabled).toBe(false)
+      expect(groupSelectOf(unassigned.wrapper).element.disabled).toBe(true)
+      expect(
+        unassigned.wrapper.get('[data-testid="detail-reimbursement-group"]').attributes('title')
+      ).toBeUndefined()
+
+      const unmapped = await setup({ typeKey: 'receipt' })
+      expect(groupSelectOf(unmapped.wrapper).element.disabled).toBe(true)
+    })
+
+    it('生效类别无分组时分组禁用并显示 noGroupsHint', async () => {
+      stubStore.reimbursementConfig = makeReimbursementConfig()
+      const { wrapper } = await setup({ reimbursementOverride: 'cat-b' })
+      const group = groupSelectOf(wrapper)
+      expect(group.element.disabled).toBe(true)
+      expect(wrapper.get('[data-testid="detail-reimbursement-group"]').attributes('title')).toBe(
+        'settings.documents.reimbursement.noGroupsHint'
+      )
+    })
+
+    it('写库 pending 期间两个下拉禁用', async () => {
+      stubStore.reimbursementConfig = makeReimbursementConfig()
+      let resolveSet!: (value: unknown) => void
+      stubStore.setReimbursementGroupOverride.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveSet = resolve
+          })
+      )
+      const { wrapper } = await setup({ reimbursementOverride: 'cat-a' })
+      const category = categorySelectOf(wrapper)
+      const group = groupSelectOf(wrapper)
+      await group.setValue('grp-1')
+      // 乐观更新本地值，两个下拉在写库期间禁用
+      expect(group.element.value).toBe('grp-1')
+      expect(category.element.disabled).toBe(true)
+      expect(group.element.disabled).toBe(true)
+      resolveSet(
+        makeRecord({ reimbursementOverride: 'cat-a', reimbursementGroupOverride: 'grp-1' })
+      )
+      await flushPromises()
+      expect(category.element.disabled).toBe(false)
+      expect(group.element.disabled).toBe(false)
+      expect(group.element.value).toBe('grp-1')
+    })
   })
 })
