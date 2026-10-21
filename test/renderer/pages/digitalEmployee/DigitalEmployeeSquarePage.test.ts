@@ -40,6 +40,11 @@ const stubStore = reactive({
 
 const pushMock = vi.fn(async () => {})
 
+const mcpStubStore = {
+  tools: [] as Array<{ function: { name: string } }>,
+  loadTools: vi.fn(async () => {})
+}
+
 const inputStub = defineComponent({
   name: 'InputStub',
   props: ['modelValue'],
@@ -84,6 +89,9 @@ async function setup() {
   vi.doMock('@/stores/digitalEmployeeStore', () => ({
     useDigitalEmployeeStore: () => stubStore
   }))
+  vi.doMock('@/stores/mcp', () => ({
+    useMcpStore: () => mcpStubStore
+  }))
   vi.doMock('vue-i18n', () => ({
     useI18n: () => ({
       t: (key: string, params?: Record<string, unknown>) =>
@@ -124,6 +132,8 @@ describe('DigitalEmployeeSquarePage', () => {
     stubStore.toggleFavorite.mockClear()
     stubStore.startConversation.mockClear()
     stubStore.startConversation.mockResolvedValue('')
+    mcpStubStore.loadTools.mockClear()
+    mcpStubStore.tools = []
     pushMock.mockClear()
   })
 
@@ -192,13 +202,14 @@ describe('DigitalEmployeeSquarePage', () => {
     expect(dialog.text()).toContain('digitalEmployee.sectionSkills')
     expect(dialog.text()).toContain('digitalEmployee.sectionTools')
     expect(dialog.text()).toContain('digitalEmployee.sectionKnowledge')
-    // 点开始按钮 → 调用 store 并跳转 chat 路由
+    // 点开始按钮 → 先加载 MCP 工具列表，再调用 store 并跳转 chat 路由
     await wrapper.get('[data-testid="digital-employee-start-button"]').trigger('click')
     await flushPromises()
-    expect(stubStore.startConversation).toHaveBeenCalledWith(
-      stubStore.employees[0],
-      { openingQuestion: undefined }
-    )
+    expect(mcpStubStore.loadTools).toHaveBeenCalledTimes(1)
+    expect(stubStore.startConversation).toHaveBeenCalledWith(stubStore.employees[0], {
+      openingQuestion: undefined,
+      availableMcpToolNames: []
+    })
     expect(pushMock).toHaveBeenCalledWith({ name: 'chat' })
     // 弹层关闭
     expect(wrapper.find('[data-testid="digital-employee-detail-dialog"]').exists()).toBe(false)

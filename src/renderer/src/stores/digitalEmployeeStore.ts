@@ -2,7 +2,48 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { createConfigClient } from '../../api/ConfigClient'
 import { createDigitalEmployeeClient } from '../../api/DigitalEmployeeClient'
+import { createKnowledgeClient } from '../../api/KnowledgeClient'
+import { useSessionStore } from './ui/session'
 import type { ConfigEntryKey, DigitalEmployee } from '@shared/contracts/routes'
+import type { QueryResult } from '@shared/types/knowledge'
+
+export interface DigitalEmployeeConversationOptions {
+  openingQuestion?: string
+  availableMcpToolNames?: string[]
+  knowledgeSnippets?: string
+}
+
+export const DIGITAL_EMPLOYEE_AGENT_ID = 'deepchat'
+
+export function buildDigitalEmployeeSystemPrompt(
+  employee: DigitalEmployee,
+  options?: Pick<DigitalEmployeeConversationOptions, 'knowledgeSnippets'>
+): string {
+  const sections: string[] = [employee.systemPrompt]
+  for (const sop of employee.sops) {
+    sections.push(`## SOP：${sop.title}\n${sop.content}`)
+  }
+  if (employee.greeting) {
+    sections.push(`## 开场白\n你的第一句回复必须以以下问候开始：\n${employee.greeting}`)
+  }
+  if (options?.knowledgeSnippets) {
+    sections.push(`## 参考资料\n${options.knowledgeSnippets}`)
+  }
+  return sections.join('\n\n')
+}
+
+export function buildDisabledAgentTools(
+  employee: DigitalEmployee,
+  availableMcpToolNames: string[] | undefined
+): string[] | undefined {
+  // 白名单为空 = 不做收敛；无法获取可用工具列表时同样放弃收敛（宁多勿缺）
+  if (employee.tools.length === 0 || !availableMcpToolNames || availableMcpToolNames.length === 0) {
+    return undefined
+  }
+  const whitelist = new Set(employee.tools)
+  const disabled = availableMcpToolNames.filter((name) => !whitelist.has(name))
+  return disabled.length > 0 ? disabled : undefined
+}
 
 const FAVORITES_KEY = 'digitalEmployee.favorites'
 const SESSION_BINDINGS_KEY = 'digitalEmployee.sessionBindings'
@@ -10,6 +51,8 @@ const SESSION_BINDINGS_KEY = 'digitalEmployee.sessionBindings'
 export const useDigitalEmployeeStore = defineStore('digitalEmployee', () => {
   const client = createDigitalEmployeeClient()
   const configClient = createConfigClient()
+  const knowledgeClient = createKnowledgeClient()
+  const sessionStore = useSessionStore()
 
   const employees = ref<DigitalEmployee[]>([])
   const loading = ref(false)
@@ -90,15 +133,47 @@ export const useDigitalEmployeeStore = defineStore('digitalEmployee', () => {
     await Promise.all([fetchEmployees(), loadPersistedState()])
   }
 
-  // 临时实现（Task 3 占位）：不创建会话，直接返回空 sessionId，页面侧只跳转 chat 路由。
-  // Task 4 将替换为真正的会话创建 + bindSession 逻辑。
   async function startConversation(
     employee: DigitalEmployee,
-    options?: { openingQuestion?: string }
+    options?: DigitalEmployeeConversationOptions
   ): Promise<string> {
-    void employee
-    void options
-    return ''
+    setSelectedDigitalEmployee(employee.id)
+
+    let knowledgeSnippets: string | undefined
+    const openingQuestion = options?.openingQuestion?.trim()
+    if (employee.knowledgeBaseIds.length > 0 && openingQuestion) {
+      const snippetLists = await Promise.all(
+        employee.knowledgeBaseIds.map((knowledgeBaseId) =>
+          knowledgeClient
+            .similarityQuery(knowledgeBaseId, openingQuestion)
+            .catch(() => [] as QueryResult[])
+        )
+      )
+      const lines = snippetLists
+        .flat()
+        .slice(0, 5)
+        // QueryResult 的正文在 metadata.content（src/shared/types/knowledge.ts）
+        .map((result, index) => `[${index + 1}] ${result.metadata?.content ?? ''}`.trim())
+        .filter((line) => line.length > 4)
+      if (lines.length > 0) {
+        knowledgeSnippets = lines.join('\n')
+      }
+    }
+
+    const disabledAgentTools = buildDisabledAgentTools(employee, options?.availableMcpToolNames)
+
+    const result = await sessionStore.createSession({
+      agentId: DIGITAL_EMPLOYEE_AGENT_ID,
+      message: openingQuestion ?? '',
+      ...(employee.skillIds.length > 0 ? { activeSkills: [...employee.skillIds] } : {}),
+      ...(disabledAgentTools ? { disabledAgentTools } : {}),
+      generationSettings: {
+        systemPrompt: buildDigitalEmployeeSystemPrompt(employee, { knowledgeSnippets })
+      }
+    })
+
+    await bindSession(result.session.id, employee.id)
+    return result.session.id
   }
 
   return {

@@ -162,6 +162,7 @@ import { DcButton } from '@dc-ui/components/button'
 import { DcEmpty } from '@dc-ui/components/empty'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@shadcn/components/ui/dialog'
 import { useDigitalEmployeeStore } from '@/stores/digitalEmployeeStore'
+import { useMcpStore } from '@/stores/mcp'
 import type { DigitalEmployee } from '@shared/contracts/routes'
 
 const TABS = [
@@ -176,6 +177,7 @@ type TabKey = (typeof TABS)[number]['key']
 const { t } = useI18n()
 const router = useRouter()
 const store = useDigitalEmployeeStore()
+const mcpStore = useMcpStore()
 const activeTab = ref<TabKey>('all')
 const searchQuery = ref('')
 const activeCapabilityFilter = ref<string | null>(null)
@@ -223,8 +225,11 @@ const openDetail = (employee: DigitalEmployee) => {
 const startConversation = async () => {
   const employee = detailEmployee.value
   if (!employee) return
+  // 取可用 MCP 工具名供白名单收敛；loadTools 内部已兜错，失败时列表为空 → 放弃收敛（宁多勿缺）
+  await mcpStore.loadTools()
   const sessionId = await store.startConversation(employee, {
-    openingQuestion: openingQuestion.value.trim() || undefined
+    openingQuestion: openingQuestion.value.trim() || undefined,
+    availableMcpToolNames: mcpStore.tools.map((tool) => tool.function.name)
   })
   detailEmployee.value = null
   await router.push({ name: 'chat' })

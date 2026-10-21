@@ -96,6 +96,14 @@
           </div>
         </div>
       </div>
+      <span
+        v-if="boundDigitalEmployee"
+        data-testid="chat-digital-employee-badge"
+        class="inline-flex shrink-0 items-center gap-1 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary"
+      >
+        <Icon icon="lucide:users-round" class="size-3" />
+        {{ boundDigitalEmployee.name }}
+      </span>
     </div>
 
     <div class="flex items-center gap-1 no-drag">
@@ -250,6 +258,7 @@ import {
 import { DcDropdownActionItem } from '@dc-ui/components/dropdown-action-item'
 import AgentTransferDialog from '@/components/agent/AgentTransferDialog.vue'
 import { useAgentStore } from '@/stores/ui/agent'
+import { useDigitalEmployeeStore } from '@/stores/digitalEmployeeStore'
 import { useSessionStore } from '@/stores/ui/session'
 import { useSidepanelStore } from '@/stores/ui/sidepanel'
 import { useSidebarStore } from '@/stores/ui/sidebar'
@@ -271,6 +280,7 @@ const attrs = useAttrs()
 const { t } = useI18n()
 const sessionStore = useSessionStore()
 const agentStore = useAgentStore()
+const digitalEmployeeStore = useDigitalEmployeeStore()
 const sidepanelStore = useSidepanelStore()
 const sidebarStore = useSidebarStore()
 const uiSettingsStore = useUiSettingsStore()
@@ -297,6 +307,9 @@ const currentSession = computed(
   () => sessionStore.sessions.find((session) => session.id === props.sessionId) ?? null
 )
 const currentTitle = computed(() => currentSession.value?.title ?? props.title)
+const boundDigitalEmployee = computed(() =>
+  digitalEmployeeStore.employeeForSession(props.sessionId)
+)
 const showCollapsedNewChatSpacer = computed(
   () => sidebarStore.collapsed && Boolean(sessionStore.newConversationTargetAgentId)
 )
