@@ -2884,6 +2884,7 @@
       "manageCategories": "Administrer kategorier",
       "export": "Eksportér pakke",
       "exportDone": "Eksporterede {count} filer til {path}",
+      "exportDoneWithInvoices": "Eksport fuldført: {count} filer, {invoices} fakturaoversigter, {path}",
       "exportWithCount": "Eksportér ({count})",
       "materialsTitle": "Krævede bilag",
       "materialCount": "{count} indsamlet",

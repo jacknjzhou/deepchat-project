@@ -2884,6 +2884,7 @@
       "manageCategories": "Управление категориями",
       "export": "Экспортировать пакет",
       "exportDone": "Экспортировано файлов: {count} в {path}",
+      "exportDoneWithInvoices": "Экспорт завершён: файлов — {count}, сводок счетов — {invoices}, {path}",
       "exportWithCount": "Экспортировать ({count})",
       "materialsTitle": "Необходимые документы",
       "materialCount": "Собрано: {count}",

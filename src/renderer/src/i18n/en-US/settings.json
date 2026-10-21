@@ -377,6 +377,7 @@
       "manageCategories": "Manage categories",
       "export": "Export package",
       "exportDone": "Exported {count} files to {path}",
+      "exportDoneWithInvoices": "Export complete: {count} files, {invoices} invoice summaries, {path}",
       "exportWithCount": "Export ({count})",
       "materialsTitle": "Required materials",
       "materialCount": "{count} collected",

@@ -377,6 +377,7 @@
       "manageCategories": "Quản lý danh mục",
       "export": "Xuất gói hồ sơ",
       "exportDone": "Đã xuất {count} tệp tới {path}",
+      "exportDoneWithInvoices": "Xuất hoàn tất: {count} tệp, {invoices} bản tóm tắt hóa đơn, {path}",
       "exportWithCount": "Xuất ({count})",
       "materialsTitle": "Tài liệu cần thiết",
       "materialCount": "Đã có {count} tệp",

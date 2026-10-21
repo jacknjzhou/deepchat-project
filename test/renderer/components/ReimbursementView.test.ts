@@ -196,6 +196,33 @@ describe('ReimbursementView', () => {
     )
   })
 
+  it('mentions invoice summaries in the export toast when present', async () => {
+    const { pinia, store } = setupStore()
+    vi.spyOn(store, 'loadReimbursementTree').mockResolvedValue()
+    vi.spyOn(store, 'exportReimbursementPackage').mockResolvedValue({
+      canceled: false,
+      path: 'D:\\pkg',
+      exportedFiles: 3,
+      invoiceSummaries: ['会议费/重点会议/发票汇总.xlsx']
+    })
+    const notifySpy = vi
+      .spyOn(rendererNotificationManager, 'notify')
+      .mockImplementation(() => undefined)
+    const wrapper = mountView(pinia)
+    await flushPromises()
+    await wrapper.get('[data-testid="reimbursement-export"]').trigger('click')
+    await flushPromises()
+    expect(notifySpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: 'success',
+        code: 'documents.reimbursement.exportSuccess',
+        // The global i18n mock renders keys as-is, so asserting the new key
+        // proves the invoice-summary branch produced the toast title.
+        title: expect.stringContaining('exportDoneWithInvoices')
+      })
+    )
+  })
+
   it('mirrors the owning category on overridden selects', async () => {
     const { pinia, store } = setupStore()
     vi.spyOn(store, 'loadReimbursementTree').mockResolvedValue()

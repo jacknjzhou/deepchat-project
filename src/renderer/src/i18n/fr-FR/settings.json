@@ -2884,6 +2884,7 @@
       "manageCategories": "Gérer les catégories",
       "export": "Exporter le dossier",
       "exportDone": "{count} fichiers exportés vers {path}",
+      "exportDoneWithInvoices": "Export terminé : {count} fichiers, {invoices} récapitulatifs de factures, {path}",
       "exportWithCount": "Exporter ({count})",
       "materialsTitle": "Pièces requises",
       "materialCount": "{count} collectées",

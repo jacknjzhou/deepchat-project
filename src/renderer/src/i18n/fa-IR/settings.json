@@ -2884,6 +2884,7 @@
       "manageCategories": "مدیریت دسته‌ها",
       "export": "خروجی بسته",
       "exportDone": "{count} فایل به {path} خروجی گرفته شد",
+      "exportDoneWithInvoices": "خروجی کامل شد: {count} فایل، {invoices} خلاصه فاکتور، {path}",
       "exportWithCount": "خروجی ({count})",
       "materialsTitle": "مدارک موردنیاز",
       "materialCount": "{count} مورد گردآوری شده",

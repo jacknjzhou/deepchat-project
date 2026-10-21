@@ -2884,6 +2884,7 @@
       "manageCategories": "카테고리 관리",
       "export": "정리 패키지 내보내기",
       "exportDone": "파일 {count}개를 {path}에 내보냈습니다",
+      "exportDoneWithInvoices": "내보내기 완료: 파일 {count}개, 인보이스 요약 {invoices}개, {path}",
       "exportWithCount": "내보내기 ({count})",
       "materialsTitle": "필요 서류 대조",
       "materialCount": "{count}개 수집됨",
