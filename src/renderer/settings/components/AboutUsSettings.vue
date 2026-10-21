@@ -12,63 +12,6 @@
         <p class="px-8 text-sm text-muted-foreground">
           {{ t('about.description') }}
         </p>
-        <div class="flex gap-2">
-          <a
-            class="flex items-center text-xs text-muted-foreground hover:text-primary"
-            href="https://deepchat.thinkinai.xyz/"
-            target="_blank"
-            rel="noopener noreferrer"
-            @click.prevent="openExternalLink('https://deepchat.thinkinai.xyz/')"
-          >
-            <Icon icon="lucide:globe" class="mr-1 h-3 w-3" />
-            {{ t('about.website') }}</a
-          >
-          <a
-            class="flex items-center text-xs text-muted-foreground hover:text-primary"
-            href="https://github.com/ThinkInAIXYZ/deepchat"
-            target="_blank"
-            rel="noopener noreferrer"
-            @click.prevent="openExternalLink('https://github.com/ThinkInAIXYZ/deepchat')"
-          >
-            <Icon icon="lucide:github" class="mr-1 h-3 w-3" />
-            GitHub
-          </a>
-          <a
-            class="flex items-center text-xs text-muted-foreground hover:text-primary"
-            href="https://github.com/ThinkInAIXYZ/deepchat/blob/dev/LICENSE"
-            target="_blank"
-            rel="noopener noreferrer"
-            @click.prevent="
-              openExternalLink('https://github.com/ThinkInAIXYZ/deepchat/blob/dev/LICENSE')
-            "
-          >
-            <Icon icon="lucide:scale" class="mr-1 h-3 w-3" />
-            Apache License 2.0
-          </a>
-        </div>
-      </div>
-
-      <div class="mt-4 flex items-center gap-4">
-        <label class="text-sm font-medium">{{ t('about.updateChannel') }}:</label>
-        <div class="min-w-32 max-w-48">
-          <Select
-            :model-value="updateChannel"
-            :disabled="!updateChannelReady || updateChannelSaving"
-            @update:model-value="setUpdateChannel"
-          >
-            <SelectTrigger>
-              <SelectValue :placeholder="t('about.updateChannel')" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="stable">
-                {{ t('about.stableChannel') }}
-              </SelectItem>
-              <SelectItem value="beta">
-                {{ t('about.betaChannel') }}
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
       </div>
 
       <div
@@ -170,82 +113,6 @@
           {{ t('update.autoUpdateFailed') }}
         </p>
       </div>
-
-      <div class="mt-2 flex flex-wrap justify-center gap-2">
-        <DcButton
-          variant="outline"
-          size="sm"
-          class="mb-2 text-xs"
-          @click="openExternalLink('https://github.com/ThinkInAIXYZ/deepchat/discussions/1226')"
-        >
-          <Icon icon="lucide:message-square" class="mr-1 h-3 w-3" />
-          {{ t('about.feedbackButton') }}
-        </DcButton>
-
-        <DcButton variant="outline" size="sm" class="mb-2 text-xs" @click="openDisclaimerDialog">
-          <Icon icon="lucide:info" class="mr-1 h-3 w-3" />
-          {{ t('about.disclaimerButton') }}
-        </DcButton>
-
-        <DcButton
-          v-if="upgrade.showManualDownloadOptions"
-          variant="outline"
-          size="sm"
-          class="mb-2 text-xs"
-          @click="handleManualDownload('github')"
-        >
-          {{ t('update.githubDownload') }}
-        </DcButton>
-
-        <DcButton
-          v-if="upgrade.showManualDownloadOptions"
-          variant="outline"
-          size="sm"
-          class="mb-2 text-xs"
-          @click="handleManualDownload('official')"
-        >
-          {{ t('update.officialDownload') }}
-        </DcButton>
-
-        <DcButton
-          v-if="!upgrade.showManualDownloadOptions"
-          variant="outline"
-          size="sm"
-          class="mb-2 text-xs"
-          :disabled="
-            upgrade.isChecking ||
-            upgrade.isDownloading ||
-            upgrade.isRestarting ||
-            updateCheckPending
-          "
-          @click="handlePrimaryAction"
-        >
-          <Spinner
-            v-if="upgrade.isChecking || upgrade.isDownloading"
-            class="mr-1 size-3"
-            data-icon="inline-start"
-          />
-          <Icon v-else icon="lucide:refresh-cw" class="mr-1 size-3" data-icon="inline-start" />
-          <span v-if="upgrade.isDownloading">
-            <template v-if="upgrade.updateProgress">
-              {{ t('update.downloading') }}: {{ Math.round(upgrade.updateProgress.percent) }}%
-            </template>
-            <template v-else>{{ t('update.downloading') }}</template>
-          </span>
-          <span v-else-if="upgrade.isReadyToInstall">
-            {{ upgrade.isRestarting ? t('update.restarting') : t('update.installNow') }}
-          </span>
-          <span v-else-if="upgrade.updateState === 'available'">
-            {{ t('update.installUpdate') }}
-          </span>
-          <span v-else-if="upgrade.isChecking">
-            {{ t('settings.about.checking') }}
-          </span>
-          <span v-else>
-            {{ t('about.checkUpdateButton') }}
-          </span>
-        </DcButton>
-      </div>
     </div>
 
     <UpdateTaskCheckDialog
@@ -255,58 +122,17 @@
       @update-after-tasks="upgrade.scheduleUpdateAfterTasks()"
     />
   </SettingsPageShell>
-
-  <Dialog :open="isDisclaimerOpen" @update:open="isDisclaimerOpen = $event">
-    <DialogContent>
-      <DialogHeader>
-        <DialogTitle>{{ t('about.disclaimerTitle') }}</DialogTitle>
-        <DialogDescription>
-          <NodeRenderer
-            class="max-h-[300px] overflow-y-auto"
-            :isDark="themeStore.isDark"
-            :content="t('searchDisclaimer')"
-            :typewriter="false"
-            :final="true"
-            :codeBlockStream="false"
-          ></NodeRenderer>
-        </DialogDescription>
-      </DialogHeader>
-      <DialogFooter>
-        <DcButton @click="isDisclaimerOpen = false">{{ t('common.close') }}</DcButton>
-      </DialogFooter>
-    </DialogContent>
-  </Dialog>
 </template>
 
 <script setup lang="ts">
-import { createBrowserClient } from '@api/BrowserClient'
-import { createConfigClient } from '@api/ConfigClient'
 import { createDeviceClient } from '@api/DeviceClient'
 import { createWindowClient } from '@api/WindowClient'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { DcButton } from '@dc-ui/components/button'
 import { Icon } from '@iconify/vue'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from '@shadcn/components/ui/dialog'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from '@shadcn/components/ui/select'
-import { Spinner } from '@shadcn/components/ui/spinner'
 import NodeRenderer from 'markstream-vue'
 import { useUpgradeStore } from '@/stores/upgrade'
 import { useLanguageStore } from '@/stores/language'
-import type { AcceptableValue } from 'reka-ui'
 import type { WindowsAccountInfo } from '@shared/types/device'
 import { useThemeStore } from '@/stores/theme'
 import { useRoute } from 'vue-router'
@@ -318,17 +144,11 @@ const { t } = useI18n()
 const themeStore = useThemeStore()
 const languageStore = useLanguageStore()
 const route = useRoute()
-const browserClient = createBrowserClient()
-const configClient = createConfigClient()
 const deviceClient = createDeviceClient()
 const windowClient = createWindowClient()
 const appVersion = ref('')
 const upgrade = useUpgradeStore()
-const updateChannel = ref('stable')
-const updateChannelReady = ref(false)
-const isDisclaimerOpen = ref(false)
 let cleanupCheckForUpdates: (() => void) | null = null
-const updateChannelSaving = ref(false)
 const updateCheckPending = ref(false)
 const winAccount = ref<WindowsAccountInfo | null>(null)
 const copiedKey = ref<string | null>(null)
@@ -396,59 +216,6 @@ const formattedUpdateVersion = computed(() => {
   return version.startsWith('v') ? version : `v${version}`
 })
 
-const openDisclaimerDialog = () => {
-  isDisclaimerOpen.value = true
-}
-
-const setUpdateChannel = async (channel: AcceptableValue) => {
-  if (
-    (channel !== 'stable' && channel !== 'beta') ||
-    updateChannelSaving.value ||
-    channel === updateChannel.value
-  ) {
-    return
-  }
-
-  updateChannelSaving.value = true
-  try {
-    updateChannel.value = await configClient.setUpdateChannel(channel)
-    notifyRenderer({
-      kind: 'success',
-      code: 'settings.about.updateChannelSaved',
-      title: t('common.saved')
-    })
-  } catch (error) {
-    console.error('[AboutUsSettings] Failed to update channel', error)
-    notifyRenderer({
-      kind: 'error',
-      code: 'settings.about.updateChannelSaveFailed',
-      title: t('common.error.operationFailed')
-    })
-  } finally {
-    updateChannelSaving.value = false
-  }
-}
-
-const loadUpdateChannel = async () => {
-  if (updateChannelSaving.value) return
-
-  updateChannelSaving.value = true
-  try {
-    updateChannel.value = await configClient.getUpdateChannel()
-    updateChannelReady.value = true
-  } catch (error) {
-    updateChannelReady.value = false
-    console.error('[AboutUsSettings] Failed to load update channel', error)
-    notifyRenderer({
-      kind: 'error',
-      code: 'settings.about.updateChannelLoadFailed',
-      title: t('common.error.operationFailed')
-    })
-  } finally {
-    updateChannelSaving.value = false
-  }
-}
-
 const handlePrimaryAction = async () => {
   if (
     upgrade.isChecking ||
@@ -495,10 +262,6 @@ const handlePrimaryAction = async () => {
   }
 }
 
-const handleManualDownload = async (type: 'github' | 'official') => {
-  await upgrade.handleUpdate(type)
-}
-
 const handleExternalCheckUpdate = async () => {
   if (upgrade.isChecking || upgrade.isDownloading || upgrade.isRestarting) {
     return
@@ -517,12 +280,6 @@ const syncUpdateStatus = async () => {
   } catch (error) {
     console.error('[AboutUsSettings] Failed to synchronize update status', error)
   }
-}
-
-const openExternalLink = (url: string) => {
-  void browserClient.openExternal(url).catch(() => {
-    window.open(url, '_blank', 'noopener,noreferrer')
-  })
 }
 
 const loadAppVersion = async () => {
@@ -547,7 +304,6 @@ onMounted(() => {
     void handleExternalCheckUpdate()
   })
   void loadAppVersion()
-  void loadUpdateChannel()
   void syncUpdateStatus()
   void loadWinAccount()
   deviceClient

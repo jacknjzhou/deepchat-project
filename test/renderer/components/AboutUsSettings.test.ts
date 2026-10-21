@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
-import { notifyRenderer } from '@renderer-notifications/rendererNotificationPort'
 
 vi.mock('@renderer-notifications/rendererNotificationPort', () => ({
   notifyRenderer: vi.fn()
@@ -34,18 +33,11 @@ const route = {
   name: 'settings-about'
 }
 
-const configClientMock = vi.hoisted(() => ({
-  getUpdateChannel: vi.fn(),
-  setUpdateChannel: vi.fn()
-}))
 const deviceClientMock = vi.hoisted(() => ({
   getAppVersion: vi.fn(),
   getManagedConfigEndpoint: vi.fn(),
   getDeviceInfo: vi.fn(),
   copyText: vi.fn()
-}))
-const browserClientMock = vi.hoisted(() => ({
-  openExternal: vi.fn()
 }))
 const windowClientMock = vi.hoisted(() => ({
   startGuidedOnboarding: vi.fn(),
@@ -76,14 +68,8 @@ const upgradeStoreMock = {
   handleUpdate: vi.fn().mockResolvedValue(undefined)
 }
 
-vi.mock('@api/ConfigClient', () => ({
-  createConfigClient: () => configClientMock
-}))
 vi.mock('@api/DeviceClient', () => ({
   createDeviceClient: () => deviceClientMock
-}))
-vi.mock('@api/BrowserClient', () => ({
-  createBrowserClient: () => browserClientMock
 }))
 vi.mock('@api/WindowClient', () => ({
   createWindowClient: () => windowClientMock
@@ -149,18 +135,13 @@ vi.mock('vue-router', () => ({
 describe('AboutUsSettings', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    configClientMock.getUpdateChannel.mockReset()
-    configClientMock.setUpdateChannel.mockReset()
     deviceClientMock.getAppVersion.mockReset()
     deviceClientMock.getManagedConfigEndpoint.mockReset()
     deviceClientMock.getDeviceInfo.mockReset()
     deviceClientMock.copyText.mockReset()
-    browserClientMock.openExternal.mockReset()
     upgradeStoreMock.refreshStatus.mockReset()
     upgradeStoreMock.checkUpdate.mockReset()
     upgradeStoreMock.handleUpdate.mockReset()
-    configClientMock.getUpdateChannel.mockResolvedValue('stable')
-    configClientMock.setUpdateChannel.mockResolvedValue('stable')
     deviceClientMock.getAppVersion.mockResolvedValue('1.0.0-beta.3')
     deviceClientMock.getManagedConfigEndpoint.mockResolvedValue({
       endpoint: '',
@@ -168,7 +149,6 @@ describe('AboutUsSettings', () => {
     })
     deviceClientMock.getDeviceInfo.mockResolvedValue({ winAccount: null })
     deviceClientMock.copyText.mockResolvedValue(undefined)
-    browserClientMock.openExternal.mockResolvedValue(undefined)
     upgradeStoreMock.refreshStatus.mockResolvedValue('error')
     upgradeStoreMock.checkUpdate.mockResolvedValue('error')
     upgradeStoreMock.handleUpdate.mockResolvedValue(undefined)
@@ -199,45 +179,6 @@ describe('AboutUsSettings', () => {
         openExternal: vi.fn()
       }
     })
-  })
-
-  it('renders fallback download actions in the bottom action row', async () => {
-    const { default: AboutUsSettings } =
-      await import('../../../src/renderer/settings/components/AboutUsSettings.vue')
-
-    const wrapper = mount(AboutUsSettings, {
-      global: {
-        stubs: {
-          DcButton: buttonStub,
-          Icon: true,
-          Dialog: passthroughStub('Dialog'),
-          DialogContent: passthroughStub('DialogContent'),
-          DialogDescription: passthroughStub('DialogDescription'),
-          DialogFooter: passthroughStub('DialogFooter'),
-          DialogHeader: passthroughStub('DialogHeader'),
-          DialogTitle: passthroughStub('DialogTitle'),
-          Select: selectStub,
-          SelectContent: passthroughStub('SelectContent'),
-          SelectItem: passthroughStub('SelectItem'),
-          SelectTrigger: passthroughStub('SelectTrigger'),
-          SelectValue: passthroughStub('SelectValue'),
-          NodeRenderer: passthroughStub('NodeRenderer')
-        }
-      }
-    })
-
-    await flushPromises()
-
-    const buttons = wrapper.findAll('button').map((button) => button.text())
-    expect(buttons).toEqual(['意见反馈', '免责声明', 'GitHub 下载', '官网下载', '关闭'])
-    expect(wrapper.text()).not.toContain('检查更新')
-
-    const officialButton = wrapper.findAll('button').find((button) => button.text() === '官网下载')
-    expect(officialButton).toBeTruthy()
-
-    await officialButton!.trigger('click')
-
-    expect(upgradeStoreMock.handleUpdate).toHaveBeenCalledWith('official')
   })
 
   it('subscribes to tray update checks before initial presenter calls resolve', async () => {
@@ -327,101 +268,6 @@ describe('AboutUsSettings', () => {
 
     expect(upgradeStoreMock.handleUpdate).not.toHaveBeenCalled()
     expect(upgradeStoreMock.checkUpdate).not.toHaveBeenCalled()
-
-    wrapper.unmount()
-  })
-
-  it('shows a confirmation toast when no update is available', async () => {
-    upgradeStoreMock.showManualDownloadOptions = false
-    upgradeStoreMock.updateError = null
-    upgradeStoreMock.updateState = 'idle'
-    upgradeStoreMock.checkUpdate.mockResolvedValueOnce('not-available')
-
-    const { default: AboutUsSettings } =
-      await import('../../../src/renderer/settings/components/AboutUsSettings.vue')
-
-    const wrapper = mount(AboutUsSettings, {
-      global: {
-        stubs: {
-          DcButton: buttonStub,
-          Icon: true,
-          Dialog: passthroughStub('Dialog'),
-          DialogContent: passthroughStub('DialogContent'),
-          DialogDescription: passthroughStub('DialogDescription'),
-          DialogFooter: passthroughStub('DialogFooter'),
-          DialogHeader: passthroughStub('DialogHeader'),
-          DialogTitle: passthroughStub('DialogTitle'),
-          Select: selectStub,
-          SelectContent: passthroughStub('SelectContent'),
-          SelectItem: passthroughStub('SelectItem'),
-          SelectTrigger: passthroughStub('SelectTrigger'),
-          SelectValue: passthroughStub('SelectValue'),
-          NodeRenderer: passthroughStub('NodeRenderer')
-        }
-      }
-    })
-
-    await flushPromises()
-    const checkButton = wrapper.findAll('button').find((button) => button.text() === '检查更新')
-    expect(checkButton).toBeTruthy()
-
-    await checkButton!.trigger('click')
-    await flushPromises()
-
-    expect(upgradeStoreMock.checkUpdate).toHaveBeenCalledWith(false)
-    expect(notifyRenderer).toHaveBeenCalledWith(
-      expect.objectContaining({
-        kind: 'success',
-        code: 'settings.about.alreadyUpToDate',
-        title: 'update.alreadyUpToDate'
-      })
-    )
-
-    wrapper.unmount()
-  })
-
-  it('keeps the committed update channel when persistence fails', async () => {
-    configClientMock.setUpdateChannel.mockRejectedValueOnce(new Error('disk unavailable'))
-
-    const { default: AboutUsSettings } =
-      await import('../../../src/renderer/settings/components/AboutUsSettings.vue')
-
-    const wrapper = mount(AboutUsSettings, {
-      global: {
-        stubs: {
-          DcButton: buttonStub,
-          Icon: true,
-          Dialog: passthroughStub('Dialog'),
-          DialogContent: passthroughStub('DialogContent'),
-          DialogDescription: passthroughStub('DialogDescription'),
-          DialogFooter: passthroughStub('DialogFooter'),
-          DialogHeader: passthroughStub('DialogHeader'),
-          DialogTitle: passthroughStub('DialogTitle'),
-          Select: selectStub,
-          SelectContent: passthroughStub('SelectContent'),
-          SelectItem: passthroughStub('SelectItem'),
-          SelectTrigger: passthroughStub('SelectTrigger'),
-          SelectValue: passthroughStub('SelectValue'),
-          NodeRenderer: passthroughStub('NodeRenderer')
-        }
-      }
-    })
-
-    await flushPromises()
-    const select = wrapper.getComponent(selectStub)
-    select.vm.$emit('update:modelValue', 'beta')
-    await flushPromises()
-
-    expect(configClientMock.setUpdateChannel).toHaveBeenCalledWith('beta')
-    expect(select.props('modelValue')).toBe('stable')
-    expect(notifyRenderer).toHaveBeenCalledWith(
-      expect.objectContaining({
-        kind: 'error',
-        code: 'settings.about.updateChannelSaveFailed',
-        title: 'common.error.operationFailed'
-      })
-    )
-    expect(wrapper.text()).not.toContain('disk unavailable')
 
     wrapper.unmount()
   })
