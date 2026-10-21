@@ -224,6 +224,8 @@ import { backfillDocumentHashes, backfillTaskRelativePaths } from '@/documents/d
 import { sha256File } from '@/documents/fileHash'
 import { DocumentsRepository } from '@/documents/repository'
 import { createDocumentsRoutes, type DocumentsDedupeSubmit } from '@/documents/routes'
+import { createDigitalEmployeeRoutes } from '@/digital-employee/routes'
+import { MockDigitalEmployeeProvider } from '@/digital-employee/provider'
 import { RecognitionTaskManager } from '@/documents/taskManager'
 import { seedPresetTemplates } from '@/documents/seed'
 import { ResumeScreeningDatabase } from '@/resumeScreening/data/database'
@@ -3290,6 +3292,7 @@ export async function createMainProcessControl(dependencies: {
       undefined, // reimbursementDeps 走默认值（dialog.showOpenDialog）
       documentsDedupeSubmit
     )
+    const digitalEmployeeRoutes = createDigitalEmployeeRoutes(new MockDigitalEmployeeProvider())
     // Resume interrupted recognition tasks from the previous run.
     void recognitionTaskManager.resumePending()
     // Auto watch: periodically scan the configured directory and submit new files for recognition.
@@ -3716,6 +3719,7 @@ export async function createMainProcessControl(dependencies: {
         remoteRoutes,
         schedulerRoutes,
         documentsRoutes,
+        digitalEmployeeRoutes,
         resumeScreeningRoutes,
         memoryRoutes,
         desktopRoutes,
