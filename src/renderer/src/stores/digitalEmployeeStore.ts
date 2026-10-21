@@ -192,7 +192,9 @@ export const useDigitalEmployeeStore = defineStore('digitalEmployee', () => {
       }
     })
 
-    await bindSession(result.session.id, employee.id)
+    // 绑定仅用于会话徽标等装饰性展示：会话已建立且导航已发生，持久化失败
+    // 按 best-effort 降级（保留内存绑定），不得让已建立的会话流程失败
+    await bindSession(result.session.id, employee.id).catch(() => undefined)
     return result.session.id
   }
 

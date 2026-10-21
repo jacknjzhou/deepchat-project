@@ -15,5 +15,6 @@
   "sectionTools": "Allowed tools",
   "sectionKnowledge": "Knowledge bases",
   "openingQuestionPlaceholder": "(Optional) your first question",
-  "startConversation": "Start conversation"
+  "startConversation": "Start conversation",
+  "startConversationFailed": "会話の開始に失敗しました。後でもう一度お試しください"
 }

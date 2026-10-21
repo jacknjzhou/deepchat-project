@@ -140,8 +140,17 @@
           </section>
         </div>
         <div class="space-y-2">
+          <p v-if="startError" data-testid="digital-employee-start-error" class="text-sm text-destructive">
+            {{ t('digitalEmployee.startConversationFailed') }}
+          </p>
           <Input v-model="openingQuestion" type="text" data-testid="digital-employee-opening-question" :placeholder="t('digitalEmployee.openingQuestionPlaceholder')" />
-          <DcButton class="w-full" data-testid="digital-employee-start-button" @click="startConversation">
+          <DcButton
+            class="w-full"
+            data-testid="digital-employee-start-button"
+            :disabled="startingConversation"
+            :loading="startingConversation"
+            @click="startConversation"
+          >
             {{ t('digitalEmployee.startConversation') }}
           </DcButton>
         </div>
@@ -183,6 +192,8 @@ const searchQuery = ref('')
 const activeCapabilityFilter = ref<string | null>(null)
 const detailEmployee = ref<DigitalEmployee | null>(null)
 const openingQuestion = ref('')
+const startingConversation = ref(false)
+const startError = ref(false)
 
 const matchesSearch = (employee: DigitalEmployee) => {
   const query = searchQuery.value.trim().toLowerCase()
@@ -224,16 +235,27 @@ const openDetail = (employee: DigitalEmployee) => {
 
 const startConversation = async () => {
   const employee = detailEmployee.value
-  if (!employee) return
-  // 取可用 MCP 工具名供白名单收敛；loadTools 内部已兜错，失败时列表为空 → 放弃收敛（宁多勿缺）
-  await mcpStore.loadTools()
-  const sessionId = await store.startConversation(employee, {
-    openingQuestion: openingQuestion.value.trim() || undefined,
-    availableMcpToolNames: mcpStore.tools.map((tool) => tool.function.name)
-  })
-  detailEmployee.value = null
-  await router.push({ name: 'chat' })
-  void sessionId
+  // 忙碌中禁止重复点击，避免重复创建会话
+  if (!employee || startingConversation.value) return
+  startingConversation.value = true
+  startError.value = false
+  try {
+    // 取可用 MCP 工具名供白名单收敛；loadTools 内部已兜错，失败时列表为空 → 放弃收敛（宁多勿缺）
+    await mcpStore.loadTools()
+    const sessionId = await store.startConversation(employee, {
+      openingQuestion: openingQuestion.value.trim() || undefined,
+      availableMcpToolNames: mcpStore.tools.map((tool) => tool.function.name)
+    })
+    detailEmployee.value = null
+    await router.push({ name: 'chat' })
+    void sessionId
+  } catch (error) {
+    console.error('[DigitalEmployeeSquarePage] startConversation failed', error)
+    // 失败保持弹层打开，让用户可以重试
+    startError.value = true
+  } finally {
+    startingConversation.value = false
+  }
 }
 
 onMounted(() => {

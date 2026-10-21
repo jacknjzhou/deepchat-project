@@ -15,5 +15,6 @@
   "sectionTools": "Allowed tools",
   "sectionKnowledge": "Knowledge bases",
   "openingQuestionPlaceholder": "(Optional) your first question",
-  "startConversation": "Start conversation"
+  "startConversation": "Start conversation",
+  "startConversationFailed": "Không thể bắt đầu cuộc trò chuyện. Vui lòng thử lại sau"
 }

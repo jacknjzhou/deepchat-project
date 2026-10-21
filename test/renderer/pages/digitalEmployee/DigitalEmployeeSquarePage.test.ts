@@ -61,7 +61,7 @@ const inputStub = defineComponent({
 
 const dcButtonStub = defineComponent({
   name: 'DcButtonStub',
-  props: ['variant', 'size', 'disabled'],
+  props: ['variant', 'size', 'disabled', 'loading'],
   template: '<button :disabled="disabled"><slot /></button>'
 })
 
@@ -212,6 +212,40 @@ describe('DigitalEmployeeSquarePage', () => {
     })
     expect(pushMock).toHaveBeenCalledWith({ name: 'chat' })
     // 弹层关闭
+    expect(wrapper.find('[data-testid="digital-employee-detail-dialog"]').exists()).toBe(false)
+  })
+
+  it('start failure keeps dialog open, shows error, and disables button while busy', async () => {
+    const { wrapper } = await setup()
+    await wrapper.get('[data-testid="digital-employee-card-emp-1"]').trigger('click')
+    await flushPromises()
+    // 受控 promise：模拟 startConversation 长时间挂起后失败
+    let rejectFn!: (error: Error) => void
+    stubStore.startConversation.mockImplementation(
+      () => new Promise((_resolve, reject) => { rejectFn = reject })
+    )
+    const startButton = wrapper.get('[data-testid="digital-employee-start-button"]')
+    await startButton.trigger('click')
+    await flushPromises()
+    expect(stubStore.startConversation).toHaveBeenCalledTimes(1)
+    // 忙碌中：按钮禁用（防双击重复建会话）
+    expect(startButton.attributes('disabled')).toBeDefined()
+    // 忙碌中的第二次点击被忽略
+    await startButton.trigger('click')
+    expect(stubStore.startConversation).toHaveBeenCalledTimes(1)
+    rejectFn(new Error('boom'))
+    await flushPromises()
+    // 失败后：弹层保持打开、展示错误反馈、忙碌态清除（按钮恢复可用）
+    expect(wrapper.find('[data-testid="digital-employee-detail-dialog"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="digital-employee-start-error"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('digitalEmployee.startConversationFailed')
+    expect(wrapper.get('[data-testid="digital-employee-start-button"]').attributes('disabled')).toBeUndefined()
+    expect(pushMock).not.toHaveBeenCalled()
+    // 错误恢复后可再次点击
+    stubStore.startConversation.mockResolvedValue('session-1')
+    await wrapper.get('[data-testid="digital-employee-start-button"]').trigger('click')
+    await flushPromises()
+    expect(pushMock).toHaveBeenCalledWith({ name: 'chat' })
     expect(wrapper.find('[data-testid="digital-employee-detail-dialog"]').exists()).toBe(false)
   })
 })

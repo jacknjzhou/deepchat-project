@@ -16,6 +16,11 @@ const digitalEmployeeClientMock = vi.hoisted(() => ({
   list: vi.fn()
 }))
 
+const configClientMock = vi.hoisted(() => ({
+  getSetting: vi.fn(),
+  setSetting: vi.fn()
+}))
+
 vi.mock('../../../src/renderer/src/stores/ui/session', () => ({
   useSessionStore: () => sessionStoreMock
 }))
@@ -37,10 +42,7 @@ vi.mock('../../../src/renderer/api/DigitalEmployeeClient', () => ({
 }))
 
 vi.mock('../../../src/renderer/api/ConfigClient', () => ({
-  createConfigClient: () => ({
-    getSetting: vi.fn().mockResolvedValue(null),
-    setSetting: vi.fn().mockResolvedValue(undefined)
-  })
+  createConfigClient: () => configClientMock
 }))
 
 const makeEmployee = (id: string): DigitalEmployee => ({
@@ -76,6 +78,8 @@ describe('digitalEmployeeStore', () => {
     ])
     digitalEmployeeClientMock.list.mockReset()
     mockEmployees()
+    configClientMock.getSetting.mockReset().mockResolvedValue(null)
+    configClientMock.setSetting.mockReset().mockResolvedValue(undefined)
   })
 
   it('ensureLoaded fetches the client only once across repeated invocations', async () => {
@@ -160,6 +164,19 @@ describe('digitalEmployeeStore', () => {
     expect(createInput.generationSettings.systemPrompt).toContain('[1] 片段A')
     expect(createInput.generationSettings.systemPrompt).toContain('你好，我是财务助手')
     expect(knowledgeClientMock.similarityQuery).toHaveBeenCalledWith('kb-1', '帮我查报销进度')
+    expect(store.employeeForSession('session-9')?.id).toBe(employee.id)
+  })
+
+  it('startConversation resolves sessionId even when bindSession persistence rejects', async () => {
+    const store = useDigitalEmployeeStore()
+    await store.fetchEmployees()
+    const employee = store.employees[0]
+    // 持久化失败一次：绑定是徽标级的装饰性数据，不得让已建立的会话流程失败
+    configClientMock.setSetting.mockRejectedValueOnce(new Error('persist boom'))
+    await expect(store.startConversation(employee, { openingQuestion: '帮我查报销进度' })).resolves.toBe(
+      'session-9'
+    )
+    // 内存中的绑定仍按 best-effort 记录
     expect(store.employeeForSession('session-9')?.id).toBe(employee.id)
   })
 })

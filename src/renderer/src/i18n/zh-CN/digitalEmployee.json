@@ -15,5 +15,6 @@
   "sectionTools": "工具白名单",
   "sectionKnowledge": "知识库",
   "openingQuestionPlaceholder": "（可选）输入你的第一个问题",
-  "startConversation": "开始对话"
+  "startConversation": "开始对话",
+  "startConversationFailed": "开始对话失败，请稍后重试"
 }
