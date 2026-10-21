@@ -55,14 +55,15 @@
         <Skeleton v-for="i in 8" :key="i" class="h-36 rounded-xl" />
       </div>
 
+      <!-- team Tab 只显示下方占位空态，不显示「没有找到数字员工」 -->
       <DcEmpty
-        v-else-if="visibleEmployees.length === 0"
+        v-else-if="activeTab !== 'team' && visibleEmployees.length === 0"
         icon="lucide:users-round"
         :title="t('digitalEmployee.emptyTitle')"
         :description="t('digitalEmployee.emptyDescription')"
       />
 
-      <div v-else class="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-4">
+      <div v-else-if="activeTab !== 'team'" class="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-4">
         <button
           v-for="employee in visibleEmployees"
           :key="employee.id"
@@ -78,7 +79,17 @@
             <div class="min-w-0">
               <div class="truncate text-sm font-medium">{{ employee.name }} <span class="text-xs text-muted-foreground">@{{ employee.role }}</span></div>
             </div>
-            <Icon icon="lucide:star" class="ml-auto size-4 shrink-0" :class="store.favorites.includes(employee.id) ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground/40'" />
+            <span
+              role="button"
+              tabindex="0"
+              class="ml-auto shrink-0 cursor-pointer transition-colors"
+              :class="store.favorites.includes(employee.id) ? 'text-amber-400 hover:opacity-80' : 'text-muted-foreground/40 hover:text-amber-400'"
+              :data-testid="`digital-employee-favorite-${employee.id}`"
+              @click.stop="store.toggleFavorite(employee.id)"
+              @keydown.enter.stop="store.toggleFavorite(employee.id)"
+            >
+              <Icon icon="lucide:star" class="size-4" :class="store.favorites.includes(employee.id) ? 'fill-amber-400' : ''" />
+            </span>
           </div>
           <p class="line-clamp-2 text-xs text-muted-foreground">{{ employee.description }}</p>
           <div class="flex flex-wrap gap-1">

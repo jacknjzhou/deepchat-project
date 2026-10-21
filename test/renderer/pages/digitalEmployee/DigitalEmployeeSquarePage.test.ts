@@ -34,6 +34,7 @@ const stubStore = reactive({
     return this.employees.filter((employee) => employee.enabled)
   },
   loadInitialData: vi.fn(async () => {}),
+  toggleFavorite: vi.fn(async () => {}),
   startConversation: vi.fn(async () => '')
 })
 
@@ -120,6 +121,7 @@ async function setup() {
 describe('DigitalEmployeeSquarePage', () => {
   beforeEach(() => {
     stubStore.loadInitialData.mockClear()
+    stubStore.toggleFavorite.mockClear()
     stubStore.startConversation.mockClear()
     stubStore.startConversation.mockResolvedValue('')
     pushMock.mockClear()
@@ -160,6 +162,23 @@ describe('DigitalEmployeeSquarePage', () => {
     await wrapper.get('[data-testid="digital-employee-tab-team"]').trigger('click')
     await flushPromises()
     expect(wrapper.text()).toContain('digitalEmployee.teamComingSoon')
+    // team tab 不应同时出现「没有找到数字员工」空态
+    expect(wrapper.text()).not.toContain('digitalEmployee.emptyTitle')
+  })
+
+  it('favorite star toggles favorite without opening detail dialog', async () => {
+    const { wrapper } = await setup()
+    // 未收藏卡片（emp-2）的星标：点击调用 toggleFavorite 且不冒泡打开详情弹层
+    await wrapper.get('[data-testid="digital-employee-favorite-emp-2"]').trigger('click')
+    await flushPromises()
+    expect(stubStore.toggleFavorite).toHaveBeenCalledTimes(1)
+    expect(stubStore.toggleFavorite).toHaveBeenCalledWith('emp-2')
+    expect(wrapper.find('[data-testid="digital-employee-detail-dialog"]').exists()).toBe(false)
+    // 已收藏卡片（emp-1）的星标同样只切换收藏
+    await wrapper.get('[data-testid="digital-employee-favorite-emp-1"]').trigger('click')
+    await flushPromises()
+    expect(stubStore.toggleFavorite).toHaveBeenLastCalledWith('emp-1')
+    expect(wrapper.find('[data-testid="digital-employee-detail-dialog"]').exists()).toBe(false)
   })
 
   it('detail dialog lists the four capability sections and navigates to chat on start', async () => {
