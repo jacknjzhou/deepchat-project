@@ -212,6 +212,17 @@
             </button>
 
             <button
+              data-testid="app-digital-employees-button"
+              type="button"
+              class="flex h-9 w-full items-center gap-3 rounded-lg px-2 text-left text-sm transition-colors hover:bg-accent/60"
+              :class="digitalEmployeesRouteActive ? 'bg-accent/70 text-foreground' : 'text-foreground'"
+              @click="openDigitalEmployees"
+            >
+              <Icon icon="lucide:users-round" class="size-4 shrink-0 text-muted-foreground" />
+              <span class="min-w-0 flex-1 truncate">{{ t('routes.digitalEmployees') }}</span>
+            </button>
+
+            <button
               data-testid="app-resume-screening-button"
               type="button"
               class="flex h-9 w-full items-center gap-3 rounded-lg px-2 text-left text-sm transition-colors hover:bg-accent/60"
@@ -829,6 +840,9 @@ const pluginsRouteActive = computed(() =>
   String(router?.currentRoute?.value?.name ?? '').startsWith('plugins')
 )
 const documentsRouteActive = computed(() => router?.currentRoute?.value?.name === 'documents')
+const digitalEmployeesRouteActive = computed(
+  () => router?.currentRoute?.value?.name === 'digital-employees'
+)
 const resumeScreeningRouteActive = computed(
   () => router?.currentRoute?.value?.name === 'resume-screening'
 )
@@ -1047,6 +1061,10 @@ const openPlugins = () => {
 
 const openDocuments = () => {
   void router?.push({ name: 'documents' })
+}
+
+const openDigitalEmployees = () => {
+  void router?.push({ name: 'digital-employees' })
 }
 
 const openResumeScreening = () => {

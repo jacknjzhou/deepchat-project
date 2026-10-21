@@ -1,0 +1,19 @@
+{
+  "tabAll": "所有员工",
+  "tabMine": "我的数字员工",
+  "tabTeam": "团队对话",
+  "tabSquare": "数字员工广场",
+  "searchPlaceholder": "搜索姓名、角色或能力",
+  "emptyTitle": "没有找到数字员工",
+  "emptyDescription": "调整搜索条件或稍后再试",
+  "teamComingSoon": "团队对话即将上线",
+  "countSops": "SOP {count}",
+  "countSkills": "技能 {count}",
+  "countTools": "工具 {count}",
+  "sectionSops": "SOP 文档",
+  "sectionSkills": "技能",
+  "sectionTools": "工具白名单",
+  "sectionKnowledge": "知识库",
+  "openingQuestionPlaceholder": "（可选）输入你的第一个问题",
+  "startConversation": "开始对话"
+}

@@ -90,6 +90,17 @@ export const useDigitalEmployeeStore = defineStore('digitalEmployee', () => {
     await Promise.all([fetchEmployees(), loadPersistedState()])
   }
 
+  // 临时实现（Task 3 占位）：不创建会话，直接返回空 sessionId，页面侧只跳转 chat 路由。
+  // Task 4 将替换为真正的会话创建 + bindSession 逻辑。
+  async function startConversation(
+    employee: DigitalEmployee,
+    options?: { openingQuestion?: string }
+  ): Promise<string> {
+    void employee
+    void options
+    return ''
+  }
+
   return {
     employees,
     loading,
@@ -104,6 +115,7 @@ export const useDigitalEmployeeStore = defineStore('digitalEmployee', () => {
     setSelectedDigitalEmployee,
     toggleFavorite,
     bindSession,
-    employeeForSession
+    employeeForSession,
+    startConversation
   }
 })

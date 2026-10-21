@@ -99,6 +99,15 @@ const router = createRouter({
       }
     },
     {
+      path: '/digital-employees',
+      name: 'digital-employees',
+      component: () => import('@/pages/digitalEmployee/DigitalEmployeeSquarePage.vue'),
+      meta: {
+        titleKey: 'routes.digitalEmployees',
+        icon: 'lucide:users-round'
+      }
+    },
+    {
       path: '/resume-screening',
       name: 'resume-screening',
       component: () => import('@/pages/resumeScreening/ResumeScreeningPage.vue'),

@@ -1,0 +1,19 @@
+{
+  "tabAll": "All",
+  "tabMine": "My Employees",
+  "tabTeam": "Team Chat",
+  "tabSquare": "Square",
+  "searchPlaceholder": "Search by name, role or capability",
+  "emptyTitle": "No digital employees found",
+  "emptyDescription": "Adjust your search or try again later",
+  "teamComingSoon": "Team chat is coming soon",
+  "countSops": "SOP {count}",
+  "countSkills": "Skills {count}",
+  "countTools": "Tools {count}",
+  "sectionSops": "SOPs",
+  "sectionSkills": "Skills",
+  "sectionTools": "Allowed tools",
+  "sectionKnowledge": "Knowledge bases",
+  "openingQuestionPlaceholder": "(Optional) your first question",
+  "startConversation": "Start conversation"
+}

@@ -21,6 +21,7 @@ import tapeInspector from './tapeInspector.json'
 import plan from './plan.json'
 import resumeScreening from './resumeScreening.json'
 import documents from './documents.json'
+import digitalEmployee from './digitalEmployee.json'
 // 单独的顶层键
 const others = {
   Silicon: '矽基流動',
@@ -59,5 +60,7 @@ export default {
   plan,
   resumeScreening,
   documents,
+
+  digitalEmployee,
   ...others
 }
