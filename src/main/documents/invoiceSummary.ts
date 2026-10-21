@@ -150,5 +150,6 @@ export function serializeInvoiceWorkbook(rows: InvoiceRow[]): Uint8Array {
   const book = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(book, sheet, '发票汇总')
   const out = XLSX.write(book, { type: 'array', bookType: 'xlsx' })
-  return out as Uint8Array
+  // SheetJS returns an ArrayBuffer for type=array; convert it before fs.writeFile.
+  return new Uint8Array(out)
 }

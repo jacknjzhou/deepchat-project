@@ -472,11 +472,8 @@ export const useDocumentsStore = defineStore('documents', () => {
     reimbursementIsLoading.value = true
     reimbursementLoadError.value = null
     try {
-      const result = await client.reimbursementTree({
-        status: archiveFilter.status,
-        dateFrom: archiveFilter.dateFrom,
-        dateTo: archiveFilter.dateTo
-      })
+      // File groups must remain independent from the document-list filters.
+      const result = await client.reimbursementTree({})
       if (seq !== reimbursementLoadSeq) {
         return
       }
@@ -526,12 +523,9 @@ export const useDocumentsStore = defineStore('documents', () => {
     selection?: { categoryId: string; groupIds: string[] },
     client: DocumentsClient = defaultClient
   ) {
-    return client.reimbursementExport({
-      status: archiveFilter.status,
-      dateFrom: archiveFilter.dateFrom,
-      dateTo: archiveFilter.dateTo,
-      ...(selection ? { categoryId: selection.categoryId, groupIds: selection.groupIds } : {})
-    })
+    return client.reimbursementExport(
+      selection ? { categoryId: selection.categoryId, groupIds: selection.groupIds } : {}
+    )
   }
 
   return {

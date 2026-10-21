@@ -119,10 +119,16 @@ describe('formatDateRangeToMs', () => {
 })
 
 describe('buildDefaultDateRangeTexts', () => {
-  it('builds default last-week date range texts', () => {
+  it('builds the default trailing one-month date range texts', () => {
     const { from, to } = buildDefaultDateRangeTexts(new Date('2026-09-23T10:00:00'))
-    expect(from).toBe('2026-09-16')
+    expect(from).toBe('2026-08-23')
     expect(to).toBe('2026-09-23')
+  })
+
+  it('uses calendar month semantics at month-end boundaries', () => {
+    const { from, to } = buildDefaultDateRangeTexts(new Date(2026, 2, 31, 10, 0, 0))
+    expect(from).toBe('2026-02-28')
+    expect(to).toBe('2026-03-31')
   })
 })
 

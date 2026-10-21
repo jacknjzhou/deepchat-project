@@ -133,8 +133,8 @@ describe('serializeInvoiceWorkbook', () => {
     })
   }
 
-  it('writes header, numbered data rows and a totals row', () => {
-    const grid = readSheet([
+  it('returns writable Uint8Array data and writes header, numbered data rows and a totals row', () => {
+    const rows = [
       buildInvoiceRow({
         entry: makeEntry(),
         document: makeDocument({
@@ -155,7 +155,11 @@ describe('serializeInvoiceWorkbook', () => {
         }),
         fileRelPaths: ['2026-09/b.pdf']
       })
-    ])
+    ]
+    const serialized = serializeInvoiceWorkbook(rows)
+    expect(serialized).toBeInstanceOf(Uint8Array)
+    expect(() => Buffer.from(serialized)).not.toThrow()
+    const grid = readSheet(rows)
     expect(grid[0]).toEqual([
       '序号', '发票号码', '开票日期', '销售方名称', '销售方税号', '购买方名称',
       '购买方税号', '价税合计', '税额', '不含税金额', '税率', '金额存疑', '备注', '文件相对路径'

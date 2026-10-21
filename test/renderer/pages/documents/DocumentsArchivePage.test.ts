@@ -324,13 +324,13 @@ describe('DocumentsArchivePage', () => {
     expect(cells[0]?.group).toBe('—')
   })
 
-  it('默认日期为最近一周并加载第一页', async () => {
+  it('默认日期为最近一个月并加载第一页', async () => {
     await setup()
     const from = stubStore.archiveFilter.dateFrom as number
     const to = stubStore.archiveFilter.dateTo as number
     expect(from).toBeGreaterThan(0)
-    expect(to - from).toBeGreaterThanOrEqual(7 * 24 * 60 * 60 * 1000)
-    expect(to - from).toBeLessThan(8 * 24 * 60 * 60 * 1000)
+    expect(to - from).toBeGreaterThanOrEqual(28 * 24 * 60 * 60 * 1000)
+    expect(to - from).toBeLessThan(32 * 24 * 60 * 60 * 1000)
     expect(stubStore.loadArchiveDocuments).toHaveBeenCalledWith(1)
   })
 
