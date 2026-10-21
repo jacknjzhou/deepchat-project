@@ -1418,6 +1418,7 @@ describeIfSqlite('reimbursement routes', () => {
     expect(output.canceled).toBe(false)
     expect(output.exportedFiles).toBe(0)
     expect(typeof output.path).toBe('string')
+    expect(Array.isArray(output.invoiceSummaries)).toBe(true)
     await fs.rm(output.path as string, { recursive: true, force: true })
   })
 

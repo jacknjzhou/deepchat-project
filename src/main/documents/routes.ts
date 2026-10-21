@@ -499,10 +499,19 @@ export function createDocumentsRoutes(
               }
             : treeResult
         const filesById = new Map(documents.map((document) => [document.id, document.fileUris]))
+        const documentsById = new Map(documents.map((document) => [document.id, document]))
+        const invoiceTypeKeys = new Set(
+          repository
+            .listTemplates()
+            .filter((template) => template.category === '发票类')
+            .map((template) => template.typeKey)
+        )
         const output = await exportReimbursementPackage({
           rootDir,
           result: exportResult,
           filesById,
+          documentsById,
+          invoiceTypeKeys,
           deps: {
             copyFile: (src, dest) => fsp.copyFile(src, dest),
             mkdir: (dir, options) => fsp.mkdir(dir, options),
@@ -522,7 +531,8 @@ export function createDocumentsRoutes(
           canceled: false,
           path: output.path,
           exportedFiles: output.exportedFiles,
-          summaryPath: output.summaryPath
+          summaryPath: output.summaryPath,
+          invoiceSummaries: output.invoiceSummaries
         })
       }
     ],
