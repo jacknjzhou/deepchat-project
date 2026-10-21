@@ -377,6 +377,7 @@
       "manageCategories": "Kategorileri yönet",
       "export": "Paketi dışa aktar",
       "exportDone": "{count} dosya {path} konumuna aktarıldı",
+      "exportDoneWithInvoices": "Dışa aktarma tamamlandı: {count} dosya, {invoices} fatura özeti, {path}",
       "exportWithCount": "Dışa aktar ({count})",
       "materialsTitle": "Gerekli belgeler",
       "materialCount": "{count} toplandı",

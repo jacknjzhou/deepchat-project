@@ -446,8 +446,9 @@ const store = useDocumentsStore()
 const detailOpen = ref(false)
 const recognizeOpen = ref(false)
 const detailDocument = ref<DocumentRecord | null>(null)
-// Default to the trailing week up front so the first load is already scoped;
-// date text is converted to ms once in syncFilters before the first query.
+// Default the document list to the trailing month; date text is converted to
+// ms once in syncFilters before the first query. This filter does not apply to
+// the file-group view.
 const defaultRange = buildDefaultDateRangeTexts()
 const dateFromText = ref(defaultRange.from)
 const dateToText = ref(defaultRange.to)

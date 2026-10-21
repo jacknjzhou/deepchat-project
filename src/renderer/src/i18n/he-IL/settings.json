@@ -2884,6 +2884,7 @@
       "manageCategories": "ניהול קטגוריות",
       "export": "ייצוא חבילה",
       "exportDone": "{count} קבצים יוצאו אל {path}",
+      "exportDoneWithInvoices": "הייצוא הושלם: {count} קבצים, {invoices} סיכומי חשבוניות, {path}",
       "exportWithCount": "ייצוא ({count})",
       "materialsTitle": "מסמכים נדרשים",
       "materialCount": "נאספו {count}",

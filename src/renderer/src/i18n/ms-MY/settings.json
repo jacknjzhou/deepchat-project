@@ -377,6 +377,7 @@
       "manageCategories": "Urus kategori",
       "export": "Eksport pakej",
       "exportDone": "{count} fail dieksport ke {path}",
+      "exportDoneWithInvoices": "Eksport selesai: {count} fail, {invoices} ringkasan invois, {path}",
       "exportWithCount": "Eksport ({count})",
       "materialsTitle": "Bahan diperlukan",
       "materialCount": "{count} dikumpul",

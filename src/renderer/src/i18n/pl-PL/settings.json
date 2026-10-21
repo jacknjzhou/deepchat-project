@@ -377,6 +377,7 @@
       "manageCategories": "Zarządzaj kategoriami",
       "export": "Eksportuj pakiet",
       "exportDone": "Wyeksportowano {count} plików do {path}",
+      "exportDoneWithInvoices": "Eksport zakończony: pliki — {count}, podsumowania faktur — {invoices}, {path}",
       "exportWithCount": "Eksportuj ({count})",
       "materialsTitle": "Wymagane dokumenty",
       "materialCount": "Zebrano: {count}",

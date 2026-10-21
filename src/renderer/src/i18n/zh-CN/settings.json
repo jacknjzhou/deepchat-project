@@ -377,6 +377,7 @@
       "manageCategories": "管理类别",
       "export": "导出整理包",
       "exportDone": "导出完成：{count} 个文件，{path}",
+      "exportDoneWithInvoices": "导出完成：{count} 个文件，发票汇总 {invoices} 份，{path}",
       "exportWithCount": "导出 ({count})",
       "materialsTitle": "所需材料对照",
       "materialCount": "已有 {count} 份",

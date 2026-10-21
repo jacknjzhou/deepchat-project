@@ -2884,6 +2884,7 @@
       "manageCategories": "カテゴリを管理",
       "export": "整理パッケージをエクスポート",
       "exportDone": "{count} 件のファイルを {path} にエクスポートしました",
+      "exportDoneWithInvoices": "エクスポート完了：{count} 件のファイル、請求書サマリー {invoices} 件、{path}",
       "exportWithCount": "エクスポート ({count})",
       "materialsTitle": "必要書類の対照",
       "materialCount": "{count} 件収集済み",

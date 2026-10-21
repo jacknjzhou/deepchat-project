@@ -548,7 +548,8 @@ export const documentsReimbursementExportRoute = defineRouteContract({
       canceled: z.boolean(),
       path: z.string().min(1).optional(),
       exportedFiles: z.number().int().nonnegative().optional(),
-      summaryPath: z.string().min(1).optional()
+      summaryPath: z.string().min(1).optional(),
+      invoiceSummaries: z.array(z.string().min(1)).optional()
     })
     .refine((value) => value.canceled || typeof value.path === 'string', {
       message: 'path is required when not canceled'

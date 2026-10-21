@@ -1,11 +1,14 @@
 import path from 'node:path'
 import { escapeCsvCell } from './csv'
+import type { DocumentRecord } from '@shared/documents'
 import type { ReimbursementTreeResult } from './reimbursement'
+import { buildInvoiceRow, serializeInvoiceWorkbook } from './invoiceSummary'
 
 export interface ReimbursementExportDeps {
   copyFile: (src: string, dest: string) => Promise<void>
   mkdir: (dir: string, options: { recursive: true }) => Promise<string | undefined>
   writeFile: (file: string, data: string, encoding: 'utf-8') => Promise<void>
+  writeFileBinary: (file: string, data: Uint8Array) => Promise<void>
   exists: (target: string) => Promise<boolean>
 }
 
@@ -14,6 +17,10 @@ export interface ReimbursementExportInput {
   result: ReimbursementTreeResult
   filesById: Map<string, string[]>
   deps: ReimbursementExportDeps
+  /** 发票行构建所需的文档字段映射；缺省视为空（不生成汇总） */
+  documentsById?: Map<string, DocumentRecord>
+  /** 发票模板 typeKey 集合；缺省视为空集（不生成汇总） */
+  invoiceTypeKeys?: Set<string>
   now?: Date
 }
 
@@ -23,6 +30,8 @@ export interface ReimbursementExportOutput {
   summaryPath: string
   /** 汇总行：原件缺失记录 */
   issues: string[]
+  /** 生成的发票汇总 Excel 相对路径（'/' 分隔） */
+  invoiceSummaries: string[]
 }
 
 const UNKNOWN_PERSON = '未知人员'
@@ -75,6 +84,10 @@ export async function exportReimbursementPackage(
   input: ReimbursementExportInput
 ): Promise<ReimbursementExportOutput> {
   const { rootDir, result, filesById, deps, now = new Date() } = input
+  const documentsById = input.documentsById ?? new Map<string, DocumentRecord>()
+  const invoiceTypeKeys = input.invoiceTypeKeys ?? new Set<string>()
+  const exportedRelPathsById = new Map<string, string[]>()
+  const invoiceSummaries: string[] = []
   const stamp = [
     now.getFullYear(),
     String(now.getMonth() + 1).padStart(2, '0'),
@@ -106,11 +119,14 @@ export async function exportReimbursementPackage(
       for (const entry of bucket.documents) {
         const personCell = entry.person ?? UNKNOWN_PERSON
         const files = filesById.get(entry.id) ?? []
+        const entryRelPaths: string[] = []
+        exportedRelPathsById.set(entry.id, entryRelPaths)
         for (let index = 0; index < entry.fileNames.length; index += 1) {
           const source = files[index]
           const originalName = entry.fileNames[index]
           if (!source) {
             issues.push(`缺失:${originalName}`)
+            entryRelPaths.push(`缺失:${originalName}`)
             rows.push([
               categoryName,
               groupName,
@@ -128,6 +144,7 @@ export async function exportReimbursementPackage(
           try {
             await deps.copyFile(source, path.join(targetDir, fileName))
             exportedFiles += 1
+            entryRelPaths.push(`${periodDirName}/${fileName}`)
             rows.push([
               categoryName,
               groupName,
@@ -141,6 +158,7 @@ export async function exportReimbursementPackage(
             ])
           } catch {
             issues.push(`复制失败:${originalName}`)
+            entryRelPaths.push(`缺失:${originalName}`)
             rows.push([
               categoryName,
               groupName,
@@ -170,12 +188,34 @@ export async function exportReimbursementPackage(
       )
     }
     for (const customGroup of node.customGroups) {
+      const groupDirName = sanitizeDirName(customGroup.group.name)
       await writeEntries(
         categoryName,
-        sanitizeDirName(customGroup.group.name),
+        groupDirName,
         customGroup.buckets,
         customGroup.group.name
       )
+      const entries = customGroup.buckets.flatMap((bucket) => bucket.documents)
+      const invoiceEntries = entries.filter((entry) => invoiceTypeKeys.has(entry.typeKey))
+      if (invoiceEntries.length === 0) continue
+      const rowsForGroup = invoiceEntries.map((entry) =>
+        buildInvoiceRow({
+          entry,
+          document: documentsById.get(entry.id),
+          fileRelPaths: exportedRelPathsById.get(entry.id) ?? entry.fileNames.map((name) => `缺失:${name}`)
+        })
+      )
+      const targetDir = path.join(packageDir, categoryName, groupDirName)
+      const summaryName = await uniqueFileName(targetDir, '发票汇总.xlsx', deps)
+      try {
+        await deps.writeFileBinary(
+          path.join(targetDir, summaryName),
+          serializeInvoiceWorkbook(rowsForGroup)
+        )
+        invoiceSummaries.push([categoryName, groupDirName, summaryName].join('/'))
+      } catch {
+        issues.push(`汇总失败:${summaryName}`)
+      }
     }
   }
   for (const group of result.unassigned) {
@@ -191,5 +231,5 @@ export async function exportReimbursementPackage(
   const csv = `\uFEFF${CSV_HEADER}\n${rows.map((row) => row.map(csvCell).join(',')).join('\n')}\n`
   await deps.writeFile(summaryPath, csv, 'utf-8')
 
-  return { path: packageDir, exportedFiles, summaryPath, issues }
+  return { path: packageDir, exportedFiles, summaryPath, issues, invoiceSummaries }
 }

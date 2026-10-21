@@ -62,7 +62,7 @@ describe('documents store reimbursement actions', () => {
     expect(store.reimbursementConfig).toEqual(config)
   })
 
-  it('loads tree with archive filter and refreshes after override', async () => {
+  it('loads the complete tree independently from archive filters and refreshes after override', async () => {
     setActivePinia(createPinia())
     const store = useDocumentsStore()
     const client = makeFakeClient()
@@ -70,11 +70,7 @@ describe('documents store reimbursement actions', () => {
     store.archiveFilter.dateFrom = 100
     store.archiveFilter.dateTo = 200
     await store.loadReimbursementTree(client as never)
-    expect(client.reimbursementTree).toHaveBeenCalledWith({
-      status: 'confirmed',
-      dateFrom: 100,
-      dateTo: 200
-    })
+    expect(client.reimbursementTree).toHaveBeenCalledWith({})
     expect(store.reimbursementTree).toEqual({ tree: [], unassigned: [], summary: [] })
     expect(store.reimbursementIsLoading).toBe(false)
     await store.setReimbursementOverride('doc-1', 'cat-a', client as never)
@@ -152,7 +148,7 @@ describe('documents store reimbursement actions', () => {
     expect(store.archiveDocuments).toEqual([other])
   })
 
-  it('exportReimbursementPackage passes the archive filter through', async () => {
+  it('exports complete file groups independently from archive filters', async () => {
     setActivePinia(createPinia())
     const store = useDocumentsStore()
     const client = makeFakeClient()
@@ -160,27 +156,22 @@ describe('documents store reimbursement actions', () => {
     store.archiveFilter.dateFrom = 100
     store.archiveFilter.dateTo = 200
     const result = await store.exportReimbursementPackage(undefined, client as never)
-    expect(client.reimbursementExport).toHaveBeenCalledWith({
-      status: 'confirmed',
-      dateFrom: 100,
-      dateTo: 200
-    })
+    expect(client.reimbursementExport).toHaveBeenCalledWith({})
     expect(result).toEqual({ canceled: true })
   })
 
-  it('exportReimbursementPackage forwards the group selection with the archive filter', async () => {
+  it('exports selected groups without archive filters', async () => {
     setActivePinia(createPinia())
     const store = useDocumentsStore()
     const client = makeFakeClient()
     store.archiveFilter.status = 'confirmed'
+    store.archiveFilter.dateFrom = 100
+    store.archiveFilter.dateTo = 200
     const result = await store.exportReimbursementPackage(
       { categoryId: 'cat-a', groupIds: ['grp-a'] },
       client as never
     )
     expect(client.reimbursementExport).toHaveBeenCalledWith({
-      status: 'confirmed',
-      dateFrom: undefined,
-      dateTo: undefined,
       categoryId: 'cat-a',
       groupIds: ['grp-a']
     })

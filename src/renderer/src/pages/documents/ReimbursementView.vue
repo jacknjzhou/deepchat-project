@@ -492,13 +492,20 @@ async function onExport() {
         : undefined
     const result = await store.exportReimbursementPackage(selection)
     if (result.canceled) return
+    const invoiceCount = result.invoiceSummaries?.length ?? 0
     notifyTransient(
       'success',
       'documents.reimbursement.exportSuccess',
-      t('settings.documents.reimbursement.exportDone', {
-        count: result.exportedFiles ?? 0,
-        path: result.path ?? ''
-      })
+      invoiceCount > 0
+        ? t('settings.documents.reimbursement.exportDoneWithInvoices', {
+            count: result.exportedFiles ?? 0,
+            invoices: invoiceCount,
+            path: result.path ?? ''
+          })
+        : t('settings.documents.reimbursement.exportDone', {
+            count: result.exportedFiles ?? 0,
+            path: result.path ?? ''
+          })
     )
   } catch (error) {
     console.error('[ReimbursementView] export failed', error)
