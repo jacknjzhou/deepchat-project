@@ -34,5 +34,6 @@
   "plugins": "Plugins",
   "settings-debug": "Debug",
   "settings-toolchains": "Toolchains",
-  "resumeScreening": "Triagem de Currículos"
+  "resumeScreening": "Triagem de Currículos",
+  "settings-digital-employee-service": "Digital Employee Service"
 }

@@ -29,7 +29,7 @@ import { DialogService } from '../desktop/dialog'
 import { app, ipcMain, webContents as electronWebContents } from 'electron'
 import { DEEPCHAT_EVENT_CHANNEL } from '@shared/contracts/channels'
 import { createDeepchatEventEnvelope, type DeepchatEventName } from '@shared/contracts/events'
-import type { ManagedConfigStatus } from '@shared/contracts/routes'
+import { digitalEmployeeSettingsKeys, type ManagedConfigStatus } from '@shared/contracts/routes'
 import { optimizer } from '@electron-toolkit/utils'
 import { WindowPresenter } from '../desktop/window'
 import { PluginSettingsWindow } from '../desktop/pluginSettingsWindow'
@@ -225,7 +225,12 @@ import { sha256File } from '@/documents/fileHash'
 import { DocumentsRepository } from '@/documents/repository'
 import { createDocumentsRoutes, type DocumentsDedupeSubmit } from '@/documents/routes'
 import { createDigitalEmployeeRoutes } from '@/digital-employee/routes'
-import { MockDigitalEmployeeProvider } from '@/digital-employee/provider'
+import { MockDigitalEmployeeProvider, type DigitalEmployeeProvider } from '@/digital-employee/provider'
+import {
+  createDigitalEmployeeProvider,
+  createDigitalEmployeeProviderHolder
+} from '@/digital-employee/providerFactory'
+import { createDigitalEmployeeSettingsRoutes } from '@/digital-employee/settingsRoutes'
 import { RecognitionTaskManager } from '@/documents/taskManager'
 import { seedPresetTemplates } from '@/documents/seed'
 import { ResumeScreeningDatabase } from '@/resumeScreening/data/database'
@@ -3292,7 +3297,30 @@ export async function createMainProcessControl(dependencies: {
       undefined, // reimbursementDeps 走默认值（dialog.showOpenDialog）
       documentsDedupeSubmit
     )
-    const digitalEmployeeRoutes = createDigitalEmployeeRoutes(new MockDigitalEmployeeProvider())
+    // 从持久化设置 + SecretStore 读取 StaffDeck 连接配置并构造当前 Provider。
+    // 配置不完整或未启用时 factory 返回 Mock，因此未配置用户默认走本地数据。
+    const readDigitalEmployeeProvider = (): DigitalEmployeeProvider =>
+      createDigitalEmployeeProvider(
+        {
+          enabled:
+            dependencies.settingsStore.get<boolean>(digitalEmployeeSettingsKeys.enabled) === true,
+          baseUrl:
+            dependencies.settingsStore.get<string>(digitalEmployeeSettingsKeys.baseUrl) ?? '',
+          apiKey: dependencies.secretStore.get(digitalEmployeeSettingsKeys.apiKey),
+          externalUserId:
+            dependencies.settingsStore.get<string>(digitalEmployeeSettingsKeys.externalUserId) ?? ''
+        },
+        new MockDigitalEmployeeProvider()
+      )
+    const digitalEmployeeProviderHolder = createDigitalEmployeeProviderHolder(
+      readDigitalEmployeeProvider()
+    )
+    const replaceDigitalEmployeeProvider = (): void => {
+      // replace 换新实例即丢弃旧 ETag/缓存，配置变更无需重启。
+      digitalEmployeeProviderHolder.replace(readDigitalEmployeeProvider())
+      publishDeepchatEvent('digitalEmployee.configurationChanged', { changedAt: Date.now() })
+    }
+    const digitalEmployeeRoutes = createDigitalEmployeeRoutes(digitalEmployeeProviderHolder)
     // Resume interrupted recognition tasks from the previous run.
     void recognitionTaskManager.resumePending()
     // Auto watch: periodically scan the configured directory and submit new files for recognition.
@@ -3603,6 +3631,11 @@ export async function createMainProcessControl(dependencies: {
       })
       return managedRefreshInFlight
     }
+    const digitalEmployeeSettingsRoutes = createDigitalEmployeeSettingsRoutes({
+      settings: dependencies.settingsStore,
+      secretStore: dependencies.secretStore,
+      onConfigurationChanged: replaceDigitalEmployeeProvider
+    })
     const appSettingsRoutes = createAppSettingsRoutes({
       settings: dependencies.settingsStore,
       agentDefaults,
@@ -3720,6 +3753,7 @@ export async function createMainProcessControl(dependencies: {
         schedulerRoutes,
         documentsRoutes,
         digitalEmployeeRoutes,
+        digitalEmployeeSettingsRoutes,
         resumeScreeningRoutes,
         memoryRoutes,
         desktopRoutes,

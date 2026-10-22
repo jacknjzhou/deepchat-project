@@ -147,7 +147,8 @@ export const CONFIG_ENTRY_KEYS = [
   'documents.autoWatch',
   'documents.autoWatchState',
   'digitalEmployee.favorites',
-  'digitalEmployee.sessionBindings'
+  'digitalEmployee.sessionBindings',
+  'digitalEmployee.configHashes'
 ] as const
 
 // Cached verification result for a provider's current connection configuration.
@@ -188,7 +189,8 @@ export const ConfigEntryValuesSchema = z.object({
   'documents.autoWatch': DocumentsAutoWatchConfigSchema,
   'documents.autoWatchState': DocumentsAutoWatchStateSchema,
   'digitalEmployee.favorites': z.array(z.string()),
-  'digitalEmployee.sessionBindings': z.record(z.string(), z.string())
+  'digitalEmployee.sessionBindings': z.record(z.string(), z.string()),
+  'digitalEmployee.configHashes': z.record(z.string(), z.string())
 })
 
 export const ConfigEntryChangeSchema = z.discriminatedUnion('key', [
@@ -294,6 +296,10 @@ export const ConfigEntryChangeSchema = z.discriminatedUnion('key', [
   }),
   z.object({
     key: z.literal('digitalEmployee.sessionBindings'),
+    value: z.record(z.string(), z.string())
+  }),
+  z.object({
+    key: z.literal('digitalEmployee.configHashes'),
     value: z.record(z.string(), z.string())
   })
 ])

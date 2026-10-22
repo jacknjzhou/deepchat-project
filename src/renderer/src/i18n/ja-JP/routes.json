@@ -34,5 +34,6 @@
   "plugins": "Plugins",
   "settings-debug": "デバッグ",
   "settings-toolchains": "Toolchains",
-  "resumeScreening": "履歴書スクリーニング"
+  "resumeScreening": "履歴書スクリーニング",
+  "settings-digital-employee-service": "Digital Employee Service"
 }

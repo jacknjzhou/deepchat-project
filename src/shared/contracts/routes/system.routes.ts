@@ -12,6 +12,7 @@ export const SettingsRouteNameSchema = z.enum([
   'settings-ocr',
   'settings-toolchains',
   'settings-deepchat-agents',
+  'settings-digital-employee-service',
   'settings-acp',
   'settings-remote',
   'settings-notifications-hooks',

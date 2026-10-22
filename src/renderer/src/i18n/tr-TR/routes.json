@@ -34,5 +34,6 @@
   "plugins": "Plugins",
   "settings-debug": "Debug",
   "settings-toolchains": "Toolchains",
-  "resumeScreening": "Özgeçmiş Eleme"
+  "resumeScreening": "Özgeçmiş Eleme",
+  "settings-digital-employee-service": "Digital Employee Service"
 }

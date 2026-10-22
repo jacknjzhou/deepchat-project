@@ -47,6 +47,7 @@ export function buildDisabledAgentTools(
 
 const FAVORITES_KEY = 'digitalEmployee.favorites'
 const SESSION_BINDINGS_KEY = 'digitalEmployee.sessionBindings'
+const CONFIG_HASHES_KEY = 'digitalEmployee.configHashes'
 
 export const useDigitalEmployeeStore = defineStore('digitalEmployee', () => {
   const client = createDigitalEmployeeClient()
@@ -57,9 +58,14 @@ export const useDigitalEmployeeStore = defineStore('digitalEmployee', () => {
   const employees = ref<DigitalEmployee[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
+  const degraded = ref(false)
+  const dataSource = ref<'http' | 'mock'>('mock')
+  const hasConfigUpdates = ref(false)
   const selectedDigitalEmployeeId = ref<string | null>(null)
   const favorites = ref<string[]>([])
   const sessionBindings = ref<Record<string, string>>({})
+  /** 已确认的 hash 基线；首次拉取只建立基线不提示，后续变化才置 hasConfigUpdates */
+  let configHashBaseline: Record<string, string> | null = null
 
   const enabledEmployees = computed(() => employees.value.filter((employee) => employee.enabled))
   const selectedDigitalEmployee = computed(
@@ -89,12 +95,51 @@ export const useDigitalEmployeeStore = defineStore('digitalEmployee', () => {
     }
   }
 
+  const readConfigHashes = async (): Promise<Record<string, string>> => {
+    try {
+      const value = await configClient.getSetting(CONFIG_HASHES_KEY)
+      if (value === null || value === undefined || typeof value !== 'object') return {}
+      return Object.fromEntries(
+        Object.entries(value as Record<string, unknown>).filter(
+          (entry): entry is [string, string] => typeof entry[1] === 'string'
+        )
+      )
+    } catch {
+      return {}
+    }
+  }
+
+  /**
+   * 只有新旧都有 configHash 的员工才参与比较：首轮/新员工只建立基线，
+   * 既有员工 hash 变化时置 hasConfigUpdates。
+   */
+  const applyConfigHashChanges = (nextEmployees: DigitalEmployee[]): void => {
+    const current: Record<string, string> = {}
+    for (const employee of nextEmployees) {
+      if (employee.configHash) current[employee.id] = employee.configHash
+    }
+
+    if (configHashBaseline === null) {
+      configHashBaseline = current
+      hasConfigUpdates.value = false
+      return
+    }
+
+    const changed = Object.entries(current).some(
+      ([id, hash]) => configHashBaseline?.[id] !== undefined && configHashBaseline[id] !== hash
+    )
+    if (changed) hasConfigUpdates.value = true
+  }
+
   async function fetchEmployees(): Promise<void> {
     loading.value = true
     error.value = null
     try {
       const result = await client.list()
       employees.value = result.employees
+      degraded.value = result.degraded === true
+      dataSource.value = result.source ?? 'mock'
+      applyConfigHashChanges(result.employees)
     } catch (e) {
       error.value = `Failed to load digital employees: ${e}`
     } finally {
@@ -102,9 +147,30 @@ export const useDigitalEmployeeStore = defineStore('digitalEmployee', () => {
     }
   }
 
+  /**
+   * 确认配置更新：先持久化当前 hash 快照，成功后才清除提示；
+   * 持久化失败时保留提示，避免用户漏看更新。
+   */
+  async function acknowledgeConfigUpdates(): Promise<void> {
+    const snapshot: Record<string, string> = {}
+    for (const employee of employees.value) {
+      if (employee.configHash) snapshot[employee.id] = employee.configHash
+    }
+    try {
+      await configClient.setSetting(CONFIG_HASHES_KEY, snapshot)
+      configHashBaseline = snapshot
+      hasConfigUpdates.value = false
+    } catch {
+      // 写入失败：保持提示，等待下次重试
+    }
+  }
+
   async function loadPersistedState(): Promise<void> {
     favorites.value = await readStringArraySetting(FAVORITES_KEY)
     sessionBindings.value = await readBindingsSetting()
+    // 基线来自上次确认的持久化快照；无值时保持 null，由首轮拉取建立基线。
+    const persistedHashes = await readConfigHashes()
+    configHashBaseline = Object.keys(persistedHashes).length > 0 ? persistedHashes : null
   }
 
   function setSelectedDigitalEmployee(id: string | null): void {
@@ -203,6 +269,9 @@ export const useDigitalEmployeeStore = defineStore('digitalEmployee', () => {
     loading,
     error,
     initialized,
+    degraded,
+    dataSource,
+    hasConfigUpdates,
     selectedDigitalEmployeeId,
     favorites,
     sessionBindings,
@@ -211,6 +280,7 @@ export const useDigitalEmployeeStore = defineStore('digitalEmployee', () => {
     fetchEmployees,
     loadInitialData,
     ensureLoaded,
+    acknowledgeConfigUpdates,
     setSelectedDigitalEmployee,
     toggleFavorite,
     bindSession,

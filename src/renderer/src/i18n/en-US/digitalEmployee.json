@@ -16,5 +16,43 @@
   "sectionKnowledge": "Knowledge bases",
   "openingQuestionPlaceholder": "(Optional) your first question",
   "startConversation": "Start conversation",
-  "startConversationFailed": "Failed to start conversation. Please try again later"
+  "startConversationFailed": "Failed to start conversation. Please try again later",
+  "service": {
+    "description": "Connect to the StaffDeck digital employee service and manage its base URL, deployment API key and external user id in one place.",
+    "connection": "StaffDeck connection",
+    "connectionDescription": "When enabled the employee catalog is loaded from StaffDeck; the app falls back to local data when the service is unavailable.",
+    "enabled": "Enable StaffDeck service",
+    "modeMock": "Current mode: local mock. Employee data comes from the built-in catalog.",
+    "modeRemote": "Current mode: StaffDeck service. Employee data comes from the remote service.",
+    "baseUrl": "Base URL",
+    "invalidBaseUrl": "Enter an http:// or https:// URL without embedded credentials.",
+    "apiKey": "API Key",
+    "apiKeyPlaceholder": "sd_live_...",
+    "apiKeyKeepPlaceholder": "Leave blank to keep the saved key",
+    "apiKeyConfigured": "An API key is saved. It is encrypted in the system credential store and never shown again.",
+    "apiKeyNotConfigured": "No API key configured yet.",
+    "toggleApiKeyVisibility": "Show or hide the API key",
+    "externalUserId": "External User ID",
+    "externalUserIdHint": "Generated on first open and editable; identifies the calling user.",
+    "testConnection": "Test connection",
+    "save": "Save",
+    "clearApiKey": "Clear API key",
+    "clearApiKeyConfirm": "You will need to enter a new key before connecting to StaffDeck again. Continue?",
+    "saved": "Saved. The new configuration is applied without restarting the app.",
+    "saveFailed": "Saving failed. Check the values and try again.",
+    "loadFailed": "Failed to load the current configuration. Please try again later.",
+    "testResults": {
+      "ok": "Connected successfully and the employee payload is valid.",
+      "missingConfig": "Incomplete configuration: provide a valid base URL, API key and external user id.",
+      "unauthorized": "Authentication failed. Check that the API key is correct and still valid.",
+      "httpError": "The service returned an error status. Try again later or contact the administrator.",
+      "networkError": "Cannot reach the service. Check the base URL and your network.",
+      "invalidPayload": "The service response did not match the expected format. Check the service version."
+    }
+  },
+  "banner": {
+    "degraded": "StaffDeck service is unavailable. Showing local mock digital employees.",
+    "configUpdated": "Some employees have configuration updates",
+    "dismiss": "Dismiss"
+  }
 }

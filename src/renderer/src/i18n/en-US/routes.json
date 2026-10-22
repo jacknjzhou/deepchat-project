@@ -33,5 +33,6 @@
   "settings-memory": "Memory",
   "settings-debug": "Debug",
   "settings-toolchains": "Toolchains",
-  "resumeScreening": "Resume Screening"
+  "resumeScreening": "Resume Screening",
+  "settings-digital-employee-service": "Digital Employee Service"
 }

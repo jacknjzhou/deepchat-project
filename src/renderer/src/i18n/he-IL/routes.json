@@ -34,5 +34,6 @@
   "plugins": "Plugins",
   "settings-debug": "Debug",
   "settings-toolchains": "Toolchains",
-  "resumeScreening": "סינון קורות חיים"
+  "resumeScreening": "סינון קורות חיים",
+  "settings-digital-employee-service": "Digital Employee Service"
 }

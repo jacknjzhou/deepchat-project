@@ -34,5 +34,6 @@
   "plugins": "插件",
   "settings-debug": "偵錯",
   "settings-toolchains": "工具鏈",
-  "resumeScreening": "簡歷篩選"
+  "resumeScreening": "簡歷篩選",
+  "settings-digital-employee-service": "数字员工服务"
 }

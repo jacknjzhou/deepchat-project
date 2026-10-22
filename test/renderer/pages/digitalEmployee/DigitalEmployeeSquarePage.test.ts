@@ -27,6 +27,9 @@ const stubStore = reactive({
   employees: [] as DigitalEmployee[],
   loading: false,
   error: null as string | null,
+  degraded: false,
+  dataSource: 'mock' as 'http' | 'mock',
+  hasConfigUpdates: false,
   selectedDigitalEmployeeId: null as string | null,
   favorites: [] as string[],
   sessionBindings: {} as Record<string, string>,
@@ -35,8 +38,12 @@ const stubStore = reactive({
   },
   loadInitialData: vi.fn(async () => {}),
   toggleFavorite: vi.fn(async () => {}),
+  acknowledgeConfigUpdates: vi.fn(async () => {}),
+  fetchEmployees: vi.fn(async () => {}),
   startConversation: vi.fn(async () => '')
 })
+
+const configurationChangedListenerRef: { current: (() => void) | null } = { current: null }
 
 const pushMock = vi.fn(async () => {})
 
@@ -86,11 +93,21 @@ async function setup() {
   ]
   stubStore.favorites = ['emp-1']
   stubStore.loading = false
+  stubStore.degraded = false
+  stubStore.hasConfigUpdates = false
   vi.doMock('@/stores/digitalEmployeeStore', () => ({
     useDigitalEmployeeStore: () => stubStore
   }))
   vi.doMock('@/stores/mcp', () => ({
     useMcpStore: () => mcpStubStore
+  }))
+  vi.doMock('@api/DigitalEmployeeSettingsClient', () => ({
+    createDigitalEmployeeSettingsClient: () => ({
+      onConfigurationChanged: (listener: () => void) => {
+        configurationChangedListenerRef.current = listener
+        return () => {}
+      }
+    })
   }))
   vi.doMock('vue-i18n', () => ({
     useI18n: () => ({
@@ -130,6 +147,9 @@ describe('DigitalEmployeeSquarePage', () => {
   beforeEach(() => {
     stubStore.loadInitialData.mockClear()
     stubStore.toggleFavorite.mockClear()
+    stubStore.acknowledgeConfigUpdates.mockClear()
+    stubStore.fetchEmployees.mockClear()
+    configurationChangedListenerRef.current = null
     stubStore.startConversation.mockClear()
     stubStore.startConversation.mockResolvedValue('')
     mcpStubStore.loadTools.mockClear()
@@ -247,5 +267,53 @@ describe('DigitalEmployeeSquarePage', () => {
     await flushPromises()
     expect(pushMock).toHaveBeenCalledWith({ name: 'chat' })
     expect(wrapper.find('[data-testid="digital-employee-detail-dialog"]').exists()).toBe(false)
+  })
+
+  it('shows a degraded banner that states local mock data is being used', async () => {
+    const { wrapper } = await setup()
+    stubStore.degraded = true
+    await flushPromises()
+
+    const banner = wrapper.get('[data-testid="digital-employee-degraded-banner"]')
+    expect(banner.text()).toContain('digitalEmployee.banner.degraded')
+    // 不得把降级描述成缓存命中或仍然连接成功
+    expect(banner.text()).not.toContain('digitalEmployee.banner.cache')
+  })
+
+  it('hides the degraded banner when the provider is healthy', async () => {
+    const { wrapper } = await setup()
+    expect(wrapper.find('[data-testid="digital-employee-degraded-banner"]').exists()).toBe(false)
+  })
+
+  it('shows the config-updated banner and acknowledges it', async () => {
+    const { wrapper } = await setup()
+    stubStore.hasConfigUpdates = true
+    await flushPromises()
+
+    expect(wrapper.get('[data-testid="digital-employee-config-updated-banner"]').text()).toContain(
+      'digitalEmployee.banner.configUpdated'
+    )
+
+    await wrapper.get('[data-testid="digital-employee-ack-config-updates"]').trigger('click')
+    await flushPromises()
+    expect(stubStore.acknowledgeConfigUpdates).toHaveBeenCalledTimes(1)
+  })
+
+  it('hides the config-updated banner when there is nothing new', async () => {
+    const { wrapper } = await setup()
+    expect(wrapper.find('[data-testid="digital-employee-config-updated-banner"]').exists()).toBe(
+      false
+    )
+  })
+
+  it('refreshes employees when the main process reports a configuration change', async () => {
+    await setup()
+    expect(configurationChangedListenerRef.current).not.toBeNull()
+
+    configurationChangedListenerRef.current?.()
+    await flushPromises()
+
+    // 设置页保存/清除密钥后无需手动重进页面
+    expect(stubStore.fetchEmployees).toHaveBeenCalledTimes(1)
   })
 })

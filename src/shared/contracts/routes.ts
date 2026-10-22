@@ -409,6 +409,12 @@ import {
   digitalEmployeeListRoute
 } from './routes/digitalEmployee.routes'
 import {
+  digitalEmployeeSettingsClearApiKeyRoute,
+  digitalEmployeeSettingsGetRoute,
+  digitalEmployeeSettingsSaveRoute,
+  digitalEmployeeSettingsTestConnectionRoute
+} from './routes/digitalEmployeeSettings.routes'
+import {
   providersAddPublicRoute,
   providersAddRoute,
   providersGetAcpProcessConfigOptionsRoute,
@@ -714,6 +720,7 @@ export * from './routes/remote-control.routes'
 export * from './routes/cronJobs.routes'
 export * from './routes/documents.routes'
 export * from './routes/digitalEmployee.routes'
+export * from './routes/digitalEmployeeSettings.routes'
 export * from './routes/settings.routes'
 export * from './routes/shortcut.routes'
 export * from './routes/startup.routes'
@@ -842,6 +849,10 @@ const DEEPCHAT_ROUTE_CATALOG_PART_1 = {
   [documentsListRoute.name]: documentsListRoute,
   [digitalEmployeeListRoute.name]: digitalEmployeeListRoute,
   [digitalEmployeeGetRoute.name]: digitalEmployeeGetRoute,
+  [digitalEmployeeSettingsGetRoute.name]: digitalEmployeeSettingsGetRoute,
+  [digitalEmployeeSettingsSaveRoute.name]: digitalEmployeeSettingsSaveRoute,
+  [digitalEmployeeSettingsTestConnectionRoute.name]: digitalEmployeeSettingsTestConnectionRoute,
+  [digitalEmployeeSettingsClearApiKeyRoute.name]: digitalEmployeeSettingsClearApiKeyRoute,
   [documentsGetRoute.name]: documentsGetRoute,
   [documentsUpsertRoute.name]: documentsUpsertRoute,
   [documentsDeleteRoute.name]: documentsDeleteRoute,

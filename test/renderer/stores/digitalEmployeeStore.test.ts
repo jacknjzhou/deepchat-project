@@ -45,10 +45,11 @@ vi.mock('../../../src/renderer/api/ConfigClient', () => ({
   createConfigClient: () => configClientMock
 }))
 
-const makeEmployee = (id: string): DigitalEmployee => ({
+const makeEmployee = (id: string, overrides: Partial<DigitalEmployee> = {}): DigitalEmployee => ({
   id, name: id, role: id, description: '', avatar: null, capabilities: [], greeting: null,
   systemPrompt: 'p', sops: [], knowledgeBaseIds: [], skillIds: [], tools: [], enabled: true,
-  updatedAt: '2026-10-21'
+  updatedAt: '2026-10-21', executionMode: 'local',
+  ...overrides
 })
 
 describe('digitalEmployeeStore', () => {
@@ -178,5 +179,127 @@ describe('digitalEmployeeStore', () => {
     )
     // 内存中的绑定仍按 best-effort 记录
     expect(store.employeeForSession('session-9')?.id).toBe(employee.id)
+  })
+
+  it('exposes the degraded flag from the list result', async () => {
+    const store = useDigitalEmployeeStore()
+    digitalEmployeeClientMock.list.mockResolvedValue({
+      employees: [makeEmployee('e1')],
+      fetchedAt: 't',
+      degraded: true,
+      source: 'mock'
+    })
+
+    await store.fetchEmployees()
+
+    expect(store.degraded).toBe(true)
+    expect(store.dataSource).toBe('mock')
+  })
+
+  it('clears the degraded flag once the provider recovers', async () => {
+    const store = useDigitalEmployeeStore()
+    digitalEmployeeClientMock.list.mockResolvedValueOnce({
+      employees: [makeEmployee('e1')],
+      fetchedAt: 't1',
+      degraded: true,
+      source: 'mock'
+    })
+    await store.fetchEmployees()
+    expect(store.degraded).toBe(true)
+
+    digitalEmployeeClientMock.list.mockResolvedValueOnce({
+      employees: [makeEmployee('e1')],
+      fetchedAt: 't2',
+      degraded: false,
+      source: 'http'
+    })
+    await store.fetchEmployees()
+
+    expect(store.degraded).toBe(false)
+    expect(store.dataSource).toBe('http')
+  })
+
+  it('flags config updates when a configHash changes and clears on acknowledge', async () => {
+    const store = useDigitalEmployeeStore()
+
+    // 首轮只建立基线，不提示
+    digitalEmployeeClientMock.list.mockResolvedValue({
+      employees: [makeEmployee('e1', { configHash: 'h1' })],
+      fetchedAt: 't1'
+    })
+    await store.fetchEmployees()
+    expect(store.hasConfigUpdates).toBe(false)
+
+    digitalEmployeeClientMock.list.mockResolvedValue({
+      employees: [makeEmployee('e1', { configHash: 'h2' })],
+      fetchedAt: 't2'
+    })
+    await store.fetchEmployees()
+    expect(store.hasConfigUpdates).toBe(true)
+
+    await store.acknowledgeConfigUpdates()
+
+    expect(store.hasConfigUpdates).toBe(false)
+    expect(configClientMock.setSetting).toHaveBeenCalledWith('digitalEmployee.configHashes', {
+      e1: 'h2'
+    })
+  })
+
+  it('keeps the config update flag when persisting the acknowledgement fails', async () => {
+    const store = useDigitalEmployeeStore()
+    digitalEmployeeClientMock.list.mockResolvedValue({
+      employees: [makeEmployee('e1', { configHash: 'h1' })],
+      fetchedAt: 't1'
+    })
+    await store.fetchEmployees()
+    digitalEmployeeClientMock.list.mockResolvedValue({
+      employees: [makeEmployee('e1', { configHash: 'h2' })],
+      fetchedAt: 't2'
+    })
+    await store.fetchEmployees()
+    expect(store.hasConfigUpdates).toBe(true)
+
+    configClientMock.setSetting.mockRejectedValueOnce(new Error('persist boom'))
+    await store.acknowledgeConfigUpdates()
+
+    // 写入失败时提示必须保留，避免用户漏看配置变化
+    expect(store.hasConfigUpdates).toBe(true)
+  })
+
+  it('ignores employees without a configHash and new employees', async () => {
+    const store = useDigitalEmployeeStore()
+    digitalEmployeeClientMock.list.mockResolvedValue({
+      employees: [makeEmployee('e1', { configHash: 'h1' })],
+      fetchedAt: 't1'
+    })
+    await store.fetchEmployees()
+
+    // 新员工 e2 只建立基线，无 hash 员工不参与比较 → 不提示
+    digitalEmployeeClientMock.list.mockResolvedValue({
+      employees: [
+        makeEmployee('e1', { configHash: 'h1' }),
+        makeEmployee('e2', { configHash: 'h9' }),
+        makeEmployee('e3')
+      ],
+      fetchedAt: 't2'
+    })
+    await store.fetchEmployees()
+
+    expect(store.hasConfigUpdates).toBe(false)
+  })
+
+  it('restores the persisted baseline so changes are detected across sessions', async () => {
+    configClientMock.getSetting.mockImplementation(async (key: string) =>
+      key === 'digitalEmployee.configHashes' ? { e1: 'h1' } : null
+    )
+    const store = useDigitalEmployeeStore()
+    await store.loadInitialData()
+    digitalEmployeeClientMock.list.mockResolvedValue({
+      employees: [makeEmployee('e1', { configHash: 'h2' })],
+      fetchedAt: 't2'
+    })
+    await store.fetchEmployees()
+
+    expect(store.hasConfigUpdates).toBe(true)
   })
 })

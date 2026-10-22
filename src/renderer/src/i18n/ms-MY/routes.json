@@ -34,5 +34,6 @@
   "plugins": "Plugins",
   "settings-debug": "Debug",
   "settings-toolchains": "Toolchains",
-  "resumeScreening": "Saringan Resume"
+  "resumeScreening": "Saringan Resume",
+  "settings-digital-employee-service": "Digital Employee Service"
 }

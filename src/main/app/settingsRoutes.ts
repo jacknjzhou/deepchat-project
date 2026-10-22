@@ -86,6 +86,7 @@ export function createAppSettingsRoutes(deps: {
     read('documents.autoWatchState')
     read('digitalEmployee.favorites')
     read('digitalEmployee.sessionBindings')
+    read('digitalEmployee.configHashes')
     return values
   }
   const readSnapshot = (): SettingsSnapshotValues => ({

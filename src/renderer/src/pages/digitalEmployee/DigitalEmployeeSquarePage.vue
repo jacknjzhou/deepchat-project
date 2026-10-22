@@ -51,6 +51,33 @@
 
     <!-- 内容区 -->
     <div class="flex-1 overflow-y-auto px-6 pb-6">
+      <!-- 降级：明确说明展示的是本地 Mock 数据，不能宣称仍在连接远端 -->
+      <div
+        v-if="store.degraded"
+        data-testid="digital-employee-degraded-banner"
+        class="mb-4 flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300"
+      >
+        <Icon icon="lucide:cloud-off" class="mt-0.5 size-4 shrink-0" />
+        <span>{{ t('digitalEmployee.banner.degraded') }}</span>
+      </div>
+
+      <div
+        v-if="store.hasConfigUpdates"
+        data-testid="digital-employee-config-updated-banner"
+        class="mb-4 flex items-start gap-2 rounded-lg border border-sky-500/40 bg-sky-500/10 px-3 py-2 text-xs text-sky-700 dark:text-sky-300"
+      >
+        <Icon icon="lucide:refresh-cw" class="mt-0.5 size-4 shrink-0" />
+        <span class="flex-1">{{ t('digitalEmployee.banner.configUpdated') }}</span>
+        <button
+          type="button"
+          class="shrink-0 underline underline-offset-2 hover:no-underline"
+          data-testid="digital-employee-ack-config-updates"
+          @click="store.acknowledgeConfigUpdates()"
+        >
+          {{ t('digitalEmployee.banner.dismiss') }}
+        </button>
+      </div>
+
       <div v-if="store.loading" class="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-4">
         <Skeleton v-for="i in 8" :key="i" class="h-36 rounded-xl" />
       </div>
@@ -160,10 +187,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { Icon } from '@iconify/vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { createDigitalEmployeeSettingsClient } from '@api/DigitalEmployeeSettingsClient'
 import { Input } from '@shadcn/components/ui/input'
 import { Skeleton } from '@shadcn/components/ui/skeleton'
 import { DcBadge } from '@dc-ui/components/badge'
@@ -194,6 +222,7 @@ const detailEmployee = ref<DigitalEmployee | null>(null)
 const openingQuestion = ref('')
 const startingConversation = ref(false)
 const startError = ref(false)
+let unsubscribeConfigurationChanged: (() => void) | null = null
 
 const matchesSearch = (employee: DigitalEmployee) => {
   const query = searchQuery.value.trim().toLowerCase()
@@ -260,5 +289,16 @@ const startConversation = async () => {
 
 onMounted(() => {
   void store.loadInitialData()
+  // 设置页保存/清除 StaffDeck 配置后自动刷新，避免用户手动重进页面
+  unsubscribeConfigurationChanged = createDigitalEmployeeSettingsClient().onConfigurationChanged(
+    () => {
+      void store.fetchEmployees()
+    }
+  )
+})
+
+onBeforeUnmount(() => {
+  unsubscribeConfigurationChanged?.()
+  unsubscribeConfigurationChanged = null
 })
 </script>

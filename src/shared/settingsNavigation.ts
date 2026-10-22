@@ -22,6 +22,7 @@ export interface SettingsNavigationItem {
     | 'settings-shortcut'
     | 'settings-about'
     | 'settings-debug'
+    | 'settings-digital-employee-service'
     | 'settings-documents'
     | 'settings-documents-template'
     | 'settings-documents-models'
@@ -146,6 +147,24 @@ export const SETTINGS_NAVIGATION_ITEMS: SettingsNavigationItem[] = [
     position: 3.5,
     groupKey: 'models',
     keywords: ['agent', 'agents', 'deepchat', '智能体', 'agent']
+  },
+  {
+    routeName: 'settings-digital-employee-service',
+    path: '/digital-employee-service',
+    titleKey: 'routes.settings-digital-employee-service',
+    icon: 'lucide:users-round',
+    position: 3.52,
+    groupKey: 'models',
+    keywords: [
+      'digital employee',
+      'staffdeck',
+      'service',
+      'base url',
+      'api key',
+      '数字员工',
+      '数字员工服务',
+      '服务地址'
+    ]
   },
   {
     routeName: 'settings-documents-models',

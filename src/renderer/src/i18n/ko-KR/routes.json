@@ -34,5 +34,6 @@
   "plugins": "Plugins",
   "settings-debug": "디버그",
   "settings-toolchains": "Toolchains",
-  "resumeScreening": "이력서 스크리닝"
+  "resumeScreening": "이력서 스크리닝",
+  "settings-digital-employee-service": "Digital Employee Service"
 }

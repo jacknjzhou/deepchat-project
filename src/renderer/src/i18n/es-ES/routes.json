@@ -34,5 +34,6 @@
   "plugins": "Plugins",
   "settings-debug": "Debug",
   "settings-toolchains": "Toolchains",
-  "resumeScreening": "Filtrado de CV"
+  "resumeScreening": "Filtrado de CV",
+  "settings-digital-employee-service": "Digital Employee Service"
 }

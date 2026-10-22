@@ -34,5 +34,6 @@
   "plugins": "Plugins",
   "settings-debug": "Debug",
   "settings-toolchains": "Toolchains",
-  "resumeScreening": "Sàng lọc hồ sơ"
+  "resumeScreening": "Sàng lọc hồ sơ",
+  "settings-digital-employee-service": "Digital Employee Service"
 }
