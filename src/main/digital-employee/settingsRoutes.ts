@@ -18,6 +18,8 @@ export interface DigitalEmployeeSettingsDeps {
   settings: {
     get<TValue = unknown>(key: string, defaultValue?: TValue): TValue | undefined
     set(key: string, value: unknown): void
+    /** 回滚时删除「保存前并不存在」的键；未提供则回滚为 undefined。 */
+    delete?(key: string): void
   }
   secretStore: {
     isAvailable(): boolean
@@ -85,6 +87,32 @@ const mapTestFailure = (status: number): DigitalEmployeeTestMessageCode => {
   return 'httpError'
 }
 
+type SettingsSnapshot = Map<string, { present: boolean; value: unknown }>
+
+const captureSnapshot = (deps: DigitalEmployeeSettingsDeps, keys: string[]): SettingsSnapshot => {
+  const snapshot: SettingsSnapshot = new Map()
+  for (const key of keys) {
+    const value = deps.settings.get(key)
+    snapshot.set(key, { present: value !== undefined, value })
+  }
+  return snapshot
+}
+
+const restoreSnapshot = (deps: DigitalEmployeeSettingsDeps, snapshot: SettingsSnapshot): void => {
+  for (const [key, entry] of snapshot) {
+    if (entry.present) {
+      deps.settings.set(key, entry.value)
+      continue
+    }
+    // 保存前该键不存在：回滚必须删掉，否则会残留「已启用」这类默认值缺失的状态。
+    if (deps.settings.delete) {
+      deps.settings.delete(key)
+    } else {
+      deps.settings.set(key, undefined)
+    }
+  }
+}
+
 export function createDigitalEmployeeSettingsRoutes(
   deps: DigitalEmployeeSettingsDeps
 ): DeepchatRouteMap {
@@ -112,6 +140,13 @@ export function createDigitalEmployeeSettingsRoutes(
 
         // 先完成全部校验与加密，再写 store；任一步失败都不留下半更新。
         const wrappedKey = apiKey ? deps.secretStore.wrap(apiKey) : null
+
+        // 保存前快照，失败时连同密钥一起恢复，避免「已启用 + 新地址」的半更新配置在下次启动生效。
+        const snapshot = captureSnapshot(deps, [
+          digitalEmployeeSettingsKeys.enabled,
+          digitalEmployeeSettingsKeys.baseUrl,
+          digitalEmployeeSettingsKeys.externalUserId
+        ])
         const previousWrappedKey = deps.secretStore.getWrapped(digitalEmployeeSettingsKeys.apiKey)
 
         try {
@@ -122,12 +157,10 @@ export function createDigitalEmployeeSettingsRoutes(
             deps.secretStore.setWrapped(digitalEmployeeSettingsKeys.apiKey, wrappedKey)
           }
         } catch (error) {
-          // 回滚密钥，避免设置写入失败但密钥已被替换。
+          // 回滚普通设置与密钥，使整次保存要么全生效、要么全不生效。
+          restoreSnapshot(deps, snapshot)
           if (wrappedKey) {
-            deps.secretStore.restoreWrapped(
-              digitalEmployeeSettingsKeys.apiKey,
-              previousWrappedKey
-            )
+            deps.secretStore.restoreWrapped(digitalEmployeeSettingsKeys.apiKey, previousWrappedKey)
           }
           throw error
         }
@@ -159,7 +192,8 @@ export function createDigitalEmployeeSettingsRoutes(
         }
 
         // 草稿 key 优先；否则取已保存的 wrapped 值在 main 内解密，绝不回传 renderer。
-        const apiKey = input.apiKey?.trim() || deps.secretStore.get(digitalEmployeeSettingsKeys.apiKey)
+        const apiKey =
+          input.apiKey?.trim() || deps.secretStore.get(digitalEmployeeSettingsKeys.apiKey)
         if (!apiKey || !externalUserId) {
           return digitalEmployeeSettingsTestConnectionRoute.output.parse({
             ok: false,

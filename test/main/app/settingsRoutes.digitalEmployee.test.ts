@@ -77,6 +77,9 @@ const createHarness = (
     ),
     set: vi.fn((key: string, value: unknown) => {
       settingsStore.set(key, value)
+    }),
+    delete: vi.fn((key: string) => {
+      settingsStore.delete(key)
     })
   }
 
@@ -119,8 +122,7 @@ const createHarness = (
       save: (input) => routes.get(digitalEmployeeSettingsSaveRoute.name)!(input),
       testConnection: (input) =>
         routes.get(digitalEmployeeSettingsTestConnectionRoute.name)!(input ?? {}),
-      clearApiKey: (input) =>
-        routes.get(digitalEmployeeSettingsClearApiKeyRoute.name)!(input ?? {})
+      clearApiKey: (input) => routes.get(digitalEmployeeSettingsClearApiKeyRoute.name)!(input ?? {})
     },
     settingsStore,
     settings,
@@ -289,6 +291,54 @@ describe('digitalEmployeeSettings routes', () => {
     expect(harness.onConfigurationChanged).not.toHaveBeenCalled()
   })
 
+  it('rolls back ordinary settings when a later write fails mid-save', async () => {
+    let writes = 0
+    harness.settings.set.mockImplementation((key: string, value: unknown) => {
+      writes += 1
+      // enabled 与 baseUrl 先写入成功，externalUserId 写入失败
+      if (writes === 3) throw new Error('disk full')
+      harness.settingsStore.set(key, value)
+    })
+
+    await expect(
+      harness.handlers.save({
+        enabled: true,
+        baseUrl: 'https://sd.example',
+        externalUserId: 'user-2',
+        apiKey: 'sd_live_new'
+      })
+    ).rejects.toThrow('disk full')
+
+    // 半更新会让下次启动用「已启用 + 新地址」去连一个并未保存成功的配置。
+    expect(harness.settingsStore.has('digitalEmployee.staffdeckEnabled')).toBe(false)
+    expect(harness.settingsStore.has('digitalEmployee.staffdeckBaseUrl')).toBe(false)
+    expect(harness.onConfigurationChanged).not.toHaveBeenCalled()
+  })
+
+  it('restores previous ordinary settings values when an update fails mid-save', async () => {
+    harness.settingsStore.set('digitalEmployee.staffdeckEnabled', false)
+    harness.settingsStore.set('digitalEmployee.staffdeckBaseUrl', 'https://old.example')
+    let writes = 0
+    harness.settings.set.mockImplementation((key: string, value: unknown) => {
+      writes += 1
+      if (writes === 3) throw new Error('disk full')
+      harness.settingsStore.set(key, value)
+    })
+
+    await expect(
+      harness.handlers.save({
+        enabled: true,
+        baseUrl: 'https://new.example',
+        externalUserId: 'user-2'
+      })
+    ).rejects.toThrow('disk full')
+
+    expect(harness.settingsStore.get('digitalEmployee.staffdeckEnabled')).toBe(false)
+    expect(harness.settingsStore.get('digitalEmployee.staffdeckBaseUrl')).toBe(
+      'https://old.example'
+    )
+  })
+
   it('clears the stored key and reports it as not configured', async () => {
     const result = await harness.handlers.clearApiKey()
 
@@ -308,9 +358,7 @@ describe('digitalEmployeeSettings.testConnection', () => {
   }
 
   it('returns ok for a 200 with a valid employees payload', async () => {
-    const fetchImpl = vi
-      .fn()
-      .mockResolvedValue(jsonResponse(200, { employees: [makeEmployee()] }))
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(200, { employees: [makeEmployee()] }))
     const harness = createHarness({
       initialSettings: baseSettings,
       initialWrappedKey: 'wrapped:k',
@@ -332,9 +380,7 @@ describe('digitalEmployeeSettings.testConnection', () => {
   })
 
   it('prefers the draft config over the saved config', async () => {
-    const fetchImpl = vi
-      .fn()
-      .mockResolvedValue(jsonResponse(200, { employees: [makeEmployee()] }))
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(200, { employees: [makeEmployee()] }))
     const harness = createHarness({
       initialSettings: baseSettings,
       initialWrappedKey: 'wrapped:k',
