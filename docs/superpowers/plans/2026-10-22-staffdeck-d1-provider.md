@@ -123,7 +123,7 @@ Expected: FAIL（executionMode/未知字段断言不通过）
 
 Run: 同 Step 1（PASS），再 `C:\Users\SRIBD\.workbuddy\binaries\node\versions\22.22.2-6\node.exe node_modules/vitest/vitest.mjs run test/main/digital-employee test/renderer/stores/digitalEmployeeStore.test.ts`（回归 PASS，mock 加字段不破坏既有断言）
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/shared/contracts/routes/digitalEmployee.routes.ts src/main/digital-employee/mockData.ts test/main/contracts/digitalEmployeeSchema.test.ts
@@ -206,7 +206,7 @@ Expected: FAIL（route/component 尚未实现）。
 
 Run 定向 Vitest：`C:\Users\SRIBD\.workbuddy\binaries\node\versions\22.22.2-6\node.exe node_modules/vitest/vitest.mjs run test/main/app/settingsRoutes.digitalEmployee.test.ts test/renderer/settings/DigitalEmployeeServiceSettings.test.ts`（PASS）；再运行项目安装的 `vue-tsc -p tsconfig.app.json --noEmit`（PASS；若经包管理器 shim 失败，直接运行 `node_modules/vue-tsc/bin/vue-tsc.js -p tsconfig.app.json --noEmit`）；最后运行 `node_modules/.bin/oxlint <本任务改动的 TS/Vue 文件路径...>`（PASS）。三类命令依次执行，不并行。
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/shared/contracts/routes/digitalEmployeeSettings.routes.ts src/shared/contracts/routes.ts src/main/app/settingsRoutes.ts src/main/app/composition.ts src/renderer/settings/settingsRouteComponents.ts src/renderer/settings/components/DigitalEmployeeServiceSettings.vue src/renderer/settings/**/locales test/main/app test/renderer/settings
@@ -369,7 +369,7 @@ factory 测试（providerFactory.test.ts）：disabled → fallback；enabled �
 
 Run: `C:\Users\SRIBD\.workbuddy\binaries\node\versions\22.22.2-6\node.exe node_modules/vitest/vitest.mjs run test/main/digital-employee`（全绿）
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/main/digital-employee/provider.ts src/main/digital-employee/providerFactory.ts src/main/digital-employee/routes.ts test/main/digital-employee/provider.test.ts test/main/digital-employee/providerFactory.test.ts
@@ -433,7 +433,7 @@ Expected: FAIL
 
 Run: `C:\Users\SRIBD\.workbuddy\binaries\node\versions\22.22.2-6\node.exe node_modules/vitest/vitest.mjs run test/renderer/stores/digitalEmployeeStore.test.ts test/renderer/pages/digitalEmployee test/main/digital-employee`（全绿）；再 `vue-tsc -p tsconfig.app.json --noEmit`；再 `node_modules/.bin/oxlint <本任务改动的 TS/Vue 文件路径...>`。三类命令依次执行，不并行。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A src/main/app/composition.ts src/renderer/src/stores/digitalEmployeeStore.ts src/shared/contracts/routes/config.routes.ts src/main/app/settingsRoutes.ts src/renderer/src/pages/digitalEmployee src/renderer/src/locales
@@ -460,3 +460,32 @@ D1 完成后 D2-D4 可并行派发；D5 最后。所有 D2-D5 任务共享 D1 �
 - D2 远端执行与 SSE、D3 知识同步、D4 技能/MCP、D5 审计回流：均作为明确后续独立计划骨架列出；当前 D1 不提前实现未交付协议。
 - 安全约束：API Key 不进入 renderer state/通用 config entries/日志；URL 禁止 userinfo；safeStorage 不可用时拒绝保存；测试连接用临时实例；配置保存后不要求重启。
 - 文档无 TBD/TODO 等占位项；协议不确定的 `external_user_id` header 名明确标出需按 StaffDeck OpenAPI 联调确认，不把猜测当作锁定契约。
+
+---
+
+## 实施结果（D1 完成记录）
+
+**提交**（分支 `202610211551`，5 个提交）：
+
+| 提交 | 内容 |
+|---|---|
+| `9334911a` | 契约扩展：`executionMode`/`configHash`/`skills`/`knowledgePackagesUrl` + list `degraded`/`source` |
+| `ad4086f5` | `HttpDigitalEmployeeProvider`（Bearer/ETag/zod 校验）+ `ResilientDigitalEmployeeProvider` + `providerFactory` |
+| `628c794d` | 设置页 + 四个专用 settings route + SecretStore 密钥安全 + store 状态 + 广场横幅 + 20 locale |
+| `4233e1a6` | spec 与 plan 文档 |
+| `0f62c44b` | 修复 save 中途失败的普通设置回滚（见下） |
+
+**实施中修正的两个问题**（均已修复并有测试覆盖）：
+
+1. **任务依赖顺序**：Task 2 依赖 Task 3 的 holder 与 Task 4 的事件，实际按 Task 1 → 3 → 2 → 4 执行。
+2. **保存原子性缺陷**：原实现失败时只回滚密钥，`enabled`/`baseUrl`/`externalUserId` 已写入不回滚，会留下「已启用 + 新地址 + 旧密钥」的半更新配置，下次启动据此构造 Provider。现改为写入前快照三个普通键、失败时一并恢复（原本不存在的键用 `settings.delete` 删掉），新增 2 个用例覆盖「首次保存失败不留键」和「已有旧值恢复旧值」。
+
+**验证**：
+
+- 定向回归：13 文件 / **133 tests 全通过**（含设置路由 29 例）。
+- `vue-tsc -p tsconfig.app.json --noEmit`：exit 0。`tsc -p tsconfig.node.json`：exit 0。
+- oxlint 改动文件：0 warning / 0 error；oxfmt 格式检查通过。
+- 全量 `test/main`（`vitest.config.ts`）：582 文件通过 / 49 文件失败（104 例）。**与 D1 无关**：失败集中在 `sessionPaths.test.ts`（断言 POSIX `\Users\...`，实际 `D:\Users\...`）、`systemPromptBuilder.test.ts`（env working directory `/tmp` vs `D:\tmp`）等 Windows 平台路径断言，这些文件在 `9ca022c2..HEAD` 零差异，且 D1 未触碰 `test/main/agent/**`。
+- 全量 `test/renderer`（`vitest.config.renderer.ts`）：默认并发在本机 OOM（`Reached heap limit` / `Fatal process out of memory: Zone`），需 `--maxWorkers=2 --minWorkers=1`；降并发后 309 文件通过 / 5 文件失败（20 例），失败为 `providerStore` 的 `providerClient.getProviderGroups is not a function` 等既有问题（同样在基线上复现，与 D1 无关）。
+
+**唯一开放项**：`external_user_id` 传输位置。当前用 `EXTERNAL_USER_ID_HEADER = 'x-external-user-id'`（`provider.ts` 与 `settingsRoutes.ts` 共用同一常量），StaffDeck OpenAPI v1 联调前需确认是 header / query / body；若不同只改这一处。
