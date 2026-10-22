@@ -13,6 +13,7 @@ const makeEmployee = (
   skillIds: [],
   tools: [],
   enabled: true,
+  executionMode: 'local',
   updatedAt: '2026-10-21T00:00:00.000Z',
   ...overrides
 })

@@ -20,7 +20,15 @@ export const digitalEmployeeSchema = z.object({
   skillIds: z.array(z.string().min(1)).max(20),
   tools: z.array(z.string().min(1)).max(50),
   enabled: z.boolean(),
-  updatedAt: z.string().min(1)
+  updatedAt: z.string().min(1),
+  executionMode: z.enum(['local', 'remote', 'hybrid']).default('local'),
+  configHash: z.string().max(128).optional(),
+  skills: z.array(z.object({
+    id: z.string().min(1).max(64),
+    name: z.string().min(1).max(100),
+    downloadUrl: z.string().min(1).max(512)
+  })).max(20).optional(),
+  knowledgePackagesUrl: z.string().max(512).optional()
 })
 
 export type DigitalEmployee = z.infer<typeof digitalEmployeeSchema>
@@ -30,7 +38,9 @@ export const digitalEmployeeListRoute = defineRouteContract({
   input: z.object({}).strict().default({}),
   output: z.object({
     employees: z.array(digitalEmployeeSchema),
-    fetchedAt: z.string().min(1)
+    fetchedAt: z.string().min(1),
+    degraded: z.boolean().optional(),
+    source: z.enum(['http', 'mock']).optional()
   })
 })
 
