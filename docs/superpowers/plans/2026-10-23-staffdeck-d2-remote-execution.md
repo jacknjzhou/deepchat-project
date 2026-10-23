@@ -624,6 +624,34 @@ git commit -m "docs(digital-employee): record staffdeck d2 verification and revi
 2. `GET /runs/{id}/result` 在 `awaiting_input` 场景下的 status 到底是 `succeeded` 还是 `awaiting_input`——`runs.py:495-496` 只允许 succeeded，而 `jobs.py` 侧 status 枚举含 `awaiting_input`。若实际返回非 succeeded，则改为调用 `GET /agents/{id}/sessions/{sid}`（`sessions.py:189-200` 恒返回 `awaiting_input`）。
 3. 附件透传：`AgentRunCreate.attachments` 接受 `ChatAttachmentRead` 形状（`session_schema.py:258-270`），但 deepchat 的 `MessageFile` 与之字段不同，D2 先不传附件（远端首轮仅纯文本），附件能力留到 D2 后续或 D5。
 
+### Task 6 实测结论（2026-10-23，本地 StaffDeck 服务 + 真实 client/runner）
+
+环境：`backend/.venv` 起 `uvicorn app.main:app --port 5174`，用 `tenant_demo` 下带 6 个 public API scope 的 credential 直连；deepchat 侧用真实 `StaffdeckRemoteClient` + `StaffdeckRemoteRunner`（transcript/registry 用内存适配器）跑完整链路。
+
+**三个开放项全部收敛：**
+
+| # | 结论 | 证据 |
+|---|---|---|
+| 1 | `run.status` 的 phase **只有 `planning` 一个值**，不能当细粒度进度 | `core/agent_loop.py:338` 是唯一 `_stream_status(...)` 调用点；取消走独立事件 `stream_cancelled`（其 payload 的 `phase` 为 `cancelled`，事件名映射成 `run.cancelled`），不经过 `run.status` |
+| 2 | awaiting_input 时 job 仍 `succeeded`，`/result` 返回 200，`awaiting_input` 取 `result_json` 顶层 | `public_api/jobs.py:418-428` handler 返回后无条件 `_terminalize_job(status="succeeded")`；`APIJob.status` 无 `awaiting_input` 取值。**不改调 sessions 端点** |
+| 3 | 附件不通传 | `ChatAttachmentRead`（`session_schema.py:258-270`）与 `MessageFile` 异构，D2 远端首轮纯文本 |
+
+**链路实测结果（3 项全绿）：**
+
+1. 首轮：建会话 → SSE 13 帧（`job.queued` / `run.started` / `run.executing` / `run.status` / 8×`run.output.delta` / `run.output.completed` / `run.succeeded`）→ delta 累积 62 字 → 落库文本与终稿逐字一致 → 绑定写入 `runId` + `lastEventId=13` → 发出 `chat.stream.updated` 与 `digitalEmployee.remoteRunUpdated`。
+2. 续传：`GET /runs/{id}/events` 带 `Last-Event-ID: 5` 精确回放 id 6–14，与 `>5` 的期望集合**顺序与内容都相等**（不重不漏）；`lastEventId` 全量 13 帧。
+3. 追问：当前环境 `model_configs` 为空，无法产生真实 `awaiting_input`（该状态只在真实 LLM 走到 SOP `expected_user_info` 收集步骤时才出现，`harness_v2_engine.py:1503-1512`）。已确认代码路径正确（`awaitingInput` 为 null 时不误判），真实追问需服务端配好模型后复验。
+
+**两条新发现（已写回 spec §5.2）：**
+
+- **服务端把执行期错误当作正文回复**：无模型时流里推的是 `run.output.delta` 分片（「Harness v2 执行出错（HARNESS_V2_ERROR）：…」）并以 `run.succeeded` 结束，`/result.reply` 也是这段文本。**「有正文」≠「执行成功」**，失败提示必须只由 `phase`/`messageCode` 驱动，不能靠正文是否为空判断。
+- **`Idempotency-Key` 语义已验证**：同 key 同 body 重放返回同一 `job_id` 的完整流；同 key 不同 body → 409 `IDEMPOTENCY_CONFLICT`。D2 的 `deepchat:{sessionId}:{turnId}` 确定性键有效。
+
+**已知限制（不阻塞 D2 交付）：**
+- 追问链路端到端需服务端配置可用模型；D2 侧的 `awaitingInput` 解析、`remoteStatus` 回查与提示条渲染均有单测覆盖。
+- 附件透传未实现（开放项 3）。
+
+
 ## 实施结果（2026-10-23，代码已落地并提交）
 
 | Task | 提交 | 交付 |

@@ -118,6 +118,20 @@ export const digitalEmployeeSchema = z.object({
 > 4. **`run.output.completed` 不携带终稿**。其 payload 仅有 `execution_engine` / `turn_id` / `user_message_id`（`agent_loop.py:424-430` 构造，`runs.py:357-381` 转发）。终稿只能由 delta 累积，并以 `GET /runs/{id}/result` 的 `reply` 覆盖兜底。
 >
 > 另核实：SSE 每 15 秒发 `: keepalive` 注释行（`jobs.py:574-576`），解析器必须跳过；`X-Run-ID` 在响应头（`runs.py:464`）；终止事件除 `run.output.completed` 还有 `run.succeeded` / `run.failed` / `run.cancelled`（`jobs.py:385-395`）；`external_user_id` 是 body 字段而非 header（`schemas.py:139-140`），D1 遗留的 header 传法在 D2 一并改为 body。
+>
+> **D2 落地实测补充（2026-10-23 晚，本地起 StaffDeck 服务跑通全链路）**
+>
+> 计划中列为「待实测确认」的 3 个开放项已收敛：
+>
+> 1. **`run.status` 的 phase 只有一个取值 `planning`**。产生点是 `core/agent_loop.py:338` 唯一一处 `_stream_status(..., "planning", "正在规划本轮任务", ...)`；取消路径走独立事件 `stream_cancelled`（映射为 `run.cancelled`），其 payload 里的 `phase` 是 `cancelled` 而非 `run.status`。结论：`run.status` 不能用作细粒度进度提示，D2 不消费它（保持现状）。
+> 2. **`awaiting_input` 场景下 job 仍是 `succeeded`**。`public_api/jobs.py:418-428` 的 handler 返回后无条件 `_terminalize_job(..., status="succeeded", stage="completed")`，`APIJob.status` 状态机只有 `queued / running / succeeded / failed / cancelled`，不存在 `awaiting_input`。因此 `GET /runs/{id}/result` 的 `status != "succeeded"` 守卫不会在追问场景误报 409，`awaiting_input` 从 `result_json` 顶层字段取（`runs.py:307`）——与 D2 现有实现一致，无需改调 `GET /sessions/{id}`。
+> 3. **附件在 D2 不传**。`AgentRunCreate.attachments` 接受 `ChatAttachmentRead`（`session_schema.py:258-270`），与 deepchat 的 `MessageFile` 字段不同构；D2 远端首轮仅纯文本，附件能力留待后续。
+>
+> 实测同时确认了两个此前只能从源码推断的行为：
+>
+> - **服务端把执行期错误当作正文回复**：未配置默认模型时，流里推的是 `run.output.delta` 分片（内容为「Harness v2 执行出错（HARNESS_V2_ERROR）：…」），并以 `run.succeeded` 正常结束，`/result` 的 `reply` 也是这段文本。也就是说 `run.failed` 不是唯一的失败表达——正文可能是错误说明。UI 因此不能把「有正文」等同于「执行成功」，失败提示只由 `remoteRunUpdated` 的 `phase` 与 `messageCode` 驱动。
+> - **`Idempotency-Key` 语义已验证**：同 key 同 body 重放返回同一 `job_id` 的完整流；同 key 不同 body 返回 409 `IDEMPOTENCY_CONFLICT`（problem+json，取 `code`）。D2 用 `deepchat:{sessionId}:{turnId}` 作确定性键，重试不会产生第二个 run。
+
 
 ### 5.3 技能导入
 
