@@ -488,4 +488,17 @@ D1 完成后 D2-D4 可并行派发；D5 最后。所有 D2-D5 任务共享 D1 �
 - 全量 `test/main`（`vitest.config.ts`）：582 文件通过 / 49 文件失败（104 例）。**与 D1 无关**：失败集中在 `sessionPaths.test.ts`（断言 POSIX `\Users\...`，实际 `D:\Users\...`）、`systemPromptBuilder.test.ts`（env working directory `/tmp` vs `D:\tmp`）等 Windows 平台路径断言，这些文件在 `9ca022c2..HEAD` 零差异，且 D1 未触碰 `test/main/agent/**`。
 - 全量 `test/renderer`（`vitest.config.renderer.ts`）：默认并发在本机 OOM（`Reached heap limit` / `Fatal process out of memory: Zone`），需 `--maxWorkers=2 --minWorkers=1`；降并发后 309 文件通过 / 5 文件失败（20 例），失败为 `providerStore` 的 `providerClient.getProviderGroups is not a function` 等既有问题（同样在基线上复现，与 D1 无关）。
 
-**唯一开放项**：`external_user_id` 传输位置。当前用 `EXTERNAL_USER_ID_HEADER = 'x-external-user-id'`（`provider.ts` 与 `settingsRoutes.ts` 共用同一常量），StaffDeck OpenAPI v1 联调前需确认是 header / query / body；若不同只改这一处。
+**原"唯一开放项"已结案：`external_user_id` 对分发端点无需传递。**
+
+联调前假设该值应以 `x-external-user-id` header 传给 `GET /api/v1/digital-employees`，需要确认 header / query / body 三种载体。跨仓库联调（真实 deepchat Provider → 真实 StaffDeck 服务）后的实测结论是：**分发端点完全不消费这个字段**，三种载体都不必改。
+
+依据：
+
+- 分发端点用 Bearer 凭证鉴权，租户由凭证反推（`auth.py::_api_key_principal`），与"谁在使用"无关。
+- 全后端 `Header(...)` 只有 7 处：`If-None-Match` / `If-Match` / `Last-Event-ID`。**没有任何地方读取 `x-external-user-id`**。
+- `external_user_id` 仅出现在 `POST /agents/{id}/sessions` 与 `POST /agents/{id}/runs*` 的 JSON body（`schemas.py:124`、`schemas.py:140`），且类型为 `str | None = None`，即**可选字段**。
+- 实测：不带该 header 返回 200；带任意值、或两个不同用户值，响应 body（除 `fetchedAt`）与 ETag 完全一致，即该 header 是惰性的。
+
+因此 D1 代码保持原样，`EXTERNAL_USER_ID_HEADER` 保留无害。真正的传递点在 **D2 远端执行**：届时把 `externalUserId` 放进 `POST /agents/{id}/runs:stream` 的 body，而不是 header。设置页保留该字段是为 D2 预留。
+
+修复此项不需要改任何 TS 代码，仅更新本节结论即可。

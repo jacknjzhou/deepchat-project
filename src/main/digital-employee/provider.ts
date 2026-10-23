@@ -2,8 +2,13 @@ import { digitalEmployeeListRoute, type DigitalEmployee } from '@shared/contract
 import { MOCK_DIGITAL_EMPLOYEES } from './mockData'
 
 /**
- * StaffDeck 约定通过 header 传递外部用户 ID。协议尚未与 StaffDeck OpenAPI v1 联调确认，
- * 若实际要求 query/body，只改这一处，不在 route contract 或 renderer 暴露。
+ * 跨仓库联调结论：GET /api/v1/digital-employees **不消费** external_user_id。
+ * 该端点用 Bearer 凭证鉴权、租户由凭证反推；全后端只读取 If-None-Match /
+ * If-Match / Last-Event-ID 三个 header。实测不带此 header 返回 200，带任意值
+ * 响应 body 与 ETag 完全一致，因此这里发出去是惰性的、保留无害。
+ *
+ * externalUserId 的真正用途在 D2 远端执行：届时放进 POST /agents/{id}/runs:stream
+ * 的 JSON body（服务端 schemas.py 定义为可选字段），而不是 header。
  */
 export const EXTERNAL_USER_ID_HEADER = 'x-external-user-id'
 
