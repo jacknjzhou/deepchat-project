@@ -27,13 +27,13 @@ deepchat 已实现「数字员工广场」（设计见 `docs/superpowers/specs/2
 
 ## 2. 已确认的关键决策（两端共识）
 
-| 决策点 | 结论 |
-|---|---|
+| 决策点      | 结论                                                                                                           |
+| -------- | ------------------------------------------------------------------------------------------------------------ |
 | SOP 执行位置 | 混合模式：员工级 `executionMode`（local/remote/hybrid）；SOP 级 `execution_hint` **由服务端消费、不下发**，客户端无法据此逐条路由（见 §5.2 修订 3） |
-| 鉴权 | 部署级共享密钥（`sd_live_` API key）；请求必带 `external_user_id` 标识端上用户 |
-| 知识库 | 本地同步检索：StaffDeck 分发知识包，deepchat 落地本地副本并 `similarityQuery` |
-| 数据回流 | 本地执行对话全量回流（本地队列 + 幂等重试） |
-| 原则 | 配置和能力只下行，对话数据只上行 |
+| 鉴权       | 部署级共享密钥（`sd_live_` API key）；请求必带 `external_user_id` 标识端上用户                                                   |
+| 知识库      | 本地同步检索：StaffDeck 分发知识包，deepchat 落地本地副本并 `similarityQuery`                                                    |
+| 数据回流     | 本地执行对话全量回流（本地队列 + 幂等重试）                                                                                      |
+| 原则       | 配置和能力只下行，对话数据只上行                                                                                             |
 
 ## 3. 共享数据契约（zod，两端锁定）
 
@@ -73,14 +73,14 @@ export const digitalEmployeeSchema = z.object({
 
 ## 4. StaffDeck 服务端依赖（外部依赖清单）
 
-| 能力 | 端点 | 状态 |
-|---|---|---|
-| 配置分发 | `GET /api/v1/digital-employees`、`/{id}`、`/{id}:export-skill` | StaffDeck M2 |
-| 知识同步 | `GET /api/v1/digital-employees/{id}/knowledge-packages`、`/knowledge-packages/{kb}/concepts/{path}:download` | StaffDeck M3 |
-| MCP 工具网关 | `/api/v1/mcp/agents/{id}`（streamable HTTP，工具命名空间 `staffdeck_`） | StaffDeck M4 |
-| 远端执行 | `POST /agents/{id}/sessions` + `POST /agents/{id}/runs:stream`（SSE，Last-Event-ID 续传） | 已有 |
-| 对话回流 | `POST /external-sessions`、`POST /external-sessions/{id}/events:batch` | StaffDeck M6 |
-| 鉴权 | Bearer `sd_live_` 共享密钥；scopes 见 StaffDeck 方案 §8 | 已有 |
+| 能力       | 端点                                                                                                          | 状态           |
+| -------- | ----------------------------------------------------------------------------------------------------------- | ------------ |
+| 配置分发     | `GET /api/v1/digital-employees`、`/{id}`、`/{id}:export-skill`                                                | StaffDeck M2 |
+| 知识同步     | `GET /api/v1/digital-employees/{id}/knowledge-packages`、`/knowledge-packages/{kb}/concepts/{path}:download` | StaffDeck M3 |
+| MCP 工具网关 | `/api/v1/mcp/agents/{id}`（streamable HTTP，工具命名空间 `staffdeck_`）                                              | StaffDeck M4 |
+| 远端执行     | `POST /agents/{id}/sessions` + `POST /agents/{id}/runs:stream`（SSE，Last-Event-ID 续传）                        | 已有           |
+| 对话回流     | `POST /agents/{id}/sessions`（取远端 id，幂等）+ `POST /agents/{id}/sessions/{sid}/events:batch`            | StaffDeck M6 |
+| 鉴权       | Bearer `sd_live_` 共享密钥；scopes 见 StaffDeck 方案 §8                                                             | 已有           |
 
 各端点协议沿用 StaffDeck OpenAPI v1 惯例：Idempotency-Key、ETag/If-Match、`application/problem+json`、X-Request-ID。
 
@@ -91,6 +91,7 @@ export const digitalEmployeeSchema = z.object({
 现状：`src/main/digital-employee/provider.ts` 已有 `DigitalEmployeeProvider` 接口与 mock 实现，HTTP 骨架预留。
 
 改造：
+
 - `providerFactory.ts` 按运行配置选择 mock / http 实现（配置缺失时保持 mock，供离线与开发）；
 - `HttpDigitalEmployeeProvider`：读取 `STAFFDECK_BASE_URL`、`STAFFDECK_API_KEY`、`STAFFDECK_EXTERNAL_USER_ID`（构建时注入，对齐 `docs/managed` 构建期端点注入惯例）；
 - 拉取策略：进入广场/启动时拉取，命中 ETag 缓存则不重新解析；`configHash` 变化的员工标记「配置已更新」；
@@ -101,6 +102,7 @@ export const digitalEmployeeSchema = z.object({
 现状：广场「开始对话」→ 本地新建会话 → 注入 systemPrompt/能力。
 
 改造：
+
 - 按 `executionMode` 分流：
   - `local`：现有链路不变（SOP+人设 → systemPrompt 拼接；技能 → `digital-employee:<id>` agentId；工具 → MCP 白名单；知识 → 首条消息前 `similarityQuery`）；
   - `remote`：会话创建改调 `POST /agents/{id}/sessions`（携带 `external_session_id`=本地会话 id、`external_user_id`、`metadata.source="deepchat"`），消息经 `POST /agents/{id}/runs:stream`（SSE）发送，流式渲染进聊天窗；`awaiting_input` 由**终态后补查 `GET /runs/{id}/result`** 获得（不入 SSE 流），据 `question_summary` + `expected_fields` 在输入框上方展示提示条，用户的下一条普通消息即续跑（**不额外内嵌输入框**——回答本身就是一条消息，多一个输入框会让「发到哪个通道」变含糊）；
@@ -131,7 +133,6 @@ export const digitalEmployeeSchema = z.object({
 >
 > - **服务端把执行期错误当作正文回复**：未配置默认模型时，流里推的是 `run.output.delta` 分片（内容为「Harness v2 执行出错（HARNESS_V2_ERROR）：…」），并以 `run.succeeded` 正常结束，`/result` 的 `reply` 也是这段文本。也就是说 `run.failed` 不是唯一的失败表达——正文可能是错误说明。UI 因此不能把「有正文」等同于「执行成功」，失败提示只由 `remoteRunUpdated` 的 `phase` 与 `messageCode` 驱动。
 > - **`Idempotency-Key` 语义已验证**：同 key 同 body 重放返回同一 `job_id` 的完整流；同 key 不同 body 返回 409 `IDEMPOTENCY_CONFLICT`（problem+json，取 `code`）。D2 用 `deepchat:{sessionId}:{turnId}` 作确定性键，重试不会产生第二个 run。
-
 
 ### 5.3 技能导入
 
@@ -170,10 +171,22 @@ export const digitalEmployeeSchema = z.object({
 > 4. **不做 worker 化**。同步是纯 HTTP + 落盘 + 已有索引队列（`KnowledgeBase.processFileAsync` 本身就是异步队列），再加一层 worker 只会多一条跨进程状态同步路径。改为 main 内调度器 + 并发上限 3。
 >
 > 实测确认的事实：
+>
 > - 25 个概念 / 1 个 KB，首轮 25 次下载全部成功，二轮 hash 全同 → **零下载**；
 > - 概念正文是 **OKF 格式**（自带 YAML frontmatter + `# Summary` / `# Source Sections` / `# Notes` / `# Citations` 分段），D3 **原样保存**、不拼接也不剥离——因为服务端 hash 就是对这份正文算的，改写会让 hash 永远对不上，每轮都重拉；
 > - 13 个概念 id 形如 `sources/<doc>/sections/sec-N`，落盘后形成真实层级目录，未被压平成单文件；
 > - `If-None-Match` 携 ETag 返回 **304**，D3 据此跳过整轮（沿用本地状态，不视为空清单）。
+
+> **D3 补充修订：会话检索的库 id 与状态契约（2026-10-23，缺口审计后回写）**
+>
+> 原文只写了「概念正文落盘后交给 `KnowledgeService.addFile`」，没写**对话时从哪个库检索**。这一段的缺失导致 P0 断链：同步把索引写进 `de-{employeeId}`，而会话检索读的是 payload 的 `knowledgeBaseIds`（服务端 `kb_*`），两套 id 之间没有换算关系。
+>
+> 1. **本地库 id 与远端 KB id 是两个空间**。`deriveLocalKnowledgeBaseId(employeeId)`（`knowledgeProvisioning.ts:50`，`de-` 前缀 + 清洗后的员工 id，必要时补 8 位 hash）是唯一权威来源；`kb_*` 只用于「服务端还配着哪些知识」的判据。
+> 2. **新增窄契约 `digitalEmployee.knowledgeLocalBase`**（`digitalEmployeeKnowledge.routes.ts`），入参 `employeeId`，出参 `{ knowledgeBaseId: string | null }`。**不**把 `localKnowledgeBaseId` 塞进 `knowledgeStatus` 的 `packages[]`：那是展示用列表，本地库 id 是员工级单值，混进去会变成「列表为空时 id 无处安放」，而列表为空恰恰最需要它。
+> 3. **解析顺序**：状态表记录的 id → 缺失时按同一规则重算；再用 `KnowledgeSettings.getKnowledgeConfigs()` 校验该库真的存在（用户可能在主设置里删了库）。任一环节不成立就返回 `null`。
+> 4. **`null` 一律表示「跳过检索」**，绝不回退到远端 id。回退只会让 `similarityQuery` 抛 `Knowledge config not found`，再被 `.catch(() => [])` 吞成空结果——故障不可见，这正是原缺陷能长期潜伏的原因。
+> 5. 检索仍只在有开场问题时执行，且仅对 `executionMode !== 'remote'` 生效（remote 由服务端检索）。
+
 
 ### 5.5 MCP 白名单接入远端工具
 
@@ -192,13 +205,17 @@ export const digitalEmployeeSchema = z.object({
 ### 5.6 对话回流上报客户端
 
 - 触点：本地执行会话（`executionMode=local` 及 hybrid 的本地段）每轮结束后上报；
-- 实现：`POST /external-sessions`（`external_session_id` = 本地会话 id，幂等）建立映射 → 消息/工具调用/token 用量组批经 `POST /external-sessions/{id}/events:batch` 上报；
-- 可靠性：本地 SQLite 队列暂存，指数退避重试；服务端 24h 幂等窗口，409 冲突视为已上报跳过；
+- 实现：先 `POST /agents/{id}/sessions`（`external_session_id` = 本地会话 id，幂等）取服务端会话 id → 消息/工具调用/token 用量组批经 `POST /agents/{id}/sessions/{sid}/events:batch` 上报；
+- 可靠性：上报失败不前进游标，下一轮重发同一批；服务端按单事件 id 去重，重发安全；
 - 隐私：上报内容与远端执行同一审计口径；用户可在设置中关闭回流（关闭时管理端无该会话记录，UI 明示）。
 
-> **实现修订（2026-10-23，D5 交付后据实记录）**：上面两条端点都改了，原因分别是「重复」和「会丢数据」。
+> **实现修订（2026-10-23，D5 交付后据实记录）**：上面两条端点都改了，原因分别是「重复」和「会丢数据」，另有第三条「缺一步就整条不通」。
 >
-> **建会话不需要新端点。** 原文的 `POST /external-sessions` 与既有 `POST /agents/{agent_id}/sessions` 功能重叠——后者本来就接受 `external_session_id`，并按 `(credential_id, external_session_id)` 幂等 upsert（`sessions.py` 的 `create_public_session_row`），`StaffdeckRemoteClient.createSession` 一直在走它。再开一个就是同一规则两处实现，一旦漂移，同一对话会在服务端产生两行、消息各写一半。**故只保留事件追加端点**，路径放进既有命名空间：`POST /agents/{agent_id}/sessions/{session_id}/events:batch`。
+> **建会话不需要新端点，但建会话本身不能省。** 原文的 `POST /external-sessions` 与既有 `POST /agents/{agent_id}/sessions` 功能重叠——后者本来就接受 `external_session_id`，并按 `(credential_id, external_session_id)` 幂等 upsert（`sessions.py` 的 `create_public_session_row`），`StaffdeckRemoteClient.createSession` 一直在走它。再开一个就是同一规则两处实现，一旦漂移，同一对话会在服务端产生两行、消息各写一半。**故不新增建会话端点**，路径放进既有命名空间：`POST /agents/{agent_id}/sessions/{session_id}/events:batch`。
+>
+> **但「不新增端点」不等于「不用建会话」。** `events:batch` 要求 `session_id` 是服务端的 `ChatSession` 行，且该凭证在 `ExternalSessionBinding` 里拥有它。本地执行的会话从未建过远端记录，**直接发事件一律 404**。所以客户端第一次上报必须先按 `external_session_id` 把会话建出来，再用返回的服务端 id 发事件。早期 D5 联调之所以通过，是因为脚本手工建了会话；真正接线到对话页时才暴露。
+>
+> **服务端 id 缓存在内存，不回填成「本地 id 就是远端 id」。** 每轮多一次建会话往返没有意义；但缓存不能落盘——落盘会让「服务端换了库」变成一堆指向不存在会话的陈旧 id。缓存命中后若收到 404，丢缓存重建一次，再失败就如实回报，不无限重试。
 >
 > **幂等必须按单事件，不能按整批。** 客户端重试必然重发整批。整批幂等的话，只要重发时夹带一条已存事件，整批就被 409 拒掉，随行的新事件全部丢失。服务端改为按 `event_id` 逐条去重（存于 `Message.metadata_json["external_event_id"]`），响应 `{accepted, duplicates}`；`accepted: 0` 是「重试生效」，不是错误。
 >
@@ -210,7 +227,11 @@ export const digitalEmployeeSchema = z.object({
 >
 > **失败即停，不跳过。** 跳过失败块会在归档里留一个洞，而调用方分不清「已发过」和「丢了」，那一段就永远补不回来。
 >
-> 服务端实现 `backend/app/public_api/external_sessions.py`，客户端 `src/main/digital-employee/backflow.ts` + `backflowRoutes.ts`。
+> **事件 id 只由消息 id 与块位置决定。** 它就是服务端的去重粒度：一旦带上时间戳或数组下标，同一轮重报就会被当成新消息，归档里出现两份。相应地，`orderSeq` 游标只在成功后才前进，失败就原地等下一轮重发。
+>
+> **乐观消息前面停住。** 流刚结束时用户那条还是 `__optimistic_user_*` 临时记录，提交后会被换成真实 id。此时上报会留下一个永远对不上的事件 id，且游标一旦越过它，真实记录因为 `orderSeq` 不前进就再也采不到。所以遇到临时记录就在本轮停下，等下一轮连同后面的助手消息一起报。
+>
+> 服务端实现 `backend/app/public_api/external_sessions.py`，客户端 `src/main/digital-employee/backflow.ts` + `backflowRoutes.ts`，采集 `src/renderer/src/features/chat-page/model/backflowEvents.ts` + `composables/useBackflowReporting.ts`。
 
 ### 5.7 部署与配置注入
 
@@ -219,28 +240,29 @@ export const digitalEmployeeSchema = z.object({
 
 ## 6. 错误处理与降级（deepchat 侧）
 
-| 故障 | 行为 |
-|---|---|
-| 分发 API 不可达 | 降级 mock（现有逻辑）+「配置过期」横幅 |
-| 知识同步失败 | 旧副本 + stale 标记，后台重试 |
-| 远端 runs 中断 | Last-Event-ID 续传；不可恢复时 hybrid 转本地模式，remote 明确报错并保留会话 |
-| 回流上报失败 | 本地队列暂存 + 退避重试 |
-| MCP 工具超时/预算耗尽 | 结构化错误码转 UI 提示，允许人工接管 |
+| 故障            | 行为                                                   |
+| ------------- | ---------------------------------------------------- |
+| 分发 API 不可达    | 降级 mock（现有逻辑）+「配置过期」横幅                               |
+| 知识同步失败        | 旧副本 + stale 标记，后台重试                                  |
+| 远端 runs 中断    | Last-Event-ID 续传；不可恢复时 hybrid 转本地模式，remote 明确报错并保留会话 |
+| 回流上报失败        | 本地队列暂存 + 退避重试                                        |
+| MCP 工具超时/预算耗尽 | 结构化错误码转 UI 提示，允许人工接管                                 |
 
 > **D3 落地补充（stale 原因的完整集合与处置）**
 >
 > 同步失败经 `knowledgeStaleReasons` 收敛为有限集合，UI 按此映射文案（未识别的码降级为 `UNKNOWN`，绝不回显原始字符串）：
 >
-> | 原因 | 触发条件 | 用户是否需要动手 |
-> |---|---|---|
-> | `NO_EMBEDDING_MODEL` | 本机没有任何已启用的 embedding 模型，建不了索引 | **是** —— 去设置启用一个 embedding 模型 |
-> | `HTTP_401` / `HTTP_403` | StaffDeck API Key 失效或权限不足 | **是** —— 检查设置里的 API Key |
-> | `UNREACHABLE` | 网络/DNS/超时 | 否 —— 后台自动重试 |
-> | `PARTIAL` | 部分概念下载或索引失败 | 否 —— 后台自动重试 |
-> | `INDEX_FAILED` | 索引写入失败（磁盘、维度不匹配） | 否（通常需重启或换模型，属异常态） |
-> | `UNKNOWN` | 契约新增了未识别的原因码 | 否 —— 显示通用文案 |
+> | 原因                      | 触发条件                          | 用户是否需要动手                      |
+> | ----------------------- | ----------------------------- | ----------------------------- |
+> | `NO_EMBEDDING_MODEL`    | 本机没有任何已启用的 embedding 模型，建不了索引 | **是** —— 去设置启用一个 embedding 模型 |
+> | `HTTP_401` / `HTTP_403` | StaffDeck API Key 失效或权限不足     | **是** —— 检查设置里的 API Key       |
+> | `UNREACHABLE`           | 网络/DNS/超时                     | 否 —— 后台自动重试                   |
+> | `PARTIAL`               | 部分概念下载或索引失败                   | 否 —— 后台自动重试                   |
+> | `INDEX_FAILED`          | 索引写入失败（磁盘、维度不匹配）              | 否（通常需重启或换模型，属异常态）             |
+> | `UNKNOWN`               | 契约新增了未识别的原因码                  | 否 —— 显示通用文案                   |
 >
 > 两处刻意的设计取舍：
+>
 > - **索引失败的 hash 不记账**。若记了，下一轮会认为「已同步」，那条概念永远补不上。
 > - **已完成的部分不回滚**。单个概念失败只标 `PARTIAL`，已下好的兄弟概念保留，避免每次失败都全量重拉。
 
@@ -253,21 +275,25 @@ export const digitalEmployeeSchema = z.object({
 5. **知识同步测试**：hash 对比增量、stale 降级、全量重拉；
 
 > **第 5 条落地拆分（D3）**：单概念 hash 变化只重拉该概念并 `reAddFile`；服务端删除的概念 → `deleteFile` 并从记账里摘除；清单 304 → 零下载；空清单 → 不建库不标 stale；`knowledgeBaseIds` 与清单取交集（清单多出的 KB 不处理）；下载中途失败 → 标 `PARTIAL` 且保留已完成部分；`addFile` 返回 `{error}` → 不记账、整轮继续；无嵌入模型 → 不下载直接返回 `NO_EMBEDDING_MODEL`；落盘原子写（不留 `.tmp`）且路径稳定；概念 id 含 `/` 建层级目录。共 16 条编排用例 + 10 条调度用例 + 5 条状态路由用例 + 5 条提示条用例。
-6. **技能与工具测试（D4）**：MCP 注册幂等（目标未变时零写入）、凭证缺失/无工具时清理、Bearer 只进 header；技能按 `skills[].id` 增量、失败不记账、临时文件必删；准备闸门（remote / mock / 已下线）与两条链路的失败隔离；renderer 侧「provision 先于 `loadTools({force:true})`」的顺序。
+>
+> **第 5 条补充（检索接线，2026-10-23）**：`knowledgeLocalBase` 路由 5 例——回传同步记录的 id、状态表缺失但库存在时按规则重算、库不存在回 `null`、记录的库被用户删除后回 `null`、绝不回传 `kb_*` 远端 id。renderer 侧 4 例——用本地 id 检索且不带 `kb-*`、`null` 时跳过检索且 systemPrompt 无「参考资料」段、查询失败时跳过、无开场问题时连查询都不发。
+
+1. **技能与工具测试（D4）**：MCP 注册幂等（目标未变时零写入）、凭证缺失/无工具时清理、Bearer 只进 header；技能按 `skills[].id` 增量、失败不记账、临时文件必删；准备闸门（remote / mock / 已下线）与两条链路的失败隔离；renderer 侧「provision 先于 `loadTools({force:true})`」的顺序。
 
 > **第 6 条落地拆分（D4）**：注册器 14 例 + 技能同步 16 例 + baseline 存储 8 例 + 准备编排 17 例 + 作用域派生 12 例 + 契约 1 例 + 广场页 17 例（含顺序与技能名透传）。真实导出包作为 fixture 固化「两边对包结构的假设一致」。
-7. **回流测试**：组批、幂等重试、关闭回流后不上报；
-8. **回归纪律**：vitest 与 vue-tsc/oxlint 分开跑；zh-CN 为源语言，en 同步，其余 locale 补 key；每任务单独 commit。
+
+1. **回流测试**：组批、幂等重试、关闭回流后不上报；
+2. **回归纪律**：vitest 与 vue-tsc/oxlint 分开跑；zh-CN 为源语言，en 同步，其余 locale 补 key；每任务单独 commit。
 
 ## 8. 实施里程碑（deepchat 侧，与 StaffDeck M 对应）
 
-| 阶段 | 内容 | 依赖 | 交付标志 |
-|---|---|---|---|
-| D1 | HttpDigitalEmployeeProvider 完整实现 + 配置注入 + 降级 | StaffDeck M2 | 广场显示真实配置，mock 仅作降级 |
-| D2 | executionMode 分流 + remote SSE 渲染 + awaiting_input 续跑 | **无 M5 依赖**：通道④是「复用现有 API，零新增」（§6.4），`runs:stream` 自 M1 即存在 | remote 员工完整对话闭环 |
-| D3 | 知识同步任务 + 本地索引 | StaffDeck M3 | 本地对话带知识引用与 stale 提示 |
-| D4 | 技能导入 + `staffdeck_*` MCP 工具接入 | StaffDeck M2/M4 | 本地技能生效；远端工具可执行 |
-| D5 | 回流上报客户端 + 设置开关 | StaffDeck M6 | 管理端看板可见本地执行会话 |
+| 阶段 | 内容                                                   | 依赖                                                          | 交付标志                |
+| -- | ---------------------------------------------------- | ----------------------------------------------------------- | ------------------- |
+| D1 | HttpDigitalEmployeeProvider 完整实现 + 配置注入 + 降级         | StaffDeck M2                                                | 广场显示真实配置，mock 仅作降级  |
+| D2 | executionMode 分流 + remote SSE 渲染 + awaiting_input 续跑 | **无 M5 依赖**：通道④是「复用现有 API，零新增」（§6.4），`runs:stream` 自 M1 即存在 | remote 员工完整对话闭环     |
+| D3 | 知识同步任务 + 本地索引                                        | StaffDeck M3                                                | 本地对话带知识引用与 stale 提示 |
+| D4 | 技能导入 + `staffdeck_*` MCP 工具接入                        | StaffDeck M2/M4                                             | 本地技能生效；远端工具可执行      |
+| D5 | 回流上报客户端 + 设置开关                                       | StaffDeck M6                                                | 管理端看板可见本地执行会话       |
 
 D1 → {D2, D3, D4} → D5；联调环境使用 StaffDeck M1 交付的 Compose 部署。
 
@@ -275,14 +301,16 @@ D1 → {D2, D3, D4} → D5；联调环境使用 StaffDeck M1 交付的 Compose �
 >
 > 运维前提：API Key 需额外带 `mcp:invoke` scope——分发列表只要 `agents:read`，但工具网关不认。缺它表现为「工具一个都没有」而非明确报错。
 
+> **D3 补交付（2026-10-23，缺口审计后）**：D3 原交付只做到「索引写进本地库」，没接「对话从本地库检索」，里程碑里的交付标志「本地对话带知识引用」实际未达成。补齐方式见 §5.4 的补充修订（新增 `digitalEmployee.knowledgeLocalBase` 窄契约 + 渲染侧改用本地库 id 寻址）。完整缺口清单见 `docs/superpowers/plans/2026-10-23-staffdeck-integration-gap-audit.md`。
+
 ## 9. 风险与开放问题
 
-| 风险 | 缓解 |
-|---|---|
-| 契约演进（StaffDeck 扩展字段增多） | deepchat 侧 schema 保持非严格模式，未知字段忽略；扩展字段消费逐项开关 |
-| SSE 在 Electron 渲染进程的稳定性 | 主进程统一消费 SSE → 契约事件转发 renderer（对齐现有事件系统规则） |
-| 本地知识副本的隐私合规 | 知识同步仅覆盖开启开关的 KB；企业策略可整体禁用 D3。注意开关是**默认关闭**：`knowledge_sync.py:36` 用 `metadata.get("deepchat_sync_enabled") is not True` 判定，未显式设置一律不同步（当前种子数据 33 个 version 全部为 None，故 `/knowledge-packages` 实际返回空列表） |
-| 回流关闭导致审计盲区 | 回路由服务端 `POST /external-sessions` + `events:batch` 承接，客户端不带开关；服务端按 `source=deepchat` 只读归档 |
-| hybrid 会话内本地/远端切换的上下文丢失 | 切换时生成上下文摘要并注入远端会话首条消息（实现为 D2 细化项） |
-| `run.output.replace` / `awaiting_input` 被误当作流内事件 | 已在 §5.2「D2 协议核实修订」中按源码修正：replace 无产生点、awaiting_input 需终态补查 |
-| 服务端新增 SSE 事件名导致客户端解析拒绝 | 事件名白名单之外的帧按「忽略 + 计数告警」处理，不中断流（与契约非严格策略一致） |
+| 风险                                               | 缓解                                                                                                                                                                                                  |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 契约演进（StaffDeck 扩展字段增多）                           | deepchat 侧 schema 保持非严格模式，未知字段忽略；扩展字段消费逐项开关                                                                                                                                                         |
+| SSE 在 Electron 渲染进程的稳定性                          | 主进程统一消费 SSE → 契约事件转发 renderer（对齐现有事件系统规则）                                                                                                                                                           |
+| 本地知识副本的隐私合规                                      | 知识同步仅覆盖开启开关的 KB；企业策略可整体禁用 D3。注意开关是**默认关闭**：`knowledge_sync.py:36` 用 `metadata.get("deepchat_sync_enabled") is not True` 判定，未显式设置一律不同步（当前种子数据 33 个 version 全部为 None，故 `/knowledge-packages` 实际返回空列表） |
+| 回流关闭导致审计盲区                                       | 回路由服务端 `POST /agents/{id}/sessions` + `events:batch` 承接，客户端设置页提供开关（默认开启）；服务端按 `source=deepchat` 只读归档。关掉时设置页显式警示「管理端看不到这些会话」，不静默生效 |
+| hybrid 会话内本地/远端切换的上下文丢失                          | 切换时生成上下文摘要并注入远端会话首条消息（实现为 D2 细化项）                                                                                                                                                                   |
+| `run.output.replace` / `awaiting_input` 被误当作流内事件 | 已在 §5.2「D2 协议核实修订」中按源码修正：replace 无产生点、awaiting_input 需终态补查                                                                                                                                          |
+| 服务端新增 SSE 事件名导致客户端解析拒绝                           | 事件名白名单之外的帧按「忽略 + 计数告警」处理，不中断流（与契约非严格策略一致）                                                                                                                                                           |
