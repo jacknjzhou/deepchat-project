@@ -238,6 +238,14 @@ import { StaffdeckRemoteClient } from '@/digital-employee/remoteClient'
 import { StaffdeckRemoteRunner } from '@/digital-employee/remoteRunner'
 import { createDigitalEmployeeRemoteRoutes } from '@/digital-employee/remoteRoutes'
 import { createRemoteSessionRegistry } from '@/digital-employee/remoteSessionRegistry'
+import { StaffdeckKnowledgeClient } from '@/digital-employee/knowledgeClient'
+import { createKnowledgeSync } from '@/digital-employee/knowledgeSync'
+import {
+  createKnowledgeSyncScheduler,
+  type KnowledgeSyncScheduler
+} from '@/digital-employee/knowledgeSyncScheduler'
+import { createKnowledgeSyncStateStore } from '@/digital-employee/knowledgeSyncState'
+import { provisionLocalKnowledgeBase } from '@/digital-employee/knowledgeProvisioning'
 import { RecognitionTaskManager } from '@/documents/taskManager'
 import { seedPresetTemplates } from '@/documents/seed'
 import { ResumeScreeningDatabase } from '@/resumeScreening/data/database'
@@ -2955,6 +2963,7 @@ export async function createMainProcessControl(dependencies: {
     await runDestroyStep('providerRuntime.shutdown', () => providerRuntime.shutdown())
     await runDestroyStep('acpRuntime.shutdown', () => acpRuntimeOwner.shutdown())
     await runDestroyStep('autoWatchScheduler.stop', () => autoWatchScheduler?.stop())
+    await runDestroyStep('knowledgeSyncScheduler.stop', () => knowledgeSyncScheduler?.stop())
     await runDestroyStep('mainDatabase.close', () => mainDatabase.close())
     await runDestroyStep('shortcutPresenter.destroy', () => shortcutPresenter.destroy())
     await runDestroyStep('notificationService.clearAllNotifications', () =>
@@ -3382,6 +3391,7 @@ export async function createMainProcessControl(dependencies: {
       // Provider 换新实例即丢弃旧 ETag/缓存；远端 client 也要按新配置重建。
       digitalEmployeeProviderHolder.replace(readDigitalEmployeeProvider())
       rebuildRemoteClient()
+      rebuildKnowledgeSync()
       publishDeepchatEvent('digitalEmployee.configurationChanged', { changedAt: Date.now() })
     }
     const digitalEmployeeRemoteRoutes = createDigitalEmployeeRemoteRoutes({
@@ -3393,6 +3403,68 @@ export async function createMainProcessControl(dependencies: {
         return remoteRunner as StaffdeckRemoteRunner
       }
     })
+
+    // 知识同步：与远端执行同源判断（连接齐备才建），配置变更时整体重建。
+    // 调度器只管「什么时候跑」，编排细节全在 knowledgeSync 里，便于分别单测。
+    const knowledgeSyncStateStore = createKnowledgeSyncStateStore({
+      settings: {
+        get: <TValue = unknown>(key: string) => dependencies.settingsStore.get<TValue>(key),
+        set: (key: string, value: unknown) => dependencies.settingsStore.set(key, value)
+      }
+    })
+    const knowledgeCacheDir = path.join(app.getPath('userData'), 'digital-employee-knowledge')
+    let knowledgeSyncScheduler: KnowledgeSyncScheduler | null = null
+
+    const rebuildKnowledgeSync = (): void => {
+      knowledgeSyncScheduler?.stop()
+      knowledgeSyncScheduler = null
+
+      const connection = readStaffdeckConnection()
+      if (!connection) return
+
+      const client = new StaffdeckKnowledgeClient(connection)
+      const sync = createKnowledgeSync({
+        stateStore: knowledgeSyncStateStore,
+        client,
+        cacheDir: knowledgeCacheDir,
+        knowledge: {
+          addFile: (id, filePath) => knowledgeService.addFile(id, filePath),
+          reAddFile: (id, fileId) => knowledgeService.reAddFile(id, fileId),
+          deleteFile: (id, fileId) => knowledgeService.deleteFile(id, fileId)
+        },
+        provision: (input) =>
+          provisionLocalKnowledgeBase(input, {
+            listProviders: () => providerRuntime.getProviders(),
+            getDimensions: (providerId, modelId) =>
+              providerRuntime.getDimensions(providerId, modelId),
+            getKnowledgeConfigs: () => knowledgeSettings.getKnowledgeConfigs(),
+            setKnowledgeConfigs: (configs) => knowledgeSettings.setKnowledgeConfigs(configs),
+            applyConfigChange: () => knowledgeService.syncConfigChanges()
+          })
+      })
+
+      knowledgeSyncScheduler = createKnowledgeSyncScheduler({
+        now: () => Date.now(),
+        isEnabled: () => readStaffdeckConnection() !== null,
+        listEmployees: async () => {
+          const provider = digitalEmployeeProviderHolder.current()
+          // 降级到 mock 时列出的是假员工：拿它们去同步只会在服务端刷 404。
+          if (provider.source !== 'http') return []
+          const employees = await provider.list()
+          return employees.map((employee) => ({
+            id: employee.id,
+            name: employee.name,
+            knowledgeBaseIds: employee.knowledgeBaseIds
+          }))
+        },
+        syncEmployee: (input) => sync.syncEmployee(input),
+        readIntervalSeconds: () =>
+          dependencies.settingsStore.get<number>(digitalEmployeeSettingsKeys.syncIntervalSeconds) ??
+          0
+      })
+      knowledgeSyncScheduler.start()
+    }
+    rebuildKnowledgeSync()
 
     // Resume interrupted recognition tasks from the previous run.
     void recognitionTaskManager.resumePending()

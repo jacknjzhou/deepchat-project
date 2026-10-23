@@ -11,7 +11,9 @@ export const digitalEmployeeSettingsKeys = {
   baseUrl: 'digitalEmployee.staffdeckBaseUrl',
   externalUserId: 'digitalEmployee.externalUserId',
   /** 仅 SecretStore 读写的 wrapped 值键 */
-  apiKey: 'digitalEmployee.staffdeckApiKey'
+  apiKey: 'digitalEmployee.staffdeckApiKey',
+  /** 知识同步的轮询间隔（秒）；缺省/非法值按 3600 处理。 */
+  syncIntervalSeconds: 'digitalEmployee.knowledgeSyncIntervalSeconds'
 } as const
 
 /** 测试连接结果码：renderer 依此映射本地化文案，不接收原始响应体。 */
