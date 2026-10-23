@@ -78,7 +78,7 @@ const exportUrl = (
   employeeId: string,
   slug: string
 ): string =>
-  `${normalizeBaseUrl(connection.baseUrl)}/digital-employees/` +
+  `${normalizeBaseUrl(connection.baseUrl)}/api/v1/digital-employees/` +
   `${encodeURIComponent(employeeId)}:export-skill?slug=${encodeURIComponent(slug)}`
 
 export function createStaffdeckSkillSync(deps: StaffdeckSkillSyncDeps): StaffdeckSkillSync {

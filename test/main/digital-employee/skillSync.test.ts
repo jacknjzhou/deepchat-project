@@ -31,7 +31,7 @@ function createHarness(options: {
   initialInstalled?: Record<string, string>
 } = {}) {
   const state: State = { installed: { ...(options.initialInstalled ?? {}) }, downloads: [] }
-  const baseUrl = options.connection?.baseUrl ?? 'http://staffdeck.test/api/v1'
+  const baseUrl = options.connection?.baseUrl ?? 'http://staffdeck.test'
 
   const deps: StaffdeckSkillSyncDeps = {
     getConnection: () =>
@@ -110,7 +110,7 @@ describe('syncEmployee', () => {
 
   it('uses the configured base url, not the one baked into downloadUrl', async () => {
     const harness = createHarness({
-      connection: { baseUrl: 'http://real-host:9999/api/v1', apiKey: 'k' },
+      connection: { baseUrl: 'http://real-host:9999', apiKey: 'k' },
       responses: { 'slug=alpha': { ok: true } }
     })
 

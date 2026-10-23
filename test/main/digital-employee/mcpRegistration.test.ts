@@ -30,7 +30,8 @@ function createHarness(
   const stopped: string[] = []
 
   const deps: StaffdeckMcpRegistrarDeps = {
-    getConnection: () => ({ baseUrl: 'http://staffdeck.test/api/v1', apiKey: 'sd_live_abc' }),
+    // 设置里存的是主机根（占位符 https://staffdeck.example.com），不含 /api/v1。
+    getConnection: () => ({ baseUrl: 'http://staffdeck.test', apiKey: 'sd_live_abc' }),
     mcpSettings: {
       getMcpServers: async () => Object.fromEntries(servers),
       addMcpServer: async (name, config) => {
@@ -108,6 +109,7 @@ describe('registerForEmployee', () => {
     expect(config?.type).toBe('http')
     // 必须带路径段：标准 MCP 客户端只会发 tools/list 的 {}，无法注入 _meta，
     // 服务端只能从 URL 认出是哪个员工。
+    // `/api/v1` 是客户端自己拼的（设置里只有主机根），漏了它每次 initialize 都是 404。
     expect(config?.baseUrl).toBe(`http://staffdeck.test/api/v1/mcp/agents/${EMPLOYEE}`)
     expect(config?.enabled).toBe(true)
   })
@@ -155,7 +157,7 @@ describe('registerForEmployee', () => {
 
   it('rewrites the registration when the api key changes', async () => {
     let apiKey = 'sd_live_old'
-    const harness = createHarness({ getConnection: () => ({ baseUrl: 'http://x/api/v1', apiKey }) })
+    const harness = createHarness({ getConnection: () => ({ baseUrl: 'http://x', apiKey }) })
     const registrar = createStaffdeckMcpRegistrar(harness.deps)
     const input = { employeeId: EMPLOYEE, tools: ['staffdeck_a'] }
 
@@ -269,9 +271,11 @@ describe('base url handling', () => {
     vi.restoreAllMocks()
   })
 
-  it('does not double the /api/v1 prefix when the base url already carries it', async () => {
+  it('adds the api version segment that the setting does not carry', async () => {
+    // 设置页的占位符是 `https://staffdeck.example.com`，即主机根。`/api/v1`
+    // 属于客户端知识；照搬 baseUrl 会得到 `/mcp/agents/...` 的 404。
     const harness = createHarness({
-      getConnection: () => ({ baseUrl: 'http://staffdeck.test/api/v1/', apiKey: 'k' })
+      getConnection: () => ({ baseUrl: 'http://staffdeck.test/', apiKey: 'k' })
     })
 
     await createStaffdeckMcpRegistrar(harness.deps).registerForEmployee({

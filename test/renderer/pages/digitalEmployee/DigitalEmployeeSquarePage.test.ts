@@ -228,6 +228,8 @@ describe('DigitalEmployeeSquarePage', () => {
     await wrapper.get('[data-testid="digital-employee-start-button"]').trigger('click')
     await flushPromises()
     expect(mcpStubStore.loadTools).toHaveBeenCalledTimes(1)
+    // force 是必须的：refresh 在 30 秒 staleTime 内返回注册前的缓存。
+    expect(mcpStubStore.loadTools).toHaveBeenCalledWith({ force: true })
     expect(stubStore.startConversation).toHaveBeenCalledWith(stubStore.employees[0], {
       openingQuestion: undefined,
       availableMcpToolNames: []

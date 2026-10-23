@@ -360,8 +360,10 @@ const startConversation = async () => {
     // 注册晚了第一轮对话就一个 staffdeck_* 工具都没有，之后不会自动重试。
     // provision 内部已吞掉全部失败，这里的 catch 只兜 IPC 层异常。
     const provisioned = await store.provisionEmployee(employee.id).catch(() => null)
-    // 取可用 MCP 工具名供白名单收敛；loadTools 内部已兜错，失败时列表为空 → 放弃收敛（宁多勿缺）
-    await mcpStore.loadTools()
+    // 取可用 MCP 工具名供白名单收敛；loadTools 内部已兜错，失败时列表为空 → 放弃收敛（宁多勿缺）。
+    // 必须 force：默认走 refresh，30 秒 staleTime 内会直接返回注册前的缓存，
+    // 刚注册的 server 工具就看不见，「先注册后读列表」白做。
+    await mcpStore.loadTools({ force: true })
     const sessionId = await store.startConversation(employee, {
       openingQuestion: openingQuestion.value.trim() || undefined,
       availableMcpToolNames: mcpStore.tools.map((tool) => tool.function.name),

@@ -75,7 +75,12 @@ const buildConfig = (connection: StaffdeckConnection, employeeId: string): MCPSe
   icons: '',
   enabled: true,
   type: 'http',
-  baseUrl: `${normalizeBaseUrl(connection.baseUrl)}/mcp/agents/${encodeURIComponent(employeeId)}`,
+  // 设置里存的是主机根（占位符 `https://staffdeck.example.com`），`/api/v1`
+  // 由客户端自己拼——与本目录其余 client 同一约定。MCP 客户端直接连这个 URL，
+  // 少了这段每次 initialize 都是 404。
+  baseUrl:
+    `${normalizeBaseUrl(connection.baseUrl)}/api/v1/mcp/agents/` +
+    `${encodeURIComponent(employeeId)}`,
   customHeaders: { Authorization: `Bearer ${connection.apiKey}` }
 })
 
