@@ -13,7 +13,10 @@ const knowledgeClientMock = vi.hoisted(() => ({
 }))
 
 const digitalEmployeeClientMock = vi.hoisted(() => ({
-  list: vi.fn()
+  list: vi.fn(),
+  bindRemoteSession: vi.fn(),
+  remoteStatus: vi.fn(),
+  switchToRemote: vi.fn()
 }))
 
 const configClientMock = vi.hoisted(() => ({
@@ -46,9 +49,21 @@ vi.mock('../../../src/renderer/api/ConfigClient', () => ({
 }))
 
 const makeEmployee = (id: string, overrides: Partial<DigitalEmployee> = {}): DigitalEmployee => ({
-  id, name: id, role: id, description: '', avatar: null, capabilities: [], greeting: null,
-  systemPrompt: 'p', sops: [], knowledgeBaseIds: [], skillIds: [], tools: [], enabled: true,
-  updatedAt: '2026-10-21', executionMode: 'local',
+  id,
+  name: id,
+  role: id,
+  description: '',
+  avatar: null,
+  capabilities: [],
+  greeting: null,
+  systemPrompt: 'p',
+  sops: [],
+  knowledgeBaseIds: [],
+  skillIds: [],
+  tools: [],
+  enabled: true,
+  updatedAt: '2026-10-21',
+  executionMode: 'local',
   ...overrides
 })
 
@@ -57,13 +72,37 @@ describe('digitalEmployeeStore', () => {
     digitalEmployeeClientMock.list.mockResolvedValue({
       employees: [
         {
-          id: 'finance', name: '财务', role: '财务', description: '', avatar: null,
-          capabilities: [], greeting: '你好，我是财务助手', systemPrompt: 'p',
+          id: 'finance',
+          name: '财务',
+          role: '财务',
+          description: '',
+          avatar: null,
+          capabilities: [],
+          greeting: '你好，我是财务助手',
+          systemPrompt: 'p',
           sops: [{ title: '报销流程', content: '先提交申请单' }],
-          knowledgeBaseIds: ['kb-1'], skillIds: ['skill-a'], tools: ['filesystem_read'],
-          enabled: true, updatedAt: '2026-10-21'
+          knowledgeBaseIds: ['kb-1'],
+          skillIds: ['skill-a'],
+          tools: ['filesystem_read'],
+          enabled: true,
+          updatedAt: '2026-10-21'
         },
-        { id: 'hr', name: '人事', role: '人事', description: '', avatar: null, capabilities: [], greeting: null, systemPrompt: 'p', sops: [], knowledgeBaseIds: [], skillIds: [], tools: [], enabled: false, updatedAt: '2026-10-21' }
+        {
+          id: 'hr',
+          name: '人事',
+          role: '人事',
+          description: '',
+          avatar: null,
+          capabilities: [],
+          greeting: null,
+          systemPrompt: 'p',
+          sops: [],
+          knowledgeBaseIds: [],
+          skillIds: [],
+          tools: [],
+          enabled: false,
+          updatedAt: '2026-10-21'
+        }
       ],
       fetchedAt: '2026-10-21T00:00:00.000Z'
     })
@@ -81,6 +120,12 @@ describe('digitalEmployeeStore', () => {
     mockEmployees()
     configClientMock.getSetting.mockReset().mockResolvedValue(null)
     configClientMock.setSetting.mockReset().mockResolvedValue(undefined)
+    digitalEmployeeClientMock.bindRemoteSession.mockReset().mockResolvedValue({
+      remoteSessionId: 'remote-9',
+      runId: 'run-9'
+    })
+    digitalEmployeeClientMock.remoteStatus.mockReset()
+    digitalEmployeeClientMock.switchToRemote.mockReset()
   })
 
   it('ensureLoaded fetches the client only once across repeated invocations', async () => {
@@ -140,7 +185,9 @@ describe('digitalEmployeeStore', () => {
 
   it('buildDisabledAgentTools returns complement of whitelist and undefined for empty whitelist', () => {
     const employee = { ...makeEmployee('finance'), tools: ['filesystem_read'] }
-    expect(buildDisabledAgentTools(employee, ['filesystem_read', 'web_search'])).toEqual(['web_search'])
+    expect(buildDisabledAgentTools(employee, ['filesystem_read', 'web_search'])).toEqual([
+      'web_search'
+    ])
     expect(buildDisabledAgentTools(employee, ['filesystem_read'])).toBeUndefined()
     expect(buildDisabledAgentTools({ ...employee, tools: [] }, ['web_search'])).toBeUndefined()
     expect(buildDisabledAgentTools(employee, undefined)).toBeUndefined()
@@ -174,9 +221,9 @@ describe('digitalEmployeeStore', () => {
     const employee = store.employees[0]
     // 持久化失败一次：绑定是徽标级的装饰性数据，不得让已建立的会话流程失败
     configClientMock.setSetting.mockRejectedValueOnce(new Error('persist boom'))
-    await expect(store.startConversation(employee, { openingQuestion: '帮我查报销进度' })).resolves.toBe(
-      'session-9'
-    )
+    await expect(
+      store.startConversation(employee, { openingQuestion: '帮我查报销进度' })
+    ).resolves.toBe('session-9')
     // 内存中的绑定仍按 best-effort 记录
     expect(store.employeeForSession('session-9')?.id).toBe(employee.id)
   })
@@ -301,5 +348,87 @@ describe('digitalEmployeeStore', () => {
     await store.fetchEmployees()
 
     expect(store.hasConfigUpdates).toBe(true)
+  })
+
+  describe('remote execution', () => {
+    it('creates an empty local session then binds it remotely', async () => {
+      const store = useDigitalEmployeeStore()
+      await store.fetchEmployees()
+
+      const sessionId = await store.startConversation(
+        makeEmployee('remote-hr', { executionMode: 'remote' }),
+        { openingQuestion: '帮我查年假' }
+      )
+
+      expect(sessionId).toBe('session-9')
+      // 关键：本地会话必须为空——正文由 main 的 runner 直接写，避免两条用户消息。
+      expect(sessionStoreMock.createSession).toHaveBeenCalledWith({
+        agentId: DIGITAL_EMPLOYEE_AGENT_ID,
+        message: ''
+      })
+      expect(digitalEmployeeClientMock.bindRemoteSession).toHaveBeenCalledWith({
+        sessionId: 'session-9',
+        employeeId: 'remote-hr',
+        openingQuestion: '帮我查年假'
+      })
+    })
+
+    it('does not inject system prompt, SOPs or knowledge for remote employees', async () => {
+      const store = useDigitalEmployeeStore()
+      await store.fetchEmployees()
+
+      await store.startConversation(
+        makeEmployee('remote-hr', {
+          executionMode: 'remote',
+          knowledgeBaseIds: ['kb-1'],
+          skillIds: ['skill-a'],
+          sops: [{ title: 's', content: 'c' }]
+        }),
+        { openingQuestion: '问题' }
+      )
+
+      // 服务端持有配置；本地注入既无效（system_prompt 会被剥离）又会产生两套真相。
+      expect(knowledgeClientMock.similarityQuery).not.toHaveBeenCalled()
+      const createArgs = sessionStoreMock.createSession.mock.calls[0][0]
+      expect(createArgs.generationSettings).toBeUndefined()
+      expect(createArgs.activeSkills).toBeUndefined()
+    })
+
+    it('binds without an opening question when none is provided', async () => {
+      const store = useDigitalEmployeeStore()
+      await store.fetchEmployees()
+
+      await store.startConversation(makeEmployee('remote-hr', { executionMode: 'remote' }))
+
+      expect(digitalEmployeeClientMock.bindRemoteSession).toHaveBeenCalledWith({
+        sessionId: 'session-9',
+        employeeId: 'remote-hr'
+      })
+    })
+
+    it('keeps the local injection path for local employees', async () => {
+      const store = useDigitalEmployeeStore()
+      await store.fetchEmployees()
+
+      await store.startConversation(makeEmployee('finance', { executionMode: 'local' }), {
+        openingQuestion: '报销'
+      })
+
+      expect(digitalEmployeeClientMock.bindRemoteSession).not.toHaveBeenCalled()
+      const createArgs = sessionStoreMock.createSession.mock.calls[0][0]
+      expect(createArgs.generationSettings?.systemPrompt).toContain('p')
+    })
+
+    it('propagates a bind failure so the caller does not navigate into a broken session', async () => {
+      const store = useDigitalEmployeeStore()
+      await store.fetchEmployees()
+      digitalEmployeeClientMock.bindRemoteSession.mockRejectedValue(
+        new Error('digitalEmployee.remote.requestFailed:INSUFFICIENT_SCOPE')
+      )
+
+      await expect(
+        store.startConversation(makeEmployee('remote-hr', { executionMode: 'remote' }))
+      ).rejects.toThrow(/INSUFFICIENT_SCOPE/)
+    })
   })
 })

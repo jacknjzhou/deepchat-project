@@ -69,13 +69,16 @@ export const useDigitalEmployeeStore = defineStore('digitalEmployee', () => {
 
   const enabledEmployees = computed(() => employees.value.filter((employee) => employee.enabled))
   const selectedDigitalEmployee = computed(
-    () => employees.value.find((employee) => employee.id === selectedDigitalEmployeeId.value) ?? null
+    () =>
+      employees.value.find((employee) => employee.id === selectedDigitalEmployeeId.value) ?? null
   )
 
   const readStringArraySetting = async (key: ConfigEntryKey): Promise<string[]> => {
     try {
       const value = await configClient.getSetting(key)
-      return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : []
+      return Array.isArray(value)
+        ? value.filter((item): item is string => typeof item === 'string')
+        : []
     } catch {
       return []
     }
@@ -227,6 +230,24 @@ export const useDigitalEmployeeStore = defineStore('digitalEmployee', () => {
 
     let knowledgeSnippets: string | undefined
     const openingQuestion = options?.openingQuestion?.trim()
+
+    // remote：先分流再决定是否检索知识。服务端持有知识库与提示词，
+    // 本地检索既拿不到结果（kb id 是服务端的），也会白跑一遍向量查询。
+    if (employee.executionMode === 'remote') {
+      const remote = await sessionStore.createSession({
+        agentId: DIGITAL_EMPLOYEE_AGENT_ID,
+        message: ''
+      })
+      const sessionId = remote.session.id
+      await client.bindRemoteSession({
+        sessionId,
+        employeeId: employee.id,
+        ...(openingQuestion ? { openingQuestion } : {})
+      })
+      await bindSession(sessionId, employee.id).catch(() => undefined)
+      return sessionId
+    }
+
     if (employee.knowledgeBaseIds.length > 0 && openingQuestion) {
       const snippetLists = await Promise.all(
         employee.knowledgeBaseIds.map((knowledgeBaseId) =>

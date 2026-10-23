@@ -225,7 +225,10 @@ import { sha256File } from '@/documents/fileHash'
 import { DocumentsRepository } from '@/documents/repository'
 import { createDocumentsRoutes, type DocumentsDedupeSubmit } from '@/documents/routes'
 import { createDigitalEmployeeRoutes } from '@/digital-employee/routes'
-import { MockDigitalEmployeeProvider, type DigitalEmployeeProvider } from '@/digital-employee/provider'
+import {
+  MockDigitalEmployeeProvider,
+  type DigitalEmployeeProvider
+} from '@/digital-employee/provider'
 import {
   createDigitalEmployeeProvider,
   createDigitalEmployeeProviderHolder
