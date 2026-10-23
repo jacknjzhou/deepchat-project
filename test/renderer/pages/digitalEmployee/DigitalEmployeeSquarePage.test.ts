@@ -306,6 +306,32 @@ describe('DigitalEmployeeSquarePage', () => {
     )
   })
 
+  it('shows the execution location badge per card', async () => {
+    const { wrapper } = await setup()
+    // setup() 每次都会重置 employees，因此在挂载后再改（stubStore 是 reactive 的）
+    stubStore.employees = [
+      makeEmployee({ executionMode: 'remote' }),
+      makeEmployee({ id: 'emp-2', name: '本地助手', executionMode: 'local' })
+    ]
+    await flushPromises()
+
+    // 卡片上必须能看出「跑在云端还是本地」：两者消息落库/审计位置不同
+    expect(wrapper.get('[data-testid="digital-employee-mode-emp-1"]').text()).toContain(
+      'digitalEmployee.remote.badge'
+    )
+    expect(wrapper.get('[data-testid="digital-employee-mode-emp-2"]').text()).toContain(
+      'digitalEmployee.local.badge'
+    )
+  })
+
+  it('treats a missing executionMode as local on the card', async () => {
+    const { wrapper } = await setup()
+
+    expect(wrapper.get('[data-testid="digital-employee-mode-emp-1"]').text()).toContain(
+      'digitalEmployee.local.badge'
+    )
+  })
+
   it('refreshes employees when the main process reports a configuration change', async () => {
     await setup()
     expect(configurationChangedListenerRef.current).not.toBeNull()

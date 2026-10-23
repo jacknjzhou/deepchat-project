@@ -7,6 +7,8 @@ import {
   digitalEmployeeSwitchToRemoteRoute
 } from '@shared/contracts/routes'
 import type { DigitalEmployee, StaffdeckAwaitingInput } from '@shared/contracts/routes'
+import { digitalEmployeeRemoteRunUpdatedEvent } from '@shared/contracts/events'
+import type { DeepchatEventPayload } from '@shared/contracts/events'
 import { getDeepchatBridge } from './core'
 
 export interface DigitalEmployeeListResult {
@@ -63,7 +65,23 @@ export function createDigitalEmployeeClient(bridge: DeepchatBridge = getDeepchat
     return result as { remoteSessionId: string }
   }
 
-  return { list, get, bindRemoteSession, remoteStatus, switchToRemote }
+  /** 远端 run 状态变化（不含正文；正文走 `chat.stream.updated`）。 */
+  function onRemoteRunUpdated(
+    listener: (
+      payload: DeepchatEventPayload<typeof digitalEmployeeRemoteRunUpdatedEvent.name>
+    ) => void
+  ): () => void {
+    return bridge.on(digitalEmployeeRemoteRunUpdatedEvent.name, listener)
+  }
+
+  return {
+    list,
+    get,
+    bindRemoteSession,
+    remoteStatus,
+    switchToRemote,
+    onRemoteRunUpdated
+  }
 }
 
 export type DigitalEmployeeClient = ReturnType<typeof createDigitalEmployeeClient>

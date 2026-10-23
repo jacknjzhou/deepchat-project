@@ -144,6 +144,19 @@
         style="z-index: var(--dc-z-sticky)"
       >
         <div class="mx-auto flex w-full max-w-5xl min-w-0 flex-col items-center">
+          <RemoteAwaitingInputPanel
+            v-if="remoteAwaitingInput"
+            :awaiting-input="remoteAwaitingInput"
+            data-testid="chat-remote-awaiting-panel"
+            class="max-w-4xl"
+          />
+          <p
+            v-if="remoteFailureMessage"
+            data-testid="chat-remote-failure-message"
+            class="mx-auto w-full max-w-4xl rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+          >
+            {{ remoteFailureMessage }}
+          </p>
           <div class="relative w-full">
             <PendingInputLane
               :queue-items="pendingInputStore.queueItems"
@@ -308,6 +321,8 @@ import {
 } from '@/components/chat/attachmentModelPicker'
 import ChatInteractionDock from '@/components/chat/ChatInteractionDock.vue'
 import PendingInputLane from '@/components/chat/PendingInputLane.vue'
+import RemoteAwaitingInputPanel from '@/components/chat/RemoteAwaitingInputPanel.vue'
+import { useRemoteAwaitingInput } from '@/components/chat/composables/useRemoteAwaitingInput'
 import ChatStatusBar from '@/components/chat/ChatStatusBar.vue'
 import ChatToolInteractionOverlay from '@/components/chat/ChatToolInteractionOverlay.vue'
 import MemoryTurnDialog from '@/components/chat/MemoryTurnDialog.vue'
@@ -327,6 +342,7 @@ import { useSpotlightStore } from '@/stores/ui/spotlight'
 import { useSidepanelStore } from '@/stores/ui/sidepanel'
 import { useModelStore } from '@/stores/modelStore'
 import { createSessionClient } from '@api/SessionClient'
+import { createDigitalEmployeeClient } from '@api/DigitalEmployeeClient'
 
 import { WORKSPACE_EVENTS } from '@/events'
 import {
@@ -342,6 +358,7 @@ import {
 } from '@/platform/performance/rendererPerformance'
 import { type ChatScrollReason, type ChatScrollTarget } from '@/composables/chat/chatScrollState'
 import { playChatInputHeroFlight } from '@/lib/chatInputHero'
+import { staffdeckErrorCodeToI18nKey } from '@/utils/staffdeckErrorCodes'
 import { usePlanFloatLifecycle } from './composables/usePlanFloatLifecycle'
 import { useDisplayMessages } from './composables/useDisplayMessages'
 import { useChatSearch } from './composables/useChatSearch'
@@ -387,6 +404,7 @@ const chatClient = createChatClient()
 const modelClient = createModelClient()
 const providerClient = createProviderClient()
 const sessionClient = createSessionClient()
+const digitalEmployeeClient = createDigitalEmployeeClient()
 const { t } = useI18n()
 const isSessionViewCommitted = computed(
   () =>
@@ -1314,6 +1332,16 @@ const { start: startChatPageEventBridge, stop: stopChatPageEventBridge } = useCh
   chatClient,
   workspaceInsertReferenceEvent: WORKSPACE_EVENTS.INSERT_REFERENCE_REQUESTED
 })
+
+// 远端（StaffDeck）执行的追问提示：只有远端 run 会推事件，本地会话保持静默。
+const { awaitingInput: remoteAwaitingInput, failureCode: remoteFailureCode } =
+  useRemoteAwaitingInput({
+    sessionId: computed(() => props.sessionId),
+    client: digitalEmployeeClient
+  })
+const remoteFailureMessage = computed(() =>
+  remoteFailureCode.value ? t(staffdeckErrorCodeToI18nKey(remoteFailureCode.value)) : null
+)
 
 function onAttach() {
   chatInputRef.value?.triggerAttach()

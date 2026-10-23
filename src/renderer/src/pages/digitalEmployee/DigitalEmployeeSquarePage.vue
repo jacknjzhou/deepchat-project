@@ -9,7 +9,11 @@
           :key="tab.key"
           type="button"
           class="rounded-lg px-3 py-1.5 text-sm transition-colors"
-          :class="activeTab === tab.key ? 'bg-accent/70 text-foreground' : 'text-muted-foreground hover:bg-accent/40'"
+          :class="
+            activeTab === tab.key
+              ? 'bg-accent/70 text-foreground'
+              : 'text-muted-foreground hover:bg-accent/40'
+          "
           :data-testid="`digital-employee-tab-${tab.key}`"
           @click="activeTab = tab.key"
         >
@@ -27,14 +31,24 @@
         :placeholder="t('digitalEmployee.searchPlaceholder')"
         class="h-9 max-w-xs"
       />
-      <div v-if="activeCapabilityFilter" class="flex items-center gap-1 text-xs text-muted-foreground">
+      <div
+        v-if="activeCapabilityFilter"
+        class="flex items-center gap-1 text-xs text-muted-foreground"
+      >
         <DcBadge variant="active">{{ activeCapabilityFilter }}</DcBadge>
-        <button type="button" class="ml-1 text-muted-foreground hover:text-foreground" @click="activeCapabilityFilter = null">
+        <button
+          type="button"
+          class="ml-1 text-muted-foreground hover:text-foreground"
+          @click="activeCapabilityFilter = null"
+        >
           <Icon icon="lucide:x" class="size-3.5" />
         </button>
       </div>
       <!-- square Tab：预聚合能力 chips 供点击筛选 -->
-      <div v-if="activeTab === 'square' && squareCapabilities.length" class="flex flex-wrap items-center gap-1">
+      <div
+        v-if="activeTab === 'square' && squareCapabilities.length"
+        class="flex flex-wrap items-center gap-1"
+      >
         <button
           v-for="capability in squareCapabilities"
           :key="capability"
@@ -42,7 +56,9 @@
           class="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-accent/40"
           :class="activeCapabilityFilter === capability ? 'bg-primary/10 text-foreground' : ''"
           :data-testid="`digital-employee-capability-chip-${capability}`"
-          @click="activeCapabilityFilter = activeCapabilityFilter === capability ? null : capability"
+          @click="
+            activeCapabilityFilter = activeCapabilityFilter === capability ? null : capability
+          "
         >
           {{ capability }}
         </button>
@@ -90,7 +106,10 @@
         :description="t('digitalEmployee.emptyDescription')"
       />
 
-      <div v-else-if="activeTab !== 'team'" class="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-4">
+      <div
+        v-else-if="activeTab !== 'team'"
+        class="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-4"
+      >
         <button
           v-for="employee in visibleEmployees"
           :key="employee.id"
@@ -100,22 +119,50 @@
           @click="openDetail(employee)"
         >
           <div class="flex w-full items-center gap-2">
-            <div class="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-sm font-semibold text-primary">
+            <div
+              class="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-sm font-semibold text-primary"
+            >
               {{ employee.name.slice(0, 1) }}
             </div>
             <div class="min-w-0">
-              <div class="truncate text-sm font-medium">{{ employee.name }} <span class="text-xs text-muted-foreground">@{{ employee.role }}</span></div>
+              <div class="truncate text-sm font-medium">
+                {{ employee.name }}
+                <span class="text-xs text-muted-foreground">@{{ employee.role }}</span>
+              </div>
             </div>
+            <span
+              class="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium"
+              :class="
+                employee.executionMode === 'remote'
+                  ? 'bg-emerald-500/10 text-emerald-600'
+                  : 'bg-muted text-muted-foreground'
+              "
+              :data-testid="`digital-employee-mode-${employee.id}`"
+              :data-execution-mode="employee.executionMode ?? 'local'"
+              >{{
+                employee.executionMode === 'remote'
+                  ? t('digitalEmployee.remote.badge')
+                  : t('digitalEmployee.local.badge')
+              }}</span
+            >
             <span
               role="button"
               tabindex="0"
               class="ml-auto shrink-0 cursor-pointer transition-colors"
-              :class="store.favorites.includes(employee.id) ? 'text-amber-400 hover:opacity-80' : 'text-muted-foreground/40 hover:text-amber-400'"
+              :class="
+                store.favorites.includes(employee.id)
+                  ? 'text-amber-400 hover:opacity-80'
+                  : 'text-muted-foreground/40 hover:text-amber-400'
+              "
               :data-testid="`digital-employee-favorite-${employee.id}`"
               @click.stop="store.toggleFavorite(employee.id)"
               @keydown.enter.stop="store.toggleFavorite(employee.id)"
             >
-              <Icon icon="lucide:star" class="size-4" :class="store.favorites.includes(employee.id) ? 'fill-amber-400' : ''" />
+              <Icon
+                icon="lucide:star"
+                class="size-4"
+                :class="store.favorites.includes(employee.id) ? 'fill-amber-400' : ''"
+              />
             </span>
           </div>
           <p class="line-clamp-2 text-xs text-muted-foreground">{{ employee.description }}</p>
@@ -125,7 +172,8 @@
               :key="capability"
               class="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground"
               @click.stop="activeCapabilityFilter = capability"
-            >{{ capability }}</span>
+              >{{ capability }}</span
+            >
           </div>
           <div class="mt-auto flex gap-3 text-[10px] text-muted-foreground/70">
             <span>{{ t('digitalEmployee.countSops', { count: employee.sops.length }) }}</span>
@@ -136,41 +184,74 @@
       </div>
 
       <!-- 团队对话 Tab 空态 -->
-      <DcEmpty v-if="activeTab === 'team'" icon="lucide:users" :title="t('digitalEmployee.teamComingSoon')" class="py-16" />
+      <DcEmpty
+        v-if="activeTab === 'team'"
+        icon="lucide:users"
+        :title="t('digitalEmployee.teamComingSoon')"
+        class="py-16"
+      />
     </div>
 
     <!-- 详情弹层：四类配置清单 + 开场问题 + 开始对话 -->
-    <Dialog :open="detailEmployee !== null" @update:open="(open: boolean) => { if (!open) detailEmployee = null }">
-      <DialogContent v-if="detailEmployee" class="max-w-lg" data-testid="digital-employee-detail-dialog">
+    <Dialog
+      :open="detailEmployee !== null"
+      @update:open="
+        (open: boolean) => {
+          if (!open) detailEmployee = null
+        }
+      "
+    >
+      <DialogContent
+        v-if="detailEmployee"
+        class="max-w-lg"
+        data-testid="digital-employee-detail-dialog"
+      >
         <DialogHeader>
           <DialogTitle>{{ detailEmployee.name }} · {{ detailEmployee.role }}</DialogTitle>
           <DialogDescription>{{ detailEmployee.description }}</DialogDescription>
         </DialogHeader>
         <div class="max-h-[50vh] space-y-3 overflow-y-auto text-sm">
           <section v-if="detailEmployee.sops.length">
-            <h3 class="text-xs font-semibold text-muted-foreground">{{ t('digitalEmployee.sectionSops') }}</h3>
+            <h3 class="text-xs font-semibold text-muted-foreground">
+              {{ t('digitalEmployee.sectionSops') }}
+            </h3>
             <ul class="mt-1 list-disc pl-4 text-xs">
               <li v-for="sop in detailEmployee.sops" :key="sop.title">{{ sop.title }}</li>
             </ul>
           </section>
           <section v-if="detailEmployee.skillIds.length">
-            <h3 class="text-xs font-semibold text-muted-foreground">{{ t('digitalEmployee.sectionSkills') }}</h3>
+            <h3 class="text-xs font-semibold text-muted-foreground">
+              {{ t('digitalEmployee.sectionSkills') }}
+            </h3>
             <p class="mt-1 text-xs">{{ detailEmployee.skillIds.join('、') }}</p>
           </section>
           <section v-if="detailEmployee.tools.length">
-            <h3 class="text-xs font-semibold text-muted-foreground">{{ t('digitalEmployee.sectionTools') }}</h3>
+            <h3 class="text-xs font-semibold text-muted-foreground">
+              {{ t('digitalEmployee.sectionTools') }}
+            </h3>
             <p class="mt-1 text-xs">{{ detailEmployee.tools.join('、') }}</p>
           </section>
           <section v-if="detailEmployee.knowledgeBaseIds.length">
-            <h3 class="text-xs font-semibold text-muted-foreground">{{ t('digitalEmployee.sectionKnowledge') }}</h3>
+            <h3 class="text-xs font-semibold text-muted-foreground">
+              {{ t('digitalEmployee.sectionKnowledge') }}
+            </h3>
             <p class="mt-1 text-xs">{{ detailEmployee.knowledgeBaseIds.join('、') }}</p>
           </section>
         </div>
         <div class="space-y-2">
-          <p v-if="startError" data-testid="digital-employee-start-error" class="text-sm text-destructive">
+          <p
+            v-if="startError"
+            data-testid="digital-employee-start-error"
+            class="text-sm text-destructive"
+          >
             {{ t('digitalEmployee.startConversationFailed') }}
           </p>
-          <Input v-model="openingQuestion" type="text" data-testid="digital-employee-opening-question" :placeholder="t('digitalEmployee.openingQuestionPlaceholder')" />
+          <Input
+            v-model="openingQuestion"
+            type="text"
+            data-testid="digital-employee-opening-question"
+            :placeholder="t('digitalEmployee.openingQuestionPlaceholder')"
+          />
           <DcButton
             class="w-full"
             data-testid="digital-employee-start-button"
@@ -197,7 +278,13 @@ import { Skeleton } from '@shadcn/components/ui/skeleton'
 import { DcBadge } from '@dc-ui/components/badge'
 import { DcButton } from '@dc-ui/components/button'
 import { DcEmpty } from '@dc-ui/components/empty'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@shadcn/components/ui/dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle
+} from '@shadcn/components/ui/dialog'
 import { useDigitalEmployeeStore } from '@/stores/digitalEmployeeStore'
 import { useMcpStore } from '@/stores/mcp'
 import type { DigitalEmployee } from '@shared/contracts/routes'

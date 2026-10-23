@@ -112,6 +112,8 @@ interface StreamState {
   sessionId: string
   text: string
   finished: boolean
+  /** `run.failed` 帧体里的真实失败码；未收到失败帧时为 null。 */
+  failureCode: string | null
 }
 
 export class StaffdeckRemoteRunner {
@@ -148,7 +150,13 @@ export class StaffdeckRemoteRunner {
 
     const orderSeq = this.deps.transcript.getNextOrderSeq(sessionId)
     const messageId = this.deps.transcript.createAssistantMessage(sessionId, orderSeq)
-    const state: StreamState = { messageId, sessionId, text: '', finished: false }
+    const state: StreamState = {
+      messageId,
+      sessionId,
+      text: '',
+      finished: false,
+      failureCode: null
+    }
 
     try {
       const binding = await this.ensureBinding(sessionId, employeeId, input.input)
@@ -218,7 +226,13 @@ export class StaffdeckRemoteRunner {
     this.deps.registry.update(input.sessionId, { runId, lastEventId })
 
     if (terminalEvent === 'run.failed') {
-      return this.failRun(state, input.employeeId, runId, lastEventId, RUN_FAILED_CODE)
+      return this.failRun(
+        state,
+        input.employeeId,
+        runId,
+        lastEventId,
+        state.failureCode ?? RUN_FAILED_CODE
+      )
     }
     if (terminalEvent === 'run.cancelled') {
       return this.finishSuccess(input, state, runId, flusher, 'cancelled', null, lastEventId)
@@ -289,7 +303,12 @@ export class StaffdeckRemoteRunner {
     }
   }
 
-  /** 返回终止事件名表示这一帧结束本轮；否则返回 null。 */
+  /**
+   * 返回终止事件名表示这一帧结束本轮；否则返回 null。
+   *
+   * `run.failed` 额外把帧体里的真实 code 记进 `state`，由 `execute` 取用：
+   * 终止事件名只说「失败了」，说不出失败原因。
+   */
   private applyFrame(
     state: StreamState,
     frame: StaffdeckSseFrame,
@@ -324,6 +343,7 @@ export class StaffdeckRemoteRunner {
       name === 'run.failed' ||
       name === 'run.cancelled'
     ) {
+      if (name === 'run.failed') state.failureCode = readFailureCode(frame)
       return name
     }
 
@@ -532,5 +552,25 @@ function readContent(frame: StaffdeckSseFrame): string | null {
     return null
   } catch {
     return null
+  }
+}
+
+/**
+ * 取 `run.failed` 帧体里的真实失败码。
+ *
+ * 服务端在 `error_occurred` 里带 `{"code", "message"}`（agent_loop.py 的
+ * LLM_ERROR / HARNESS_V2_ERROR 等）。只取 `code`，`message` 可能含内部细节，
+ * 一律不出本进程。缺失或非字符串时回落到通用码。
+ */
+function readFailureCode(frame: StaffdeckSseFrame): string {
+  try {
+    const parsed: unknown = JSON.parse(frame.data || '{}')
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      const value = (parsed as Record<string, unknown>).code
+      if (typeof value === 'string' && value.trim()) return value.trim()
+    }
+    return RUN_FAILED_CODE
+  } catch {
+    return RUN_FAILED_CODE
   }
 }

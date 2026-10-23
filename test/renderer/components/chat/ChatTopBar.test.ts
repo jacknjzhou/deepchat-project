@@ -46,7 +46,9 @@ const stores = vi.hoisted(() => ({
 const notifyRenderer = vi.hoisted(() => vi.fn())
 
 const digitalEmployeeStoreMock = vi.hoisted(() => ({
-  employeeForSession: vi.fn<() => { id: string; name: string } | null>(() => null),
+  employeeForSession: vi.fn<
+    () => { id: string; name: string; executionMode?: 'local' | 'remote' | 'hybrid' } | null
+  >(() => null),
   ensureLoaded: vi.fn()
 }))
 
@@ -241,6 +243,48 @@ describe('ChatTopBar digital employee badge', () => {
 
     const badge = wrapper.get('[data-testid="chat-digital-employee-badge"]')
     expect(badge.text()).toContain('财务助手')
+  })
+
+  it('marks a remote-execution employee as running in the cloud', () => {
+    digitalEmployeeStoreMock.employeeForSession.mockReturnValue({
+      id: 'finance',
+      name: '财务助手',
+      executionMode: 'remote'
+    })
+    const wrapper = mountTopBar()
+
+    const modeBadge = wrapper.get('[data-testid="chat-digital-employee-mode-badge"]')
+    // 执行位置必须可见：同一个员工可能有本地/远端两份执行路径，只说名字会误导。
+    expect(modeBadge.text()).toContain('digitalEmployee.remote.badge')
+  })
+
+  it('marks a locally executed employee as running locally', () => {
+    digitalEmployeeStoreMock.employeeForSession.mockReturnValue({
+      id: 'finance',
+      name: '财务助手',
+      executionMode: 'local'
+    })
+    const wrapper = mountTopBar()
+
+    const modeBadge = wrapper.get('[data-testid="chat-digital-employee-mode-badge"]')
+    expect(modeBadge.text()).toContain('digitalEmployee.local.badge')
+  })
+
+  it('falls back to the local badge when executionMode is absent', () => {
+    // 老数据/旧绑定没有 executionMode，字段默认值就是 local，不能因此隐藏徽标。
+    digitalEmployeeStoreMock.employeeForSession.mockReturnValue({ id: 'finance', name: '财务助手' })
+    const wrapper = mountTopBar()
+
+    expect(wrapper.get('[data-testid="chat-digital-employee-mode-badge"]').text()).toContain(
+      'digitalEmployee.local.badge'
+    )
+  })
+
+  it('hides the mode badge together with the employee badge', () => {
+    digitalEmployeeStoreMock.employeeForSession.mockReturnValue(null)
+    const wrapper = mountTopBar()
+
+    expect(wrapper.find('[data-testid="chat-digital-employee-mode-badge"]').exists()).toBe(false)
   })
 })
 

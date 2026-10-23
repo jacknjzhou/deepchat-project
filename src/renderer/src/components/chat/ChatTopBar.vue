@@ -104,6 +104,21 @@
         <Icon icon="lucide:users-round" class="size-3" />
         {{ boundDigitalEmployee.name }}
       </span>
+      <span
+        v-if="boundDigitalEmployee"
+        :data-testid="'chat-digital-employee-mode-badge'"
+        :data-execution-mode="executionMode"
+        class="inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium"
+        :class="
+          executionMode === 'local'
+            ? 'bg-muted text-muted-foreground'
+            : 'bg-emerald-500/10 text-emerald-600'
+        "
+        :title="modeBadgeLabel"
+      >
+        <Icon :icon="executionMode === 'local' ? 'lucide:laptop' : 'lucide:cloud'" class="size-3" />
+        {{ modeBadgeLabel }}
+      </span>
     </div>
 
     <div class="flex items-center gap-1 no-drag">
@@ -311,6 +326,16 @@ const currentSession = computed(
 const currentTitle = computed(() => currentSession.value?.title ?? props.title)
 const boundDigitalEmployee = computed(() =>
   digitalEmployeeStore.employeeForSession(props.sessionId)
+)
+// 缺省按 local：契约里 executionMode 的默认值就是 local（digitalEmployee.routes.ts），
+// 旧绑定记录没有该字段时不能因此把徽标藏掉。
+const executionMode = computed<'local' | 'remote' | 'hybrid'>(
+  () => boundDigitalEmployee.value?.executionMode ?? 'local'
+)
+const modeBadgeLabel = computed(() =>
+  executionMode.value === 'local'
+    ? t('digitalEmployee.local.badge')
+    : t('digitalEmployee.remote.badge')
 )
 const showCollapsedNewChatSpacer = computed(
   () => sidebarStore.collapsed && Boolean(sessionStore.newConversationTargetAgentId)

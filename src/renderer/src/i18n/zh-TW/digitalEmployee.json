@@ -54,5 +54,34 @@
     "degraded": "StaffDeck 服务暂不可用，当前展示本地 Mock 数字员工数据",
     "configUpdated": "部分员工的配置已更新",
     "dismiss": "知道了"
+  },
+  "remote": {
+    "badge": "Cloud run",
+    "awaitingTitle": "More information needed",
+    "awaitingFields": "Please provide: {fields}",
+    "awaitingHint": "Reply in the input box below to continue in the cloud.",
+    "error": {
+      "generic": "Cloud execution failed. Please try again later.",
+      "insufficientScope": "The service API key lacks the required scopes. Ask an administrator to grant runs/sessions access.",
+      "apiKeyRequired": "No valid service API key is configured. Add one in settings.",
+      "apiKeyExpired": "服務端 API Key 已過期，請在設定中更換。",
+      "apiKeyRevoked": "服務端 API Key 已被撤銷，請聯繫管理員重新簽發。",
+      "agentNotFound": "The service cannot find this digital employee; it may be offline or not synced.",
+      "sessionNotFound": "The service session no longer exists. Start a new conversation.",
+      "runNotFound": "The service cannot find this run. Send the message again.",
+      "sessionConflict": "This conversation is already bound to another digital employee.",
+      "runNotSucceeded": "The run did not finish normally, so the result may be incomplete.",
+      "runFailed": "Cloud execution failed. Try again later or contact the service administrator.",
+      "llmError": "服務端呼叫模型失敗，請重試或檢查模型設定。",
+      "actionBudget": "本輪執行達到自動步驟上限，回覆一句即可開啟下一輪繼續。",
+      "capabilityUnavailable": "該數字員工需要的某項能力目前無法使用，請稍後重試或聯繫管理員。",
+      "streamInterrupted": "The connection to the cloud was interrupted. Send your message again to continue.",
+      "runInProgress": "Another turn is still running in the cloud for this conversation. Wait for it to finish.",
+      "sessionUnavailable": "Could not create the cloud session. Check the service configuration and retry.",
+      "transportError": "Cannot reach the cloud service. Check your network and the base URL."
+    }
+  },
+  "local": {
+    "badge": "Local run"
   }
 }

@@ -54,5 +54,34 @@
     "degraded": "StaffDeck 服务暂不可用，当前展示本地 Mock 数字员工数据",
     "configUpdated": "部分员工的配置已更新",
     "dismiss": "知道了"
+  },
+  "remote": {
+    "badge": "云端执行",
+    "awaitingTitle": "需要补充信息",
+    "awaitingFields": "请提供：{fields}",
+    "awaitingHint": "在下方输入框继续回答，会发往云端继续执行。",
+    "error": {
+      "generic": "云端执行失败，请稍后重试。",
+      "insufficientScope": "服务端 API Key 权限不足，请联系管理员补充 runs/sessions 权限。",
+      "apiKeyRequired": "尚未配置有效的服务端 API Key，请在设置中填写。",
+      "apiKeyExpired": "服务端 API Key 已过期，请在设置中更换。",
+      "apiKeyRevoked": "服务端 API Key 已被吊销，请联系管理员重新签发。",
+      "agentNotFound": "服务端找不到该数字员工，可能已下线或未同步。",
+      "sessionNotFound": "服务端会话已不存在，请重新开始对话。",
+      "runNotFound": "服务端找不到本次执行记录，请重新发送。",
+      "sessionConflict": "该会话已被其他数字员工绑定，无法重复绑定。",
+      "runNotSucceeded": "本次执行未正常结束，结果可能不完整。",
+      "runFailed": "云端执行失败，请稍后重试或联系服务管理员。",
+      "llmError": "服务端调用模型失败，请重试或检查模型配置。",
+      "actionBudget": "本轮执行达到了自动步骤上限，回复一句即可开启下一轮继续。",
+      "capabilityUnavailable": "该数字员工需要的某项能力当前不可用，请稍后重试或联系管理员。",
+      "streamInterrupted": "与云端的连接中断，请重新发送消息继续。",
+      "runInProgress": "该会话还有一轮正在云端执行，请等待完成。",
+      "sessionUnavailable": "无法建立云端会话，请检查服务配置后重试。",
+      "transportError": "无法连接云端服务，请检查网络与服务地址。"
+    }
+  },
+  "local": {
+    "badge": "本地执行"
   }
 }

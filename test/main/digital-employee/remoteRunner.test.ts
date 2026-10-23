@@ -289,6 +289,46 @@ describe('StaffdeckRemoteRunner failures', () => {
     expect(JSON.stringify(harness.contents.at(-1)?.blocks)).toContain('半')
   })
 
+  it('carries the failure code from the run.failed payload instead of a generic one', async () => {
+    // 服务端在 error_occurred 里带真实原因（agent_loop.py:240/254 的 LLM_ERROR、
+    // HARNESS_V2_ERROR）。统一压成 RUN_FAILED 会让「模型调用失败」和「harness 出错」
+    // 变成同一句提示，用户无法判断该重试还是该找管理员。
+    const harness = createHarness()
+    replayFrames(harness.client, [
+      frame('run.output.delta', { content: '半' }, 1),
+      frame('run.failed', { job_id: 'run-1', code: 'LLM_ERROR' }, 2)
+    ])
+
+    const outcome = await new StaffdeckRemoteRunner(harness.deps).run({
+      sessionId: 's1',
+      employeeId: 'emp-1',
+      input: 'x',
+      turnKey: 'turn-1'
+    })
+
+    expect(outcome.messageCode).toBe('LLM_ERROR')
+    const failed = harness.published.filter((entry) => entry.name === 'chat.stream.failed')
+    expect((failed[0]?.payload as { error?: string }).error).toBe('LLM_ERROR')
+    const phase = harness.published
+      .filter((entry) => entry.name === 'digitalEmployee.remoteRunUpdated')
+      .at(-1)
+    expect((phase?.payload as { messageCode?: string }).messageCode).toBe('LLM_ERROR')
+  })
+
+  it('falls back to RUN_FAILED when the failure payload carries no code', async () => {
+    const harness = createHarness()
+    replayFrames(harness.client, [frame('run.failed', { job_id: 'run-1' }, 1)])
+
+    const outcome = await new StaffdeckRemoteRunner(harness.deps).run({
+      sessionId: 's1',
+      employeeId: 'emp-1',
+      input: 'x',
+      turnKey: 'turn-1'
+    })
+
+    expect(outcome.messageCode).toBe('RUN_FAILED')
+  })
+
   it('tolerates RUN_NOT_SUCCEEDED and keeps the accumulated text', async () => {
     const harness = createHarness()
     replayFrames(harness.client, [

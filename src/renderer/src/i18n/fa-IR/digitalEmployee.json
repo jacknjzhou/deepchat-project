@@ -54,5 +54,34 @@
     "degraded": "StaffDeck service is unavailable. Showing local mock digital employees.",
     "configUpdated": "Some employees have configuration updates",
     "dismiss": "Dismiss"
+  },
+  "remote": {
+    "badge": "Cloud run",
+    "awaitingTitle": "More information needed",
+    "awaitingFields": "Please provide: {fields}",
+    "awaitingHint": "Reply in the input box below to continue in the cloud.",
+    "error": {
+      "generic": "Cloud execution failed. Please try again later.",
+      "insufficientScope": "The service API key lacks the required scopes. Ask an administrator to grant runs/sessions access.",
+      "apiKeyRequired": "No valid service API key is configured. Add one in settings.",
+      "apiKeyExpired": "کلید API سرویس منقضی شده است. کلید جدید را در تنظیمات وارد کنید.",
+      "apiKeyRevoked": "کلید API سرویس لغو شده است. برای دریافت کلید جدید با مدیر سیستم تماس بگیرید.",
+      "agentNotFound": "The service cannot find this digital employee; it may be offline or not synced.",
+      "sessionNotFound": "The service session no longer exists. Start a new conversation.",
+      "runNotFound": "The service cannot find this run. Send the message again.",
+      "sessionConflict": "This conversation is already bound to another digital employee.",
+      "runNotSucceeded": "The run did not finish normally, so the result may be incomplete.",
+      "runFailed": "Cloud execution failed. Try again later or contact the service administrator.",
+      "llmError": "فراخوانی مدل در سمت سرویس ناموفق بود. دوباره تلاش کنید یا پیکربندی مدل را بررسی کنید.",
+      "actionBudget": "اجرا به سقف گام‌های خودکار در این نوبت رسید. برای ادامه در نوبت بعد پاسخ دهید.",
+      "capabilityUnavailable": "قابلیتی که این کارمند به آن نیاز دارد در دسترس نیست. بعداً دوباره تلاش کنید یا با مدیر تماس بگیرید.",
+      "streamInterrupted": "The connection to the cloud was interrupted. Send your message again to continue.",
+      "runInProgress": "Another turn is still running in the cloud for this conversation. Wait for it to finish.",
+      "sessionUnavailable": "Could not create the cloud session. Check the service configuration and retry.",
+      "transportError": "Cannot reach the cloud service. Check your network and the base URL."
+    }
+  },
+  "local": {
+    "badge": "Local run"
   }
 }
