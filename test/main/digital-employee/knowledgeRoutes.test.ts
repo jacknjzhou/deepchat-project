@@ -10,6 +10,16 @@ import { createKnowledgeSyncStateStore } from '../../../src/main/digital-employe
  * 就会变成破坏性变更。
  */
 
+function statusOf(
+  routes: ReturnType<typeof createDigitalEmployeeKnowledgeRoutes>,
+  employeeId: string
+) {
+  // 路由表现在按契约名索引，测试从这里取，避免另起一套调用方式。
+  const handler = routes.get(digitalEmployeeKnowledgeStatusRoute.name)
+  if (!handler) throw new Error('knowledge status route is not registered')
+  return handler({ employeeId }) as Promise<{ packages: unknown[] }>
+}
+
 function createStore() {
   const data = new Map<string, unknown>()
   return createKnowledgeSyncStateStore({
@@ -23,17 +33,17 @@ function createStore() {
 }
 
 describe('digitalEmployee.knowledgeStatus', () => {
-  it('returns an empty list when nothing has been synced', () => {
+  it('returns an empty list when nothing has been synced', async () => {
     const routes = createDigitalEmployeeKnowledgeRoutes({ stateStore: createStore() })
 
-    const output = routes.status({ employeeId: 'agent_1' })
+    const output = await statusOf(routes, 'agent_1')
 
     // 未同步是正常状态：UI 不该因此显示错误。
     expect(output.packages).toEqual([])
     expect(digitalEmployeeKnowledgeStatusRoute.output.safeParse(output).success).toBe(true)
   })
 
-  it('reports staleness per knowledge base without leaking internals', () => {
+  it('reports staleness per knowledge base without leaking internals', async () => {
     const store = createStore()
     store.setEmployee('agent_1', {
       localKnowledgeBaseId: 'de-agent_1',
@@ -51,7 +61,7 @@ describe('digitalEmployee.knowledgeStatus', () => {
     })
     const routes = createDigitalEmployeeKnowledgeRoutes({ stateStore: store })
 
-    const output = routes.status({ employeeId: 'agent_1' })
+    const output = await statusOf(routes, 'agent_1')
 
     expect(output.packages).toEqual([
       {
@@ -68,7 +78,7 @@ describe('digitalEmployee.knowledgeStatus', () => {
     expect(JSON.stringify(output)).not.toContain('file-1')
   })
 
-  it('collapses unknown stale reasons so the renderer never shows a raw code', () => {
+  it('collapses unknown stale reasons so the renderer never shows a raw code', async () => {
     const store = createStore()
     store.setEmployee('agent_1', {
       localKnowledgeBaseId: 'de-agent_1',
@@ -86,13 +96,13 @@ describe('digitalEmployee.knowledgeStatus', () => {
     })
     const routes = createDigitalEmployeeKnowledgeRoutes({ stateStore: store })
 
-    const output = routes.status({ employeeId: 'agent_1' })
+    const output = await statusOf(routes, 'agent_1')
 
     // 未识别的码降级为 generic，否则新增原因会在界面上暴露原始字符串。
     expect(output.packages[0].staleReason).toBe('UNKNOWN')
   })
 
-  it('keeps HTTP_<status> distinct so auth failures are diagnosable', () => {
+  it('keeps HTTP_<status> distinct so auth failures are diagnosable', async () => {
     const store = createStore()
     store.setEmployee('agent_1', {
       localKnowledgeBaseId: 'de-agent_1',
@@ -111,10 +121,12 @@ describe('digitalEmployee.knowledgeStatus', () => {
     const routes = createDigitalEmployeeKnowledgeRoutes({ stateStore: store })
 
     // 401 与 500 的处置不同（重新授权 vs 等服务端恢复），不能糊成一个码。
-    expect(routes.status({ employeeId: 'agent_1' }).packages[0].staleReason).toBe('HTTP_401')
+    const output = await statusOf(routes, 'agent_1')
+
+    expect(output.packages[0].staleReason).toBe('HTTP_401')
   })
 
-  it('reports not-stale packages as clean', () => {
+  it('reports not-stale packages as clean', async () => {
     const store = createStore()
     store.setEmployee('agent_1', {
       localKnowledgeBaseId: 'de-agent_1',
@@ -132,7 +144,7 @@ describe('digitalEmployee.knowledgeStatus', () => {
     })
     const routes = createDigitalEmployeeKnowledgeRoutes({ stateStore: store })
 
-    const output = routes.status({ employeeId: 'agent_1' })
+    const output = await statusOf(routes, 'agent_1')
 
     expect(output.packages[0].stale).toBe(false)
     expect(output.packages[0].staleReason).toBeNull()

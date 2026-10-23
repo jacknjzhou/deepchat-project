@@ -1,8 +1,10 @@
+import { digitalEmployeeKnowledgeStatusRoute } from '@shared/contracts/routes/digitalEmployeeKnowledge.routes'
 import {
   KNOWLEDGE_STALE_REASONS,
   type KnowledgePackageStatus,
   type KnowledgeStaleReasonValue
 } from '@shared/contracts/routes/digitalEmployeeKnowledge.routes'
+import { createRouteMap, type DeepchatRouteMap } from '@/routes/routeRegistry'
 import type { KnowledgeSyncStateStore } from './knowledgeSyncState'
 
 /**
@@ -16,8 +18,24 @@ export interface DigitalEmployeeKnowledgeRoutesDeps {
   stateStore: KnowledgeSyncStateStore
 }
 
-export interface DigitalEmployeeKnowledgeRoutes {
-  status(input: { employeeId: string }): { packages: KnowledgePackageStatus[] }
+function readStatus(
+  deps: DigitalEmployeeKnowledgeRoutesDeps,
+  input: { employeeId: string }
+): { packages: KnowledgePackageStatus[] } {
+  const state = deps.stateStore.getEmployee(input.employeeId)
+  if (!state) return { packages: [] }
+
+  const packages: KnowledgePackageStatus[] = Object.entries(state.packages).map(
+    ([knowledgeBaseId, pkg]) => ({
+      knowledgeBaseId,
+      stale: pkg.stale,
+      staleReason: normalizeStaleReason(pkg.staleReason),
+      lastSyncAt: pkg.lastSyncAt,
+      conceptCount: Object.keys(pkg.concepts).length
+    })
+  )
+
+  return { packages }
 }
 
 /**
@@ -37,23 +55,14 @@ function normalizeStaleReason(reason: string | null): KnowledgeStaleReasonValue 
 
 export function createDigitalEmployeeKnowledgeRoutes(
   deps: DigitalEmployeeKnowledgeRoutesDeps
-): DigitalEmployeeKnowledgeRoutes {
-  return {
-    status(input) {
-      const state = deps.stateStore.getEmployee(input.employeeId)
-      if (!state) return { packages: [] }
-
-      const packages: KnowledgePackageStatus[] = Object.entries(state.packages).map(
-        ([knowledgeBaseId, pkg]) => ({
-          knowledgeBaseId,
-          stale: pkg.stale,
-          staleReason: normalizeStaleReason(pkg.staleReason),
-          lastSyncAt: pkg.lastSyncAt,
-          conceptCount: Object.keys(pkg.concepts).length
-        })
-      )
-
-      return { packages }
-    }
-  }
+): DeepchatRouteMap {
+  return createRouteMap([
+    [
+      digitalEmployeeKnowledgeStatusRoute.name,
+      async (rawInput) => {
+        const input = digitalEmployeeKnowledgeStatusRoute.input.parse(rawInput)
+        return digitalEmployeeKnowledgeStatusRoute.output.parse(readStatus(deps, input))
+      }
+    ]
+  ])
 }

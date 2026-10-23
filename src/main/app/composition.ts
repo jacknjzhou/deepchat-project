@@ -693,6 +693,7 @@ export async function createMainProcessControl(dependencies: {
   let acpAsLlmProviderPermission: AcpAsLlmProviderPermissionPort
   let routeDispatcher: RouteDispatcher | undefined
   let autoWatchScheduler: AutoWatchScheduler | undefined
+  let knowledgeSyncScheduler: KnowledgeSyncScheduler | undefined
   let cliComputeService: CliComputeService
   let cliAudioTranscriptionService: CliAudioTranscriptionService
   let cliOcrService: CliOcrService
@@ -3417,11 +3418,10 @@ export async function createMainProcessControl(dependencies: {
       stateStore: knowledgeSyncStateStore
     })
     const knowledgeCacheDir = path.join(app.getPath('userData'), 'digital-employee-knowledge')
-    let knowledgeSyncScheduler: KnowledgeSyncScheduler | null = null
 
     const rebuildKnowledgeSync = (): void => {
       knowledgeSyncScheduler?.stop()
-      knowledgeSyncScheduler = null
+      knowledgeSyncScheduler = undefined
 
       const connection = readStaffdeckConnection()
       if (!connection) return
