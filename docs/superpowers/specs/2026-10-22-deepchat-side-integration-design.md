@@ -135,19 +135,21 @@ export const digitalEmployeeSchema = z.object({
 
 ### 5.3 技能导入
 
-- 分发 payload 的 `skills[].slug` → 请求 `:export-skill?slug=` 取 zip（SKILL.md 在包根，与 deepchat 技能目录同构）；
-- 走现有 `skillService.installFromZipForAgent` 装进内置 `deepchat` Agent 的技能根，**不建 per-employee Agent**；主进程在会话创建时按装成的技能名激活，不引入「技能安装」确认流程（企业分发场景默认信任）；
+- 分发 payload 的 `skills[].downloadUrl` → 下载 `:export-skill` zip（SKILL.md 包格式，与 deepchat 技能目录同构）；
+- 走现有 Skills 管理的导入能力装进 `digital-employee:<id>` agentId 隔离目录；主进程在会话创建时按 `skillIds` 解析注册，不引入「技能安装」确认流程（企业分发场景默认信任）；
 - 仓库根 `skills/staffdeck-api-*` 4 个 OpenAPI 调用技能包可作为可选内置项安装（使本地 Agent 具备直接调用 StaffDeck OpenAPI 的能力）。
 
-> **D4 落地修订（2026-10-23，本地起 StaffDeck 服务实测）**
+> **实现修订（2026-10-23，D4 交付后据实记录）**：上面两条里的 `digital-employee:<id>` 与 `skillIds` **都不能照字面实现**，实测各自会静默失效。
 >
-> 原文的「装进 `digital-employee:<id>` agentId 隔离目录」不可实现，按实际修正：
+> **agentId 不能带冒号，也没有「每员工一个 agent」。** 数字员工的全部对话都跑在内置 agent `deepchat` 下（`DIGITAL_EMPLOYEE_AGENT_ID = 'deepchat'`），不存在可以按员工分配的 agent 目录。而且 `assertSafeSkillAgentId`（`main/skill/agentSkillRoots.ts`）只接受 `^[A-Za-z0-9][A-Za-z0-9._-]*$`，冒号直接拒绝；Windows 目录名同样不允许冒号。**技能隔离靠名字前缀**：安装时用 `targetName = de-{employeeId}-{slug}`（`main/digital-employee/employeeScope.ts`），装进内置 agent 的技能根。
 >
-> 1. **不建 per-employee Agent**。数字员工会话统一跑在内置 `deepchat` Agent 上，`requireAgentScope` 也会拒绝 `digital-employee:<id>`——该 id 不是注册过的 Agent，且冒号在 Windows 路径非法。隔离改为**技能名前缀**：安装名为 `de-{employeeId}-{slug}`，id 有损归一（含 `:`、`/`、非 ASCII）时再加 8 位摘要，防两个 id 撞同一目录。
-> 2. **用 `skills[].slug` 而不是 `downloadUrl`**。`downloadUrl` 里带的是服务端 `tool_base_url`（默认 `localhost:5173`），与客户端 baseUrl 无关——和 D3 的 `bundleUrl` 同一个坑。客户端一律用自己配置的 baseUrl 重拼 `{baseUrl}/api/v1/digital-employees/{id}:export-skill?slug={slug}`。
-> 3. **版本判据是 `skills[].id`，不是包 hash**。服务端每次保存技能都会换新 id，故不必下载包来比对，也不必留旧 zip；只有 id 变化才重装。安装失败**不写 baseline**，否则下轮认为已完成、那条技能永远补不上。
-> 4. **契约要显式带 `slug`**。zod 默认 strip 未知字段，`digitalEmployeeSchema` 原本只有 `id/name/downloadUrl`，导致每个技能都拿不到 slug、静默失败。已补可选 `slug`（可选是为了兼容旧 payload）。
-> 5. **激活要用装成的名字**。`employee.skillIds` 是 payload 的 slug（`data-statistical-analysis`），而盘上是 `de-agent_xxx-data-statistical-analysis`；用 slug 激活会安静地匹配不到任何技能。`provision` 的返回因此带上 `skillNames`，会话用它。
+> **`downloadUrl` 不可用，必须用客户端 baseUrl 重拼。** 该字段由服务端 `get_settings().normalized_tool_base_url` 拼出（默认 `http://localhost:5173`），与客户端实际访问地址无关——D3 的 `bundleUrl` 同病。实际请求 `{clientBaseUrl}/digital-employees/{employeeId}:export-skill?slug={slug}`，slug 是 **query 参数**。
+>
+> **`skills[].slug` 必须在契约里显式声明。** zod 会剥掉未声明的键，漏声明就变成「每个技能都没有 slug」，导出请求全部 400/404，而界面上只表现为「技能没装上」。已在 `digitalEmployee.routes.ts` 补上（可选，兼容旧 payload）。
+>
+> **会话的 `activeSkills` 必须用安装后的名字。** 装出来的名字带员工前缀，payload 里的 slug 在本地技能目录中不存在，直接传 `skillIds` 会安静地激活不到任何技能。准备工作（`digitalEmployee.provision`）返回 `skillNames`，会话用它；仅在未做过准备时退回 `skillIds`。
+>
+> **解包复用 `extractSkillArchive`**，已用真实导出包验证（zip 根即 `SKILL.md`，见 `test/main/skill/staffdeckSkillArchive.test.ts` 与 fixture）。版本判据用 `skills[].id`——服务端每次保存都换 id，无需额外做内容 hash。
 
 ### 5.4 知识同步任务
 
@@ -193,6 +195,22 @@ export const digitalEmployeeSchema = z.object({
 - 实现：`POST /external-sessions`（`external_session_id` = 本地会话 id，幂等）建立映射 → 消息/工具调用/token 用量组批经 `POST /external-sessions/{id}/events:batch` 上报；
 - 可靠性：本地 SQLite 队列暂存，指数退避重试；服务端 24h 幂等窗口，409 冲突视为已上报跳过；
 - 隐私：上报内容与远端执行同一审计口径；用户可在设置中关闭回流（关闭时管理端无该会话记录，UI 明示）。
+
+> **实现修订（2026-10-23，D5 交付后据实记录）**：上面两条端点都改了，原因分别是「重复」和「会丢数据」。
+>
+> **建会话不需要新端点。** 原文的 `POST /external-sessions` 与既有 `POST /agents/{agent_id}/sessions` 功能重叠——后者本来就接受 `external_session_id`，并按 `(credential_id, external_session_id)` 幂等 upsert（`sessions.py` 的 `create_public_session_row`），`StaffdeckRemoteClient.createSession` 一直在走它。再开一个就是同一规则两处实现，一旦漂移，同一对话会在服务端产生两行、消息各写一半。**故只保留事件追加端点**，路径放进既有命名空间：`POST /agents/{agent_id}/sessions/{session_id}/events:batch`。
+>
+> **幂等必须按单事件，不能按整批。** 客户端重试必然重发整批。整批幂等的话，只要重发时夹带一条已存事件，整批就被 409 拒掉，随行的新事件全部丢失。服务端改为按 `event_id` 逐条去重（存于 `Message.metadata_json["external_event_id"]`），响应 `{accepted, duplicates}`；`accepted: 0` 是「重试生效」，不是错误。
+>
+> **鉴权三层，第三层不可省。** agent 属本租户 → session 属该 agent 且同租户 → **该凭证在绑定表里拥有这个 session**。只校验租户的话，任何同租户 key 都能往它叫得出名字的会话里写，等于把只读权限升级成写权限。
+>
+> **远端员工不上报。** `executionMode=remote` 的对话本来就在服务端，再报一次会让管理端看到每条消息两份。
+>
+> **开关缺省视为开启。** 读 `!== false` 而非 `=== true`：误关会留审计盲区，误开只是多归档一条用户本来就期望归档的对话。
+>
+> **失败即停，不跳过。** 跳过失败块会在归档里留一个洞，而调用方分不清「已发过」和「丢了」，那一段就永远补不回来。
+>
+> 服务端实现 `backend/app/public_api/external_sessions.py`，客户端 `src/main/digital-employee/backflow.ts` + `backflowRoutes.ts`。
 
 ### 5.7 部署与配置注入
 
