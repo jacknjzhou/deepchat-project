@@ -143,7 +143,7 @@ export const digitalEmployeeSchema = z.object({
 >
 > **agentId 不能带冒号，也没有「每员工一个 agent」。** 数字员工的全部对话都跑在内置 agent `deepchat` 下（`DIGITAL_EMPLOYEE_AGENT_ID = 'deepchat'`），不存在可以按员工分配的 agent 目录。而且 `assertSafeSkillAgentId`（`main/skill/agentSkillRoots.ts`）只接受 `^[A-Za-z0-9][A-Za-z0-9._-]*$`，冒号直接拒绝；Windows 目录名同样不允许冒号。**技能隔离靠名字前缀**：安装时用 `targetName = de-{employeeId}-{slug}`（`main/digital-employee/employeeScope.ts`），装进内置 agent 的技能根。
 >
-> **`downloadUrl` 不可用，必须用客户端 baseUrl 重拼。** 该字段由服务端 `get_settings().normalized_tool_base_url` 拼出（默认 `http://localhost:5173`），与客户端实际访问地址无关——D3 的 `bundleUrl` 同病。实际请求 `{clientBaseUrl}/digital-employees/{employeeId}:export-skill?slug={slug}`，slug 是 **query 参数**。
+> **`downloadUrl` 不可用，必须用客户端 baseUrl 重拼。** 该字段由服务端 `get_settings().normalized_tool_base_url` 拼出（默认 `http://localhost:5173`），与客户端实际访问地址无关——D3 的 `bundleUrl` 同病。实际请求 `{clientBaseUrl}/api/v1/digital-employees/{employeeId}:export-skill?slug={slug}`，slug 是 **query 参数**。注意 `/api/v1` 必须自己拼：设置里存的是主机根（占位符 `https://staffdeck.example.com`），`provider` / `remoteClient` / `knowledgeClient` 都遵守这个约定；漏掉它端点直接 404，而界面上只表现为「技能没装上」。
 >
 > **`skills[].slug` 必须在契约里显式声明。** zod 会剥掉未声明的键，漏声明就变成「每个技能都没有 slug」，导出请求全部 400/404，而界面上只表现为「技能没装上」。已在 `digitalEmployee.routes.ts` 补上（可选，兼容旧 payload）。
 >
