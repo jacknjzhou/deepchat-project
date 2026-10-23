@@ -58,10 +58,10 @@ export interface StaffdeckMcpRegistrar {
 }
 
 /** Tools the server exposes are namespaced; anything else belongs to a local server. */
-const STAFDECK_TOOL_PREFIX = 'staffdeck_'
+const STAFFDECK_TOOL_PREFIX = 'staffdeck_'
 
 const hasStaffdeckTools = (tools: readonly string[]): boolean =>
-  tools.some((tool) => tool.startsWith(STAFDECK_TOOL_PREFIX))
+  tools.some((tool) => tool.startsWith(STAFFDECK_TOOL_PREFIX))
 
 const normalizeBaseUrl = (baseUrl: string): string => baseUrl.trim().replace(/\/+$/, '')
 
