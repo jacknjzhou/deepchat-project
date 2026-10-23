@@ -661,8 +661,9 @@ git commit -m "docs(digital-employee): record staffdeck d2 verification and revi
 | 3 远端客户端/执行器/绑定表 | `91fed6ae` | `remoteClient`（含 `X-Run-ID` 先取、四终止事件、续传退避）、`remoteRunner`（delta 累积 + 终态补查 + 落库）、`remoteSessionRegistry`；配置键三处注册 |
 | 4 分链接入 | `0dee3bee`（main）+ `54f9b715`（renderer） | `ChatService` 单点分流 + 三个绑定路由 + composition 组装；store 的 remote 分支提到知识检索之前 |
 | 5 UI 状态与 i18n | `7e21ccab` | 徽标、追问提示条、错误码映射表 + 20 locale |
+| 6 联调与 spec 修订 | `81d5c806` | 本地起服务跑通首轮/续传、3 个开放项全部收敛、spec §5.2 与本文档回写实测结论 |
 
-**Task 6 的真实联调（Step 1/2/3）尚未执行**，属于需要起服务的验证项，不在本轮范围内。Step 4（spec 修订）已完成：
+**Task 6 Step 1/2/3 已执行**（本地 StaffDeck 服务 + 真实 client/runner，结论见上文「Task 6 实测结论」）。Step 4（spec 修订）内容：
 
 - §5.2 补齐「4 处偏差」正文，并把「补充信息输入框」改为「提示条 + 复用下一条消息」；
 - 关键决策表标注 `execution_hint` 由服务端消费、客户端无法逐条路由；
@@ -672,8 +673,10 @@ git commit -m "docs(digital-employee): record staffdeck d2 verification and revi
 **遗留项（转入后续）：**
 
 1. deepchat 的 `EXTERNAL_USER_ID_HEADER` 仍在分发请求里发送。已确认惰性无害（分发端点不消费），但同一条 `external_user_id` 有两套传法容易误导后续维护，建议下次动 D1 Provider 时一并清理。
-2. Task 6 的三条链路联调（首轮出字 / 追问续跑 / 断网续传）未验证；`run.status` phase 全集、`awaiting_input` 场景下 `/runs/{id}/result` 的 status 取值、附件透传三项开放结论仍待实测。
-3. `tsc -p tsconfig.node.json` 有 10 个既有错误，全部在 `*/data/database.ts`（`better-sqlite3-multiple-ciphers` 具名类型），与 D2 无关。
+2. Task 6 的三条链路中，**追问续跑未能在本机走通真实路径**：`awaiting_input` 只在真实 LLM 走到 SOP 的 `expected_user_info` 收集步骤时产生（`harness_v2_engine.py:1503-1512`），而本地库 `model_configs` 为空。D2 侧的 `awaitingInput` 解析、`remoteStatus` 回查、提示条渲染均有单测覆盖，但端到端需服务端配好模型后复验。
+3. 附件透传未实现（`ChatAttachmentRead` 与 `MessageFile` 异构），远端首轮仅纯文本。
+4. `tsc -p tsconfig.node.json` 有 10 个既有错误，全部在 `*/data/database.ts`（`better-sqlite3-multiple-ciphers` 具名类型），与 D2 无关。
+5. renderer 全量回归在本机（4GB 默认堆）会 OOM，须按目录分批 + `--maxWorkers=1` 运行。本轮分批结果：`api`/`utils`/`stores`/`components` 有 3 个**既有**失败文件（`documentsClient`（`listTasks` 已改传 `limit:200` 而测试未同步，源于 `aa1e0fd8`）、`pluginCatalogStore`、`providerStore`/`ModelProviderSettings`），经 `git show --name-only` 逐个核对 5 个 D2 提交均未触碰这些文件；其余 16 个目录全绿。
 
 ## Plan 自审
 
