@@ -89,7 +89,7 @@ D1 的 spec `docs/superpowers/specs/2026-10-22-deepchat-side-integration-design.
 - Produces: `digitalEmployeeRemoteStatusRoute`（`{ sessionId }` → `{ executionMode, remoteSessionId, awaitingInput }`）
 - Produces: `digitalEmployeeRemoteEventsRoute`（订阅或查询用，见 Task 3）
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```ts
 // test/main/contracts/digitalEmployeeRemoteSchema.test.ts
@@ -160,12 +160,12 @@ describe('staffdeckRunResultSchema', () => {
 })
 ```
 
-- [ ] **Step 2: 跑测试确认失败**
+- [x] **Step 2: 跑测试确认失败**
 
 Run: `C:\Users\SRIBD\.workbuddy\binaries\node\versions\22.22.2-6\node.exe node_modules/vitest/vitest.mjs run test/main/contracts/digitalEmployeeRemoteSchema.test.ts`
 Expected: FAIL（模块不存在）
 
-- [ ] **Step 3: 实现契约**
+- [x] **Step 3: 实现契约**
 
 `digitalEmployeeRemote.routes.ts` 关键定义（事件名用白名单枚举，未知即拒绝，避免静默丢事件）：
 
@@ -227,11 +227,11 @@ export const digitalEmployeeRemoteRunUpdatedEvent = defineEventContract({
 })
 ```
 
-- [ ] **Step 4: 跑测试确认通过**
+- [x] **Step 4: 跑测试确认通过**
 
 Run: 同 Step 2（PASS），再跑 `test/main/contracts` 全目录回归。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/shared/contracts/routes/digitalEmployeeRemote.routes.ts src/shared/contracts/routes.ts src/shared/contracts/events/digitalEmployee.events.ts test/main/contracts/digitalEmployeeRemoteSchema.test.ts
@@ -251,7 +251,7 @@ git commit -m "feat(digital-employee): add staffdeck remote run contracts"
 - Produces: `type StaffdeckSseFrame = { id?: string; event?: string; data: string }`
 - 约定：解析器**只负责分帧与字段切分**，不做 JSON 解析、不校验事件名——那是 Task 3 的职责
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```ts
 // test/main/digital-employee/sseParser.test.ts
@@ -300,12 +300,12 @@ describe('createSseParser', () => {
 })
 ```
 
-- [ ] **Step 2: 跑测试确认失败**
+- [x] **Step 2: 跑测试确认失败**
 
 Run: `... vitest.mjs run test/main/digital-employee/sseParser.test.ts`
 Expected: FAIL
 
-- [ ] **Step 3: 实现**
+- [x] **Step 3: 实现**
 
 要点（每条都对应上文核实的服务端行为）：
 - 维护 `buffer`，按 `\n\n` 或 `\r\n\r\n` 切帧；切分前统一把 `\r\n` 归一化为 `\n`
@@ -314,11 +314,11 @@ Expected: FAIL
 - `flush()` 丢弃未终止的残帧（不把半截 JSON 交给上层，避免误判为坏事件）
 - 纯同步、无 IO、无状态泄漏
 
-- [ ] **Step 4: 跑测试确认通过**
+- [x] **Step 4: 跑测试确认通过**
 
 Run: 同 Step 2（PASS，6 例）
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/main/digital-employee/sseParser.ts test/main/digital-employee/sseParser.test.ts
@@ -383,7 +383,7 @@ const push = (flush: boolean) => {
 
 注意：`cloneBlocksForRenderer` 会跑 zod 校验（`clientMessageProjection.ts:37-41`），因此 block 必须满足 `AssistantMessageBlockSchema`（`common.ts:551+`；`status` 是必填枚举）。
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 `remoteClient.test.ts` 至少覆盖：
 ```ts
@@ -442,20 +442,20 @@ it('tolerates RUN_NOT_SUCCEEDED and keeps the accumulated text', async () => {})
 
 `remoteSessionRegistry.test.ts`：set/get/delete 往返、重启后从 config entry 恢复、损坏数据按空处理。
 
-- [ ] **Step 2: 跑测试确认失败**
+- [x] **Step 2: 跑测试确认失败**
 
 Run: `... vitest.mjs run test/main/digital-employee/remoteClient.test.ts test/main/digital-employee/remoteRunner.test.ts test/main/digital-employee/remoteSessionRegistry.test.ts`
 Expected: FAIL
 
-- [ ] **Step 3: 实现**
+- [x] **Step 3: 实现**
 
 按上文 11 条约束逐条落地。`remoteRunner` 依赖以接口注入（`transcript` / `publishEvent` / `cloneBlocksForRenderer` / `registry` / `client`），便于用 fake 测试而不起 Electron。
 
-- [ ] **Step 4: 跑测试确认通过**
+- [x] **Step 4: 跑测试确认通过**
 
 Run: 同 Step 2（PASS），再跑 `test/main/digital-employee` 全目录回归（D1 的 provider/factory 用例必须仍全绿）。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/main/digital-employee/remoteClient.ts src/main/digital-employee/remoteRunner.ts src/main/digital-employee/remoteSessionRegistry.ts src/shared/contracts/routes/config.routes.ts src/main/app/settingsRoutes.ts test/main/digital-employee
@@ -498,7 +498,7 @@ async sendMessage(sessionId, content, options) {
 - 系统提示词、SOP 注入、知识片段、工具白名单在 remote 模式下**全部不下传**（服务端自己持有配置，且 `_SENSITIVE_KEYS` 会剥离 system_prompt）。仅在本地会话上写一条 metadata 说明「云端执行」用于回看。
 - `hybrid` 员工：默认走 local 分支（与服务端已筛掉 remote SOP 的事实一致）；提供 `switchConversationToRemote(sessionId)`，切换时把最近 6 轮 user+assistant 文本拼成摘要，作为远端首轮 `input` 的前缀，并写 registry。切换不可逆（同一本地会话不来回切），避免状态机复杂化。
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```ts
 // chatService.remoteRouting.test.ts
@@ -529,20 +529,20 @@ it('creates an empty local session then binds it remotely for remote employees',
 it('keeps the local injection path for local employees', async () => {})
 ```
 
-- [ ] **Step 2: 跑测试确认失败**
+- [x] **Step 2: 跑测试确认失败**
 
 Run: `... vitest.mjs run test/main/session/chatService.remoteRouting.test.ts test/main/digital-employee/remoteRoutes.test.ts test/renderer/stores/digitalEmployeeStore.test.ts`
 Expected: FAIL
 
-- [ ] **Step 3: 实现**
+- [x] **Step 3: 实现**
 
 按上述分流语义落地。`composition.ts` 组装顺序：`settingsStore` + `secretStore` → `StaffdeckRemoteClient` → `remoteSessionRegistry`（读 config）→ `StaffdeckRemoteRunner`（注入 transcript / publishEvent）→ 传给 `createChatService` 与新 routes。配置热替换时（D1 的 `onConfigurationChanged`）重建 client 与 runner，registry 保留。
 
-- [ ] **Step 4: 跑测试 + 类型检查 + lint（分开）**
+- [x] **Step 4: 跑测试 + 类型检查 + lint（分开）**
 
 Run: 定向 vitest（PASS）→ `vue-tsc -p tsconfig.app.json --noEmit` → `tsc -p tsconfig.node.json` → `oxlint <改动文件>`。四类命令依次执行，不并行。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/main/digital-employee/remoteRoutes.ts src/main/session/chatService.ts src/main/app/composition.ts src/renderer/api/DigitalEmployeeClient.ts src/renderer/src/stores/digitalEmployeeStore.ts test/main test/renderer
@@ -564,15 +564,30 @@ git commit -m "feat(digital-employee): route bound sessions to staffdeck remote 
 - Consumes: `digitalEmployee.remoteRunUpdated` 事件的 `phase` / `message`
 - Produces: `staffdeckErrorCodeToI18nKey(code)` —— 把 `INSUFFICIENT_SCOPE` / `AGENT_NOT_FOUND` / `RUN_NOT_SUCCEEDED` / `EXTERNAL_SESSION_CONFLICT` / `ACTION_BUDGET_EXHAUSTED` 等映射为可读文案；未知码回落到通用「云端执行失败（code）」，**永远不直接展示服务端 detail**（可能含内部路径）
 
-- [ ] **Step 1: 写失败测试**（徽标渲染、追问面板展示 `expected_fields`、未知错误码不泄露 detail）
-- [ ] **Step 2: 跑测试确认失败**
-- [ ] **Step 3: 实现 + 20 locale**
-- [ ] **Step 4: 跑测试 + vue-tsc + oxlint（分开）**
-- [ ] **Step 5: Commit**
+- [x] **Step 1: 写失败测试**（徽标渲染、追问面板展示 `expected_fields`、未知错误码不泄露 detail）
+- [x] **Step 2: 跑测试确认失败**
+- [x] **Step 3: 实现 + 20 locale**
+- [x] **Step 4: 跑测试 + vue-tsc + oxlint（分开）**
+- [x] **Step 5: Commit**（`7e21ccab`）
 
-```bash
-git commit -m "feat(digital-employee): show remote execution badge, awaiting-input panel and error copy"
-```
+**落地后的偏差记录（实现时发现，与计划描述不符）：**
+
+1. **映射表不能照抄计划里的码。** 计划举例的 `ACTION_BUDGET_EXHAUSTED` 确实存在
+   （`harness_agent.py` 的 action budget 分支），但原实现里登记的 `RUN_FAILED` /
+   `UNAUTHORIZED` / `REMOTE_REQUEST_FAILED` 在服务端与客户端**都没有产生点**；同时
+   真实存在的 `HARNESS_EXECUTION_LOST`、`NOT_AUTHENTICATED`、`API_KEY_EXPIRED` 被漏掉。
+   现表只留可追溯产生点的码，并加了一条守护测试：每个登记的码都必须能在 en-US 里
+   解析出字符串，写错 key 会直接失败而不是在 UI 上渲染原始 key。
+2. **`run.failed` 被压平成 `RUN_FAILED` 是一个真缺陷。** 该帧体带
+   `{"code", "message"}`（`agent_loop.py` 的 `LLM_ERROR` / `HARNESS_V2_ERROR`），
+   原实现硬编码通用码，导致「模型调用失败」与「harness 出错」在 UI 上无法区分。
+   现从帧体取 `code`（只取 code，`message` 不出本进程），缺失时回落 `RUN_FAILED`。
+3. **状态不放 store。** 计划把追问态写在 store 里，实现改为会话级 composable
+   `useRemoteAwaitingInput`：它按 `sessionId` 过滤事件、用 token 防迟到回查覆盖
+   新一轮、并随组件作用域自动退订。放 store 会让「当前会话的追问态」变成全局表，
+   多标签切换时容易残留。
+4. **追问面板刻意不含输入框。** 回答就是下一条普通消息，复用现有 `ChatInputBox`；
+   自带输入框会出现两个输入框并让「发到哪个通道」变得含糊。
 
 ---
 
@@ -608,6 +623,29 @@ git commit -m "docs(digital-employee): record staffdeck d2 verification and revi
 1. `run.status` 的 phase 取值全集（目前源码只看到 `planning`/`received`/`cancelled`），是否可作为细粒度进度提示。
 2. `GET /runs/{id}/result` 在 `awaiting_input` 场景下的 status 到底是 `succeeded` 还是 `awaiting_input`——`runs.py:495-496` 只允许 succeeded，而 `jobs.py` 侧 status 枚举含 `awaiting_input`。若实际返回非 succeeded，则改为调用 `GET /agents/{id}/sessions/{sid}`（`sessions.py:189-200` 恒返回 `awaiting_input`）。
 3. 附件透传：`AgentRunCreate.attachments` 接受 `ChatAttachmentRead` 形状（`session_schema.py:258-270`），但 deepchat 的 `MessageFile` 与之字段不同，D2 先不传附件（远端首轮仅纯文本），附件能力留到 D2 后续或 D5。
+
+## 实施结果（2026-10-23，代码已落地并提交）
+
+| Task | 提交 | 交付 |
+|---|---|---|
+| 1 远端执行契约 | `abade886` | `digitalEmployeeRemote.routes.ts`：32 个事件名、awaiting_input / run result schema、三个路由契约、`makeStaffdeckRunKey` |
+| 2 SSE 行协议解析器 | `07d18944` | `sseParser.ts` 纯函数，跳过 `:` 注释行，`flush()` 丢弃残帧 |
+| 3 远端客户端/执行器/绑定表 | `91fed6ae` | `remoteClient`（含 `X-Run-ID` 先取、四终止事件、续传退避）、`remoteRunner`（delta 累积 + 终态补查 + 落库）、`remoteSessionRegistry`；配置键三处注册 |
+| 4 分链接入 | `0dee3bee`（main）+ `54f9b715`（renderer） | `ChatService` 单点分流 + 三个绑定路由 + composition 组装；store 的 remote 分支提到知识检索之前 |
+| 5 UI 状态与 i18n | `7e21ccab` | 徽标、追问提示条、错误码映射表 + 20 locale |
+
+**Task 6 的真实联调（Step 1/2/3）尚未执行**，属于需要起服务的验证项，不在本轮范围内。Step 4（spec 修订）已完成：
+
+- §5.2 补齐「4 处偏差」正文，并把「补充信息输入框」改为「提示条 + 复用下一条消息」；
+- 关键决策表标注 `execution_hint` 由服务端消费、客户端无法逐条路由；
+- §8 里程碑表修正 D2 依赖：**不受 M5 阻塞**，通道④是零新增接口；
+- §9 修正知识同步开关为**默认关闭**（`is not True`），回流改为服务端承接、客户端无开关。
+
+**遗留项（转入后续）：**
+
+1. deepchat 的 `EXTERNAL_USER_ID_HEADER` 仍在分发请求里发送。已确认惰性无害（分发端点不消费），但同一条 `external_user_id` 有两套传法容易误导后续维护，建议下次动 D1 Provider 时一并清理。
+2. Task 6 的三条链路联调（首轮出字 / 追问续跑 / 断网续传）未验证；`run.status` phase 全集、`awaiting_input` 场景下 `/runs/{id}/result` 的 status 取值、附件透传三项开放结论仍待实测。
+3. `tsc -p tsconfig.node.json` 有 10 个既有错误，全部在 `*/data/database.ts`（`better-sqlite3-multiple-ciphers` 具名类型），与 D2 无关。
 
 ## Plan 自审
 

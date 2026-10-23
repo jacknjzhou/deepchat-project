@@ -29,7 +29,7 @@ deepchat 已实现「数字员工广场」（设计见 `docs/superpowers/specs/2
 
 | 决策点 | 结论 |
 |---|---|
-| SOP 执行位置 | 混合模式：员工级 `executionMode`（local/remote/hybrid）+ SOP 级 `execution_hint` |
+| SOP 执行位置 | 混合模式：员工级 `executionMode`（local/remote/hybrid）；SOP 级 `execution_hint` **由服务端消费、不下发**，客户端无法据此逐条路由（见 §5.2 修订 3） |
 | 鉴权 | 部署级共享密钥（`sd_live_` API key）；请求必带 `external_user_id` 标识端上用户 |
 | 知识库 | 本地同步检索：StaffDeck 分发知识包，deepchat 落地本地副本并 `similarityQuery` |
 | 数据回流 | 本地执行对话全量回流（本地队列 + 幂等重试） |
@@ -103,7 +103,7 @@ export const digitalEmployeeSchema = z.object({
 改造：
 - 按 `executionMode` 分流：
   - `local`：现有链路不变（SOP+人设 → systemPrompt 拼接；技能 → `digital-employee:<id>` agentId；工具 → MCP 白名单；知识 → 首条消息前 `similarityQuery`）；
-  - `remote`：会话创建改调 `POST /agents/{id}/sessions`（携带 `external_session_id`=本地会话 id、`external_user_id`、`metadata.source="deepchat"`），消息经 `POST /agents/{id}/runs:stream`（SSE）发送，流式渲染进聊天窗；`awaiting_input` 由**终态后补查 `GET /runs/{id}/result`** 获得（不入 SSE 流），据此展示补充信息输入框，用户提交即同 session 续跑；
+  - `remote`：会话创建改调 `POST /agents/{id}/sessions`（携带 `external_session_id`=本地会话 id、`external_user_id`、`metadata.source="deepchat"`），消息经 `POST /agents/{id}/runs:stream`（SSE）发送，流式渲染进聊天窗；`awaiting_input` 由**终态后补查 `GET /runs/{id}/result`** 获得（不入 SSE 流），据 `question_summary` + `expected_fields` 在输入框上方展示提示条，用户的下一条普通消息即续跑（**不额外内嵌输入框**——回答本身就是一条消息，多一个输入框会让「发到哪个通道」变含糊）；
   - `hybrid`：**整会话可切换**（详见下方「D2 协议核实修订」第 3 条）；
 - SSE 处理（已按 StaffDeck 实测修订）：`run.output.delta` 累积渲染；`run.output.completed` 仅作停止信号（**不携带正文**），终稿取 delta 累积并由 `GET /runs/{id}/result` 的 `reply` 兜底覆盖；断线改用 `GET /runs/{id}/events` 并携带 `Last-Event-ID`（整数 sequence）续传；`ACTION_BUDGET_EXHAUSTED` 等结构化错误码转为可理解的 UI 提示；
 - 聊天页徽标扩展：`local`（端侧）/ `remote`（云端执行）标识。
@@ -177,7 +177,7 @@ export const digitalEmployeeSchema = z.object({
 | 阶段 | 内容 | 依赖 | 交付标志 |
 |---|---|---|---|
 | D1 | HttpDigitalEmployeeProvider 完整实现 + 配置注入 + 降级 | StaffDeck M2 | 广场显示真实配置，mock 仅作降级 |
-| D2 | executionMode 分流 + remote SSE 渲染 + awaiting_input 续跑 | StaffDeck M5（远端字段补齐） | remote 员工完整对话闭环 |
+| D2 | executionMode 分流 + remote SSE 渲染 + awaiting_input 续跑 | **无 M5 依赖**：通道④是「复用现有 API，零新增」（§6.4），`runs:stream` 自 M1 即存在 | remote 员工完整对话闭环 |
 | D3 | 知识同步任务 + 本地索引 | StaffDeck M3 | 本地对话带知识引用与 stale 提示 |
 | D4 | 技能导入 + `staffdeck:*` MCP 工具接入 | StaffDeck M2/M4 | 本地技能生效；远端工具可执行 |
 | D5 | 回流上报客户端 + 设置开关 | StaffDeck M6 | 管理端看板可见本地执行会话 |
@@ -190,8 +190,8 @@ D1 → {D2, D3, D4} → D5；联调环境使用 StaffDeck M1 交付的 Compose �
 |---|---|
 | 契约演进（StaffDeck 扩展字段增多） | deepchat 侧 schema 保持非严格模式，未知字段忽略；扩展字段消费逐项开关 |
 | SSE 在 Electron 渲染进程的稳定性 | 主进程统一消费 SSE → 契约事件转发 renderer（对齐现有事件系统规则） |
-| 本地知识副本的隐私合规 | 知识同步仅覆盖开启开关的 KB；企业策略可整体禁用 D3 |
-| 回流关闭导致审计盲区 | 默认开启 + 关闭动作留本地审计日志 |
+| 本地知识副本的隐私合规 | 知识同步仅覆盖开启开关的 KB；企业策略可整体禁用 D3。注意开关是**默认关闭**：`knowledge_sync.py:36` 用 `metadata.get("deepchat_sync_enabled") is not True` 判定，未显式设置一律不同步（当前种子数据 33 个 version 全部为 None，故 `/knowledge-packages` 实际返回空列表） |
+| 回流关闭导致审计盲区 | 回路由服务端 `POST /external-sessions` + `events:batch` 承接，客户端不带开关；服务端按 `source=deepchat` 只读归档 |
 | hybrid 会话内本地/远端切换的上下文丢失 | 切换时生成上下文摘要并注入远端会话首条消息（实现为 D2 细化项） |
 | `run.output.replace` / `awaiting_input` 被误当作流内事件 | 已在 §5.2「D2 协议核实修订」中按源码修正：replace 无产生点、awaiting_input 需终态补查 |
 | 服务端新增 SSE 事件名导致客户端解析拒绝 | 事件名白名单之外的帧按「忽略 + 计数告警」处理，不中断流（与契约非严格策略一致） |
