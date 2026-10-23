@@ -213,7 +213,7 @@ export function createKnowledgeSync(deps: KnowledgeSyncDeps): KnowledgeSync {
       )
 
       for (const item of settled) {
-        if (item.body === null) {
+        if (item.body === null || !item.target) {
           // 下载失败或竞态消失：记为失败，但绝不回滚已完成的兄弟概念。
           failed = true
           continue
