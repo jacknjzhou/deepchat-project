@@ -502,3 +502,5 @@ D1 完成后 D2-D4 可并行派发；D5 最后。所有 D2-D5 任务共享 D1 �
 因此 D1 代码保持原样，`EXTERNAL_USER_ID_HEADER` 保留无害。真正的传递点在 **D2 远端执行**：届时把 `externalUserId` 放进 `POST /agents/{id}/runs:stream` 的 body，而不是 header。设置页保留该字段是为 D2 预留。
 
 修复此项不需要改任何 TS 代码，仅更新本节结论即可。
+
+**后续**：D2 已基于同一批源码核实结果写出独立计划 `docs/superpowers/plans/2026-10-23-staffdeck-d2-remote-execution.md`（含 SSE 帧格式、终止事件集合、`awaiting_input` 真实来源、`run.output.replace` 无产生点等 4 处 spec 偏差的修订）。

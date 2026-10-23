@@ -103,10 +103,21 @@ export const digitalEmployeeSchema = z.object({
 改造：
 - 按 `executionMode` 分流：
   - `local`：现有链路不变（SOP+人设 → systemPrompt 拼接；技能 → `digital-employee:<id>` agentId；工具 → MCP 白名单；知识 → 首条消息前 `similarityQuery`）；
-  - `remote`：会话创建改调 `POST /agents/{id}/sessions`（携带 `external_session_id`=本地会话 id、`external_user_id`、`metadata.source="deepchat"`），消息经 `POST /agents/{id}/runs:stream`（SSE）发送，流式渲染进聊天窗；`awaiting_input` 状态时展示补充信息输入框，用户提交即同 session 续跑；
-  - `hybrid`：按单条 SOP 的 `execution_hint` 路由——local SOP 注入、remote SOP 触发远端 runs；本地/远端在会话内可切换，切换时保留上下文摘要；
-- SSE 处理：`run.output.delta` 追加渲染；`run.output.replace` 整体替换；`run.output.completed` 停止流式；断线携带 `Last-Event-ID` 重连续传；`ACTION_BUDGET_EXHAUSTED` 等结构化错误码转为可理解的 UI 提示；
+  - `remote`：会话创建改调 `POST /agents/{id}/sessions`（携带 `external_session_id`=本地会话 id、`external_user_id`、`metadata.source="deepchat"`），消息经 `POST /agents/{id}/runs:stream`（SSE）发送，流式渲染进聊天窗；`awaiting_input` 由**终态后补查 `GET /runs/{id}/result`** 获得（不入 SSE 流），据此展示补充信息输入框，用户提交即同 session 续跑；
+  - `hybrid`：**整会话可切换**（详见下方「D2 协议核实修订」第 3 条）；
+- SSE 处理（已按 StaffDeck 实测修订）：`run.output.delta` 累积渲染；`run.output.completed` 仅作停止信号（**不携带正文**），终稿取 delta 累积并由 `GET /runs/{id}/result` 的 `reply` 兜底覆盖；断线改用 `GET /runs/{id}/events` 并携带 `Last-Event-ID`（整数 sequence）续传；`ACTION_BUDGET_EXHAUSTED` 等结构化错误码转为可理解的 UI 提示；
 - 聊天页徽标扩展：`local`（端侧）/ `remote`（云端执行）标识。
+
+> **D2 协议核实修订（2026-10-23，对照 StaffDeck 源码实测）**
+>
+> 本节的原始表述有 4 处与 StaffDeck 实际实现不符，已按源码修正。实施计划见 `docs/superpowers/plans/2026-10-23-staffdeck-d2-remote-execution.md`。
+>
+> 1. **`run.output.replace` 在服务端没有产生点**。该事件名仅存在于 `public_api/runs.py:50` 的映射表与 `core/agent_loop.py:481` 的落库集合中，全仓无任何 `_stream_event("stream_replace", ...)` 调用。因此不实现「整体替换」语义；解析层保留该事件名，收到时按「清空后重放」降级并告警。
+> 2. **`awaiting_input` 不在 SSE 事件里**。它只出现在 `GET /runs/{id}/result`（`runs.py:307`）与 `GET /agents/{id}/sessions/{sid}`（`sessions.py:29`）的响应体中，结构见 `session_schema.py:137-143`。故必须终态后补查，不能指望流里推送。
+> 3. **`execution_hint` 不下发到客户端**。服务端 `digital_employees/sop_text.py:152-154` 读取该 hint 后自行决定哪些 SOP 进入 `sops[]`，`payload.py:105` 只下发筛选结果。因此「按单条 SOP 路由」在客户端不可实现，hybrid 降级为**整会话可切换**：默认 local（与服务端筛选结果一致），用户显式切换后整会话走 remote，切换时把最近若干轮文本拼成上下文摘要注入远端首轮；同一本地会话不做往返切换。
+> 4. **`run.output.completed` 不携带终稿**。其 payload 仅有 `execution_engine` / `turn_id` / `user_message_id`（`agent_loop.py:424-430` 构造，`runs.py:357-381` 转发）。终稿只能由 delta 累积，并以 `GET /runs/{id}/result` 的 `reply` 覆盖兜底。
+>
+> 另核实：SSE 每 15 秒发 `: keepalive` 注释行（`jobs.py:574-576`），解析器必须跳过；`X-Run-ID` 在响应头（`runs.py:464`）；终止事件除 `run.output.completed` 还有 `run.succeeded` / `run.failed` / `run.cancelled`（`jobs.py:385-395`）；`external_user_id` 是 body 字段而非 header（`schemas.py:139-140`），D1 遗留的 header 传法在 D2 一并改为 body。
 
 ### 5.3 技能导入
 
@@ -182,3 +193,5 @@ D1 → {D2, D3, D4} → D5；联调环境使用 StaffDeck M1 交付的 Compose �
 | 本地知识副本的隐私合规 | 知识同步仅覆盖开启开关的 KB；企业策略可整体禁用 D3 |
 | 回流关闭导致审计盲区 | 默认开启 + 关闭动作留本地审计日志 |
 | hybrid 会话内本地/远端切换的上下文丢失 | 切换时生成上下文摘要并注入远端会话首条消息（实现为 D2 细化项） |
+| `run.output.replace` / `awaiting_input` 被误当作流内事件 | 已在 §5.2「D2 协议核实修订」中按源码修正：replace 无产生点、awaiting_input 需终态补查 |
+| 服务端新增 SSE 事件名导致客户端解析拒绝 | 事件名白名单之外的帧按「忽略 + 计数告警」处理，不中断流（与契约非严格策略一致） |
