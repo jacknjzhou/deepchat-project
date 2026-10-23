@@ -404,10 +404,12 @@ import {
   documentsTasksClearFailedRoute,
   documentsUpsertRoute
 } from './routes/documents.routes'
+import { digitalEmployeeGetRoute, digitalEmployeeListRoute } from './routes/digitalEmployee.routes'
 import {
-  digitalEmployeeGetRoute,
-  digitalEmployeeListRoute
-} from './routes/digitalEmployee.routes'
+  digitalEmployeeBindRemoteSessionRoute,
+  digitalEmployeeRemoteStatusRoute,
+  digitalEmployeeSwitchToRemoteRoute
+} from './routes/digitalEmployeeRemote.routes'
 import {
   digitalEmployeeSettingsClearApiKeyRoute,
   digitalEmployeeSettingsGetRoute,
@@ -720,6 +722,7 @@ export * from './routes/remote-control.routes'
 export * from './routes/cronJobs.routes'
 export * from './routes/documents.routes'
 export * from './routes/digitalEmployee.routes'
+export * from './routes/digitalEmployeeRemote.routes'
 export * from './routes/digitalEmployeeSettings.routes'
 export * from './routes/settings.routes'
 export * from './routes/shortcut.routes'
@@ -853,6 +856,9 @@ const DEEPCHAT_ROUTE_CATALOG_PART_1 = {
   [digitalEmployeeSettingsSaveRoute.name]: digitalEmployeeSettingsSaveRoute,
   [digitalEmployeeSettingsTestConnectionRoute.name]: digitalEmployeeSettingsTestConnectionRoute,
   [digitalEmployeeSettingsClearApiKeyRoute.name]: digitalEmployeeSettingsClearApiKeyRoute,
+  [digitalEmployeeBindRemoteSessionRoute.name]: digitalEmployeeBindRemoteSessionRoute,
+  [digitalEmployeeRemoteStatusRoute.name]: digitalEmployeeRemoteStatusRoute,
+  [digitalEmployeeSwitchToRemoteRoute.name]: digitalEmployeeSwitchToRemoteRoute,
   [documentsGetRoute.name]: documentsGetRoute,
   [documentsUpsertRoute.name]: documentsUpsertRoute,
   [documentsDeleteRoute.name]: documentsDeleteRoute,

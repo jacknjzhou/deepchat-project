@@ -36,7 +36,10 @@ import {
 } from './events/context-menu.events'
 import { dialogRequestedEvent } from './events/dialog.events'
 import { documentsTaskUpdatedEvent, documentsWatchDuplicatesEvent } from './events/documents.events'
-import { digitalEmployeeConfigurationChangedEvent } from './events/digitalEmployee.events'
+import {
+  digitalEmployeeConfigurationChangedEvent,
+  digitalEmployeeRemoteRunUpdatedEvent
+} from './events/digitalEmployee.events'
 import { knowledgeFileProgressEvent, knowledgeFileUpdatedEvent } from './events/knowledge.events'
 import { memoryUpdatedEvent } from './events/memory.events'
 import {
@@ -297,6 +300,7 @@ export const DEEPCHAT_EVENT_CATALOG = {
   [dialogRequestedEvent.name]: dialogRequestedEvent,
   [documentsTaskUpdatedEvent.name]: documentsTaskUpdatedEvent,
   [digitalEmployeeConfigurationChangedEvent.name]: digitalEmployeeConfigurationChangedEvent,
+  [digitalEmployeeRemoteRunUpdatedEvent.name]: digitalEmployeeRemoteRunUpdatedEvent,
   [documentsWatchDuplicatesEvent.name]: documentsWatchDuplicatesEvent,
   [toolchainsProgressEvent.name]: toolchainsProgressEvent,
   [toolchainsMissingEvent.name]: toolchainsMissingEvent,
