@@ -13,7 +13,14 @@ export const digitalEmployeeSettingsKeys = {
   /** 仅 SecretStore 读写的 wrapped 值键 */
   apiKey: 'digitalEmployee.staffdeckApiKey',
   /** 知识同步的轮询间隔（秒）；缺省/非法值按 3600 处理。 */
-  syncIntervalSeconds: 'digitalEmployee.knowledgeSyncIntervalSeconds'
+  syncIntervalSeconds: 'digitalEmployee.knowledgeSyncIntervalSeconds',
+  /**
+   * 本地执行的对话是否回流到 StaffDeck 归档。
+   *
+   * 默认开启（缺省视为 true）：关闭会造成审计盲区，所以「没设置过」不能等于
+   * 「不上报」。关闭由用户在设置里显式操作。
+   */
+  backflowEnabled: 'digitalEmployee.backflowEnabled'
 } as const
 
 /** 测试连接结果码：renderer 依此映射本地化文案，不接收原始响应体。 */

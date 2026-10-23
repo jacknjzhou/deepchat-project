@@ -4,7 +4,12 @@ import { createConfigClient } from '../../api/ConfigClient'
 import { createDigitalEmployeeClient } from '../../api/DigitalEmployeeClient'
 import { createKnowledgeClient } from '../../api/KnowledgeClient'
 import { useSessionStore } from './ui/session'
-import type { ConfigEntryKey, DigitalEmployee } from '@shared/contracts/routes'
+import type {
+  BackflowEventInput,
+  ConfigEntryKey,
+  DigitalEmployee,
+  DigitalEmployeeBackflowResult
+} from '@shared/contracts/routes'
 import type { DigitalEmployeeProvisionResult } from '@shared/contracts/routes'
 import type { KnowledgePackageStatus } from '@shared/contracts/routes'
 import type { QueryResult } from '@shared/types/knowledge'
@@ -371,6 +376,30 @@ export const useDigitalEmployeeStore = defineStore('digitalEmployee', () => {
     }
   }
 
+  /**
+   * 把一轮本地对话回流给 StaffDeck 归档。
+   *
+   * 只对本地执行的员工上报：`remote` 员工的对话本来就在服务端，再报一次会让
+   * 管理端看到两条同样的消息。
+   *
+   * 永不抛错，也永不改动对话状态。上报是全量归档的附加动作，不是对话的一部分。
+   */
+  async function reportBackflow(input: {
+    employeeId: string
+    sessionId: string
+    events: BackflowEventInput[]
+  }): Promise<DigitalEmployeeBackflowResult | null> {
+    if (input.events.length === 0) return null
+    const employee = employees.value.find((item) => item.id === input.employeeId)
+    if (!employee || employee.executionMode === 'remote') return null
+    try {
+      return await client.backflow(input)
+    } catch (error) {
+      console.warn('[digitalEmployee] backflow failed', error)
+      return null
+    }
+  }
+
   return {
     employees,
     loading,
@@ -394,6 +423,7 @@ export const useDigitalEmployeeStore = defineStore('digitalEmployee', () => {
     employeeForSession,
     loadKnowledgeStatus,
     provisionEmployee,
+    reportBackflow,
     startConversation
   }
 })

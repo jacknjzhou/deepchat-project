@@ -18,7 +18,8 @@ const digitalEmployeeClientMock = vi.hoisted(() => ({
   remoteStatus: vi.fn(),
   switchToRemote: vi.fn(),
   knowledgeStatus: vi.fn(),
-  provision: vi.fn()
+  provision: vi.fn(),
+  backflow: vi.fn()
 }))
 
 const configClientMock = vi.hoisted(() => ({
@@ -137,6 +138,9 @@ describe('digitalEmployeeStore', () => {
       skillNames: [],
       failures: []
     })
+    digitalEmployeeClientMock.backflow
+      .mockReset()
+      .mockResolvedValue({ ok: true, reason: null, delivered: 1 })
   })
 
   it('ensureLoaded fetches the client only once across repeated invocations', async () => {
@@ -263,6 +267,62 @@ describe('digitalEmployeeStore', () => {
 
     // 准备失败只能是「能力少一点」，不能中断会话流程，因此这里不抛。
     await expect(store.provisionEmployee('finance')).resolves.toBeNull()
+  })
+
+  it('reportBackflow forwards local events for a locally executed employee', async () => {
+    const store = useDigitalEmployeeStore()
+    await store.fetchEmployees()
+    const local = store.employees.find((item) => item.executionMode !== 'remote')!
+
+    await store.reportBackflow({
+      employeeId: local.id,
+      sessionId: 'session-1',
+      events: [{ type: 'message', eventId: 'e1', role: 'user', content: 'hi' }]
+    })
+
+    expect(digitalEmployeeClientMock.backflow).toHaveBeenCalledWith({
+      employeeId: local.id,
+      sessionId: 'session-1',
+      events: [{ type: 'message', eventId: 'e1', role: 'user', content: 'hi' }]
+    })
+  })
+
+  it('reportBackflow never reports a remote employee', async () => {
+    // A remote conversation already lives on the server; filing it again would
+    // show the operator two copies of every message.
+    const store = useDigitalEmployeeStore()
+    await store.fetchEmployees()
+
+    await store.reportBackflow({
+      employeeId: 'remote-employee',
+      sessionId: 'session-1',
+      events: [{ type: 'message', eventId: 'e1', role: 'user', content: 'hi' }]
+    })
+
+    expect(digitalEmployeeClientMock.backflow).not.toHaveBeenCalled()
+  })
+
+  it('reportBackflow does not call the client for an empty round', async () => {
+    const store = useDigitalEmployeeStore()
+    await store.fetchEmployees()
+
+    await store.reportBackflow({ employeeId: 'finance', sessionId: 'session-1', events: [] })
+
+    expect(digitalEmployeeClientMock.backflow).not.toHaveBeenCalled()
+  })
+
+  it('reportBackflow swallows failures so a round is never blocked', async () => {
+    const store = useDigitalEmployeeStore()
+    await store.fetchEmployees()
+    digitalEmployeeClientMock.backflow.mockRejectedValue(new Error('offline'))
+
+    await expect(
+      store.reportBackflow({
+        employeeId: 'finance',
+        sessionId: 'session-1',
+        events: [{ type: 'message', eventId: 'e1', role: 'user', content: 'hi' }]
+      })
+    ).resolves.toBeNull()
   })
 
   it('startConversation prefers the installed skill names over the payload slugs', async () => {

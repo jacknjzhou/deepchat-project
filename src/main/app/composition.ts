@@ -252,6 +252,8 @@ import { createStaffdeckSkillSync } from '@/digital-employee/skillSync'
 import { createEmployeeProvisioner } from '@/digital-employee/provisioning'
 import type { EmployeeProvisioner } from '@/digital-employee/provisioning'
 import { createDigitalEmployeeProvisioningRoutes } from '@/digital-employee/provisioningRoutes'
+import { createStaffdeckBackflow } from '@/digital-employee/backflow'
+import { createDigitalEmployeeBackflowRoutes } from '@/digital-employee/backflowRoutes'
 import { createSkillSyncStateStore } from '@/digital-employee/skillSyncState'
 import { RecognitionTaskManager } from '@/documents/taskManager'
 import { seedPresetTemplates } from '@/documents/seed'
@@ -3489,6 +3491,24 @@ export async function createMainProcessControl(dependencies: {
     })
     employeeProvisioner = provisioner
 
+    // Reading the switch with `!== false` rather than `=== true` is deliberate:
+    // an unset key must mean "report", because switching reporting off by
+    // accident leaves an audit hole, while switching it on by accident only
+    // files a conversation the user already expected to be archived.
+    const staffdeckBackflow = createStaffdeckBackflow({
+      getConnection: () => {
+        const connection = readStaffdeckConnection()
+        return connection ? { baseUrl: connection.baseUrl, apiKey: connection.apiKey } : null
+      },
+      isEnabled: () =>
+        dependencies.settingsStore.get<boolean>(digitalEmployeeSettingsKeys.backflowEnabled) !==
+        false,
+      fetchImpl: fetch
+    })
+    const digitalEmployeeBackflowRoutes = createDigitalEmployeeBackflowRoutes({
+      backflow: staffdeckBackflow
+    })
+
     const knowledgeCacheDir = path.join(app.getPath('userData'), 'digital-employee-knowledge')
 
     const rebuildKnowledgeSync = (): void => {
@@ -4008,6 +4028,7 @@ export async function createMainProcessControl(dependencies: {
         digitalEmployeeSettingsRoutes,
         digitalEmployeeRemoteRoutes,
         digitalEmployeeKnowledgeRoutes,
+        digitalEmployeeBackflowRoutes,
         digitalEmployeeProvisioningRoutes,
         resumeScreeningRoutes,
         memoryRoutes,

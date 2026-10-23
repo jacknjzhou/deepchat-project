@@ -1,5 +1,6 @@
 import type { DeepchatBridge } from '@shared/contracts/bridge'
 import {
+  digitalEmployeeBackflowRoute,
   digitalEmployeeBindRemoteSessionRoute,
   digitalEmployeeGetRoute,
   digitalEmployeeKnowledgeStatusRoute,
@@ -10,6 +11,8 @@ import {
 } from '@shared/contracts/routes'
 import type { DigitalEmployee, StaffdeckAwaitingInput } from '@shared/contracts/routes'
 import type {
+  BackflowEventInput,
+  DigitalEmployeeBackflowResult,
   DigitalEmployeeKnowledgeStatus,
   DigitalEmployeeProvisionResult,
   KnowledgePackageStatus
@@ -99,6 +102,21 @@ export function createDigitalEmployeeClient(bridge: DeepchatBridge = getDeepchat
     return result as DigitalEmployeeProvisionResult
   }
 
+  /**
+   * 把本轮的本地事件回流到 StaffDeck 归档。
+   *
+   * 调用方不得因为失败而改变对话行为：这里返回结果而不抛错，是因为上报失败
+   * 只意味着少一条归档记录。
+   */
+  async function backflow(input: {
+    employeeId: string
+    sessionId: string
+    events: BackflowEventInput[]
+  }): Promise<DigitalEmployeeBackflowResult> {
+    const result = await bridge.invoke(digitalEmployeeBackflowRoute.name, input)
+    return result as DigitalEmployeeBackflowResult
+  }
+
   return {
     list,
     get,
@@ -107,6 +125,7 @@ export function createDigitalEmployeeClient(bridge: DeepchatBridge = getDeepchat
     switchToRemote,
     knowledgeStatus,
     provision,
+    backflow,
     onRemoteRunUpdated
   }
 }
