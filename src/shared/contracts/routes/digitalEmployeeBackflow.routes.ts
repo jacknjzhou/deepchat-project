@@ -59,7 +59,10 @@ export const digitalEmployeeBackflowRoute = defineRouteContract({
   input: z
     .object({
       employeeId: z.string().min(1).max(64),
+      /** **本地**会话 id；服务端拿它作 `external_session_id`。 */
       sessionId: z.string().min(1).max(200),
+      /** 会话标题，仅用于首次在服务端建会话。 */
+      title: z.string().max(200).optional(),
       events: z.array(BackflowEventSchema).max(500)
     })
     .strict(),

@@ -387,6 +387,7 @@ export const useDigitalEmployeeStore = defineStore('digitalEmployee', () => {
   async function reportBackflow(input: {
     employeeId: string
     sessionId: string
+    title?: string
     events: BackflowEventInput[]
   }): Promise<DigitalEmployeeBackflowResult | null> {
     if (input.events.length === 0) return null

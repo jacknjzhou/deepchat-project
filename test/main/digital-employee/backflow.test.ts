@@ -21,26 +21,52 @@ const SESSION = 'session-local-1'
 type Call = { url: string; body: unknown }
 
 type HarnessOptions = {
-  connection?: { baseUrl: string; apiKey: string } | null
+  connection?: { baseUrl: string; apiKey: string; externalUserId: string } | null
   enabled?: boolean
-  /** status 序列：第 n 次请求用第 n 个，用完取最后一个。 */
+  /** events:batch 的响应码序列：第 n 次用第 n 个，用完取最后一个。 */
   statuses?: number[]
+  /** 建会话的响应码；省略则一律 201 返回 `REMOTE_SESSION`。 */
+  createStatuses?: number[]
   batchSize?: number
 }
 
+const REMOTE_SESSION = 'session-remote-1'
+
 function createHarness(options: HarnessOptions = {}) {
   const calls: Call[] = []
+  const createCalls: Call[] = []
   const statuses = [...(options.statuses ?? [200])]
+  const createStatuses = [...(options.createStatuses ?? [201])]
   let index = 0
+  let createIndex = 0
 
   const deps: StaffdeckBackflowDeps = {
     getConnection: () =>
       options.connection === null
         ? null
-        : { baseUrl: 'http://staffdeck.test', apiKey: 'sd_live_abc' },
+        : {
+            baseUrl: 'http://staffdeck.test',
+            apiKey: 'sd_live_abc',
+            externalUserId: 'user-1'
+          },
     isEnabled: () => options.enabled ?? true,
     fetchImpl: (async (input: string | URL | Request, init?: RequestInit) => {
-      calls.push({ url: String(input), body: JSON.parse(String(init?.body ?? 'null')) })
+      const url = String(input)
+      const body = JSON.parse(String(init?.body ?? 'null'))
+      // 建会话与追加事件是两个端点，用同一份假 fetch 时得分开计数：
+      // 混在一起会让「第几次请求失败」的断言变成猜顺序。
+      if (url.endsWith('/sessions')) {
+        createCalls.push({ url, body })
+        const status = createStatuses[Math.min(createIndex, createStatuses.length - 1)]
+        createIndex += 1
+        return {
+          ok: status >= 200 && status < 300,
+          status,
+          json: async () => ({ id: REMOTE_SESSION }),
+          text: async () => ''
+        }
+      }
+      calls.push({ url, body })
       const status = statuses[Math.min(index, statuses.length - 1)]
       index += 1
       return {
@@ -53,7 +79,7 @@ function createHarness(options: HarnessOptions = {}) {
     batchSize: options.batchSize
   }
 
-  return { deps, calls }
+  return { deps, calls, createCalls }
 }
 
 const message = (eventId: string, content = 'hi'): BackflowEvent => ({
@@ -64,6 +90,98 @@ const message = (eventId: string, content = 'hi'): BackflowEvent => ({
 })
 
 describe('StaffDeck backflow', () => {
+  it('creates the remote session before appending events', async () => {
+    // events:batch only accepts a session the server knows and the credential
+    // owns. A locally executed conversation never created one, so appending
+    // first would 404 every time.
+    const harness = createHarness()
+
+    const result = await createStaffdeckBackflow(harness.deps).flush({
+      employeeId: EMPLOYEE,
+      sessionId: SESSION,
+      events: [message('e1')]
+    })
+
+    expect(result.ok).toBe(true)
+    expect(harness.createCalls).toHaveLength(1)
+    expect(harness.createCalls[0].url).toBe(
+      `http://staffdeck.test/api/v1/agents/${EMPLOYEE}/sessions`
+    )
+    expect(harness.createCalls[0].body).toMatchObject({
+      external_session_id: SESSION,
+      external_user_id: 'user-1'
+    })
+    // The batch must address the session the server handed back, not the local id.
+    expect(harness.calls[0].url).toContain(`/sessions/${REMOTE_SESSION}/events:batch`)
+  })
+
+  it('reuses the remote session id instead of creating one per turn', async () => {
+    const harness = createHarness()
+    const backflow = createStaffdeckBackflow(harness.deps)
+
+    await backflow.flush({ employeeId: EMPLOYEE, sessionId: SESSION, events: [message('e1')] })
+    await backflow.flush({ employeeId: EMPLOYEE, sessionId: SESSION, events: [message('e2')] })
+
+    expect(harness.createCalls).toHaveLength(1)
+    expect(harness.calls).toHaveLength(2)
+  })
+
+  it('rebuilds the mapping once when the cached session id is gone', async () => {
+    // The server can drop the session (cleanup, or a different database). A
+    // cached id then 404s forever unless we drop it and rebuild.
+    const harness = createHarness({ statuses: [404, 200] })
+    const backflow = createStaffdeckBackflow(harness.deps)
+
+    const result = await backflow.flush({
+      employeeId: EMPLOYEE,
+      sessionId: SESSION,
+      events: [message('e1')]
+    })
+
+    expect(result.ok).toBe(true)
+    expect(harness.createCalls).toHaveLength(2)
+  })
+
+  it('does not loop when the rebuilt session also 404s', async () => {
+    const harness = createHarness({ statuses: [404, 404, 404] })
+
+    const result = await createStaffdeckBackflow(harness.deps).flush({
+      employeeId: EMPLOYEE,
+      sessionId: SESSION,
+      events: [message('e1')]
+    })
+
+    expect(result.ok).toBe(false)
+    expect(result.reason).toBe('HTTP_404')
+    // Initial attempt + one retry, then stop.
+    expect(harness.calls).toHaveLength(2)
+  })
+
+  it('drops the cached mapping on reset', async () => {
+    const harness = createHarness()
+    const backflow = createStaffdeckBackflow(harness.deps)
+
+    await backflow.flush({ employeeId: EMPLOYEE, sessionId: SESSION, events: [message('e1')] })
+    backflow.reset()
+    await backflow.flush({ employeeId: EMPLOYEE, sessionId: SESSION, events: [message('e2')] })
+
+    expect(harness.createCalls).toHaveLength(2)
+  })
+
+  it('reports a failed session creation without attempting the batch', async () => {
+    const harness = createHarness({ createStatuses: [403] })
+
+    const result = await createStaffdeckBackflow(harness.deps).flush({
+      employeeId: EMPLOYEE,
+      sessionId: SESSION,
+      events: [message('e1')]
+    })
+
+    expect(result.ok).toBe(false)
+    expect(result.reason).toBe('HTTP_403')
+    expect(harness.calls).toHaveLength(0)
+  })
+
   it('posts a batch to the session events endpoint', async () => {
     const harness = createHarness()
 
@@ -76,7 +194,7 @@ describe('StaffDeck backflow', () => {
     expect(result.ok).toBe(true)
     expect(harness.calls).toHaveLength(1)
     expect(harness.calls[0].url).toBe(
-      `http://staffdeck.test/api/v1/agents/${EMPLOYEE}/sessions/${SESSION}/events:batch`
+      `http://staffdeck.test/api/v1/agents/${EMPLOYEE}/sessions/${REMOTE_SESSION}/events:batch`
     )
     expect((harness.calls[0].body as { events: unknown[] }).events).toHaveLength(2)
   })

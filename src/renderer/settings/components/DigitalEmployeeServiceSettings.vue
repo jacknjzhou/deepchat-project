@@ -104,6 +104,40 @@
           </p>
         </div>
 
+        <div class="space-y-2 rounded-lg border border-border/60 p-3">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0 space-y-1">
+              <Label for="staffdeck-backflow" class="text-sm">
+                {{ t('digitalEmployee.service.backflowLabel') }}
+              </Label>
+              <p class="text-xs text-muted-foreground">
+                {{ t('digitalEmployee.service.backflowEnabledHint') }}
+              </p>
+            </div>
+            <Switch
+              id="staffdeck-backflow"
+              data-testid="digital-employee-backflow-switch"
+              :aria-label="t('digitalEmployee.service.backflowLabel')"
+              :model-value="form.backflowEnabled"
+              :disabled="!settingsReady || saving"
+              @update:model-value="(value: boolean) => (form.backflowEnabled = value)"
+            />
+          </div>
+          <!-- 关闭状态必须显式说出来：默认开启，用户不会主动去确认它开着，
+               但关掉之后的后果（审计里没有这些会话）只能在这里讲清。 -->
+          <p
+            v-if="!form.backflowEnabled"
+            data-testid="digital-employee-backflow-disabled-warning"
+            class="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-400"
+          >
+            <Icon icon="lucide:triangle-alert" class="mt-0.5 size-3.5 shrink-0" />
+            <span>{{ t('digitalEmployee.service.backflowDisabledWarning') }}</span>
+          </p>
+          <p v-else class="text-xs text-muted-foreground">
+            {{ t('digitalEmployee.service.backflowSaveHint') }}
+          </p>
+        </div>
+
         <div class="flex flex-wrap items-center gap-2">
           <DcButton
             variant="outline"
@@ -210,7 +244,9 @@ const form = reactive({
   enabled: false,
   baseUrl: '',
   externalUserId: '',
-  apiKey: ''
+  apiKey: '',
+  // 与 main 侧 `!== false` 一致：未设置过就是开启。
+  backflowEnabled: true
 })
 
 const baseUrlInvalid = computed(() => {
@@ -229,6 +265,7 @@ const applyState = (next: DigitalEmployeeSettingsState): void => {
   form.enabled = next.enabled
   form.baseUrl = next.baseUrl
   form.externalUserId = next.externalUserId
+  form.backflowEnabled = next.backflowEnabled
   // 保存/清除后输入框总是回到空值，避免明文密钥停留或被当成本地副本。
   form.apiKey = ''
 }
@@ -271,6 +308,7 @@ const save = async (): Promise<void> => {
         enabled: form.enabled,
         baseUrl: form.baseUrl.trim(),
         externalUserId: form.externalUserId.trim(),
+        backflowEnabled: form.backflowEnabled,
         ...(form.apiKey.trim() ? { apiKey: form.apiKey.trim() } : {})
       })
     )

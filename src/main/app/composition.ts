@@ -253,6 +253,7 @@ import { createEmployeeProvisioner } from '@/digital-employee/provisioning'
 import type { EmployeeProvisioner } from '@/digital-employee/provisioning'
 import { createDigitalEmployeeProvisioningRoutes } from '@/digital-employee/provisioningRoutes'
 import { createStaffdeckBackflow } from '@/digital-employee/backflow'
+import type { StaffdeckBackflow } from '@/digital-employee/backflow'
 import { createDigitalEmployeeBackflowRoutes } from '@/digital-employee/backflowRoutes'
 import { createSkillSyncStateStore } from '@/digital-employee/skillSyncState'
 import { RecognitionTaskManager } from '@/documents/taskManager'
@@ -704,6 +705,8 @@ export async function createMainProcessControl(dependencies: {
   let knowledgeSyncScheduler: KnowledgeSyncScheduler | undefined
   // 配置变更时要清掉在途准备轮次，因此声明在外层作用域（与调度器同因）。
   let employeeProvisioner: EmployeeProvisioner | undefined
+  // 同上：配置变更要丢弃按旧凭证建立的服务端会话 id 缓存。
+  let staffdeckBackflow: StaffdeckBackflow | undefined
   let cliComputeService: CliComputeService
   let cliAudioTranscriptionService: CliAudioTranscriptionService
   let cliOcrService: CliOcrService
@@ -3406,6 +3409,8 @@ export async function createMainProcessControl(dependencies: {
       rebuildKnowledgeSync()
       // 旧凭证发起的那一轮准备不得替新凭证作答，因此丢弃在途状态。
       employeeProvisioner?.reset()
+      // 服务端会话 id 是按旧凭证建的，新凭证在绑定表里看不到它们，必须重建。
+      staffdeckBackflow?.reset()
       publishDeepchatEvent('digitalEmployee.configurationChanged', { changedAt: Date.now() })
     }
     const digitalEmployeeRemoteRoutes = createDigitalEmployeeRemoteRoutes({
@@ -3427,7 +3432,13 @@ export async function createMainProcessControl(dependencies: {
       }
     })
     const digitalEmployeeKnowledgeRoutes = createDigitalEmployeeKnowledgeRoutes({
-      stateStore: knowledgeSyncStateStore
+      stateStore: knowledgeSyncStateStore,
+      // 用户可能在主设置里删掉某个员工库：状态表还在，但向量库已不存在。
+      // 交给 renderer 一个「查得到」的 id 才有意义，所以这里顺手校验一次。
+      hasKnowledgeBase: (knowledgeBaseId) =>
+        knowledgeSettings
+          .getKnowledgeConfigs()
+          .some((config) => config.id === knowledgeBaseId)
     })
 
     // 员工本地执行的准备工作（D4）：远端工具注册 + 技能包安装。
@@ -3495,18 +3506,26 @@ export async function createMainProcessControl(dependencies: {
     // an unset key must mean "report", because switching reporting off by
     // accident leaves an audit hole, while switching it on by accident only
     // files a conversation the user already expected to be archived.
-    const staffdeckBackflow = createStaffdeckBackflow({
+    const staffdeckBackflowInstance = createStaffdeckBackflow({
       getConnection: () => {
         const connection = readStaffdeckConnection()
-        return connection ? { baseUrl: connection.baseUrl, apiKey: connection.apiKey } : null
+        return connection
+          ? {
+              baseUrl: connection.baseUrl,
+              apiKey: connection.apiKey,
+              // 建远端会话要带 external_user_id，缺它服务端不接受这次归属登记。
+              externalUserId: connection.externalUserId
+            }
+          : null
       },
       isEnabled: () =>
         dependencies.settingsStore.get<boolean>(digitalEmployeeSettingsKeys.backflowEnabled) !==
         false,
       fetchImpl: fetch
     })
+    staffdeckBackflow = staffdeckBackflowInstance
     const digitalEmployeeBackflowRoutes = createDigitalEmployeeBackflowRoutes({
-      backflow: staffdeckBackflow
+      backflow: staffdeckBackflowInstance
     })
 
     const knowledgeCacheDir = path.join(app.getPath('userData'), 'digital-employee-knowledge')

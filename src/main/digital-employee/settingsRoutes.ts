@@ -68,7 +68,11 @@ const readState = (
   enabled: deps.settings.get<boolean>(digitalEmployeeSettingsKeys.enabled) === true,
   baseUrl: deps.settings.get<string>(digitalEmployeeSettingsKeys.baseUrl) ?? '',
   externalUserId,
-  apiKeyConfigured: Boolean(deps.secretStore.getWrapped(digitalEmployeeSettingsKeys.apiKey))
+  apiKeyConfigured: Boolean(deps.secretStore.getWrapped(digitalEmployeeSettingsKeys.apiKey)),
+  // `!== false` 与上报侧同一口径：未设置过必须读成「开启」，否则用户一进设置页
+  // 看到的默认状态就和实际行为不一致。
+  backflowEnabled:
+    deps.settings.get<boolean>(digitalEmployeeSettingsKeys.backflowEnabled) !== false
 })
 
 /**
@@ -145,7 +149,8 @@ export function createDigitalEmployeeSettingsRoutes(
         const snapshot = captureSnapshot(deps, [
           digitalEmployeeSettingsKeys.enabled,
           digitalEmployeeSettingsKeys.baseUrl,
-          digitalEmployeeSettingsKeys.externalUserId
+          digitalEmployeeSettingsKeys.externalUserId,
+          digitalEmployeeSettingsKeys.backflowEnabled
         ])
         const previousWrappedKey = deps.secretStore.getWrapped(digitalEmployeeSettingsKeys.apiKey)
 
@@ -153,6 +158,11 @@ export function createDigitalEmployeeSettingsRoutes(
           deps.settings.set(digitalEmployeeSettingsKeys.enabled, input.enabled)
           deps.settings.set(digitalEmployeeSettingsKeys.baseUrl, baseUrl)
           deps.settings.set(digitalEmployeeSettingsKeys.externalUserId, externalUserId)
+          // 只有显式带了这个字段才写：省略的是「保留」，不是「改回开启」，
+          // 否则旧版 renderer 一保存就会把用户关掉的回流悄悄打开。
+          if (input.backflowEnabled !== undefined) {
+            deps.settings.set(digitalEmployeeSettingsKeys.backflowEnabled, input.backflowEnabled)
+          }
           if (wrappedKey) {
             deps.secretStore.setWrapped(digitalEmployeeSettingsKeys.apiKey, wrappedKey)
           }

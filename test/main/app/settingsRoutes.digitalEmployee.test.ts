@@ -163,7 +163,8 @@ describe('digitalEmployeeSettings routes', () => {
       enabled: false,
       baseUrl: '',
       externalUserId: 'user-1',
-      apiKeyConfigured: true
+      apiKeyConfigured: true,
+      backflowEnabled: true
     })
     expect(JSON.stringify(result)).not.toContain('sd_live_secret')
     expect(JSON.stringify(result)).not.toContain('wrapped:')
@@ -207,6 +208,43 @@ describe('digitalEmployeeSettings routes', () => {
       apiKey: '   '
     })
     expect(harness.secretStore.setWrapped).not.toHaveBeenCalled()
+  })
+
+  it('reports backflow as on when the key was never set', async () => {
+    // Unset must read as "report": the reporting side uses the same rule, and a
+    // settings page that showed "off" while reporting stayed on would be lying.
+    const result = (await harness.handlers.get()) as { backflowEnabled: boolean }
+
+    expect(result.backflowEnabled).toBe(true)
+  })
+
+  it('persists backflow when the switch is turned off', async () => {
+    const result = (await harness.handlers.save({
+      enabled: true,
+      baseUrl: 'https://sd.example',
+      externalUserId: 'user-1',
+      backflowEnabled: false
+    })) as { backflowEnabled: boolean }
+
+    expect(harness.settings.set).toHaveBeenCalledWith('digitalEmployee.backflowEnabled', false)
+    expect(result.backflowEnabled).toBe(false)
+  })
+
+  it('leaves backflow untouched when the caller omits it', async () => {
+    // An older renderer saving the form must not silently re-enable reporting.
+    harness.settingsStore.set('digitalEmployee.backflowEnabled', false)
+
+    const result = (await harness.handlers.save({
+      enabled: true,
+      baseUrl: 'https://sd.example',
+      externalUserId: 'user-1'
+    })) as { backflowEnabled: boolean }
+
+    expect(harness.settings.set).not.toHaveBeenCalledWith(
+      'digitalEmployee.backflowEnabled',
+      expect.anything()
+    )
+    expect(result.backflowEnabled).toBe(false)
   })
 
   it('wraps a new key before persisting it', async () => {

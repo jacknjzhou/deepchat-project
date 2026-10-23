@@ -379,6 +379,7 @@ import { useSessionRestore } from './composables/useSessionRestore'
 import { useVoiceInput } from './composables/useVoiceInput'
 import { useToolInteraction } from './composables/useToolInteraction'
 import { useMessageActions } from './composables/useMessageActions'
+import { useBackflowReporting } from './composables/useBackflowReporting'
 import { usePendingInputActions } from './composables/usePendingInputActions'
 import { useChatPageEventBridge } from './composables/useChatPageEventBridge'
 import type { UserMessageInlineItem } from '@shared/types/agent-interface'
@@ -1287,6 +1288,9 @@ const {
   t
 })
 clearMessageActionsForSessionChange = clearForSessionChange
+
+// 每轮结束把本地执行的对话回流给 StaffDeck 归档（fire-and-forget，失败静默）。
+useBackflowReporting({ sessionId: computed(() => props.sessionId) })
 
 const {
   onPendingInputUpdate,

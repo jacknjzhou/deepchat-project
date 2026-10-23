@@ -15,6 +15,8 @@ export interface DigitalEmployeeSettingsDraft {
   baseUrl: string
   externalUserId: string
   apiKey?: string
+  /** 省略表示保留当前值：老版本保存时不会带上这个字段。 */
+  backflowEnabled?: boolean
 }
 
 export function createDigitalEmployeeSettingsClient(bridge: DeepchatBridge = getDeepchatBridge()) {

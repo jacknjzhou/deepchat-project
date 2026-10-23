@@ -24,6 +24,7 @@ export function createDigitalEmployeeBackflowRoutes(
     const result = await deps.backflow.flush({
       employeeId: input.employeeId,
       sessionId: input.sessionId,
+      ...(input.title ? { title: input.title } : {}),
       events: input.events as readonly BackflowEvent[]
     })
     return { ok: result.ok, reason: result.reason, delivered: result.delivered }

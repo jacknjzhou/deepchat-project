@@ -39,7 +39,9 @@ export const DigitalEmployeeSettingsStateSchema = z.object({
   enabled: z.boolean(),
   baseUrl: z.string(),
   externalUserId: z.string(),
-  apiKeyConfigured: z.boolean()
+  apiKeyConfigured: z.boolean(),
+  /** 本地执行的对话是否回流归档。缺省视为开启，见 `backflowEnabled` 键的说明。 */
+  backflowEnabled: z.boolean()
 })
 
 export const digitalEmployeeSettingsGetRoute = defineRouteContract({
@@ -56,7 +58,9 @@ export const digitalEmployeeSettingsSaveRoute = defineRouteContract({
       baseUrl: z.string().max(2048),
       externalUserId: z.string().max(128),
       /** 空字符串或省略表示保留已存密钥 */
-      apiKey: z.string().max(512).optional()
+      apiKey: z.string().max(512).optional(),
+      /** 省略表示保留当前值：老版本 renderer 不会带这个字段。 */
+      backflowEnabled: z.boolean().optional()
     })
     .strict(),
   output: DigitalEmployeeSettingsStateSchema
