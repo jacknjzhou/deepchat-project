@@ -18,6 +18,7 @@ const digitalEmployeeClientMock = vi.hoisted(() => ({
   remoteStatus: vi.fn(),
   switchToRemote: vi.fn(),
   knowledgeStatus: vi.fn(),
+  knowledgeLocalBase: vi.fn(),
   provision: vi.fn(),
   backflow: vi.fn()
 }))
@@ -129,6 +130,9 @@ describe('digitalEmployeeStore', () => {
     })
     digitalEmployeeClientMock.remoteStatus.mockReset()
     digitalEmployeeClientMock.switchToRemote.mockReset()
+    digitalEmployeeClientMock.knowledgeLocalBase
+      .mockReset()
+      .mockResolvedValue({ knowledgeBaseId: 'de-finance' })
     digitalEmployeeClientMock.provision.mockReset().mockResolvedValue({
       employeeId: 'finance',
       skipped: null,
@@ -226,8 +230,50 @@ describe('digitalEmployeeStore', () => {
     expect(createInput.generationSettings.systemPrompt).toContain(employee.systemPrompt)
     expect(createInput.generationSettings.systemPrompt).toContain('[1] 片段A')
     expect(createInput.generationSettings.systemPrompt).toContain('你好，我是财务助手')
-    expect(knowledgeClientMock.similarityQuery).toHaveBeenCalledWith('kb-1', '帮我查报销进度')
+    // 检索必须打本地库 id，不能打 payload 的服务端 `kb-*`：本地没有那个库，
+    // similarityQuery 会抛错并被吞成空结果（知识永远召回不到）。
+    expect(digitalEmployeeClientMock.knowledgeLocalBase).toHaveBeenCalledWith('finance')
+    expect(knowledgeClientMock.similarityQuery).toHaveBeenCalledWith('de-finance', '帮我查报销进度')
+    expect(knowledgeClientMock.similarityQuery).not.toHaveBeenCalledWith(
+      'kb-1',
+      expect.anything()
+    )
     expect(store.employeeForSession('session-9')?.id).toBe(employee.id)
+  })
+
+  it('skips knowledge retrieval when the employee has no local knowledge base', async () => {
+    // 未同步 / 无嵌入模型 / 用户删了库：main 返回 null，此时不得回退到远端 id。
+    digitalEmployeeClientMock.knowledgeLocalBase.mockResolvedValue({ knowledgeBaseId: null })
+    const store = useDigitalEmployeeStore()
+    await store.fetchEmployees()
+
+    await store.startConversation(store.employees[0], { openingQuestion: '帮我查报销进度' })
+
+    expect(knowledgeClientMock.similarityQuery).not.toHaveBeenCalled()
+    expect(sessionStoreMock.createSession.mock.calls[0][0].generationSettings.systemPrompt).not
+      .toContain('## 参考资料')
+  })
+
+  it('skips knowledge retrieval when the local base lookup fails', async () => {
+    digitalEmployeeClientMock.knowledgeLocalBase.mockRejectedValue(new Error('ipc boom'))
+    const store = useDigitalEmployeeStore()
+    await store.fetchEmployees()
+
+    await expect(
+      store.startConversation(store.employees[0], { openingQuestion: '帮我查报销进度' })
+    ).resolves.toBe('session-9')
+    expect(knowledgeClientMock.similarityQuery).not.toHaveBeenCalled()
+  })
+
+  it('does not look up a local knowledge base when the question is empty', async () => {
+    const store = useDigitalEmployeeStore()
+    await store.fetchEmployees()
+
+    await store.startConversation(store.employees[0])
+
+    // 没有开场问题就没有查询文本，白跑一次 IPC + 一次向量查询没有意义。
+    expect(digitalEmployeeClientMock.knowledgeLocalBase).not.toHaveBeenCalled()
+    expect(knowledgeClientMock.similarityQuery).not.toHaveBeenCalled()
   })
 
   it('startConversation resolves sessionId even when bindSession persistence rejects', async () => {

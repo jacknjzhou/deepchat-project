@@ -3,6 +3,7 @@ import {
   digitalEmployeeBackflowRoute,
   digitalEmployeeBindRemoteSessionRoute,
   digitalEmployeeGetRoute,
+  digitalEmployeeKnowledgeLocalBaseRoute,
   digitalEmployeeKnowledgeStatusRoute,
   digitalEmployeeListRoute,
   digitalEmployeeProvisionRoute,
@@ -13,6 +14,7 @@ import type { DigitalEmployee, StaffdeckAwaitingInput } from '@shared/contracts/
 import type {
   BackflowEventInput,
   DigitalEmployeeBackflowResult,
+  DigitalEmployeeKnowledgeLocalBase,
   DigitalEmployeeKnowledgeStatus,
   DigitalEmployeeProvisionResult,
   KnowledgePackageStatus
@@ -91,6 +93,19 @@ export function createDigitalEmployeeClient(bridge: DeepchatBridge = getDeepchat
   }
 
   /**
+   * 该员工在**本机**的知识库 id（`null` = 本机没有可检索的库）。
+   *
+   * 与 `knowledgeStatus` 分开：前者是展示数据，这条是会话检索的寻址参数。
+   * 不要用 payload 的 `knowledgeBaseIds`（服务端 `kb_*` id）去检索本地库。
+   */
+  async function knowledgeLocalBase(
+    employeeId: string
+  ): Promise<DigitalEmployeeKnowledgeLocalBase> {
+    const result = await bridge.invoke(digitalEmployeeKnowledgeLocalBaseRoute.name, { employeeId })
+    return result as DigitalEmployeeKnowledgeLocalBase
+  }
+
+  /**
    * 本地执行前的准备：注册远端工具 + 安装技能包。
    *
    * 必须在 `loadTools()` **之前**调用：工具白名单是「可用工具列表的补集」，
@@ -124,6 +139,7 @@ export function createDigitalEmployeeClient(bridge: DeepchatBridge = getDeepchat
     remoteStatus,
     switchToRemote,
     knowledgeStatus,
+    knowledgeLocalBase,
     provision,
     backflow,
     onRemoteRunUpdated

@@ -317,16 +317,30 @@ export const useDigitalEmployeeStore = defineStore('digitalEmployee', () => {
       return sessionId
     }
 
-    if (employee.knowledgeBaseIds.length > 0 && openingQuestion) {
-      const snippetLists = await Promise.all(
-        employee.knowledgeBaseIds.map((knowledgeBaseId) =>
-          knowledgeClient
-            .similarityQuery(knowledgeBaseId, openingQuestion)
-            .catch(() => [] as QueryResult[])
-        )
-      )
-      const lines = snippetLists
-        .flat()
+    // 只对本地执行分支检索知识：remote 分支前面已提前返回。
+    //
+    // 两个条件都要满足，用途不同：
+    // - `knowledgeBaseIds` 判「服务端还配着知识吗」。清空后本地可能残留上次同步的
+    //   库，只按本地 id 判会让用户检索到已下线的知识。
+    // - `localKnowledgeBaseId` 是**寻址**用的 id。必须是本地库（`de-{employeeId}`），
+    //   不是 payload 的 `knowledgeBaseIds`——后者是服务端 `kb_*` id，本地配置里
+    //   没有这个库，`similarityQuery` 会抛 `Knowledge config not found`，然后被
+    //   catch 成空数组，表现为「同步了一堆概念却永远召回不到」。两套 id 之间没有
+    //   换算关系，见 `knowledgeRoutes.ts` 的 `readLocalKnowledgeBaseId`。
+    const localKnowledgeBaseId =
+      employee.knowledgeBaseIds.length > 0 && openingQuestion
+        ? await client
+            .knowledgeLocalBase(employee.id)
+            .then((result) => result.knowledgeBaseId)
+            // 查询失败不退化成远端 id：那必然查不到，只会多打一轮空检索。
+            .catch(() => null)
+        : null
+
+    if (localKnowledgeBaseId && openingQuestion) {
+      const snippets = await knowledgeClient
+        .similarityQuery(localKnowledgeBaseId, openingQuestion)
+        .catch(() => [] as QueryResult[])
+      const lines = snippets
         .slice(0, 5)
         // QueryResult 的正文在 metadata.content（src/shared/types/knowledge.ts）
         .map((result, index) => `[${index + 1}] ${result.metadata?.content ?? ''}`.trim())

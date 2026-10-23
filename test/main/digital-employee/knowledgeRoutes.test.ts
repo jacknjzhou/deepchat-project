@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { digitalEmployeeKnowledgeStatusRoute } from '../../../src/shared/contracts/routes/digitalEmployeeKnowledge.routes'
+import {
+  digitalEmployeeKnowledgeLocalBaseRoute,
+  digitalEmployeeKnowledgeStatusRoute
+} from '../../../src/shared/contracts/routes/digitalEmployeeKnowledge.routes'
 import { createDigitalEmployeeKnowledgeRoutes } from '../../../src/main/digital-employee/knowledgeRoutes'
 import { createKnowledgeSyncStateStore } from '../../../src/main/digital-employee/knowledgeSyncState'
 
@@ -148,5 +151,101 @@ describe('digitalEmployee.knowledgeStatus', () => {
 
     expect(output.packages[0].stale).toBe(false)
     expect(output.packages[0].staleReason).toBeNull()
+  })
+})
+
+/**
+ * 会话检索要的是「本地库 id」，与展示用的状态是两件事，所以单独一条路由。
+ *
+ * 这组用例的重点不是「能不能读到值」，而是「读出来的 id 必须真的能在本地
+ * 命中一个知识库」——拿到一个查不到的 id 比拿不到更糟：`similarityQuery`
+ * 会抛错，而 renderer 只能 catch 成空结果，故障会一直静默。
+ */
+describe('digitalEmployee.knowledgeLocalBase', () => {
+  function localBaseOf(
+    routes: ReturnType<typeof createDigitalEmployeeKnowledgeRoutes>,
+    employeeId: string
+  ) {
+    const handler = routes.get(digitalEmployeeKnowledgeLocalBaseRoute.name)
+    if (!handler) throw new Error('knowledge local base route is not registered')
+    return handler({ employeeId }) as Promise<{ knowledgeBaseId: string | null }>
+  }
+
+  it('returns the id recorded by the last sync', async () => {
+    const store = createStore()
+    store.setEmployee('agent_1', {
+      localKnowledgeBaseId: 'de-agent_1',
+      packages: {
+        'kb-1': {
+          configVersion: 'kv1:digest',
+          configHash: 'sha256:aaa',
+          etag: null,
+          stale: false,
+          staleReason: null,
+          lastSyncAt: '2026-10-23T00:00:00.000Z',
+          concepts: {}
+        }
+      }
+    })
+    const routes = createDigitalEmployeeKnowledgeRoutes({ stateStore: store })
+
+    const output = await localBaseOf(routes, 'agent_1')
+
+    // 必须与原同步写入的 id 完全一致：它是 `KnowledgeSettings` 里的配置 id，
+    // 差一个字符 similarityQuery 就抛 `Knowledge config not found`。
+    expect(output).toEqual({ knowledgeBaseId: 'de-agent_1' })
+    expect(digitalEmployeeKnowledgeLocalBaseRoute.output.safeParse(output).success).toBe(true)
+  })
+
+  it('derives the id when the state table is empty but the library still exists', async () => {
+    // 状态表被清（config entry 损坏 / 手工删除）但向量库还在：不该强迫用户
+    // 再等一整轮全量重索引才能检索。
+    const routes = createDigitalEmployeeKnowledgeRoutes({
+      stateStore: createStore(),
+      hasKnowledgeBase: (id) => id === 'de-agent_1'
+    })
+
+    expect(await localBaseOf(routes, 'agent_1')).toEqual({ knowledgeBaseId: 'de-agent_1' })
+  })
+
+  it('returns null when the library does not exist locally', async () => {
+    // 未同步 / 无嵌入模型 / 用户在主设置里删了库：都表现为 null，由调用方跳过检索。
+    const routes = createDigitalEmployeeKnowledgeRoutes({
+      stateStore: createStore(),
+      hasKnowledgeBase: () => false
+    })
+
+    expect(await localBaseOf(routes, 'agent_1')).toEqual({ knowledgeBaseId: null })
+  })
+
+  it('returns null when the recorded library was deleted from settings', async () => {
+    const store = createStore()
+    store.setEmployee('agent_1', {
+      localKnowledgeBaseId: 'de-agent_1',
+      packages: {}
+    })
+    const routes = createDigitalEmployeeKnowledgeRoutes({
+      stateStore: store,
+      hasKnowledgeBase: () => false
+    })
+
+    // 状态表是历史记录，配置才是事实：用户删了库就以配置为准。
+    expect(await localBaseOf(routes, 'agent_1')).toEqual({ knowledgeBaseId: null })
+  })
+
+  it('never leaks the remote knowledge base ids', async () => {
+    const store = createStore()
+    store.setEmployee('agent_1', {
+      localKnowledgeBaseId: 'de-agent_1',
+      packages: {}
+    })
+    const routes = createDigitalEmployeeKnowledgeRoutes({
+      stateStore: store,
+      hasKnowledgeBase: () => true
+    })
+
+    // 远端 `kb_*` 是另一套 id 空间，混进来会让调用方以为可以直接拿去检索。
+    const output = await localBaseOf(routes, 'agent_1')
+    expect(output.knowledgeBaseId).not.toMatch(/^kb/)
   })
 })

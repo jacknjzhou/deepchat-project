@@ -1,0 +1,202 @@
+# StaffDeck 接入能力缺口审计
+
+- 日期：2026-10-23
+- 范围：以 D4 计划（`2026-10-23-staffdeck-d4-skills-and-tools.md`）为锚点，回溯 D1→D5 全链条，逐项核对「spec/计划声明的能力」与「仓库实际实现」
+- 方法：读源码 + grep 全仓调用点，不以文档自述为准；每条缺口都给出可复核的文件与行号
+
+---
+
+## 0. 结论摘要
+
+三个层次，按「是否导致功能不可用」排序：
+
+| 层 | 含义 | 数量 |
+|---|---|---|
+| **P0 真断链** | 代码写完了、测试也过了，但端到端跑起来功能不生效 | 3（已修 1） |
+| **P1 能力缺失** | spec/计划明确要求，仓库里找不到实现 | 10 |
+| **P2 验证与运维缺口** | 功能可用，但未验证或有误判风险 | 6 |
+
+最需要立刻知道的一条：**D3 的知识同步与对话检索之间没有接线**。同步把向量索引写进了 `de-{employeeId}` 本地库，而对话检索查的是 payload 里的远端 `knowledgeBaseIds`（`kb_xxx`）——查不到配置直接抛错，被 `.catch(() => [])` 吞掉，表现为「永远召回不到任何知识」。同步下的 25 个概念全在另一个库里，没有任何检索入口指向它。（**已于 2026-10-23 修复**，见 P0-1。）
+
+---
+
+## 1. P0 真断链
+
+### P0-1 知识同步与对话检索用的是两套 KB id（D3）
+
+| 环节 | 实际 id | 证据 |
+|---|---|---|
+| 同步写索引 | `de-{employeeId}`（如 `de-agent_f2828efc2a2a476d`） | `knowledgeProvisioning.ts:50,95`；`knowledgeSync.ts:224-225,311,318` |
+| 对话做检索 | payload 的远端 id（如 `kb_067d71b1f22c48bc`） | `stores/digitalEmployeeStore.ts:320-327` |
+
+后果链条：
+
+1. `similarityQuery('kb_067d71b1f22c48bc', q)` → `getOrCreateKnowledgeBase` 在 `getKnowledgeConfigs()` 里找不到该 id → `throw new Error('Knowledge config not found for id: ...')`（`src/main/knowledge/index.ts:269-271`）；
+2. renderer 侧 `.catch(() => [] as QueryResult[])` 把异常吃掉（`digitalEmployeeStore.ts:325`）；
+3. 结果恒为空，`knowledgeSnippets` 恒为 `undefined`，systemPrompt 里永远没有知识片段。
+
+**为什么测试没抓到**：`test/renderer/stores/digitalEmployeeStore.test.ts:229` 断言的是 `similarityQuery` 被以 `'kb-1'` 调用，只验证了「调用发生」，没有验证「这个 id 在本地存在」。而 main 侧的 16 条同步用例全部以 `localKnowledgeBaseId` 为参数直接调桩，两边各测各的，中间的 id 对齐没有任何用例覆盖。
+
+**这是计划本身的漏项**，不是实现走偏：D3 计划的 Goal 写着「从而在既有 `similarityQuery` 检索链路里生效」，但 Task 1–7 里没有「把本地库接到会话检索」这一步。
+
+**修复方向**（二选一，需决策）：
+- A. `knowledgeStatus` 路由回传 `localKnowledgeBaseId`，store 检索时用它（契约注释明确说刻意不暴露该字段，需改契约）；
+- B. 主进程新增「员工 → 本地库 id」查询，由 store 在 `startConversation` 前取一次；或干脆让同步把内容索引进与远端 id 同名的库（放弃「每员工一个库」）。
+
+> **已修复（2026-10-23，选 B）**：
+>
+> 新增窄契约 `digitalEmployee.knowledgeLocalBase`（入参 `employeeId`，出参 `{ knowledgeBaseId: string | null }`），而不是把 `localKnowledgeBaseId` 塞进 `knowledgeStatus`。理由：状态是「每远端 KB 一条」的展示列表，本地库 id 是员工级单值；混进 `packages[]` 会在「列表为空」时无处安放，而列表为空恰恰是最需要它的场景。这样 `knowledgeStatus` 的契约注释（「刻意不暴露」）继续成立。
+>
+> 落地三处：
+> 1. `knowledgeRoutes.ts` 新增 `readLocalKnowledgeBaseId`：状态表记录优先，缺失时按 `deriveLocalKnowledgeBaseId` 重算（覆盖「状态表被清但向量库还在」），最后用 `KnowledgeSettings.getKnowledgeConfigs()` 校验库真存在（覆盖「用户在设置里删了库」），任一不成立返回 `null`；
+> 2. `digitalEmployeeStore.startConversation`：仅当 `knowledgeBaseIds.length > 0` 且有开场问题时才查一次本地库 id，检索用它；**`null` 一律跳过检索，绝不回退到远端 id**——回退正是原缺陷的来源（必抛 `Knowledge config not found`，又被 `.catch` 吞成空结果，故障不可见）；
+> 3. 用例：main 侧 5 例（含「绝不回传 `kb_*`」）、renderer 侧 4 例（含「不得以 `kb-1` 检索」的负向断言）。
+>
+> 回归：main 全量 + renderer store 34 例全绿。
+
+### P0-2 回流上报没有调用方（D5）
+
+`reportBackflow` 定义在 `stores/digitalEmployeeStore.ts:387` 并已导出（:426），但：
+
+```
+grep -rn "reportBackflow" src/renderer/src --include=*.vue   → 空
+grep -rn "backflow" src/main/session src/main/agent          → 空
+```
+
+`ChatPage.vue`、`ChatView`、消息发送链路都没有调用它。也就是说：**没有一轮对话会被上报**，管理端看板看不到任何本地执行会话。D5 交付的标志（spec §8「管理端看板可见本地执行会话」）实际未达成。
+
+配套缺失：没有「本轮事件从哪来」的采集逻辑——`tool_call` / `usage` 两类事件需要从会话记录里抽取，仓库里没有这段。
+
+### P0-3 hybrid 整会话切换没有 UI 入口（D2）
+
+链路齐了 3/4：
+
+| 环节 | 状态 | 证据 |
+|---|---|---|
+| 契约 `digitalEmployee.switchToRemote` | 有 | `digitalEmployeeRemote.routes.ts:150` |
+| main 路由实现 | 有 | `remoteRoutes.ts:115-151` |
+| renderer client 方法 | 有 | `api/DigitalEmployeeClient.ts:69` |
+| store 方法 | **无** | `digitalEmployeeStore.ts` 里搜不到 `switchToRemote` |
+| UI 触发点 | **无** | `grep -rn switchToRemote src/renderer/src` → 空 |
+
+用户没有任何办法把 hybrid 会话切到远端。spec §5.2 修订 3 把 hybrid 降级为「整会话可切换」，但「可切换」这半句没有落地——现在 hybrid 员工等同 local。
+
+---
+
+## 2. P1 能力缺失
+
+### P1-1 回流没有本地队列与退避重试（D5）
+
+spec §5.6 与 D1 计划骨架都要求「本地 SQLite 队列暂存，指数退避重试」。实现是一次性 `flush()`：失败就返回 `{ok:false, reason}`，没有持久化、没有重试、没有下次补发（`backflow.ts` 全文无 `queue/retry/backoff` 关键词）。store 拿到失败结果后也只是 `console.warn` 丢弃。
+
+后果：离线或服务端 5xx 的那一轮对话永久丢失，与「全量回流归档」的目标不符。
+
+### P1-2 回流开关没有 UI，也没有写入通道（D5）
+
+`backflowEnabled` 只有两处出现：
+
+- 读：`composition.ts:3504`
+- 键定义：`digitalEmployeeSettings.routes.ts:23`
+
+`digitalEmployeeSettingsSaveRoute.input`（同文件 :52-62）**不含该字段**，设置页也没有开关。spec §5.6 写的「用户可在设置中关闭回流（关闭时管理端无该会话记录，UI 明示）」完全无法操作——目前只能手工改 config entry。
+
+### P1-3 知识同步间隔没有 UI，也没有写入通道（D3）
+
+同样的问题：`syncIntervalSeconds` 只在 `composition.ts:3558` 被读，settings save input 不含该字段，设置页无输入框。默认 1h 无法调整。
+
+### P1-4 首轮对话不触发知识同步（D3 遗留）
+
+`knowledgeSyncScheduler.runOnce()` 存在且可直调（`knowledgeSyncScheduler.ts:49,121`），但没有挂到任何对话入口。首轮命中的是定时轮，最坏等一个完整间隔（默认 1h）。D3 计划「已确认的决策 3」明确写的是「用户首次与该员工对话时触发同步」，未落地。
+
+### P1-5 远端不可恢复时不降级到本地（D2）
+
+spec §6 错误处理表：「远端 runs 中断 → Last-Event-ID 续传；**不可恢复时 hybrid 转本地模式**，remote 明确报错并保留会话」。
+
+`remoteRunner.ts` 只有 `degradedCode` 上报，没有 fallback 分支；`grep -c hybrid src/main/digital-employee/remoteRunner.ts` = **0**。hybrid 会话流断了就只是报错。
+
+### P1-6 附件透传未实现（D2）
+
+`remoteClient.createSession`（:124-139）与 remote run 的 body 都没有 `attachments`。D2 已知限制里写明「留待后续」，但 spec §7 与 D1 骨架并未把它标记为可选项，且 D3/D5 也没有接手。
+
+### P1-7 公共 MCP 工具直连未实现（D4/spec §5.5 第 3 条）
+
+spec §5.5：「公共 MCP 工具（分发 payload 附连接信息、无凭证的）→ deepchat 本地直连」。
+
+- 契约 `digitalEmployeeSchema` 无任何 mcp 连接字段（`digitalEmployee.routes.ts` 全文搜 `mcp` → 空）；
+- 服务端 payload 也不下发（`backend/app/digital_employees/payload.py` 搜 `mcp` → 空）。
+
+性质：**外部依赖未就绪**，客户端无处接入。需要在 StaffDeck 侧先补字段。
+
+### P1-8 内置 `skills/staffdeck-api-*` 技能包不存在（D4/spec §5.3 第 3 条）
+
+spec §5.3 第 3 条要求仓库根提供 4 个 OpenAPI 调用技能包。实际 `ls skills/` → 目录不存在，`git log --all -- 'skills/*'` → 无任何历史。虽然 spec 标了「可选」，但 D1/D2 的骨架把它列在 D4 交付里。
+
+### P1-9 准备结果没有 UI 呈现（D4）
+
+`provision` 的 output 暴露了 `failedSkills` / `toolsReady` / `installedSkills` / `skillNames` / `failures`，但 renderer 只在广场页取用 `skillNames`（`DigitalEmployeeSquarePage.vue:362-370`），其余全部丢弃。技能没装上、工具没注册成功，用户完全看不到——与「准备失败一律降级」的设计相比，缺了「告诉用户降级了什么」这一半。
+
+### P1-10 孤儿 MCP server 没有清理机制（D4）
+
+`listEmployeeMcpServers`（`mcpRegistration.ts:169`）定义了但**全仓无调用方**。
+
+`unregister` 只在 `provision` 判定 `NOT_LOCAL` / `NOT_FOUND` 时触发，而 `provision` 只在用户点「开始对话」时调用。员工被删除、被改为 remote 之后，用户不会再点它 → 陈旧注册永久留在 MCP 配置里 → 该员工的 `staffdeck_*` 工具出现在**所有**会话中。启动时也没有扫描。
+
+### P1-11 D5 没有计划文档
+
+`docs/superpowers/plans/` 下无 `*d5*`。D1–D4 每个阶段都有独立计划与实施结果表，D5 只有代码提交 `bee793f5` 和 spec §5.6 的一段修订。spec §8 里程碑表也没有 D5 的交付记录。
+
+---
+
+## 3. P2 验证与运维缺口
+
+| # | 项 | 说明 |
+|---|---|---|
+| P2-1 | `mcp:invoke` scope 无文案 | 20 locale 的 `remote.error.insufficientScope` 只提 runs/sessions（`i18n/zh-CN/digitalEmployee.json:65`）。缺该 scope 表现为「一个工具都没有」，运维极易误判为服务端故障 |
+| P2-2 | MCP `startServer` 真机路径未验证 | D4 联调的 `serverManager` 是桩。deepchat 内部的 MCP 重连、工具注册表刷新、`loadTools` 之后的实际可调用性未端到端验证 |
+| P2-3 | 向量召回未端到端验证 | D3 联调时 `addFile` 打桩（无启用的 embedding provider）。加上 P0-1，即使打桩问题解决也召回不到 |
+| P2-4 | 追问链路未端到端验证 | `awaiting_input` 只在真实 LLM 走到 SOP 的 `expected_user_info` 时产生，本地 `model_configs` 为空。D2 已知限制 |
+| P2-5 | `external_user_id` 双传法未清理 | `provider.ts:13,55` 仍发 `x-external-user-id` header，`remoteClient` 用 body。已确认惰性无害，但 D2 遗留项列了「建议一并清理」 |
+| P2-6 | hybrid 员工一律按 local 处理 | `provisioning.ts:191` 只判 `=== 'remote'`。若将来 hybrid 默认走远端，会双份注入工具与技能 |
+
+### 附：一处「有意偏离」需在 spec 标注
+
+spec §5.7 要求 `STAFFDECK_BASE_URL / API_KEY / EXTERNAL_USER_ID` 走构建期 env 注入。实际 D1 计划明确反向决策：「配置只从持久化设置读入，factory 内不读 env」（`providerFactory.ts:17` 注释），全仓无 `process.env.STAFFDECK`。
+
+这个偏离本身合理（企业部署靠 UI 配置更现实），但 spec §5.7 至今仍写着 env 注入，属于文档与实现不一致，应回写。
+
+---
+
+## 4. 按 spec 章节对照
+
+| spec 章节 | 声明能力 | 状态 |
+|---|---|---|
+| §5.1 Provider + ETag + configHash 标记 + 降级横幅 | 全部 | ✅ 完成 |
+| §5.2 local/remote 分流 + SSE + 续传 + 追问提示条 | 分流/SSE/续传/追问 | ✅ 完成（追问 P2-4 未验证） |
+| §5.2 hybrid 整会话切换 | 可切换 | ❌ P0-3（无 UI）、P1-5（无降级） |
+| §5.2 附件 | 远端首轮纯文本，附件留后续 | ⚠️ P1-6 |
+| §5.3 技能导入 + 前缀隔离 + 会话激活 | 全部 | ✅ 完成 |
+| §5.3 内置 `staffdeck-api-*` 4 包 | 可选 | ❌ P1-8 |
+| §5.4 知识同步 + stale 提示 + 索引 | 同步/落盘/坏标记 | ✅ 完成（索引 P2-3 打桩） |
+| §5.4 对话带知识引用 | 检索生效 | ✅ 完成（P0-1 已修） |
+| §5.5 `staffdeck_*` MCP 注册 + 白名单 | 全部 | ✅ 完成（真机 P2-2） |
+| §5.5 公共 MCP 直连 | 本地直连 | ❌ P1-7（服务端未下发） |
+| §5.6 回流上报 | 客户端发送 | ⚠️ P0-2 无调用方、P1-1 无队列、P1-2 无开关 |
+| §5.7 env 注入 | 构建期配置 | ⚠️ 实现有意偏离，文档未同步 |
+| §6 降级表 | hybrid 转本地 | ❌ P1-5 |
+
+---
+
+## 5. 建议修复顺序
+
+按「用户可感知的功能完整性」排：
+
+1. ~~**P0-1 知识检索接线**~~ —— **已完成（方案 B）**，见上文修复记录。
+2. **P0-2 回流调用方** —— 需要先在 renderer 侧定「一轮何时结束、事件怎么采集」，这是设计问题不是接线问题。
+3. **P0-3 + P1-5 hybrid 切换与降级** —— 同一功能的两半，一起做。
+4. **P1-10 孤儿 MCP 清理** —— 有数据污染风险，修复成本低（启动时扫一遍 + 每次列表刷新时对已下线员工 unregister）。
+5. **P1-9 准备结果提示** —— 让「降级」可见，否则 P1-5 的降级用户也不知道。
+6. **P1-2 / P1-3 / P1-4 三个设置与时机项** —— 一起改 settings 契约与设置页，一次提交。
+7. **P1-1 回流队列** —— 工作量最大，独立一轮。
+8. **P1-11 D5 计划文档** —— 补文档时把上面几项一并记进去。
+
+P1-7（公共 MCP）、P1-8（内置技能包）、P2-1（scope 文案）依赖外部或属打磨，可穿插。
