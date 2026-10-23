@@ -141,12 +141,27 @@ export const digitalEmployeeSchema = z.object({
 
 ### 5.4 知识同步任务
 
-- 新增后台同步器（主进程，worker 化）：
-  1. `GET /digital-employees/{id}/knowledge-packages` 取清单（kb_version + 文档 hash 列表）；
-  2. 与本地索引对比 hash，差异文档经 `:export-manifest` / `:download` 拉取；
-  3. 重建本地知识库副本索引（复用现有 knowledgeClient / 本地向量检索）；
-- 一致性规则：版本不齐（412/409）→ 全量重拉；同步失败 → 沿用旧副本 + `stale` 标记（对话 UI 可提示「知识可能过期」）；后台定时重试；
+- 后台同步器（主进程，**非 worker**——见下方 D3 落地修订）：
+  1. `GET /digital-employees/{id}/knowledge-packages` 取清单（每概念 hash + 仓库级 ETag）；
+  2. 与本地记录逐概念比对 hash，差异概念经 `concepts/{path}:download` 拉取；
+  3. 概念正文落盘后交给 `KnowledgeService.addFile` / `reAddFile` 建索引；
+- 一致性规则：清单 304 → 沿用本地状态；同步失败 → 沿用旧副本 + `stale` 标记（对话 UI 提示「知识可能过期」）；后台定时重试；
 - 同步粒度按员工（只同步其 `knowledgeBaseIds`），不全量镜像租户知识。
+
+> **D3 落地修订（2026-10-23，本地起 StaffDeck 服务实测）**
+>
+> 原文有 4 处与实现不符，按实际修正：
+>
+> 1. **没有 `:export-manifest` 端点**。清单就是 `knowledge-packages`，它本身带 per-concept hash，不需要单独 manifest。概念正文走 `concepts/{conceptPath}:download`（`public_api/knowledge_sync.py:130`），`conceptPath` 含 `/`，URL 编码时必须**逐段编码后拼回**，整体 `encodeURIComponent` 会把 `/` 变成 `%2F`，FastAPI 的 `:path` 转换器就收不到分段。
+> 2. **`bundleUrl` 不可用于下载**。它由服务端 `normalized_tool_base_url` 拼出（默认 `http://localhost:5173`），与客户端配置的 baseUrl 无关。D3 完全忽略该字段，一律用自己配置的 baseUrl 拼端点。
+> 3. **同步开关默认关闭，空清单是常态**。`build_knowledge_packages` 对每个 KB 版本检查 `metadata_json["deepchat_sync_enabled"] is True`（`digital_employees/knowledge_sync.py:38-40`），否则整个包被跳过。因此「清单为空」不是错误，不重试、不报错、不标 stale。
+> 4. **不做 worker 化**。同步是纯 HTTP + 落盘 + 已有索引队列（`KnowledgeBase.processFileAsync` 本身就是异步队列），再加一层 worker 只会多一条跨进程状态同步路径。改为 main 内调度器 + 并发上限 3。
+>
+> 实测确认的事实：
+> - 25 个概念 / 1 个 KB，首轮 25 次下载全部成功，二轮 hash 全同 → **零下载**；
+> - 概念正文是 **OKF 格式**（自带 YAML frontmatter + `# Summary` / `# Source Sections` / `# Notes` / `# Citations` 分段），D3 **原样保存**、不拼接也不剥离——因为服务端 hash 就是对这份正文算的，改写会让 hash 永远对不上，每轮都重拉；
+> - 13 个概念 id 形如 `sources/<doc>/sections/sec-N`，落盘后形成真实层级目录，未被压平成单文件；
+> - `If-None-Match` 携 ETag 返回 **304**，D3 据此跳过整轮（沿用本地状态，不视为空清单）。
 
 ### 5.5 MCP 白名单接入远端工具
 
@@ -176,6 +191,23 @@ export const digitalEmployeeSchema = z.object({
 | 回流上报失败 | 本地队列暂存 + 退避重试 |
 | MCP 工具超时/预算耗尽 | 结构化错误码转 UI 提示，允许人工接管 |
 
+> **D3 落地补充（stale 原因的完整集合与处置）**
+>
+> 同步失败经 `knowledgeStaleReasons` 收敛为有限集合，UI 按此映射文案（未识别的码降级为 `UNKNOWN`，绝不回显原始字符串）：
+>
+> | 原因 | 触发条件 | 用户是否需要动手 |
+> |---|---|---|
+> | `NO_EMBEDDING_MODEL` | 本机没有任何已启用的 embedding 模型，建不了索引 | **是** —— 去设置启用一个 embedding 模型 |
+> | `HTTP_401` / `HTTP_403` | StaffDeck API Key 失效或权限不足 | **是** —— 检查设置里的 API Key |
+> | `UNREACHABLE` | 网络/DNS/超时 | 否 —— 后台自动重试 |
+> | `PARTIAL` | 部分概念下载或索引失败 | 否 —— 后台自动重试 |
+> | `INDEX_FAILED` | 索引写入失败（磁盘、维度不匹配） | 否（通常需重启或换模型，属异常态） |
+> | `UNKNOWN` | 契约新增了未识别的原因码 | 否 —— 显示通用文案 |
+>
+> 两处刻意的设计取舍：
+> - **索引失败的 hash 不记账**。若记了，下一轮会认为「已同步」，那条概念永远补不上。
+> - **已完成的部分不回滚**。单个概念失败只标 `PARTIAL`，已下好的兄弟概念保留，避免每次失败都全量重拉。
+
 ## 7. 测试计划（deepchat 侧）
 
 1. **契约解析测试**：真实分发样本（含扩展字段）过 `digitalEmployeeSchema` zod 解析；非法样本拒绝；
@@ -183,6 +215,8 @@ export const digitalEmployeeSchema = z.object({
 3. **分流测试**：local/remote/hybrid 三类员工的会话创建参数与注入行为（store 层断言 client 调用参数，沿用现有测试纪律）；
 4. **SSE 消费测试**：delta 追加 / replace 替换 / completed 停止 / Last-Event-ID 续传 / awaiting_input 续跑；
 5. **知识同步测试**：hash 对比增量、stale 降级、全量重拉；
+
+> **第 5 条落地拆分（D3）**：单概念 hash 变化只重拉该概念并 `reAddFile`；服务端删除的概念 → `deleteFile` 并从记账里摘除；清单 304 → 零下载；空清单 → 不建库不标 stale；`knowledgeBaseIds` 与清单取交集（清单多出的 KB 不处理）；下载中途失败 → 标 `PARTIAL` 且保留已完成部分；`addFile` 返回 `{error}` → 不记账、整轮继续；无嵌入模型 → 不下载直接返回 `NO_EMBEDDING_MODEL`；落盘原子写（不留 `.tmp`）且路径稳定；概念 id 含 `/` 建层级目录。共 16 条编排用例 + 10 条调度用例 + 5 条状态路由用例 + 5 条提示条用例。
 6. **回流测试**：组批、幂等重试、关闭回流后不上报；
 7. **回归纪律**：vitest 与 vue-tsc/oxlint 分开跑；zh-CN 为源语言，en 同步，其余 locale 补 key；每任务单独 commit。
 
