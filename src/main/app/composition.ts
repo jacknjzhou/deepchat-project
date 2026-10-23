@@ -231,6 +231,10 @@ import {
   createDigitalEmployeeProviderHolder
 } from '@/digital-employee/providerFactory'
 import { createDigitalEmployeeSettingsRoutes } from '@/digital-employee/settingsRoutes'
+import { StaffdeckRemoteClient } from '@/digital-employee/remoteClient'
+import { StaffdeckRemoteRunner } from '@/digital-employee/remoteRunner'
+import { createDigitalEmployeeRemoteRoutes } from '@/digital-employee/remoteRoutes'
+import { createRemoteSessionRegistry } from '@/digital-employee/remoteSessionRegistry'
 import { RecognitionTaskManager } from '@/documents/taskManager'
 import { seedPresetTemplates } from '@/documents/seed'
 import { ResumeScreeningDatabase } from '@/resumeScreening/data/database'
@@ -3315,12 +3319,78 @@ export async function createMainProcessControl(dependencies: {
     const digitalEmployeeProviderHolder = createDigitalEmployeeProviderHolder(
       readDigitalEmployeeProvider()
     )
-    const replaceDigitalEmployeeProvider = (): void => {
-      // replace 换新实例即丢弃旧 ETag/缓存，配置变更无需重启。
+    const digitalEmployeeRoutes = createDigitalEmployeeRoutes(digitalEmployeeProviderHolder)
+
+    // 远端执行链路：client 按当前配置重建，registry 保留（绑定与配置无关）。
+    // 配置不完整时 client 为 null，ChatService 的 remoteTurn 不注入，本地链路不变。
+    const remoteSessionRegistry = createRemoteSessionRegistry({
+      settings: {
+        get: <TValue = unknown>(key: string) => dependencies.settingsStore.get<TValue>(key),
+        set: (key: string, value: unknown) => dependencies.settingsStore.set(key, value)
+      }
+    })
+    const readStaffdeckConnection = (): {
+      baseUrl: string
+      apiKey: string
+      externalUserId: string
+    } | null => {
+      if (dependencies.settingsStore.get<boolean>(digitalEmployeeSettingsKeys.enabled) !== true) {
+        return null
+      }
+      const baseUrl = dependencies.settingsStore.get<string>(digitalEmployeeSettingsKeys.baseUrl)
+      const apiKey = dependencies.secretStore.get(digitalEmployeeSettingsKeys.apiKey)
+      const externalUserId = dependencies.settingsStore.get<string>(
+        digitalEmployeeSettingsKeys.externalUserId
+      )
+      if (!baseUrl || !apiKey || !externalUserId) return null
+      return { baseUrl, apiKey, externalUserId }
+    }
+    let remoteClient = (() => {
+      const connection = readStaffdeckConnection()
+      return connection ? new StaffdeckRemoteClient(connection) : null
+    })()
+    let remoteRunner = remoteClient
+      ? new StaffdeckRemoteRunner({
+          client: remoteClient,
+          registry: remoteSessionRegistry,
+          transcript: sessionData.transcript,
+          publishEvent: (name, payload) =>
+            publishDeepchatEvent(name as Parameters<typeof publishDeepchatEvent>[0], payload),
+          rendererFlushIntervalMs: 120,
+          dbFlushIntervalMs: 600
+        })
+      : null
+    const rebuildRemoteClient = (): void => {
+      const connection = readStaffdeckConnection()
+      remoteClient = connection ? new StaffdeckRemoteClient(connection) : null
+      remoteRunner = remoteClient
+        ? new StaffdeckRemoteRunner({
+            client: remoteClient,
+            registry: remoteSessionRegistry,
+            transcript: sessionData.transcript,
+            publishEvent: (name, payload) =>
+              publishDeepchatEvent(name as Parameters<typeof publishDeepchatEvent>[0], payload),
+            rendererFlushIntervalMs: 120,
+            dbFlushIntervalMs: 600
+          })
+        : null
+    }
+    const onDigitalEmployeeConfigurationChanged = (): void => {
+      // Provider 换新实例即丢弃旧 ETag/缓存；远端 client 也要按新配置重建。
       digitalEmployeeProviderHolder.replace(readDigitalEmployeeProvider())
+      rebuildRemoteClient()
       publishDeepchatEvent('digitalEmployee.configurationChanged', { changedAt: Date.now() })
     }
-    const digitalEmployeeRoutes = createDigitalEmployeeRoutes(digitalEmployeeProviderHolder)
+    const digitalEmployeeRemoteRoutes = createDigitalEmployeeRemoteRoutes({
+      get client() {
+        return remoteClient as StaffdeckRemoteClient
+      },
+      registry: remoteSessionRegistry,
+      get runner() {
+        return remoteRunner as StaffdeckRemoteRunner
+      }
+    })
+
     // Resume interrupted recognition tasks from the previous run.
     void recognitionTaskManager.resumePending()
     // Auto watch: periodically scan the configured directory and submit new files for recognition.
@@ -3481,7 +3551,38 @@ export async function createMainProcessControl(dependencies: {
       translation: sessionTranslation,
       usageStats: usageStatsService,
       rtkRuntime: rtkRuntimeService,
-      tapeInspectorHeadWatcher
+      tapeInspectorHeadWatcher,
+      // 只在配置就绪时注入：未配置 StaffDeck 的用户，sendMessage 与改动前完全一致。
+      ...(remoteRunner
+        ? {
+            remoteTurn: {
+              handles: (sessionId: string) => remoteSessionRegistry.has(sessionId),
+              send: async (sessionId: string, content: { text: string }) => {
+                const binding = remoteSessionRegistry.get(sessionId)
+                if (!remoteRunner || !binding) {
+                  // 绑定在 handles 与 send 之间被删除（例如用户切换执行位置）：
+                  // 不能拿空 employeeId 继续请求，那会在服务端产生 404 孤儿 run。
+                  return {
+                    accepted: false,
+                    requestId: null,
+                    messageId: null
+                  }
+                }
+                const outcome = await remoteRunner.run({
+                  sessionId,
+                  employeeId: binding.employeeId,
+                  input: content.text,
+                  turnKey: `${Date.now()}`
+                })
+                return {
+                  accepted: outcome.phase !== 'failed',
+                  requestId: outcome.runId,
+                  messageId: outcome.messageId
+                }
+              }
+            }
+          }
+        : {})
     })
     const agentRoutes = createAgentRoutes({
       agentSettings,
@@ -3634,7 +3735,7 @@ export async function createMainProcessControl(dependencies: {
     const digitalEmployeeSettingsRoutes = createDigitalEmployeeSettingsRoutes({
       settings: dependencies.settingsStore,
       secretStore: dependencies.secretStore,
-      onConfigurationChanged: replaceDigitalEmployeeProvider
+      onConfigurationChanged: onDigitalEmployeeConfigurationChanged
     })
     const appSettingsRoutes = createAppSettingsRoutes({
       settings: dependencies.settingsStore,
@@ -3754,6 +3855,7 @@ export async function createMainProcessControl(dependencies: {
         documentsRoutes,
         digitalEmployeeRoutes,
         digitalEmployeeSettingsRoutes,
+        digitalEmployeeRemoteRoutes,
         resumeScreeningRoutes,
         memoryRoutes,
         desktopRoutes,

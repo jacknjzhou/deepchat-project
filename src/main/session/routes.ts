@@ -88,7 +88,7 @@ import {
   type SessionServiceDesktopPort,
   type SessionServiceProjectionPort
 } from './sessionService'
-import { ChatService, type ChatServiceProjectionPort } from './chatService'
+import { ChatService, type ChatServiceProjectionPort, type ChatServiceRemoteTurnPort } from './chatService'
 import type { SessionHistorySearch } from './sessionHistorySearch'
 import type { SessionTranslation } from './sessionTranslation'
 import type { AgentSettingsPort } from '@/agent/settings'
@@ -130,6 +130,11 @@ export function createSessionRoutes(deps: {
   usageStats: Pick<UsageStatsService, 'getDashboard'>
   rtkRuntime: { retryHealthCheck(): Promise<unknown> }
   tapeInspectorHeadWatcher: Pick<TapeInspectorHeadWatcher, 'subscribe' | 'unsubscribe'>
+  /**
+   * 远端（StaffDeck）轮次端口。未配置分发服务时为 undefined，
+   * 此时 ChatService 的本地链路与改动前完全一致。
+   */
+  remoteTurn?: ChatServiceRemoteTurnPort
 }): DeepchatRouteMap {
   const submissionCancellations = new SubmissionCancellationRegistry()
   const sessionService = new SessionService({
@@ -142,7 +147,8 @@ export function createSessionRoutes(deps: {
     turn: deps.turn,
     projection: deps.projection,
     sessionPermissionPort: deps.permission,
-    scheduler: deps.scheduler
+    scheduler: deps.scheduler,
+    ...(deps.remoteTurn ? { remoteTurn: deps.remoteTurn } : {})
   })
 
   async function withSubmissionCancellation<T>(

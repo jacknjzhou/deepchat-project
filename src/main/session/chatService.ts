@@ -53,9 +53,32 @@ export interface ChatRespondToolInteractionInput {
   response: ToolInteractionResponse
 }
 
+/** 统一把 string 与结构化输入归一为 SendMessageInput，供远端端口消费。 */
+export function normalizeSendMessageInput(content: string | SendMessageInput): SendMessageInput {
+  return typeof content === 'string' ? { text: content } : content
+}
+
 export interface ChatServiceProjectionPort {
   getSession(sessionId: string): Promise<SessionWithState | null>
   getMessage(messageId: string): Promise<ChatMessageRecord | null>
+}
+
+/**
+ * 远端（StaffDeck）轮次的执行端口。
+ *
+ * `handles` 只读主进程的会话绑定表：分流不能依赖 renderer 状态，
+ * 否则进程重启或另一个窗口写入后分流结果会不一致。
+ */
+export interface ChatServiceRemoteTurnPort {
+  handles(sessionId: string): boolean
+  send(
+    sessionId: string,
+    content: SendMessageInput
+  ): Promise<{
+    accepted: boolean
+    requestId: string | null
+    messageId: string | null
+  }>
 }
 
 /**
@@ -72,6 +95,8 @@ export class ChatService {
       projection: ChatServiceProjectionPort
       sessionPermissionPort: Pick<SessionPermissionPort, 'clearSessionPermissions'>
       scheduler: Scheduler
+      /** 缺省表示不启用远端分流（StatusDeck 未配置时），本地链路完全不变。 */
+      remoteTurn?: ChatServiceRemoteTurnPort
     }
   ) {}
 
@@ -101,6 +126,12 @@ export class ChatService {
 
       if (!session) {
         throw new Error(`Session not found: ${sessionId}`)
+      }
+
+      // 远端会话：整轮交给 StaffDeck 执行器，本服务不再进入 turn/runtime 路径。
+      // 必须在 session 存在性校验之后分流——往不存在的会话写消息会留下孤儿记录。
+      if (this.deps.remoteTurn?.handles(sessionId)) {
+        return await this.deps.remoteTurn.send(sessionId, normalizeSendMessageInput(content))
       }
 
       const result = await this.deps.scheduler.timeout({
@@ -168,6 +199,8 @@ export class ChatService {
         throw new Error(`Session not found: ${sessionId}`)
       }
 
+      // 远端会话不在此分流：steer 的语义是「打断并改向正在生成的本地轮次」，
+      // 远端 run 没有对应的可插话通道，静默丢进 send 会让同一段话被当成新一轮。
       const result = await this.deps.scheduler.timeout({
         task: this.deps.turn.steerActiveTurn(sessionId, content, { signal: controller.signal }),
         ms: CHAT_SEND_TIMEOUT_MS,
