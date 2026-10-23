@@ -157,6 +157,14 @@
           >
             {{ remoteFailureMessage }}
           </p>
+          <KnowledgeStaleBanner
+            v-if="knowledgeNotice"
+            :knowledge-base-id="knowledgeNotice.knowledgeBaseId"
+            :stale-reason="knowledgeNotice.staleReason"
+            :last-sync-at="knowledgeNotice.lastSyncAt"
+            data-testid="chat-knowledge-stale-banner"
+            class="max-w-4xl"
+          />
           <div class="relative w-full">
             <PendingInputLane
               :queue-items="pendingInputStore.queueItems"
@@ -322,6 +330,7 @@ import {
 import ChatInteractionDock from '@/components/chat/ChatInteractionDock.vue'
 import PendingInputLane from '@/components/chat/PendingInputLane.vue'
 import RemoteAwaitingInputPanel from '@/components/chat/RemoteAwaitingInputPanel.vue'
+import KnowledgeStaleBanner from '@/components/chat/KnowledgeStaleBanner.vue'
 import { useRemoteAwaitingInput } from '@/components/chat/composables/useRemoteAwaitingInput'
 import ChatStatusBar from '@/components/chat/ChatStatusBar.vue'
 import ChatToolInteractionOverlay from '@/components/chat/ChatToolInteractionOverlay.vue'
@@ -338,6 +347,7 @@ import { useMessageStore } from '@/stores/ui/message'
 import { usePendingInputStore } from '@/stores/ui/pendingInput'
 import { useAttachmentPreparationStore } from '@/stores/ui/attachmentPreparation'
 import { useAgentPlanStore } from '@/stores/ui/agentPlan'
+import { useDigitalEmployeeStore } from '@/stores/digitalEmployeeStore'
 import { useSpotlightStore } from '@/stores/ui/spotlight'
 import { useSidepanelStore } from '@/stores/ui/sidepanel'
 import { useModelStore } from '@/stores/modelStore'
@@ -405,6 +415,7 @@ const modelClient = createModelClient()
 const providerClient = createProviderClient()
 const sessionClient = createSessionClient()
 const digitalEmployeeClient = createDigitalEmployeeClient()
+const digitalEmployeeStore = useDigitalEmployeeStore()
 const { t } = useI18n()
 const isSessionViewCommitted = computed(
   () =>
@@ -1341,6 +1352,28 @@ const { awaitingInput: remoteAwaitingInput, failureCode: remoteFailureCode } =
   })
 const remoteFailureMessage = computed(() =>
   remoteFailureCode.value ? t(staffdeckErrorCodeToI18nKey(remoteFailureCode.value)) : null
+)
+
+// 本地知识同步可能过期：只对绑定了数字员工的会话查询，且失败静默。
+const knowledgeNotice = ref<{
+  knowledgeBaseId: string
+  staleReason: string
+  lastSyncAt: number
+} | null>(null)
+watch(
+  () => [props.sessionId, digitalEmployeeStore.initialized] as const,
+  async () => {
+    const employee = digitalEmployeeStore.employeeForSession(props.sessionId)
+    if (!employee) {
+      knowledgeNotice.value = null
+      return
+    }
+    const next = await digitalEmployeeStore.loadKnowledgeStatus(employee.id)
+    // 会话可能在 await 期间被切走：只接受当前会话的结果，避免串号。
+    if (digitalEmployeeStore.employeeForSession(props.sessionId)?.id !== employee.id) return
+    knowledgeNotice.value = next
+  },
+  { immediate: true }
 )
 
 function onAttach() {

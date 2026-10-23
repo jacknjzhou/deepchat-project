@@ -2,11 +2,16 @@ import type { DeepchatBridge } from '@shared/contracts/bridge'
 import {
   digitalEmployeeBindRemoteSessionRoute,
   digitalEmployeeGetRoute,
+  digitalEmployeeKnowledgeStatusRoute,
   digitalEmployeeListRoute,
   digitalEmployeeRemoteStatusRoute,
   digitalEmployeeSwitchToRemoteRoute
 } from '@shared/contracts/routes'
 import type { DigitalEmployee, StaffdeckAwaitingInput } from '@shared/contracts/routes'
+import type {
+  DigitalEmployeeKnowledgeStatus,
+  KnowledgePackageStatus
+} from '@shared/contracts/routes'
 import { digitalEmployeeRemoteRunUpdatedEvent } from '@shared/contracts/events'
 import type { DeepchatEventPayload } from '@shared/contracts/events'
 import { getDeepchatBridge } from './core'
@@ -74,14 +79,23 @@ export function createDigitalEmployeeClient(bridge: DeepchatBridge = getDeepchat
     return bridge.on(digitalEmployeeRemoteRunUpdatedEvent.name, listener)
   }
 
+  /** 本地知识同步状态（只读；同步本身由 main 的后台调度器驱动）。 */
+  async function knowledgeStatus(employeeId: string): Promise<DigitalEmployeeKnowledgeStatus> {
+    const result = await bridge.invoke(digitalEmployeeKnowledgeStatusRoute.name, { employeeId })
+    return result as DigitalEmployeeKnowledgeStatus
+  }
+
   return {
     list,
     get,
     bindRemoteSession,
     remoteStatus,
     switchToRemote,
+    knowledgeStatus,
     onRemoteRunUpdated
   }
 }
+
+export type { KnowledgePackageStatus }
 
 export type DigitalEmployeeClient = ReturnType<typeof createDigitalEmployeeClient>

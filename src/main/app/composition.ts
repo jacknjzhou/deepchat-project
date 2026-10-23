@@ -245,6 +245,7 @@ import {
   type KnowledgeSyncScheduler
 } from '@/digital-employee/knowledgeSyncScheduler'
 import { createKnowledgeSyncStateStore } from '@/digital-employee/knowledgeSyncState'
+import { createDigitalEmployeeKnowledgeRoutes } from '@/digital-employee/knowledgeRoutes'
 import { provisionLocalKnowledgeBase } from '@/digital-employee/knowledgeProvisioning'
 import { RecognitionTaskManager } from '@/documents/taskManager'
 import { seedPresetTemplates } from '@/documents/seed'
@@ -3412,6 +3413,9 @@ export async function createMainProcessControl(dependencies: {
         set: (key: string, value: unknown) => dependencies.settingsStore.set(key, value)
       }
     })
+    const digitalEmployeeKnowledgeRoutes = createDigitalEmployeeKnowledgeRoutes({
+      stateStore: knowledgeSyncStateStore
+    })
     const knowledgeCacheDir = path.join(app.getPath('userData'), 'digital-employee-knowledge')
     let knowledgeSyncScheduler: KnowledgeSyncScheduler | null = null
 
@@ -3931,6 +3935,7 @@ export async function createMainProcessControl(dependencies: {
         digitalEmployeeRoutes,
         digitalEmployeeSettingsRoutes,
         digitalEmployeeRemoteRoutes,
+        digitalEmployeeKnowledgeRoutes,
         resumeScreeningRoutes,
         memoryRoutes,
         desktopRoutes,

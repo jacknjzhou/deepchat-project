@@ -16,7 +16,8 @@ const digitalEmployeeClientMock = vi.hoisted(() => ({
   list: vi.fn(),
   bindRemoteSession: vi.fn(),
   remoteStatus: vi.fn(),
-  switchToRemote: vi.fn()
+  switchToRemote: vi.fn(),
+  knowledgeStatus: vi.fn()
 }))
 
 const configClientMock = vi.hoisted(() => ({
@@ -429,6 +430,67 @@ describe('digitalEmployeeStore', () => {
       await expect(
         store.startConversation(makeEmployee('remote-hr', { executionMode: 'remote' }))
       ).rejects.toThrow(/INSUFFICIENT_SCOPE/)
+    })
+  })
+
+  describe('knowledge status', () => {
+    it('surfaces the first stale package for the bound session', async () => {
+      digitalEmployeeClientMock.knowledgeStatus.mockResolvedValue({
+        packages: [
+          {
+            knowledgeBaseId: 'kb-1',
+            stale: false,
+            staleReason: null,
+            lastSyncAt: '2026-10-23T00:00:00.000Z',
+            conceptCount: 3
+          },
+          {
+            knowledgeBaseId: 'kb-2',
+            stale: true,
+            staleReason: 'NO_EMBEDDING_MODEL',
+            lastSyncAt: '2026-10-23T00:00:00.000Z',
+            conceptCount: 0
+          }
+        ]
+      })
+      const store = useDigitalEmployeeStore()
+      await store.fetchEmployees()
+
+      const status = await store.loadKnowledgeStatus('agent_1')
+
+      // 提示条只需要一条最需要处理的原因，多条堆叠只会让界面变吵。
+      expect(status).toEqual({
+        knowledgeBaseId: 'kb-2',
+        staleReason: 'NO_EMBEDDING_MODEL',
+        lastSyncAt: 1_792_713_600_000
+      })
+    })
+
+    it('returns null when every package is clean', async () => {
+      digitalEmployeeClientMock.knowledgeStatus.mockResolvedValue({
+        packages: [
+          {
+            knowledgeBaseId: 'kb-1',
+            stale: false,
+            staleReason: null,
+            lastSyncAt: '2026-10-23T00:00:00.000Z',
+            conceptCount: 3
+          }
+        ]
+      })
+      const store = useDigitalEmployeeStore()
+      await store.fetchEmployees()
+
+      expect(await store.loadKnowledgeStatus('agent_1')).toBeNull()
+    })
+
+    it('returns null instead of throwing when the status call fails', async () => {
+      digitalEmployeeClientMock.knowledgeStatus.mockRejectedValue(new Error('network'))
+      const store = useDigitalEmployeeStore()
+      await store.fetchEmployees()
+
+      // 状态查询失败不该打断对话：知识提示是锦上添花，不是关键路径。
+      await expect(store.loadKnowledgeStatus('agent_1')).resolves.toBeNull()
     })
   })
 })

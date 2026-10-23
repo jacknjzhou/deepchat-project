@@ -83,5 +83,13 @@
   },
   "local": {
     "badge": "Local run"
+  },
+  "knowledge": {
+    "stale": "Knowledge for \"{knowledgeBaseId}\" may be outdated. It will retry in the background.",
+    "unreachable": "Cannot reach the knowledge service right now; \"{knowledgeBaseId}\" may be stale.",
+    "noEmbedding": "No embedding model is configured, so \"{knowledgeBaseId}\" cannot be indexed.",
+    "noEmbeddingAction": "Go to Settings → Providers and enable an embedding model, then retry.",
+    "unauthorized": "Access to the knowledge service was denied; syncing \"{knowledgeBaseId}\" is paused.",
+    "unauthorizedAction": "Check that the StaffDeck API key in Settings is still valid."
   }
 }

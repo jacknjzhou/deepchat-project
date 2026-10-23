@@ -5,12 +5,25 @@ import { createDigitalEmployeeClient } from '../../api/DigitalEmployeeClient'
 import { createKnowledgeClient } from '../../api/KnowledgeClient'
 import { useSessionStore } from './ui/session'
 import type { ConfigEntryKey, DigitalEmployee } from '@shared/contracts/routes'
+import type { KnowledgePackageStatus } from '@shared/contracts/routes'
 import type { QueryResult } from '@shared/types/knowledge'
 
 export interface DigitalEmployeeConversationOptions {
   openingQuestion?: string
   availableMcpToolNames?: string[]
   knowledgeSnippets?: string
+}
+
+/**
+ * 对话页需要展示的知识状态：只保留「最需要处理的那一条」。
+ *
+ * 员工可能绑定多个知识库，但界面上一口气列 5 条过期提示没人会读；
+ * 优先级按「用户能否自己解决」排序。
+ */
+export interface DigitalEmployeeKnowledgeNotice {
+  knowledgeBaseId: string
+  staleReason: string
+  lastSyncAt: number
 }
 
 export const DIGITAL_EMPLOYEE_AGENT_ID = 'deepchat'
@@ -198,6 +211,49 @@ export const useDigitalEmployeeStore = defineStore('digitalEmployee', () => {
     return employees.value.find((employee) => employee.id === employeeId) ?? null
   }
 
+  /**
+   * 读员工的知识同步状态，返回最值得提示的一条；没问题或查询失败都返回 null。
+   *
+   * 优先级：用户能自己解决的（缺嵌入模型、鉴权失败）排在后台会自动重试的前面。
+   * 状态查询失败绝不上抛——知识提示是锦上添花，不该打断对话。
+   */
+  async function loadKnowledgeStatus(
+    employeeId: string
+  ): Promise<DigitalEmployeeKnowledgeNotice | null> {
+    let packages: KnowledgePackageStatus[]
+    try {
+      const result = await client.knowledgeStatus(employeeId)
+      packages = result.packages
+    } catch {
+      return null
+    }
+
+    const actionable = (reason: string | null): number => {
+      if (reason === 'NO_EMBEDDING_MODEL') return 0
+      if (reason === 'HTTP_401' || reason === 'HTTP_403') return 1
+      return 2
+    }
+
+    const stale = packages
+      .filter((pkg) => pkg.stale && pkg.staleReason !== null)
+      .sort((left, right) => {
+        const delta = actionable(left.staleReason) - actionable(right.staleReason)
+        if (delta !== 0) return delta
+        // 同样可操作时先报更早同步的那条：它过期更久。
+        return Date.parse(left.lastSyncAt) - Date.parse(right.lastSyncAt)
+      })
+
+    const target = stale[0]
+    if (!target || target.staleReason === null) return null
+
+    const parsed = Date.parse(target.lastSyncAt)
+    return {
+      knowledgeBaseId: target.knowledgeBaseId,
+      staleReason: target.staleReason,
+      lastSyncAt: Number.isFinite(parsed) ? parsed : Date.now()
+    }
+  }
+
   async function loadInitialData(): Promise<void> {
     await Promise.all([fetchEmployees(), loadPersistedState()])
   }
@@ -306,6 +362,7 @@ export const useDigitalEmployeeStore = defineStore('digitalEmployee', () => {
     toggleFavorite,
     bindSession,
     employeeForSession,
+    loadKnowledgeStatus,
     startConversation
   }
 })
