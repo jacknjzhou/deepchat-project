@@ -45,7 +45,9 @@ export const BuiltinKnowledgeConfigSchema = z.object({
   chunkOverlap: z.number().optional(),
   fragmentsNumber: z.number(),
   separators: z.array(z.string()).optional(),
-  enabled: z.boolean()
+  enabled: z.boolean(),
+  // 可选：旧配置没有这个字段，加了必填会让整份 config 解析失败。
+  managedBy: z.enum(['digital-employee']).optional()
 })
 
 export const DeepChatAgentModelPresetSchema = ModelSelectionSchema.extend({

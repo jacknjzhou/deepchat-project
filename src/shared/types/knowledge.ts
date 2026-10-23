@@ -61,6 +61,13 @@ export type BuiltinKnowledgeConfig = {
   fragmentsNumber: number
   separators?: string[]
   enabled: boolean
+  /**
+   * 由哪个子系统代管。目前只有数字员工知识同步会设置它。
+   *
+   * 带此标记的知识库在设置页不可删除、不可换嵌入模型：删了下一轮同步会重建，
+   * 换模型会让已有向量失效（维度不同则直接不可检索）。可选，旧配置没有此字段。
+   */
+  managedBy?: 'digital-employee'
 }
 
 export type MetricType = 'l2' | 'cosine' | 'ip'
