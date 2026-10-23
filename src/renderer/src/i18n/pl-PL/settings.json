@@ -2059,7 +2059,9 @@
     "separatorsHelper": "Separator segmentacji dokumentu, pojedynczy ogranicznik jest ujęty w podwójny cudzysłów („”), a ograniczniki oddziela się przecinkami (,)",
     "invalidSeparators": "Nieprawidłowy separator",
     "selectLanguage": "Wybierz ustawienie wstępne",
-    "separatorsPreset": "Ładowanie ustawień wstępnych"
+    "separatorsPreset": "Ładowanie ustawień wstępnych",
+    "managedByEmployee": "Maintained by a digital employee",
+    "managedDeleteHint": "This knowledge base is synced from a digital employee. Deleting it would only see it recreated on the next sync, so manual removal is disabled."
   },
   "managed": {
     "providerBadge": "Managed by your organization",

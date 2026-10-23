@@ -1385,7 +1385,9 @@
       "connectionSucceeded": "接続に成功しました",
       "connectionFailed": "現在の設定では接続できませんでした",
       "invalidBaseUrl": "認証情報やクエリパラメーターを含まない HTTP または HTTPS アドレスを入力してください"
-    }
+    },
+    "managedByEmployee": "Maintained by a digital employee",
+    "managedDeleteHint": "This knowledge base is synced from a digital employee. Deleting it would only see it recreated on the next sync, so manual removal is disabled."
   },
   "managed": {
     "providerBadge": "Managed by your organization",

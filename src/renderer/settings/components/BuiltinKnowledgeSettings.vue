@@ -77,6 +77,7 @@
                   <Icon icon="lucide:edit" class="h-4 w-4" />
                 </button>
                 <button
+                  v-if="!isManagedConfig(config)"
                   type="button"
                   :disabled="operationPending"
                   class="text-muted-foreground hover:text-destructive"
@@ -87,10 +88,17 @@
                 </button>
               </div>
               <div class="grid gap-2">
-                <div class="flex items-center">
+                <div class="flex items-center gap-2">
                   <span class="font-medium text-sm w-[calc(100%-120px)]">{{
                     config.description
                   }}</span>
+                  <span
+                    v-if="isManagedConfig(config)"
+                    data-testid="builtin-knowledge-managed-badge"
+                    class="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground"
+                  >
+                    {{ t('settings.knowledgeBase.managedByEmployee') }}
+                  </span>
                 </div>
                 <div class="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
                   <div>
@@ -930,7 +938,18 @@ const saveBuiltinConfig = async () => {
   }
 }
 
+/**
+ * 由数字员工知识同步代管的库。
+ *
+ * 这类库的内容来自服务端，本地删掉下一轮同步就会重建，因此不给删除入口；
+ * 嵌入模型也不能换——换了等于换向量空间，已有索引全部失效。
+ */
+const isManagedConfig = (config: BuiltinKnowledgeConfig): boolean =>
+  config.managedBy === 'digital-employee'
+
 const requestRemoveBuiltinConfig = (config: BuiltinKnowledgeConfig) => {
+  // 兜底：即使模板条件被绕过（例如将来加了批量删除），也不能删代管的库。
+  if (isManagedConfig(config)) return
   if (operationPending.value || removeRequest.value.status !== 'idle') return
   removeRequest.value = { status: 'confirming', target: config }
 }

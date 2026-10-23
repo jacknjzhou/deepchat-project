@@ -2059,7 +2059,9 @@
       "connectionSucceeded": "连接成功",
       "connectionFailed": "无法使用当前配置建立连接",
       "invalidBaseUrl": "请输入不含账号或查询参数的 HTTP(S) 地址"
-    }
+    },
+    "managedByEmployee": "由数字员工同步维护",
+    "managedDeleteHint": "该知识库由数字员工同步维护，删除了会在下次同步时自动重建，因此不提供手动删除。"
   },
   "managed": {
     "providerBadge": "由企业统一配置",

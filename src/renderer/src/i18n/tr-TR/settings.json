@@ -2059,7 +2059,9 @@
       "connectionSucceeded": "Bağlantı başarılı",
       "connectionFailed": "Mevcut yapılandırmayla bağlantı kurulamadı",
       "invalidBaseUrl": "Kimlik bilgileri veya sorgu parametreleri içermeyen bir HTTP ya da HTTPS adresi girin"
-    }
+    },
+    "managedByEmployee": "Maintained by a digital employee",
+    "managedDeleteHint": "This knowledge base is synced from a digital employee. Deleting it would only see it recreated on the next sync, so manual removal is disabled."
   },
   "managed": {
     "providerBadge": "Managed by your organization",

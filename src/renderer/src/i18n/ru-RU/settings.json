@@ -1385,7 +1385,9 @@
       "connectionSucceeded": "Подключение установлено",
       "connectionFailed": "Не удалось подключиться с текущей конфигурацией",
       "invalidBaseUrl": "Введите адрес HTTP или HTTPS без учётных данных и параметров запроса"
-    }
+    },
+    "managedByEmployee": "Maintained by a digital employee",
+    "managedDeleteHint": "This knowledge base is synced from a digital employee. Deleting it would only see it recreated on the next sync, so manual removal is disabled."
   },
   "managed": {
     "providerBadge": "Managed by your organization",

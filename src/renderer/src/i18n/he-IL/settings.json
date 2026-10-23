@@ -1385,7 +1385,9 @@
     "separatorsHelper": "מפריד פיצול מסמכים, מפריד בודד מוקף במרכאות כפולות (\"\"), ומפרידים מופרדים בפסיקים (,)",
     "invalidSeparators": "מפריד לא חוקי",
     "selectLanguage": "בחר הגדרה מוגדרת מראש",
-    "separatorsPreset": "טוען הגדרות מוגדרות מראש"
+    "separatorsPreset": "טוען הגדרות מוגדרות מראש",
+    "managedByEmployee": "Maintained by a digital employee",
+    "managedDeleteHint": "This knowledge base is synced from a digital employee. Deleting it would only see it recreated on the next sync, so manual removal is disabled."
   },
   "managed": {
     "providerBadge": "Managed by your organization",

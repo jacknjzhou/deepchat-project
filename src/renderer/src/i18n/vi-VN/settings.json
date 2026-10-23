@@ -2059,7 +2059,9 @@
     "separatorsHelper": "Dấu phân cách phân đoạn tài liệu, một dấu phân cách đơn được đặt trong dấu ngoặc kép (\"\") và các dấu phân cách được phân tách bằng dấu phẩy (,)",
     "invalidSeparators": "Dấu phân cách không hợp lệ",
     "selectLanguage": "Chọn một cài đặt trước",
-    "separatorsPreset": "Đang tải cài đặt trước"
+    "separatorsPreset": "Đang tải cài đặt trước",
+    "managedByEmployee": "Maintained by a digital employee",
+    "managedDeleteHint": "This knowledge base is synced from a digital employee. Deleting it would only see it recreated on the next sync, so manual removal is disabled."
   },
   "managed": {
     "providerBadge": "Managed by your organization",

@@ -1385,7 +1385,9 @@
       "connectionSucceeded": "Connexion réussie",
       "connectionFailed": "Impossible de se connecter avec la configuration actuelle",
       "invalidBaseUrl": "Saisissez une adresse HTTP ou HTTPS sans identifiants ni paramètres de requête"
-    }
+    },
+    "managedByEmployee": "Maintained by a digital employee",
+    "managedDeleteHint": "This knowledge base is synced from a digital employee. Deleting it would only see it recreated on the next sync, so manual removal is disabled."
   },
   "managed": {
     "providerBadge": "Managed by your organization",

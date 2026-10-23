@@ -2059,7 +2059,9 @@
       "connectionSucceeded": "Koneksi berhasil",
       "connectionFailed": "Tidak dapat terhubung dengan konfigurasi saat ini",
       "invalidBaseUrl": "Masukkan alamat HTTP atau HTTPS tanpa kredensial atau parameter kueri"
-    }
+    },
+    "managedByEmployee": "Maintained by a digital employee",
+    "managedDeleteHint": "This knowledge base is synced from a digital employee. Deleting it would only see it recreated on the next sync, so manual removal is disabled."
   },
   "managed": {
     "providerBadge": "Managed by your organization",

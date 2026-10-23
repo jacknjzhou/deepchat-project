@@ -1385,7 +1385,9 @@
       "connectionSucceeded": "連接成功",
       "connectionFailed": "無法使用目前配置建立連接",
       "invalidBaseUrl": "請輸入不含帳號或查詢參數的 HTTP(S) 地址"
-    }
+    },
+    "managedByEmployee": "Maintained by a digital employee",
+    "managedDeleteHint": "This knowledge base is synced from a digital employee. Deleting it would only see it recreated on the next sync, so manual removal is disabled."
   },
   "managed": {
     "providerBadge": "Managed by your organization",

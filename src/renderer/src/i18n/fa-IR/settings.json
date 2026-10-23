@@ -1385,7 +1385,9 @@
       "connectionSucceeded": "اتصال با موفقیت برقرار شد",
       "connectionFailed": "با پیکربندی فعلی اتصال برقرار نشد",
       "invalidBaseUrl": "یک نشانی HTTP یا HTTPS بدون اطلاعات ورود یا پارامترهای پرس‌وجو وارد کنید"
-    }
+    },
+    "managedByEmployee": "Maintained by a digital employee",
+    "managedDeleteHint": "This knowledge base is synced from a digital employee. Deleting it would only see it recreated on the next sync, so manual removal is disabled."
   },
   "managed": {
     "providerBadge": "Managed by your organization",

@@ -1385,7 +1385,9 @@
       "connectionSucceeded": "연결에 성공했습니다",
       "connectionFailed": "현재 구성으로 연결할 수 없습니다",
       "invalidBaseUrl": "자격 증명이나 쿼리 매개변수가 없는 HTTP 또는 HTTPS 주소를 입력하세요"
-    }
+    },
+    "managedByEmployee": "Maintained by a digital employee",
+    "managedDeleteHint": "This knowledge base is synced from a digital employee. Deleting it would only see it recreated on the next sync, so manual removal is disabled."
   },
   "managed": {
     "providerBadge": "Managed by your organization",

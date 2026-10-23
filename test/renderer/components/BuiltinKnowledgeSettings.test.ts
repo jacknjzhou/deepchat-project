@@ -46,11 +46,15 @@ const createKnowledgeConfig = (id: string) => ({
   enabled: true
 })
 
-async function setup(options: { setRejects?: boolean } = {}) {
+async function setup(
+  options: { setRejects?: boolean; configs?: ReturnType<typeof createKnowledgeConfig>[] } = {}
+) {
   vi.resetModules()
 
   const configClient = {
-    getKnowledgeConfigs: vi.fn().mockResolvedValue([createKnowledgeConfig('knowledge-1')]),
+    getKnowledgeConfigs: vi
+      .fn()
+      .mockResolvedValue(options.configs ?? [createKnowledgeConfig('knowledge-1')]),
     setKnowledgeConfigs: options.setRejects
       ? vi.fn().mockRejectedValue(new Error('save failed'))
       : vi.fn().mockResolvedValue([])
@@ -438,6 +442,33 @@ describe('BuiltinKnowledgeSettings', () => {
 
     expect(mcpStore.toggleServer).not.toHaveBeenCalled()
     expect(mcpStore.config.mcpServers.builtinKnowledge.enabled).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('hides the remove control for a knowledge base managed by the digital employee sync', async () => {
+    // 删掉它下一轮同步就会重建，而且重建会换掉整个向量库目录。
+    // 与其让用户白点一次再看到它回来，不如直接不给这个入口。
+    const { wrapper } = await setup({
+      configs: [{ ...createKnowledgeConfig('de-emp-1'), managedBy: 'digital-employee' }]
+    })
+
+    expect(wrapper.find('[data-testid="builtin-knowledge-remove-trigger"]').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('still shows the remove control for a user-created knowledge base', async () => {
+    const { wrapper } = await setup({ configs: [createKnowledgeConfig('knowledge-1')] })
+
+    expect(wrapper.find('[data-testid="builtin-knowledge-remove-trigger"]').exists()).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('marks a managed knowledge base so it is not mistaken for a user-created one', async () => {
+    const { wrapper } = await setup({
+      configs: [{ ...createKnowledgeConfig('de-emp-1'), managedBy: 'digital-employee' }]
+    })
+
+    expect(wrapper.find('[data-testid="builtin-knowledge-managed-badge"]').exists()).toBe(true)
     wrapper.unmount()
   })
 })
