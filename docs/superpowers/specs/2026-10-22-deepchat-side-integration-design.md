@@ -76,8 +76,8 @@ export const digitalEmployeeSchema = z.object({
 | 能力 | 端点 | 状态 |
 |---|---|---|
 | 配置分发 | `GET /api/v1/digital-employees`、`/{id}`、`/{id}:export-skill` | StaffDeck M2 |
-| 知识同步 | `GET /api/v1/digital-employees/{id}/knowledge-packages`、`/knowledge-bases/{kb}:export-manifest`、`/documents/{doc}:download` | StaffDeck M3 |
-| MCP 工具网关 | `/api/v1/mcp`（streamable HTTP，工具命名空间 `staffdeck:{slug}`） | StaffDeck M4 |
+| 知识同步 | `GET /api/v1/digital-employees/{id}/knowledge-packages`、`/knowledge-packages/{kb}/concepts/{path}:download` | StaffDeck M3 |
+| MCP 工具网关 | `/api/v1/mcp/agents/{id}`（streamable HTTP，工具命名空间 `staffdeck_`） | StaffDeck M4 |
 | 远端执行 | `POST /agents/{id}/sessions` + `POST /agents/{id}/runs:stream`（SSE，Last-Event-ID 续传） | 已有 |
 | 对话回流 | `POST /external-sessions`、`POST /external-sessions/{id}/events:batch` | StaffDeck M6 |
 | 鉴权 | Bearer `sd_live_` 共享密钥；scopes 见 StaffDeck 方案 §8 | 已有 |
@@ -135,9 +135,19 @@ export const digitalEmployeeSchema = z.object({
 
 ### 5.3 技能导入
 
-- 分发 payload 的 `skills[].downloadUrl` → 下载 `:export-skill` zip（SKILL.md 包格式，与 deepchat 技能目录同构）；
-- 走现有 Skills 管理的导入能力装进 `digital-employee:<id>` agentId 隔离目录；主进程在会话创建时按 `skillIds` 解析注册，不引入「技能安装」确认流程（企业分发场景默认信任）；
+- 分发 payload 的 `skills[].slug` → 请求 `:export-skill?slug=` 取 zip（SKILL.md 在包根，与 deepchat 技能目录同构）；
+- 走现有 `skillService.installFromZipForAgent` 装进内置 `deepchat` Agent 的技能根，**不建 per-employee Agent**；主进程在会话创建时按装成的技能名激活，不引入「技能安装」确认流程（企业分发场景默认信任）；
 - 仓库根 `skills/staffdeck-api-*` 4 个 OpenAPI 调用技能包可作为可选内置项安装（使本地 Agent 具备直接调用 StaffDeck OpenAPI 的能力）。
+
+> **D4 落地修订（2026-10-23，本地起 StaffDeck 服务实测）**
+>
+> 原文的「装进 `digital-employee:<id>` agentId 隔离目录」不可实现，按实际修正：
+>
+> 1. **不建 per-employee Agent**。数字员工会话统一跑在内置 `deepchat` Agent 上，`requireAgentScope` 也会拒绝 `digital-employee:<id>`——该 id 不是注册过的 Agent，且冒号在 Windows 路径非法。隔离改为**技能名前缀**：安装名为 `de-{employeeId}-{slug}`，id 有损归一（含 `:`、`/`、非 ASCII）时再加 8 位摘要，防两个 id 撞同一目录。
+> 2. **用 `skills[].slug` 而不是 `downloadUrl`**。`downloadUrl` 里带的是服务端 `tool_base_url`（默认 `localhost:5173`），与客户端 baseUrl 无关——和 D3 的 `bundleUrl` 同一个坑。客户端一律用自己配置的 baseUrl 重拼 `{baseUrl}/api/v1/digital-employees/{id}:export-skill?slug={slug}`。
+> 3. **版本判据是 `skills[].id`，不是包 hash**。服务端每次保存技能都会换新 id，故不必下载包来比对，也不必留旧 zip；只有 id 变化才重装。安装失败**不写 baseline**，否则下轮认为已完成、那条技能永远补不上。
+> 4. **契约要显式带 `slug`**。zod 默认 strip 未知字段，`digitalEmployeeSchema` 原本只有 `id/name/downloadUrl`，导致每个技能都拿不到 slug、静默失败。已补可选 `slug`（可选是为了兼容旧 payload）。
+> 5. **激活要用装成的名字**。`employee.skillIds` 是 payload 的 slug（`data-statistical-analysis`），而盘上是 `de-agent_xxx-data-statistical-analysis`；用 slug 激活会安静地匹配不到任何技能。`provision` 的返回因此带上 `skillNames`，会话用它。
 
 ### 5.4 知识同步任务
 
@@ -165,9 +175,17 @@ export const digitalEmployeeSchema = z.object({
 
 ### 5.5 MCP 白名单接入远端工具
 
-- 员工 `tools[]` 中 `staffdeck:{slug}` 命名空间的工具 → 注册为 streamable HTTP MCP server（指向 `/api/v1/mcp`），由 deepchat 现有 MCP 客户端连接；
+- 员工 `tools[]` 中 `staffdeck_*` 命名空间的工具 → 注册为 streamable HTTP MCP server，由 deepchat 现有 MCP 客户端连接；
 - 会话级工具白名单机制不变（`disabledAgentTools` 取补集）；
 - 公共 MCP 工具（分发 payload 附连接信息、无凭证的）→ deepchat 本地直连，与远端工具在同一白名单体系中共存。
+
+> **D4 落地修订（2026-10-23，实测）**
+>
+> 1. **命名空间是 `staffdeck_`，不是 `staffdeck:`**。冒号会让 deepchat 的 MCP 工具名过滤器（`/^[a-zA-Z0-9_-]+$/`）整条丢掉该工具，OpenAI 兼容 API 也拒绝这种函数名；服务端因此把 `.` 归一为 `_` 并对需要归一的 slug 附 8 位摘要（`digital_employees/tool_namespace.py`）。归一后的名字在分发 payload 与 MCP catalog 中**逐字节一致**，白名单可直接比对。
+> 2. **端点带员工路径段**：`{baseUrl}/api/v1/mcp/agents/{employeeId}`。deepchat 的 `MCPServerConfig` 只有静态 header，标准 MCP 客户端也不会往 `tools/list` 注入 `_meta`，服务端没别的办法知道是哪个员工在问。
+> 3. **`/api/v1` 由客户端拼**。设置里存的是主机根（占位符 `https://staffdeck.example.com`），与 `provider` / `remoteClient` / `knowledgeClient` 一致。漏掉这段时 `/mcp/agents/...` 直接 404，而 MCP 客户端只会表现为「没有工具」。
+> 4. **需要 `mcp:invoke` scope**，与分发列表的 `agents:read` 是两个不同 scope。缺它同样是「工具一个都没有」而非明确报错。
+> 5. **准备必须在读工具列表之前**，且那次读取必须 `force`。白名单是「可用工具列表的补集」，注册晚了第一轮对话就没有任何 `staffdeck_*` 工具且不会重试；而 `loadTools()` 默认走 `refresh`，`staleTime` 30s 会返回注册前的缓存。
 
 ### 5.6 对话回流上报客户端
 
@@ -217,8 +235,11 @@ export const digitalEmployeeSchema = z.object({
 5. **知识同步测试**：hash 对比增量、stale 降级、全量重拉；
 
 > **第 5 条落地拆分（D3）**：单概念 hash 变化只重拉该概念并 `reAddFile`；服务端删除的概念 → `deleteFile` 并从记账里摘除；清单 304 → 零下载；空清单 → 不建库不标 stale；`knowledgeBaseIds` 与清单取交集（清单多出的 KB 不处理）；下载中途失败 → 标 `PARTIAL` 且保留已完成部分；`addFile` 返回 `{error}` → 不记账、整轮继续；无嵌入模型 → 不下载直接返回 `NO_EMBEDDING_MODEL`；落盘原子写（不留 `.tmp`）且路径稳定；概念 id 含 `/` 建层级目录。共 16 条编排用例 + 10 条调度用例 + 5 条状态路由用例 + 5 条提示条用例。
-6. **回流测试**：组批、幂等重试、关闭回流后不上报；
-7. **回归纪律**：vitest 与 vue-tsc/oxlint 分开跑；zh-CN 为源语言，en 同步，其余 locale 补 key；每任务单独 commit。
+6. **技能与工具测试（D4）**：MCP 注册幂等（目标未变时零写入）、凭证缺失/无工具时清理、Bearer 只进 header；技能按 `skills[].id` 增量、失败不记账、临时文件必删；准备闸门（remote / mock / 已下线）与两条链路的失败隔离；renderer 侧「provision 先于 `loadTools({force:true})`」的顺序。
+
+> **第 6 条落地拆分（D4）**：注册器 14 例 + 技能同步 16 例 + baseline 存储 8 例 + 准备编排 17 例 + 作用域派生 12 例 + 契约 1 例 + 广场页 17 例（含顺序与技能名透传）。真实导出包作为 fixture 固化「两边对包结构的假设一致」。
+7. **回流测试**：组批、幂等重试、关闭回流后不上报；
+8. **回归纪律**：vitest 与 vue-tsc/oxlint 分开跑；zh-CN 为源语言，en 同步，其余 locale 补 key；每任务单独 commit。
 
 ## 8. 实施里程碑（deepchat 侧，与 StaffDeck M 对应）
 
@@ -227,10 +248,14 @@ export const digitalEmployeeSchema = z.object({
 | D1 | HttpDigitalEmployeeProvider 完整实现 + 配置注入 + 降级 | StaffDeck M2 | 广场显示真实配置，mock 仅作降级 |
 | D2 | executionMode 分流 + remote SSE 渲染 + awaiting_input 续跑 | **无 M5 依赖**：通道④是「复用现有 API，零新增」（§6.4），`runs:stream` 自 M1 即存在 | remote 员工完整对话闭环 |
 | D3 | 知识同步任务 + 本地索引 | StaffDeck M3 | 本地对话带知识引用与 stale 提示 |
-| D4 | 技能导入 + `staffdeck:*` MCP 工具接入 | StaffDeck M2/M4 | 本地技能生效；远端工具可执行 |
+| D4 | 技能导入 + `staffdeck_*` MCP 工具接入 | StaffDeck M2/M4 | 本地技能生效；远端工具可执行 |
 | D5 | 回流上报客户端 + 设置开关 | StaffDeck M6 | 管理端看板可见本地执行会话 |
 
 D1 → {D2, D3, D4} → D5；联调环境使用 StaffDeck M1 交付的 Compose 部署。
+
+> **D4 交付记录（2026-10-23）**：已完成，见 `docs/superpowers/plans/2026-10-23-staffdeck-d4-skills-and-tools.md`。联调实测：`initialize` 200、`tools/list` 3 个工具与 payload `tools[]` 逐字一致、`tools/call` 返回真实额度数据；两个技能包首轮装 2 个、二轮零下载。联调暴露并修复了一个会让整个 D4 不可用的缺陷（两个 client 漏拼 `/api/v1`，端点全 404），以及一处缓存导致的顺序失效（`loadTools` 需 `force`）。
+>
+> 运维前提：API Key 需额外带 `mcp:invoke` scope——分发列表只要 `agents:read`，但工具网关不认。缺它表现为「工具一个都没有」而非明确报错。
 
 ## 9. 风险与开放问题
 
