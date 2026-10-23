@@ -4,12 +4,14 @@ import {
   digitalEmployeeGetRoute,
   digitalEmployeeKnowledgeStatusRoute,
   digitalEmployeeListRoute,
+  digitalEmployeeProvisionRoute,
   digitalEmployeeRemoteStatusRoute,
   digitalEmployeeSwitchToRemoteRoute
 } from '@shared/contracts/routes'
 import type { DigitalEmployee, StaffdeckAwaitingInput } from '@shared/contracts/routes'
 import type {
   DigitalEmployeeKnowledgeStatus,
+  DigitalEmployeeProvisionResult,
   KnowledgePackageStatus
 } from '@shared/contracts/routes'
 import { digitalEmployeeRemoteRunUpdatedEvent } from '@shared/contracts/events'
@@ -85,6 +87,18 @@ export function createDigitalEmployeeClient(bridge: DeepchatBridge = getDeepchat
     return result as DigitalEmployeeKnowledgeStatus
   }
 
+  /**
+   * 本地执行前的准备：注册远端工具 + 安装技能包。
+   *
+   * 必须在 `loadTools()` **之前**调用：工具白名单是「可用工具列表的补集」，
+   * 注册晚了第一轮对话就一个 `staffdeck_*` 工具都没有，之后也不会自动重试。
+   * 主进程侧不抛错，所以这里也不做 try/catch——失败已经写在返回值里。
+   */
+  async function provision(employeeId: string): Promise<DigitalEmployeeProvisionResult> {
+    const result = await bridge.invoke(digitalEmployeeProvisionRoute.name, { employeeId })
+    return result as DigitalEmployeeProvisionResult
+  }
+
   return {
     list,
     get,
@@ -92,6 +106,7 @@ export function createDigitalEmployeeClient(bridge: DeepchatBridge = getDeepchat
     remoteStatus,
     switchToRemote,
     knowledgeStatus,
+    provision,
     onRemoteRunUpdated
   }
 }

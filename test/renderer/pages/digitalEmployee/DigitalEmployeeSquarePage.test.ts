@@ -40,6 +40,8 @@ const stubStore = reactive({
   toggleFavorite: vi.fn(async () => {}),
   acknowledgeConfigUpdates: vi.fn(async () => {}),
   fetchEmployees: vi.fn(async () => {}),
+  // 本地执行前的准备：默认成功但不产生技能名，页面据此退回 payload 的 skillIds。
+  provisionEmployee: vi.fn(async () => null),
   startConversation: vi.fn(async () => '')
 })
 
@@ -235,8 +237,78 @@ describe('DigitalEmployeeSquarePage', () => {
     expect(wrapper.find('[data-testid="digital-employee-detail-dialog"]').exists()).toBe(false)
   })
 
-  it('start failure keeps dialog open, shows error, and disables button while busy', async () => {
+  it('provisions before reading the tool list, so the allowlist sees staffdeck tools', async () => {
     const { wrapper } = await setup()
+    await wrapper.get('[data-testid="digital-employee-card-emp-1"]').trigger('click')
+    await flushPromises()
+
+    const callOrder: string[] = []
+    stubStore.provisionEmployee.mockImplementation(async () => {
+      callOrder.push('provision')
+      return {
+        employeeId: 'emp-1',
+        skipped: null,
+        toolsReady: true,
+        installedSkills: 1,
+        failedSkills: [],
+        skillNames: ['de-emp-1-writing'],
+        failures: []
+      }
+    })
+    mcpStubStore.loadTools.mockImplementation(async () => {
+      callOrder.push('loadTools')
+    })
+
+    await wrapper.get('[data-testid="digital-employee-start-button"]').trigger('click')
+    await flushPromises()
+
+    // 顺序是硬要求：注册晚了，白名单就会把一个还没出现的工具当成「不存在」，
+    // 第一轮对话里员工一个远端工具都用不上，而且没有重试机会。
+    expect(callOrder).toEqual(['provision', 'loadTools'])
+    expect(stubStore.provisionEmployee).toHaveBeenCalledWith('emp-1')
+  })
+
+  it('passes the installed skill names through to the conversation', async () => {
+    const { wrapper } = await setup()
+    await wrapper.get('[data-testid="digital-employee-card-emp-1"]').trigger('click')
+    await flushPromises()
+
+    stubStore.provisionEmployee.mockResolvedValue({
+      employeeId: 'emp-1',
+      skipped: null,
+      toolsReady: true,
+      installedSkills: 1,
+      failedSkills: [],
+      skillNames: ['de-emp-1-writing'],
+      failures: []
+    })
+
+    await wrapper.get('[data-testid="digital-employee-start-button"]').trigger('click')
+    await flushPromises()
+
+    // 装出来的名字带员工前缀，payload 的 slug 在本地技能目录里不存在。
+    expect(stubStore.startConversation).toHaveBeenCalledWith(
+      stubStore.employees[0],
+      expect.objectContaining({ activeSkillNames: ['de-emp-1-writing'] })
+    )
+  })
+
+  it('starts the conversation even when provisioning throws', async () => {
+    const { wrapper } = await setup()
+    await wrapper.get('[data-testid="digital-employee-card-emp-1"]').trigger('click')
+    await flushPromises()
+
+    stubStore.provisionEmployee.mockRejectedValue(new Error('ipc down'))
+
+    await wrapper.get('[data-testid="digital-employee-start-button"]').trigger('click')
+    await flushPromises()
+
+    // 准备工作失败只能是「能力少一点」，不能变成「点不动开始」。
+    expect(stubStore.startConversation).toHaveBeenCalledTimes(1)
+    expect(pushMock).toHaveBeenCalledWith({ name: 'chat' })
+  })
+
+  it('start failure keeps dialog open, shows error, and disables button while busy', async () => {    const { wrapper } = await setup()
     await wrapper.get('[data-testid="digital-employee-card-emp-1"]').trigger('click')
     await flushPromises()
     // 受控 promise：模拟 startConversation 长时间挂起后失败

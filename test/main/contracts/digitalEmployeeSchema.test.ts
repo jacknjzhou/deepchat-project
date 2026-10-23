@@ -42,6 +42,33 @@ describe('digitalEmployeeSchema (StaffDeck superset)', () => {
     expect(parsed.skills).toHaveLength(1)
   })
 
+  it('keeps skills[].slug, which the export endpoint addresses by', () => {
+    // zod strips unknown keys, so a missing schema field silently becomes
+    // "no slug" and every skill fails to download with no visible cause.
+    const parsed = digitalEmployeeSchema.parse({
+      ...baseEmployee,
+      skills: [
+        {
+          id: 'sk-1',
+          name: 'staffdeck-api',
+          slug: 'staffdeck-api',
+          downloadUrl: 'https://sd/api/v1/digital-employees/emp-finance:export-skill'
+        }
+      ]
+    })
+
+    expect(parsed.skills?.[0]?.slug).toBe('staffdeck-api')
+  })
+
+  it('still accepts skills[] entries from payloads without a slug', () => {
+    const parsed = digitalEmployeeSchema.parse({
+      ...baseEmployee,
+      skills: [{ id: 'sk-1', name: 'legacy', downloadUrl: 'https://sd/x' }]
+    })
+
+    expect(parsed.skills?.[0]?.slug).toBeUndefined()
+  })
+
   it('defaults executionMode to local and strips unknown fields', () => {
     const parsed = digitalEmployeeSchema.parse({
       ...baseEmployee,

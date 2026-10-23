@@ -5,6 +5,7 @@ import { createDigitalEmployeeClient } from '../../api/DigitalEmployeeClient'
 import { createKnowledgeClient } from '../../api/KnowledgeClient'
 import { useSessionStore } from './ui/session'
 import type { ConfigEntryKey, DigitalEmployee } from '@shared/contracts/routes'
+import type { DigitalEmployeeProvisionResult } from '@shared/contracts/routes'
 import type { KnowledgePackageStatus } from '@shared/contracts/routes'
 import type { QueryResult } from '@shared/types/knowledge'
 
@@ -12,6 +13,13 @@ export interface DigitalEmployeeConversationOptions {
   openingQuestion?: string
   availableMcpToolNames?: string[]
   knowledgeSnippets?: string
+  /**
+   * 已装好的技能名（带员工前缀），来自 `provision` 的返回。
+   *
+   * 传了就用它，没传才退回 `employee.skillIds`——后者只有调用方先做过准备
+   * 才和本地技能目录里的名字对得上，否则激活的是不存在的名字。
+   */
+  activeSkillNames?: string[]
 }
 
 /**
@@ -324,11 +332,14 @@ export const useDigitalEmployeeStore = defineStore('digitalEmployee', () => {
     }
 
     const disabledAgentTools = buildDisabledAgentTools(employee, options?.availableMcpToolNames)
+    // 准备阶段返回的技能名优先：安装时名字被加了员工前缀，用 payload 的 slug
+    // 激活会安静地匹配不到任何技能。
+    const activeSkills = options?.activeSkillNames ?? employee.skillIds
 
     const result = await sessionStore.createSession({
       agentId: DIGITAL_EMPLOYEE_AGENT_ID,
       message: openingQuestion ?? '',
-      ...(employee.skillIds.length > 0 ? { activeSkills: [...employee.skillIds] } : {}),
+      ...(activeSkills.length > 0 ? { activeSkills: [...activeSkills] } : {}),
       ...(disabledAgentTools ? { disabledAgentTools } : {}),
       generationSettings: {
         systemPrompt: buildDigitalEmployeeSystemPrompt(employee, { knowledgeSnippets })
@@ -339,6 +350,25 @@ export const useDigitalEmployeeStore = defineStore('digitalEmployee', () => {
     // 按 best-effort 降级（保留内存绑定），不得让已建立的会话流程失败
     await bindSession(result.session.id, employee.id).catch(() => undefined)
     return result.session.id
+  }
+
+  /**
+   * 让主进程把这个员工的远端工具与技能包准备好。
+   *
+   * 返回 `null` 只发生在 IPC 层异常（主进程已保证业务失败不抛）。调用方拿
+   * 返回值里的 `skillNames` 作为会话的 `activeSkills`，不能再用 payload 的
+   * slug——安装时名字带了员工前缀。
+   */
+  async function provisionEmployee(
+    employeeId: string
+  ): Promise<DigitalEmployeeProvisionResult | null> {
+    try {
+      return await client.provision(employeeId)
+    } catch (error) {
+      // 准备工作失败只意味着能力少一点，不该让用户点不动开始按钮。
+      console.warn('[digitalEmployee] provision failed', error)
+      return null
+    }
   }
 
   return {
@@ -363,6 +393,7 @@ export const useDigitalEmployeeStore = defineStore('digitalEmployee', () => {
     bindSession,
     employeeForSession,
     loadKnowledgeStatus,
+    provisionEmployee,
     startConversation
   }
 })

@@ -1,0 +1,58 @@
+import { z } from 'zod'
+import { defineRouteContract } from '../common'
+
+/**
+ * 员工本地执行前的准备工作（D4）契约。
+ *
+ * 只暴露 renderer 需要决策的字段：主进程内部还有失败原因码、注册器返回值等，
+ * 那些进契约就会变成事实上的公共 API，改一次实现就要动一次 renderer。
+ *
+ * 语义：**这个调用永远不表示「对话不能开始」**。所有失败都在结果里表达，
+ * renderer 拿到之后照常建会话，只是能力少一点。
+ */
+
+export const PROVISIONING_SKIP_REASONS = [
+  /** 员工在服务端执行：本地不需要工具与技能 */
+  'NOT_LOCAL',
+  /** Provider 已降级到 mock，员工 id 与技能包都是假数据 */
+  'DEGRADED',
+  /** 分发列表里已找不到这个员工 */
+  'NOT_FOUND'
+] as const
+
+export const ProvisioningSkipReasonSchema = z.enum(PROVISIONING_SKIP_REASONS)
+export type ProvisioningSkipReasonValue = z.infer<typeof ProvisioningSkipReasonSchema>
+
+/** 准备失败的链路名；UI 据此提示「工具或技能可能不完整」。 */
+export const PROVISIONING_CHAINS = ['mcp', 'skills'] as const
+export const ProvisioningChainSchema = z.enum(PROVISIONING_CHAINS)
+export type ProvisioningChainValue = z.infer<typeof ProvisioningChainSchema>
+
+export const digitalEmployeeProvisionRoute = defineRouteContract({
+  name: 'digitalEmployee.provision',
+  input: z.object({ employeeId: z.string().min(1).max(64) }).strict(),
+  output: z.object({
+    employeeId: z.string().min(1),
+    /** `null` 表示已尝试准备；非空表示整轮跳过。 */
+    skipped: ProvisioningSkipReasonSchema.nullable().default(null),
+    /** 远端 MCP server 是否已注册并可连接。 */
+    toolsReady: z.boolean().default(false),
+    /** 本轮新装/更新的技能数。 */
+    installedSkills: z.number().int().nonnegative().default(0),
+    /** 下载或安装失败的技能 slug；下轮会自动重试，UI 只做提示。 */
+    failedSkills: z.array(z.string()).default([]),
+    /**
+     * 技能在本地装成的名字（带员工前缀），会话的 `activeSkills` 要用这些。
+     *
+     * 不是 payload 里的 slug：安装时名字被加了作用域前缀，用 slug 去激活
+     * 会安静地匹配不到任何技能。
+     */
+    skillNames: z.array(z.string()).default([]),
+    /** 抛错的链路。空数组表示没有异常路径。 */
+    failures: z.array(ProvisioningChainSchema).default([])
+  })
+})
+
+export type DigitalEmployeeProvisionResult = z.infer<
+  typeof digitalEmployeeProvisionRoute.output
+>

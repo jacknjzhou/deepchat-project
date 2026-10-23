@@ -247,6 +247,12 @@ import {
 import { createKnowledgeSyncStateStore } from '@/digital-employee/knowledgeSyncState'
 import { createDigitalEmployeeKnowledgeRoutes } from '@/digital-employee/knowledgeRoutes'
 import { provisionLocalKnowledgeBase } from '@/digital-employee/knowledgeProvisioning'
+import { createStaffdeckMcpRegistrar } from '@/digital-employee/mcpRegistration'
+import { createStaffdeckSkillSync } from '@/digital-employee/skillSync'
+import { createEmployeeProvisioner } from '@/digital-employee/provisioning'
+import type { EmployeeProvisioner } from '@/digital-employee/provisioning'
+import { createDigitalEmployeeProvisioningRoutes } from '@/digital-employee/provisioningRoutes'
+import { createSkillSyncStateStore } from '@/digital-employee/skillSyncState'
 import { RecognitionTaskManager } from '@/documents/taskManager'
 import { seedPresetTemplates } from '@/documents/seed'
 import { ResumeScreeningDatabase } from '@/resumeScreening/data/database'
@@ -694,6 +700,8 @@ export async function createMainProcessControl(dependencies: {
   let routeDispatcher: RouteDispatcher | undefined
   let autoWatchScheduler: AutoWatchScheduler | undefined
   let knowledgeSyncScheduler: KnowledgeSyncScheduler | undefined
+  // 配置变更时要清掉在途准备轮次，因此声明在外层作用域（与调度器同因）。
+  let employeeProvisioner: EmployeeProvisioner | undefined
   let cliComputeService: CliComputeService
   let cliAudioTranscriptionService: CliAudioTranscriptionService
   let cliOcrService: CliOcrService
@@ -3394,6 +3402,8 @@ export async function createMainProcessControl(dependencies: {
       digitalEmployeeProviderHolder.replace(readDigitalEmployeeProvider())
       rebuildRemoteClient()
       rebuildKnowledgeSync()
+      // 旧凭证发起的那一轮准备不得替新凭证作答，因此丢弃在途状态。
+      employeeProvisioner?.reset()
       publishDeepchatEvent('digitalEmployee.configurationChanged', { changedAt: Date.now() })
     }
     const digitalEmployeeRemoteRoutes = createDigitalEmployeeRemoteRoutes({
@@ -3417,6 +3427,68 @@ export async function createMainProcessControl(dependencies: {
     const digitalEmployeeKnowledgeRoutes = createDigitalEmployeeKnowledgeRoutes({
       stateStore: knowledgeSyncStateStore
     })
+
+    // 员工本地执行的准备工作（D4）：远端工具注册 + 技能包安装。
+    // 与知识同步同源判断连接是否齐备，但**不**因为连接缺失就跳过整段——
+    // 缺凭证时 registrar 会顺手清掉旧注册，那正是需要的动作。
+    const skillSyncStateStore = createSkillSyncStateStore({
+      settings: {
+        get: <TValue = unknown>(key: string) => dependencies.settingsStore.get<TValue>(key),
+        set: (key: string, value: unknown) => dependencies.settingsStore.set(key, value)
+      }
+    })
+    const staffdeckMcpRegistrar = createStaffdeckMcpRegistrar({
+      // externalUserId 不参与 MCP 鉴权：端点只认 Bearer，员工身份来自路径段。
+      getConnection: () => {
+        const connection = readStaffdeckConnection()
+        return connection ? { baseUrl: connection.baseUrl, apiKey: connection.apiKey } : null
+      },
+      mcpSettings: dependencies.mcpSettings,
+      serverManager: {
+        startServer: (name) => mcpService.startServer(name),
+        // 用「按名称停止」而不是停机专用入口：这里是一次普通的配置变更。
+        stopServer: (name) => mcpService.stopServer(name)
+      }
+    })
+    const staffdeckSkillSync = createStaffdeckSkillSync({
+      getConnection: () => {
+        const connection = readStaffdeckConnection()
+        return connection ? { baseUrl: connection.baseUrl, apiKey: connection.apiKey } : null
+      },
+      fetchImpl: fetch,
+      writeTempFile: async (bytes) => {
+        // 每次都用新的随机目录：并发装两个员工时同名 zip 会互相覆盖。
+        const dir = await fsp.mkdtemp(path.join(app.getPath('temp'), 'staffdeck-skill-'))
+        const filePath = path.join(dir, 'skill.zip')
+        await fsp.writeFile(filePath, bytes)
+        return filePath
+      },
+      removeTempFile: async (filePath) => {
+        await fsp.rm(path.dirname(filePath), { recursive: true, force: true })
+      },
+      skills: {
+        installFromZipForAgent: (agentId, zipPath, options) =>
+          skillService.installFromZipForAgent(agentId, zipPath, options)
+      },
+      stateStore: skillSyncStateStore
+    })
+    const provisioner = createEmployeeProvisioner({
+      getEmployee: async (employeeId) => {
+        const provider = digitalEmployeeProviderHolder.current()
+        // 降级到 mock 时列表里是假员工，但 source() 已经拦住了，这里只兜底。
+        if (provider.source !== 'http') return null
+        const employees = await provider.list()
+        return employees.find((employee) => employee.id === employeeId) ?? null
+      },
+      source: () => digitalEmployeeProviderHolder.current().source ?? 'mock',
+      registrar: staffdeckMcpRegistrar,
+      skillSync: staffdeckSkillSync
+    })
+    const digitalEmployeeProvisioningRoutes = createDigitalEmployeeProvisioningRoutes({
+      provisioner
+    })
+    employeeProvisioner = provisioner
+
     const knowledgeCacheDir = path.join(app.getPath('userData'), 'digital-employee-knowledge')
 
     const rebuildKnowledgeSync = (): void => {
@@ -3936,6 +4008,7 @@ export async function createMainProcessControl(dependencies: {
         digitalEmployeeSettingsRoutes,
         digitalEmployeeRemoteRoutes,
         digitalEmployeeKnowledgeRoutes,
+        digitalEmployeeProvisioningRoutes,
         resumeScreeningRoutes,
         memoryRoutes,
         desktopRoutes,

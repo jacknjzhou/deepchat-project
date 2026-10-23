@@ -411,6 +411,7 @@ import {
   digitalEmployeeSwitchToRemoteRoute
 } from './routes/digitalEmployeeRemote.routes'
 import { digitalEmployeeKnowledgeStatusRoute } from './routes/digitalEmployeeKnowledge.routes'
+import { digitalEmployeeProvisionRoute } from './routes/digitalEmployeeProvisioning.routes'
 import {
   digitalEmployeeSettingsClearApiKeyRoute,
   digitalEmployeeSettingsGetRoute,
@@ -725,6 +726,7 @@ export * from './routes/documents.routes'
 export * from './routes/digitalEmployee.routes'
 export * from './routes/digitalEmployeeRemote.routes'
 export * from './routes/digitalEmployeeKnowledge.routes'
+export * from './routes/digitalEmployeeProvisioning.routes'
 export * from './routes/digitalEmployeeSettings.routes'
 export * from './routes/settings.routes'
 export * from './routes/shortcut.routes'
@@ -862,6 +864,7 @@ const DEEPCHAT_ROUTE_CATALOG_PART_1 = {
   [digitalEmployeeRemoteStatusRoute.name]: digitalEmployeeRemoteStatusRoute,
   [digitalEmployeeSwitchToRemoteRoute.name]: digitalEmployeeSwitchToRemoteRoute,
   [digitalEmployeeKnowledgeStatusRoute.name]: digitalEmployeeKnowledgeStatusRoute,
+  [digitalEmployeeProvisionRoute.name]: digitalEmployeeProvisionRoute,
   [documentsGetRoute.name]: documentsGetRoute,
   [documentsUpsertRoute.name]: documentsUpsertRoute,
   [documentsDeleteRoute.name]: documentsDeleteRoute,

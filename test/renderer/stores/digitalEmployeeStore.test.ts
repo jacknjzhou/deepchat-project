@@ -17,7 +17,8 @@ const digitalEmployeeClientMock = vi.hoisted(() => ({
   bindRemoteSession: vi.fn(),
   remoteStatus: vi.fn(),
   switchToRemote: vi.fn(),
-  knowledgeStatus: vi.fn()
+  knowledgeStatus: vi.fn(),
+  provision: vi.fn()
 }))
 
 const configClientMock = vi.hoisted(() => ({
@@ -127,6 +128,15 @@ describe('digitalEmployeeStore', () => {
     })
     digitalEmployeeClientMock.remoteStatus.mockReset()
     digitalEmployeeClientMock.switchToRemote.mockReset()
+    digitalEmployeeClientMock.provision.mockReset().mockResolvedValue({
+      employeeId: 'finance',
+      skipped: null,
+      toolsReady: true,
+      installedSkills: 0,
+      failedSkills: [],
+      skillNames: [],
+      failures: []
+    })
   })
 
   it('ensureLoaded fetches the client only once across repeated invocations', async () => {
@@ -227,6 +237,57 @@ describe('digitalEmployeeStore', () => {
     ).resolves.toBe('session-9')
     // 内存中的绑定仍按 best-effort 记录
     expect(store.employeeForSession('session-9')?.id).toBe(employee.id)
+  })
+
+  it('provisionEmployee returns the main-process result', async () => {
+    const store = useDigitalEmployeeStore()
+    digitalEmployeeClientMock.provision.mockResolvedValue({
+      employeeId: 'finance',
+      skipped: null,
+      toolsReady: true,
+      installedSkills: 2,
+      failedSkills: [],
+      skillNames: ['de-finance-invoice'],
+      failures: []
+    })
+
+    const result = await store.provisionEmployee('finance')
+
+    expect(digitalEmployeeClientMock.provision).toHaveBeenCalledWith('finance')
+    expect(result?.skillNames).toEqual(['de-finance-invoice'])
+  })
+
+  it('provisionEmployee swallows IPC errors and reports null', async () => {
+    const store = useDigitalEmployeeStore()
+    digitalEmployeeClientMock.provision.mockRejectedValue(new Error('ipc down'))
+
+    // 准备失败只能是「能力少一点」，不能中断会话流程，因此这里不抛。
+    await expect(store.provisionEmployee('finance')).resolves.toBeNull()
+  })
+
+  it('startConversation prefers the installed skill names over the payload slugs', async () => {
+    const store = useDigitalEmployeeStore()
+    await store.fetchEmployees()
+    const employee = store.employees[0] // skillIds: ['skill-a']
+
+    await store.startConversation(employee, {
+      activeSkillNames: ['de-finance-skill-a']
+    })
+
+    // 本地技能目录里只有带前缀的名字，slug 传进去会静默匹配不到。
+    const createInput = sessionStoreMock.createSession.mock.calls[0][0]
+    expect(createInput.activeSkills).toEqual(['de-finance-skill-a'])
+  })
+
+  it('startConversation falls back to skillIds when nothing was provisioned', async () => {
+    const store = useDigitalEmployeeStore()
+    await store.fetchEmployees()
+    const employee = store.employees[0]
+
+    await store.startConversation(employee, {})
+
+    const createInput = sessionStoreMock.createSession.mock.calls[0][0]
+    expect(createInput.activeSkills).toEqual(['skill-a'])
   })
 
   it('exposes the degraded flag from the list result', async () => {

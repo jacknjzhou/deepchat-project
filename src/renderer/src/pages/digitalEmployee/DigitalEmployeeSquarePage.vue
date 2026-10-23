@@ -356,11 +356,16 @@ const startConversation = async () => {
   startingConversation.value = true
   startError.value = false
   try {
+    // 准备必须先于 loadTools：工具白名单是「可用工具列表的补集」，
+    // 注册晚了第一轮对话就一个 staffdeck_* 工具都没有，之后不会自动重试。
+    // provision 内部已吞掉全部失败，这里的 catch 只兜 IPC 层异常。
+    const provisioned = await store.provisionEmployee(employee.id).catch(() => null)
     // 取可用 MCP 工具名供白名单收敛；loadTools 内部已兜错，失败时列表为空 → 放弃收敛（宁多勿缺）
     await mcpStore.loadTools()
     const sessionId = await store.startConversation(employee, {
       openingQuestion: openingQuestion.value.trim() || undefined,
-      availableMcpToolNames: mcpStore.tools.map((tool) => tool.function.name)
+      availableMcpToolNames: mcpStore.tools.map((tool) => tool.function.name),
+      ...(provisioned?.skillNames.length ? { activeSkillNames: provisioned.skillNames } : {})
     })
     detailEmployee.value = null
     await router.push({ name: 'chat' })
