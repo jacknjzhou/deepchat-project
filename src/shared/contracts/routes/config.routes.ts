@@ -150,7 +150,9 @@ export const CONFIG_ENTRY_KEYS = [
   'digitalEmployee.sessionBindings',
   'digitalEmployee.configHashes',
   // 远端会话绑定表：main 侧分流按 sessionId 读取，进程重启后必须能恢复。
-  'digitalEmployee.remoteSessions'
+  'digitalEmployee.remoteSessions',
+  // 知识同步状态：每员工的本地知识库 id + 每概念的 hash 基线 + stale 标记。
+  'digitalEmployee.knowledgeSync'
 ] as const
 
 // Cached verification result for a provider's current connection configuration.
@@ -195,7 +197,9 @@ export const ConfigEntryValuesSchema = z.object({
   'digitalEmployee.configHashes': z.record(z.string(), z.string()),
   // 值形状由 remoteSessionRegistry 在读写时用 zod 逐条校验，这里只保证是对象表：
   // 损坏条目按空表处理，不应让整份 config 快照解析失败。
-  'digitalEmployee.remoteSessions': z.record(z.string(), z.unknown())
+  'digitalEmployee.remoteSessions': z.record(z.string(), z.unknown()),
+  // 同上：knowledgeSyncState 逐员工校验，单条损坏只丢那一条的增量基线。
+  'digitalEmployee.knowledgeSync': z.record(z.string(), z.unknown())
 })
 
 export const ConfigEntryChangeSchema = z.discriminatedUnion('key', [
@@ -309,6 +313,10 @@ export const ConfigEntryChangeSchema = z.discriminatedUnion('key', [
   }),
   z.object({
     key: z.literal('digitalEmployee.remoteSessions'),
+    value: z.record(z.string(), z.unknown())
+  }),
+  z.object({
+    key: z.literal('digitalEmployee.knowledgeSync'),
     value: z.record(z.string(), z.unknown())
   })
 ])

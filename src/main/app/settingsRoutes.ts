@@ -88,6 +88,7 @@ export function createAppSettingsRoutes(deps: {
     read('digitalEmployee.sessionBindings')
     read('digitalEmployee.configHashes')
     read('digitalEmployee.remoteSessions')
+    read('digitalEmployee.knowledgeSync')
     return values
   }
   const readSnapshot = (): SettingsSnapshotValues => ({
