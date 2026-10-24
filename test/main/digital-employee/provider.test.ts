@@ -62,9 +62,9 @@ describe('MockDigitalEmployeeProvider', () => {
 })
 
 describe('HttpDigitalEmployeeProvider', () => {
-  const config = { baseUrl: 'https://sd.example', apiKey: 'sd_live_k1', externalUserId: 'user-1' }
+  const config = { baseUrl: 'https://sd.example', apiKey: 'sd_live_k1' }
 
-  it('sends bearer auth and external user id headers to the versioned endpoint', async () => {
+  it('sends bearer auth to the versioned endpoint', async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValue(jsonResponse(200, { employees: [makeEmployee()] }))
@@ -76,9 +76,11 @@ describe('HttpDigitalEmployeeProvider', () => {
     expect(url).toBe('https://sd.example/api/v1/digital-employees')
     const headers = init.headers as Record<string, string>
     expect(headers.authorization).toBe('Bearer sd_live_k1')
-    expect(headers['x-external-user-id']).toBe('user-1')
     expect(headers.accept).toBe('application/json')
     expect(headers['if-none-match']).toBeUndefined()
+    // `external_user_id` 是执行期身份，只走 run/backflow 的 body。发成请求头
+    // 会让排查者以为列表按用户过滤——服务端从头到尾没读过这个 header。
+    expect(headers['x-external-user-id']).toBeUndefined()
   })
 
   it('trims trailing slashes from the configured base url', async () => {

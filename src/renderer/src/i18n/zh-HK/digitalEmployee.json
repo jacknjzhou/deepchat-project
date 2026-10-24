@@ -48,7 +48,8 @@
       "unauthorized": "Authentication failed. Check that the API key is correct and still valid.",
       "httpError": "The service returned an error status. Try again later or contact the administrator.",
       "networkError": "Cannot reach the service. Check the base URL and your network.",
-      "invalidPayload": "The service response did not match the expected format. Check the service version."
+      "invalidPayload": "The service response did not match the expected format. Check the service version.",
+      "missingMcpScope": "連線與列表均正常，但 API Key 缺少 mcp:invoke 權限：數碼員工的遠端工具將全部無法使用。請聯絡管理員補充該權限。"
     }
   },
   "banner": {
@@ -63,7 +64,7 @@
     "awaitingHint": "Reply in the input box below to continue in the cloud.",
     "error": {
       "generic": "Cloud execution failed. Please try again later.",
-      "insufficientScope": "The service API key lacks the required scopes. Ask an administrator to grant runs/sessions access.",
+      "insufficientScope": "服務端 API Key 權限不足，請聯絡管理員補充 agents、runs、sessions、mcp:invoke 權限。",
       "apiKeyRequired": "No valid service API key is configured. Add one in settings.",
       "apiKeyExpired": "服務端 API Key 已過期，請在設定中更換。",
       "apiKeyRevoked": "服務端 API Key 已被撤銷，請聯繫管理員重新簽發。",

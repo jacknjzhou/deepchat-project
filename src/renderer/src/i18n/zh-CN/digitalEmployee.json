@@ -53,7 +53,8 @@
       "unauthorized": "鉴权失败，请检查 API Key 是否正确或是否已失效。",
       "httpError": "服务返回异常状态，请稍后重试或联系服务管理员。",
       "networkError": "无法连接服务，请检查服务地址与网络。",
-      "invalidPayload": "服务响应格式不符合预期，请确认服务版本。"
+      "invalidPayload": "服务响应格式不符合预期，请确认服务版本。",
+      "missingMcpScope": "连接与列表均正常，但 API Key 缺少 mcp:invoke 权限：数字员工的远端工具将全部不可用。请联系管理员补充该权限。"
     },
     "syncIntervalLabel": "知识同步间隔",
     "syncIntervalHint": "后台每隔这么久检查一次数字员工的知识库，有变化才下载。",
@@ -75,7 +76,7 @@
     "awaitingHint": "在下方输入框继续回答，会发往云端继续执行。",
     "error": {
       "generic": "云端执行失败，请稍后重试。",
-      "insufficientScope": "服务端 API Key 权限不足，请联系管理员补充 runs/sessions 权限。",
+      "insufficientScope": "服务端 API Key 权限不足，请联系管理员补充 agents、runs、sessions、mcp:invoke 权限。",
       "apiKeyRequired": "尚未配置有效的服务端 API Key，请在设置中填写。",
       "apiKeyExpired": "服务端 API Key 已过期，请在设置中更换。",
       "apiKeyRevoked": "服务端 API Key 已被吊销，请联系管理员重新签发。",

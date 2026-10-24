@@ -403,6 +403,91 @@ describe('digitalEmployeeStore', () => {
     ).resolves.toBeNull()
   })
 
+  /**
+   * hybrid 的两种状态必须分开对待。
+   *
+   * 员工的 `executionMode` 说不了「这个会话此刻在哪执行」：配成 hybrid 之后，
+   * 一个会话可能还在本地跑，另一个已经切到云端。绑定状态只在主进程的绑定表里，
+   * 所以这里必须查一次。
+   */
+  describe('reportBackflow with hybrid employees', () => {
+    const hybridList = () =>
+      digitalEmployeeClientMock.list.mockResolvedValue({
+        employees: [makeEmployee('hybrid-hr', { executionMode: 'hybrid' })],
+        fetchedAt: '2026-10-21T00:00:00.000Z'
+      })
+    const round = {
+      employeeId: 'hybrid-hr',
+      sessionId: 'session-9',
+      events: [{ type: 'message', eventId: 'e1', role: 'user', content: 'hi' }]
+    }
+
+    it('reports a hybrid session that is still running locally', async () => {
+      hybridList()
+      digitalEmployeeClientMock.remoteStatus.mockResolvedValue({
+        bound: false,
+        remoteSessionId: null,
+        employeeId: null,
+        runId: null,
+        awaitingInput: null
+      })
+      const store = useDigitalEmployeeStore()
+      await store.fetchEmployees()
+
+      await store.reportBackflow(round)
+
+      // 没切换过就是纯本地执行，不报会让审计漏掉一整段对话。
+      expect(digitalEmployeeClientMock.backflow).toHaveBeenCalledTimes(1)
+    })
+
+    it('stays silent once that session has been switched to the cloud', async () => {
+      hybridList()
+      digitalEmployeeClientMock.remoteStatus.mockResolvedValue({
+        bound: true,
+        remoteSessionId: 'remote-1',
+        employeeId: 'hybrid-hr',
+        runId: null,
+        awaitingInput: null
+      })
+      const store = useDigitalEmployeeStore()
+      await store.fetchEmployees()
+
+      await store.reportBackflow(round)
+
+      // 切过去之后本地只是在渲染服务端推回来的流，事件已经在服务端库里。
+      // 再报一次就是同一轮对话的两份归档，且事后无法区分哪份是真的。
+      expect(digitalEmployeeClientMock.backflow).not.toHaveBeenCalled()
+    })
+
+    it('assumes bound when the binding lookup fails', async () => {
+      hybridList()
+      digitalEmployeeClientMock.remoteStatus.mockRejectedValue(new Error('bridge down'))
+      const store = useDigitalEmployeeStore()
+      await store.fetchEmployees()
+
+      await store.reportBackflow(round)
+
+      // 与 loadRemoteBinding 相反：那里乐观只会让用户点到必失败的按钮（可见、
+      // 可纠正），这里乐观会往归档里塞重复消息（不可见、事后分不清）。
+      expect(digitalEmployeeClientMock.backflow).not.toHaveBeenCalled()
+    })
+
+    it('never asks for the binding of a plainly local employee', async () => {
+      const store = useDigitalEmployeeStore()
+      await store.fetchEmployees()
+
+      await store.reportBackflow({
+        employeeId: 'finance',
+        sessionId: 'session-1',
+        events: [{ type: 'message', eventId: 'e1', role: 'user', content: 'hi' }]
+      })
+
+      // 每轮都多打一次 IPC 只为确认一件已知的事，是纯浪费。
+      expect(digitalEmployeeClientMock.remoteStatus).not.toHaveBeenCalled()
+      expect(digitalEmployeeClientMock.backflow).toHaveBeenCalledTimes(1)
+    })
+  })
+
   it('startConversation prefers the installed skill names over the payload slugs', async () => {
     const store = useDigitalEmployeeStore()
     await store.fetchEmployees()

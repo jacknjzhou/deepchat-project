@@ -393,8 +393,16 @@ export const useDigitalEmployeeStore = defineStore('digitalEmployee', () => {
   /**
    * 把一轮本地对话回流给 StaffDeck 归档。
    *
-   * 只对本地执行的员工上报：`remote` 员工的对话本来就在服务端，再报一次会让
-   * 管理端看到两条同样的消息。
+   * 只对**真正在本地执行**的会话上报。此处需要分清三件事：
+   *
+   * - `remote` 员工：对话本来就在服务端，重报会让管理端看到两条同样的消息。
+   * - `hybrid` 员工：会话**可能**已经切到云端（`switchToRemote`）。那时本地只是
+   *   在渲染服务端推回来的流，事件已经在服务端库里，再上报一次同样是双份。
+   * - 其余（`local`、hybrid 尚未切换）：本地执行，必须上报，否则审计有缺口。
+   *
+   * hybrid 的具体状态只有主进程的绑定表知道，所以这里要查一次。查询失败时
+   * 按「已绑定」处理——宁可漏一份归档，也不能凭空造出重复记录：前者是数据
+   * 不全，后者会让管理端的统计口径直接失真，且无法事后区分。
    *
    * 永不抛错，也永不改动对话状态。上报是全量归档的附加动作，不是对话的一部分。
    */
@@ -407,6 +415,9 @@ export const useDigitalEmployeeStore = defineStore('digitalEmployee', () => {
     if (input.events.length === 0) return null
     const employee = employees.value.find((item) => item.id === input.employeeId)
     if (!employee || employee.executionMode === 'remote') return null
+    if (employee.executionMode === 'hybrid' && (await isBoundToRemote(input.sessionId))) {
+      return null
+    }
     try {
       // `title` 必须一路带到主进程：它只在首次建远端会话时用一次，漏了就不是
       // 「标题为空」而是「服务端那条会话永远没有标题」。
@@ -419,6 +430,22 @@ export const useDigitalEmployeeStore = defineStore('digitalEmployee', () => {
     } catch (error) {
       console.warn('[digitalEmployee] backflow failed', error)
       return null
+    }
+  }
+
+  /**
+   * hybrid 会话是否已切到云端。
+   *
+   * 失败按 `true` 处理，与 `loadRemoteBinding` 相反：那里的乐观会让用户点到一个
+   * 必失败的按钮（可见、可纠正），这里的乐观会让归档里出现重复消息（不可见、
+   * 事后也分不清哪份是假的）。
+   */
+  async function isBoundToRemote(sessionId: string): Promise<boolean> {
+    try {
+      const status = await client.remoteStatus(sessionId)
+      return status.bound
+    } catch {
+      return true
     }
   }
 

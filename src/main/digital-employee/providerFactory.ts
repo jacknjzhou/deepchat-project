@@ -14,6 +14,10 @@ export interface DigitalEmployeeConnectionConfig {
 /**
  * 配置不完整或未启用时返回 fallback（Mock）；完整时返回带降级能力的远端 Provider。
  * 配置只从持久化设置读入，factory 内不读 env / renderer 全局。
+ *
+ * `externalUserId` 仍参与这里的完整性判断，但**不传给 Provider**：它是执行期
+ * 身份（远端 run 与回流的 body 字段），列表请求用不到。判它是为了在配置页
+ * 就拦住不完整的一组值，而不是让第一次对话才发现建不了远端会话。
  */
 export function createDigitalEmployeeProvider(
   config: DigitalEmployeeConnectionConfig,
@@ -25,8 +29,7 @@ export function createDigitalEmployeeProvider(
   return new ResilientDigitalEmployeeProvider(
     new HttpDigitalEmployeeProvider({
       baseUrl: config.baseUrl,
-      apiKey: config.apiKey,
-      externalUserId: config.externalUserId
+      apiKey: config.apiKey
     }),
     fallback
   )

@@ -99,6 +99,22 @@ const toTarget = (employee: DigitalEmployee): EmployeeProvisioningTarget => ({
   )
 })
 
+/**
+ * 这个员工需不需要在本地准备工具与技能。
+ *
+ * 判据写成「哪些**不需要**」而不是「哪些需要」，因为答案只取决于一件事：
+ * 执行发生在哪里。`remote` 一律在服务端跑，服务端自己持有它的工具与技能，
+ * 本地再准备一遍只会让模型看到两份同名工具。`local` 与 `hybrid` 都可能（或
+ * 一定）在本地执行，所以都要准备。
+ *
+ * 特别说 hybrid：它配的是「可切换」，一个会话切到云端之后，绑定表里那一轮
+ * 走服务端，但**下一次新建会话仍然从本地开始**。因此 hybrid 的本地准备不是
+ * 冗余，而是它默认形态的前提条件。这条判断与 `switchToRemote` 无关，不能用
+ * 「这个会话此刻在哪」来做——那是另一个问题，答案在绑定表里。
+ */
+const needsLocalProvisioning = (executionMode: EmployeeProvisioningTarget['executionMode']) =>
+  executionMode !== 'remote'
+
 export function createEmployeeProvisioner(
   deps: EmployeeProvisionerDeps
 ): EmployeeProvisioner {
@@ -188,7 +204,7 @@ export function createEmployeeProvisioner(
 
   return {
     provision(target) {
-      if (target.executionMode === 'remote') {
+      if (!needsLocalProvisioning(target.executionMode)) {
         // Gate before touching the registry so the cleanup path always runs,
         // even when the caller handed us a fully-formed target.
         return provision(target.id, async () => 'NOT_LOCAL')
@@ -205,7 +221,7 @@ export function createEmployeeProvisioner(
         // Losing the employee between the click and the lookup is normal: the
         // list is refreshed from the server, and an admin may have disabled it.
         if (!employee) return 'NOT_FOUND'
-        if (employee.executionMode === 'remote') return 'NOT_LOCAL'
+        if (!needsLocalProvisioning(employee.executionMode)) return 'NOT_LOCAL'
         if (deps.source() === 'mock') return 'DEGRADED'
         return toTarget(employee)
       })

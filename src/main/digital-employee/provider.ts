@@ -2,15 +2,17 @@ import { digitalEmployeeListRoute, type DigitalEmployee } from '@shared/contract
 import { MOCK_DIGITAL_EMPLOYEES } from './mockData'
 
 /**
- * 跨仓库联调结论：GET /api/v1/digital-employees **不消费** external_user_id。
- * 该端点用 Bearer 凭证鉴权、租户由凭证反推；全后端只读取 If-None-Match /
- * If-Match / Last-Event-ID 三个 header。实测不带此 header 返回 200，带任意值
- * 响应 body 与 ETag 完全一致，因此这里发出去是惰性的、保留无害。
+ * `external_user_id` 只以 **body 字段** 参与，从不走 header。
  *
- * externalUserId 的真正用途在 D2 远端执行：届时放进 POST /agents/{id}/runs:stream
- * 的 JSON body（服务端 schemas.py 定义为可选字段），而不是 header。
+ * 跨仓库核对结论：全后端没有任何位置读取 `x-external-user-id`（`grep` 整个
+ * `backend/` 无命中），该端点用 Bearer 凭证鉴权、租户由凭证反推，只读
+ * If-None-Match / If-Match / Last-Event-ID 三个 header。此前这里多发一个
+ * 同名请求头，服务端不消费、实测响应与 ETag 完全一致，属于惰性冗余。
+ *
+ * 保留它的代价不是带宽，而是误导：看到请求头会以为服务端按用户过滤，于是
+ * 「为什么别人能看到我的员工」这类排查会从错误的地方开始。真正生效的位置在
+ * `remoteClient.streamRun` 与 `backflow` 的 JSON body 里。
  */
-export const EXTERNAL_USER_ID_HEADER = 'x-external-user-id'
 
 export interface DigitalEmployeeProvider {
   /** Resilient Provider 在回退到 fallback 后为 true；其余 Provider 不设置。 */
@@ -28,10 +30,16 @@ export class MockDigitalEmployeeProvider implements DigitalEmployeeProvider {
   }
 }
 
+/**
+ * 列表端点只需要地址与凭证。
+ *
+ * `externalUserId` 刻意不在这里：它是**执行期**的身份（远端 run 与回流的 body
+ * 字段），列表响应不受它影响。放进来会让人以为换一个用户 id 就能看到另一批
+ * 员工，而实际过滤靠凭证绑定。
+ */
 export interface HttpProviderConfig {
   baseUrl: string
   apiKey: string
-  externalUserId: string
 }
 
 const normalizeBaseUrl = (baseUrl: string): string => baseUrl.replace(/\/+$/, '')
@@ -51,8 +59,7 @@ export class HttpDigitalEmployeeProvider implements DigitalEmployeeProvider {
     const url = `${normalizeBaseUrl(this.config.baseUrl)}/api/v1/digital-employees`
     const headers: Record<string, string> = {
       accept: 'application/json',
-      authorization: `Bearer ${this.config.apiKey}`,
-      [EXTERNAL_USER_ID_HEADER]: this.config.externalUserId
+      authorization: `Bearer ${this.config.apiKey}`
     }
     if (this.etag) {
       headers['if-none-match'] = this.etag

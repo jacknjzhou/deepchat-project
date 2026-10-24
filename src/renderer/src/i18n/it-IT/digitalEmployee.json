@@ -48,7 +48,8 @@
       "unauthorized": "Authentication failed. Check that the API key is correct and still valid.",
       "httpError": "The service returned an error status. Try again later or contact the administrator.",
       "networkError": "Cannot reach the service. Check the base URL and your network.",
-      "invalidPayload": "The service response did not match the expected format. Check the service version."
+      "invalidPayload": "The service response did not match the expected format. Check the service version.",
+      "missingMcpScope": "Reachable and the employee list loads, but the API key lacks mcp:invoke: every remote tool of the digital employees will be unavailable. Ask an administrator to grant it."
     }
   },
   "banner": {
@@ -63,7 +64,7 @@
     "awaitingHint": "Reply in the input box below to continue in the cloud.",
     "error": {
       "generic": "Cloud execution failed. Please try again later.",
-      "insufficientScope": "The service API key lacks the required scopes. Ask an administrator to grant runs/sessions access.",
+      "insufficientScope": "The service API key is missing required scopes (agents, runs, sessions, mcp:invoke). Ask an administrator to grant them.",
       "apiKeyRequired": "No valid service API key is configured. Add one in settings.",
       "apiKeyExpired": "La chiave API del servizio è scaduta. Inserisci una nuova chiave nelle impostazioni.",
       "apiKeyRevoked": "La chiave API del servizio è stata revocata. Chiedi una nuova chiave a un amministratore.",

@@ -11,7 +11,6 @@ import {
 } from '@shared/contracts/routes'
 import { createRouteMap, type DeepchatRouteMap } from '@/routes/routeRegistry'
 import { DEFAULT_SYNC_INTERVAL_SECONDS } from './knowledgeSyncScheduler'
-import { EXTERNAL_USER_ID_HEADER } from './provider'
 
 const TEST_CONNECTION_TIMEOUT_MS = 10_000
 
@@ -108,6 +107,42 @@ const ensureExternalUserId = (deps: DigitalEmployeeSettingsDeps): string => {
 const mapTestFailure = (status: number): DigitalEmployeeTestMessageCode => {
   if (status === 401 || status === 403) return 'unauthorized'
   return 'httpError'
+}
+
+/**
+ * 探一次 MCP 端点，只为回答「这个 key 有没有 `mcp:invoke`」。
+ *
+ * 用 `GET /api/v1/mcp/agents/{id}` 而不是 POST：服务端对 GET 只做 scope 校验
+ * 然后返回 405（`mcp.py:191-204`，streamable HTTP 没有服务端推送的那一半）。
+ * 405 恰好是「鉴权通过」的证明，不建会话、不调用任何工具，比发一个真实的
+ * `initialize` 便宜且安全。
+ *
+ * 路径里的员工 id 用固定占位值即可：那个处理器接收 `agent_id` 却从不读取，
+ * 校验通过后无条件 405，与该员工是否存在无关。所以只有两种结论——
+ * 401/403 是缺 scope，其余（含 405）都是不缺。
+ */
+const probeMcpScope = async (
+  fetchImpl: typeof fetch,
+  baseUrl: string,
+  apiKey: string
+): Promise<DigitalEmployeeTestMessageCode | null> => {
+  let response: Response
+  try {
+    response = await fetchImpl(`${baseUrl}/api/v1/mcp/agents/deepchat-scope-probe`, {
+      method: 'GET',
+      headers: {
+        accept: 'application/json',
+        authorization: `Bearer ${apiKey}`
+      },
+      signal: AbortSignal.timeout(TEST_CONNECTION_TIMEOUT_MS)
+    })
+  } catch {
+    // 列表刚成功、MCP 端点却连不上：网络抖动或反代规则不同。不把这当成权限
+    // 问题——把网络故障报成「缺权限」会让人去改根本不需要改的东西。
+    return null
+  }
+
+  return response.status === 401 || response.status === 403 ? 'missingMcpScope' : null
 }
 
 type SettingsSnapshot = Map<string, { present: boolean; value: unknown }>
@@ -243,8 +278,7 @@ export function createDigitalEmployeeSettingsRoutes(
           response = await fetchImpl(`${baseUrl}/api/v1/digital-employees`, {
             headers: {
               accept: 'application/json',
-              authorization: `Bearer ${apiKey}`,
-              [EXTERNAL_USER_ID_HEADER]: externalUserId
+              authorization: `Bearer ${apiKey}`
             },
             signal: AbortSignal.timeout(TEST_CONNECTION_TIMEOUT_MS)
           })
@@ -280,6 +314,18 @@ export function createDigitalEmployeeSettingsRoutes(
         }
 
         // 测试连接只验证可用性：不写 ETag、不替换当前 Provider、不改启用状态。
+        //
+        // 列表通了不等于能用：`mcp:invoke` 是独立 scope，缺它时列表照常返回，
+        // 但 `staffdeck_*` 工具一个都不会出现。不在这里报出来，这个故障只会
+        // 在用户开口问第一句时以「这个员工没有工具」的形式暴露。
+        const mcpScopeFailure = await probeMcpScope(fetchImpl, baseUrl, apiKey)
+        if (mcpScopeFailure) {
+          return digitalEmployeeSettingsTestConnectionRoute.output.parse({
+            ok: false,
+            messageCode: mcpScopeFailure
+          })
+        }
+
         return digitalEmployeeSettingsTestConnectionRoute.output.parse({
           ok: true,
           messageCode: 'ok'

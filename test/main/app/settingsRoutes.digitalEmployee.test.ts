@@ -465,7 +465,7 @@ describe('digitalEmployeeSettings.testConnection', () => {
     expect(url).toBe('https://sd.example/api/v1/digital-employees')
     const headers = init.headers as Record<string, string>
     expect(headers.authorization).toBe('Bearer sd_live_k')
-    expect(headers['x-external-user-id']).toBe('user-1')
+    expect(headers['x-external-user-id']).toBeUndefined()
     // 测试连接不得替换当前 Provider 或改动内存配置
     expect(harness.secretStore.setWrapped).not.toHaveBeenCalled()
     expect(harness.onConfigurationChanged).not.toHaveBeenCalled()
@@ -490,7 +490,6 @@ describe('digitalEmployeeSettings.testConnection', () => {
     expect(url).toBe('https://draft.example/api/v1/digital-employees')
     const headers = init.headers as Record<string, string>
     expect(headers.authorization).toBe('Bearer sd_live_draft')
-    expect(headers['x-external-user-id']).toBe('draft-user')
   })
 
   it.each([
@@ -561,6 +560,90 @@ describe('digitalEmployeeSettings.testConnection', () => {
       messageCode: 'missingConfig'
     })
     expect(harness.fetchImpl).not.toHaveBeenCalled()
+  })
+
+  /**
+   * `mcp:invoke` 与 `agents:read` 是两个独立 scope。只探列表会给出「连接成功」，
+   * 而实际对话里一个 `staffdeck_*` 工具都没有——这个故障在设置页看不出来，
+   * 只会在用户开口第一句时以「这个员工不会用工具」的形式出现。
+   */
+  describe('mcp scope probe', () => {
+    const listOk = () => jsonResponse(200, { employees: [makeEmployee()] })
+
+    it('probes the employee-addressed MCP endpoint with the same key', async () => {
+      const fetchImpl = vi
+        .fn()
+        .mockResolvedValueOnce(listOk())
+        // 405 = 鉴权通过但没有服务端推送的一半，正是这里的「有 scope」信号。
+        .mockResolvedValueOnce(new Response(null, { status: 405 }))
+      const harness = createHarness({
+        initialSettings: baseSettings,
+        initialWrappedKey: 'wrapped:k',
+        plaintextKey: 'sd_live_k',
+        fetchImpl
+      })
+
+      expect(await harness.handlers.testConnection()).toEqual({ ok: true, messageCode: 'ok' })
+
+      const [url, init] = fetchImpl.mock.calls[1] as [string, RequestInit]
+      expect(url).toBe('https://sd.example/api/v1/mcp/agents/deepchat-scope-probe')
+      expect(init.method).toBe('GET')
+      expect((init.headers as Record<string, string>).authorization).toBe('Bearer sd_live_k')
+    })
+
+    it.each([401, 403])(
+      'reports missingMcpScope when the MCP endpoint returns %s',
+      async (status) => {
+        const fetchImpl = vi
+          .fn()
+          .mockResolvedValueOnce(listOk())
+          .mockResolvedValueOnce(new Response('denied', { status }))
+        const harness = createHarness({
+          initialSettings: baseSettings,
+          initialWrappedKey: 'wrapped:k',
+          plaintextKey: 'sd_live_k',
+          fetchImpl
+        })
+
+        expect(await harness.handlers.testConnection()).toEqual({
+          ok: false,
+          messageCode: 'missingMcpScope'
+        })
+      }
+    )
+
+    it('does not blame scopes for a network failure on the MCP endpoint', async () => {
+      // 列表刚成功、MCP 端点却连不上：多半是反代规则或网络抖动。报成「缺权限」
+      // 会让人去改一个根本不需要改的东西。
+      const fetchImpl = vi
+        .fn()
+        .mockResolvedValueOnce(listOk())
+        .mockRejectedValueOnce(new TypeError('fetch failed'))
+      const harness = createHarness({
+        initialSettings: baseSettings,
+        initialWrappedKey: 'wrapped:k',
+        plaintextKey: 'sd_live_k',
+        fetchImpl
+      })
+
+      expect(await harness.handlers.testConnection()).toEqual({ ok: true, messageCode: 'ok' })
+    })
+
+    it('does not probe when the list already failed', async () => {
+      const fetchImpl = vi.fn().mockResolvedValue(new Response('nope', { status: 500 }))
+      const harness = createHarness({
+        initialSettings: baseSettings,
+        initialWrappedKey: 'wrapped:k',
+        plaintextKey: 'sd_live_k',
+        fetchImpl
+      })
+
+      expect(await harness.handlers.testConnection()).toEqual({
+        ok: false,
+        messageCode: 'httpError'
+      })
+      expect(fetchImpl).toHaveBeenCalledTimes(1)
+    })
   })
 
   it('reports missingConfig for an invalid draft url without any request', async () => {

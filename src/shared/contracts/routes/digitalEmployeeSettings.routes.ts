@@ -30,7 +30,15 @@ export const DIGITAL_EMPLOYEE_TEST_MESSAGE_CODES = [
   'unauthorized',
   'httpError',
   'networkError',
-  'invalidPayload'
+  'invalidPayload',
+  /**
+   * 列表能读、但 MCP 端点拒绝。结果码必须单列。
+   *
+   * `agents:read` 与 `mcp:invoke` 是两个独立的 scope：只做一次列表探测时，
+   * 一个恰好缺 `mcp:invoke` 的 key 会显示「连接正常」，而对话里一个
+   * `staffdeck_*` 工具都没有——用户与运维都会去查服务端，查不到东西。
+   */
+  'missingMcpScope'
 ] as const
 
 export const DigitalEmployeeTestMessageCodeSchema = z.enum(DIGITAL_EMPLOYEE_TEST_MESSAGE_CODES)
