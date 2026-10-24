@@ -158,8 +158,20 @@ export const digitalEmployeeSchema = z.object({
 >
 > 测试：runner 侧 4 例（hybrid 解除绑定并上报、remote 保留绑定、未绑定时不谎称降级、事件带 `fallbackToLocal`），composable 侧 4 例（标记置位、跨轮保持、普通失败不置位、切会话重置），store 侧 6 例（摘要裁剪/省略、失败回报而非抛错、绑定查询三态），顶栏 6 例（四个可见性组合 + 成功/失败两条路径）。
 
-### 5.3 技能导入
+> **D2 补充修订：追问明细的生命周期（2026-10-24）**
+>
+> `awaiting_input` 的明细**不在 SSE 事件里**（§5.2 已知事实），提示条要靠事件到达后回查 `digitalEmployee.remoteStatus` 拿到。这条链路原先有一处断点，修完后形成的约束值得写进 spec：
+>
+> **明细必须存在一个两处可写的共享位置，且每轮都要写（含空值）。** 首轮的 run 由 `bindRemoteSession` / `switchToRemote` 发起，之后的每一轮由 `ChatService` 的 `remoteTurn.send` 发起——两条路径分属不同层，任何一方私有一份副本都会让另一方读到过期或空的值。原实现把明细放在路由内部的 Map 里，于是第二轮起恒返回 `null`，提示条再也不出现（真实对话里追问多发生在第二、三轮，所以表现是「偶尔生效」）。
+>
+> 三条性质：
+> 1. **不落库**。追问是瞬时的：进程重启后补查旧 run 会拿到与服务端现状不符的结论。与绑定表刻意分开——绑定是必须恢复的持久事实，追问是答完就该消失的瞬时状态。
+> 2. **每轮都写 `null` 也是写**。「这一轮没有追问」正是撤掉上一条提示的信号；只在有追问时写入，会让提示条在用户答完之后继续挂着。
+> 3. **会话退回本地时清除**。hybrid 降级后旧明细不该被后来的查询读到。
+>
+> 实现：`src/main/digital-employee/remoteRunOutcomes.ts`，`remoteRoutes` 与 `composition` 的 `remoteTurn.send` 共用一份。
 
+### 5.3 技能导入
 - 分发 payload 的 `skills[].downloadUrl` → 下载 `:export-skill` zip（SKILL.md 包格式，与 deepchat 技能目录同构）；
 - 走现有 Skills 管理的导入能力装进 `digital-employee:<id>` agentId 隔离目录；主进程在会话创建时按 `skillIds` 解析注册，不引入「技能安装」确认流程（企业分发场景默认信任）；
 - 仓库根 `skills/staffdeck-api-*` 4 个 OpenAPI 调用技能包可作为可选内置项安装（使本地 Agent 具备直接调用 StaffDeck OpenAPI 的能力）。
@@ -376,7 +388,9 @@ D1 → {D2, D3, D4} → D5；联调环境使用 StaffDeck M1 交付的 Compose �
 > 2. **`external_user_id` 双传法**（§5.7）。删掉 `x-external-user-id` 请求头：服务端 `backend/` 全目录零读取，留着只会让排查者以为列表按用户过滤。
 > 3. **hybrid 会话的重复归档**（§5.2 / §5.6）。审计原文担心的是「将来 hybrid 默认走远端会双份注入工具与技能」，那是假想风险；顺着同一条判据查到的真缺陷是：hybrid 会话被 `switchToRemote` 切到云端后，`reportBackflow` 仍只按 `executionMode !== 'remote'` 放行，于是一段已经在服务端归档的对话又被本地报了一遍，且事后无法区分哪份是真的。现补查绑定状态，查询失败按「已绑定」处理——与 `loadRemoteBinding` 的乐观方向刻意相反，因为这里的错误代价不可见。
 >
-> 剩下三项 P2-2 / P2-3 / P2-4 全是**验证**项：缺的不是代码，是真机服务、启用的 embedding provider 与真实模型，CI 里跑不出来。
+> 剩下 P2-2 / P2-3 是真正的**验证**项：缺的不是代码，是真机服务与启用的 embedding provider，CI 里跑不出来。走查步骤见 `docs/superpowers/plans/2026-10-24-staffdeck-p2-field-walkthrough.md`。
+>
+> **P2-4 不是验证项**：原判为「等真实模型才能验」，实际逐条核对判据时发现追问明细只有首轮会写入，第二轮起 `remoteStatus.awaitingInput` 恒为 `null`。缺的是代码而不是环境，已修（见 §5.2「追问明细的生命周期」）。这条记在这里是因为分类错误的代价很实在——一项被标成「等环境」之后，就没有人再去读它的代码了。
 
 ## 9. 风险与开放问题
 
