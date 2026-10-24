@@ -14,10 +14,10 @@
 |---|---|---|---|
 | **P0 真断链** | 代码写完了、测试也过了，但端到端跑起来功能不生效 | 3 | **全部已修** |
 | **P1 能力缺失** | spec/计划明确要求，仓库里找不到实现 | 11 | 已修 6，剩 5 |
-| **P2 验证与运维缺口** | 功能可用，但未验证或有误判风险 | 6 | 未动 |
+| **P2 验证与运维缺口** | 功能可用，但未验证或有误判风险 | 6 | 已修 3，剩 3（均需真机） |
 
-> **进度（2026-10-24）**：P0-1（`b6c553b0`）、P0-2（并行进程 `eaa22907`）、P0-3 + P1-5（`4c392c2f`）、P1-10（`913ecb3c`）、P1-2 + P1-3 + P1-4 + P1-9（`cbe212da`）、P1-1（`604a893f`）、P1-6（本轮）已完成。
-> 剩余：P1-7（公共 MCP，阻塞于服务端）、P1-8（内置技能包，可选）、P2 全部。
+> **进度（2026-10-24）**：P0-1（`b6c553b0`）、P0-2（并行进程 `eaa22907`）、P0-3 + P1-5（`4c392c2f`）、P1-10（`913ecb3c`）、P1-2 + P1-3 + P1-4 + P1-9（`cbe212da`）、P1-1（`604a893f`）、P1-6（`68f59e0d`）、P2-1 + P2-5 + P2-6（本轮）已完成。
+> 剩余：P1-7（公共 MCP，阻塞于服务端）、P1-8（内置技能包，可选）、P2-2 / P2-3 / P2-4（均需真机或真实模型）。
 
 最需要立刻知道的一条：**D3 的知识同步与对话检索之间没有接线**。同步把向量索引写进了 `de-{employeeId}` 本地库，而对话检索查的是 payload 里的远端 `knowledgeBaseIds`（`kb_xxx`）——查不到配置直接抛错，被 `.catch(() => [])` 吞掉，表现为「永远召回不到任何知识」。同步下的 25 个概念全在另一个库里，没有任何检索入口指向它。（**已于 2026-10-23 修复**，见 P0-1。）
 
@@ -194,20 +194,51 @@ spec §5.3 第 3 条要求仓库根提供 4 个 OpenAPI 调用技能包。实际
 
 ## 3. P2 验证与运维缺口
 
-| # | 项 | 说明 |
-|---|---|---|
-| P2-1 | `mcp:invoke` scope 无文案 | 20 locale 的 `remote.error.insufficientScope` 只提 runs/sessions（`i18n/zh-CN/digitalEmployee.json:65`）。缺该 scope 表现为「一个工具都没有」，运维极易误判为服务端故障 |
-| P2-2 | MCP `startServer` 真机路径未验证 | D4 联调的 `serverManager` 是桩。deepchat 内部的 MCP 重连、工具注册表刷新、`loadTools` 之后的实际可调用性未端到端验证 |
-| P2-3 | 向量召回未端到端验证 | D3 联调时 `addFile` 打桩（无启用的 embedding provider）。加上 P0-1，即使打桩问题解决也召回不到 |
-| P2-4 | 追问链路未端到端验证 | `awaiting_input` 只在真实 LLM 走到 SOP 的 `expected_user_info` 时产生，本地 `model_configs` 为空。D2 已知限制 |
-| P2-5 | `external_user_id` 双传法未清理 | `provider.ts:13,55` 仍发 `x-external-user-id` header，`remoteClient` 用 body。已确认惰性无害，但 D2 遗留项列了「建议一并清理」 |
-| P2-6 | hybrid 员工一律按 local 处理 | `provisioning.ts:191` 只判 `=== 'remote'`。若将来 hybrid 默认走远端，会双份注入工具与技能 |
+| # | 项 | 说明 | 状态 |
+|---|---|---|---|
+| P2-1 | `mcp:invoke` scope 无文案 | 20 locale 的 `remote.error.insufficientScope` 只提 runs/sessions（`i18n/zh-CN/digitalEmployee.json:65`）。缺该 scope 表现为「一个工具都没有」，运维极易误判为服务端故障 | **已修（本轮）** |
+| P2-2 | MCP `startServer` 真机路径未验证 | D4 联调的 `serverManager` 是桩。deepchat 内部的 MCP 重连、工具注册表刷新、`loadTools` 之后的实际可调用性未端到端验证 | 需真机 |
+| P2-3 | 向量召回未端到端验证 | D3 联调时 `addFile` 打桩（无启用的 embedding provider）。加上 P0-1，即使打桩问题解决也召回不到 | 需真实 embedding |
+| P2-4 | 追问链路未端到端验证 | `awaiting_input` 只在真实 LLM 走到 SOP 的 `expected_user_info` 时产生，本地 `model_configs` 为空。D2 已知限制 | 需真实模型 |
+| P2-5 | `external_user_id` 双传法未清理 | `provider.ts:13,55` 仍发 `x-external-user-id` header，`remoteClient` 用 body。已确认惰性无害，但 D2 遗留项列了「建议一并清理」 | **已修（本轮）** |
+| P2-6 | hybrid 员工一律按 local 处理 | `provisioning.ts:191` 只判 `=== 'remote'`。若将来 hybrid 默认走远端，会双份注入工具与技能 | **已修（本轮）** |
 
-### 附：一处「有意偏离」需在 spec 标注
+### P2-1 `mcp:invoke` 缺 scope 无法被识别 —— **已修（本轮）**
 
-spec §5.7 要求 `STAFFDECK_BASE_URL / API_KEY / EXTERNAL_USER_ID` 走构建期 env 注入。实际 D1 计划明确反向决策：「配置只从持久化设置读入，factory 内不读 env」（`providerFactory.ts:17` 注释），全仓无 `process.env.STAFFDECK`。
+原文只说「文案没提 mcp:invoke」，但改文案解决不了根因：**测试连接根本不会发现这件事**。它只探 `GET /api/v1/digital-employees`（`settingsRoutes.ts:243`），而列表端点要的是 `agents:read`，与 `mcp:invoke` 是两个独立 scope（`credential_profiles.py:7-23`）。于是一个恰好缺 `mcp:invoke` 的 key 在设置页显示「连接成功，服务端返回的员工数据格式正确」，实际对话里 `staffdeck_*` 工具一个都不出现。
+
+修复分两半：
+
+1. **探测**。列表通过后再发一次 `GET /api/v1/mcp/agents/{id}`。这个处理器的关键性质是「接收 `agent_id` 却从不读取」（`mcp.py:191-204`），校验 scope 后无条件返回 405——所以路径里的员工 id 可以是固定占位值，且 405 就是「有 scope」的证明。整个过程不建会话、不调工具，比发一个真实 `initialize` 便宜得多。
+2. **文案**。`remote.error.insufficientScope` 原本只提 runs/sessions，现在按 `require_scopes` 的实际用法补到 `agents / runs / sessions / mcp:invoke`（20 locale 全改）；新增结果码 `missingMcpScope` 并单独给文案，因为它和「鉴权失败」是两回事——key 是有效的，只是权限不够。
+
+一个刻意的判定：**MCP 端点网络失败不报缺 scope**。列表刚成功而 MCP 端点连不上，多半是反代规则或抖动；把网络故障说成权限问题，会让人去改一个根本不需要改的东西。所以那种情况仍返回 `ok`，只在 401/403 时报 `missingMcpScope`。
+
+### P2-5 `external_user_id` 双传法 —— **已修（本轮）**
+
+`grep` 整个服务端 `backend/` 目录，`x-external-user-id` **零命中**：这个 header 从未被任何代码读取过。列表端点用 Bearer 鉴权、租户由凭证反推，只读 If-None-Match / If-Match / Last-Event-ID。
+
+删掉而不是保留的理由不是带宽，是**误导**：请求头摆在那里，会让人以为列表响应按用户过滤，于是「为什么这个 key 看到了不属于它的员工」这类排查会从错误的地方开始。真正生效的 `external_user_id` 在两处 JSON body——`remoteClient.streamRun`（`remoteClient.ts:173`）与 `backflow`（`backflow.ts:256`）。
+
+顺带把 `HttpProviderConfig` 里的 `externalUserId` 也移除了：列表压根用不到它。`providerFactory` 仍然校验它是否为空，那是在配置页拦住不完整的一组值，与列表请求无关。
+
+### P2-6 hybrid 判定 —— **已修（本轮），但原判断指错了地方**
+
+审计原文担心的是「将来 hybrid 默认走远端会双份注入工具与技能」，那是**假想风险**（`provisioning` 里 `!== 'remote'` 对 hybrid 放行，而 hybrid 在本地执行时正需要这些准备，双份注入只有切到云端后才成立，且那次切换之后本地根本不再执行）。顺着同一条判据查，发现了一个**已经存在**的真缺陷：
+
+`reportBackflow` 只排除 `executionMode === 'remote'`（`digitalEmployeeStore.ts:409`）。hybrid 会话一旦被 `switchToRemote` 切到云端，后续每一轮都由服务端执行并已在服务端归档，而 `employeeForSession` 依旧把它判成 hybrid —— 于是同一段对话在管理端出现两份，且事后无法区分哪份是真的。
+
+修复：hybrid 再多查一次绑定状态（`isBoundToRemote`）。查询失败按「已绑定」处理，与 `loadRemoteBinding` 的乐观方向**相反**，因为两者代价不对等——那里乐观只是让用户点到一个必失败的按钮（可见、可纠正），这里乐观会往归档里塞重复消息（不可见、分不清）。
+
+同时把 `provisioning` 的判据提成 `needsLocalProvisioning` 并写清理由：写成「哪些**不需要**」而不是「哪些需要」，因为答案只取决于执行发生在哪里，而 hybrid 默认在本地跑、切到云端后下一个新会话又从本地开始。
+
+### 附：一处「有意偏离」需在 spec 标注 —— **已回写（本轮）**
+
+spec §5.7 要求 `STAFFDECK_BASE_URL / API_KEY / EXTERNAL_USER_ID` 走构建期 env 注入。实际 D1 计划明确反向决策：「配置只从持久化设置读入，factory 内不读 env」（`providerFactory.ts:16` 注释），全仓无 `process.env.STAFFDECK`。
 
 这个偏离本身合理（企业部署靠 UI 配置更现实），但 spec §5.7 至今仍写着 env 注入，属于文档与实现不一致，应回写。
+
+> **已回写**：spec §5.7 现有「实现偏离」小节，逐项列出四个 spec 变量与实际设置键的对应关系，并写清这个选择的代价——多端部署无法用镜像固化配置。留着这条是因为「文档说 A、代码做 B」比任何一方单独存在都危险：按文档排障的人会在 env 里找一辈子。
 
 ---
 
@@ -217,17 +248,17 @@ spec §5.7 要求 `STAFFDECK_BASE_URL / API_KEY / EXTERNAL_USER_ID` 走构建期
 |---|---|---|
 | §5.1 Provider + ETag + configHash 标记 + 降级横幅 | 全部 | ✅ 完成 |
 | §5.2 local/remote 分流 + SSE + 续传 + 追问提示条 | 分流/SSE/续传/追问 | ✅ 完成（追问 P2-4 未验证） |
-| §5.2 hybrid 整会话切换 | 可切换 | ❌ P0-3（无 UI）、P1-5（无降级） |
-| §5.2 附件 | 远端首轮纯文本，附件留后续 | ⚠️ P1-6 |
+| §5.2 hybrid 整会话切换 | 可切换 | ✅ 完成（P0-3 UI、P1-5 降级） |
+| §5.2 附件 | 远端首轮纯文本，附件留后续 | ✅ 完成（P1-6：文本/PDF/图片三通道） |
 | §5.3 技能导入 + 前缀隔离 + 会话激活 | 全部 | ✅ 完成 |
 | §5.3 内置 `staffdeck-api-*` 4 包 | 可选 | ❌ P1-8 |
 | §5.4 知识同步 + stale 提示 + 索引 | 同步/落盘/坏标记 | ✅ 完成（索引 P2-3 打桩） |
 | §5.4 对话带知识引用 | 检索生效 | ✅ 完成（P0-1 已修） |
 | §5.5 `staffdeck_*` MCP 注册 + 白名单 | 全部 | ✅ 完成（真机 P2-2） |
 | §5.5 公共 MCP 直连 | 本地直连 | ❌ P1-7（服务端未下发） |
-| §5.6 回流上报 | 客户端发送 | ⚠️ P0-2 无调用方、P1-1 无队列、P1-2 无开关 |
-| §5.7 env 注入 | 构建期配置 | ⚠️ 实现有意偏离，文档未同步 |
-| §6 降级表 | hybrid 转本地 | ❌ P1-5 |
+| §5.6 回流上报 | 客户端发送 | ✅ 完成（P0-2 调用方、P1-1 队列、P1-2 开关均已补） |
+| §5.7 env 注入 | 构建期配置 | ✅ 已回写（实现走持久化设置，spec 现记录该偏离） |
+| §6 降级表 | hybrid 转本地 | ✅ 完成（P1-5） |
 
 ---
 
@@ -245,3 +276,5 @@ spec §5.7 要求 `STAFFDECK_BASE_URL / API_KEY / EXTERNAL_USER_ID` 走构建期
 8. **P1-11 D5 计划文档** —— 补文档时把上面几项一并记进去。
 
 P1-7（公共 MCP）、P1-8（内置技能包）、P2-1（scope 文案）依赖外部或属打磨，可穿插。
+
+> **2026-10-24 补记**：上面这段排期里的 P2-1 已在同日与 P2-5、P2-6 一并完成。剩余 P2-2 / P2-3 / P2-4 全部是**验证**项而非实现项：它们不缺代码，缺的是真机服务、启用的 embedding provider 与真实模型。这类项在 CI 里跑不出来，只能在有环境时逐条走查，因此不适合排进代码提交序列。

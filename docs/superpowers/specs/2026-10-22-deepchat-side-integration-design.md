@@ -275,6 +275,23 @@ export const digitalEmployeeSchema = z.object({
 - 构建时/运行时配置：`STAFFDECK_BASE_URL`、`STAFFDECK_API_KEY`、`STAFFDECK_EXTERNAL_USER_ID`（端上用户唯一标识生成规则：首启生成 UUID 并持久化）、`STAFFDECK_SYNC_INTERVAL`（知识同步间隔）；
 - 密钥存储走 deepchat 现有安全存储（对齐 MCP 凭证管理机制），不落明文配置文件。
 
+> **实现偏离（2026-10-24 回写，原为审计遗留的文档不一致）**
+>
+> 上述「构建期 env 注入」**没有按原文实现**，实际是**只从持久化设置读入**：`providerFactory.ts:16` 明写「配置只从持久化设置读入，factory 内不读 env / renderer 全局」，全仓 `grep process.env.STAFFDECK` 零命中。对应关系是
+>
+> | spec 变量 | 实际来源 |
+> |---|---|
+> | `STAFFDECK_BASE_URL` | 设置项 `digitalEmployee.staffdeckBaseUrl` |
+> | `STAFFDECK_API_KEY` | 设置项 `digitalEmployee.staffdeckApiKey`，值经 SecretStore 包装后存入 |
+> | `STAFFDECK_EXTERNAL_USER_ID` | 设置项 `digitalEmployee.externalUserId`，首启生成 UUID 并持久化（与原规则一致） |
+> | `STAFFDECK_SYNC_INTERVAL` | 设置项 `digitalEmployee.knowledgeSyncIntervalSeconds` |
+>
+> 这个偏离是有意的，且比原案更适合企业部署：底座地址与凭证由管理员在设置页填写并即时生效（保存后 `onConfigurationChanged` 重建 Provider），不需要为换一个租户重新打包；env 注入无法在已分发的客户端上修改，而这类接入恰恰最常变的就是地址与 key。
+>
+> 代价是**多端部署无法用镜像固化配置**，需要走设置页或预置设置库。若未来要做「开箱即用」的分发形态，应补一条「env 作为首次启动的默认值、设置页可覆盖」的路径，而不是回到纯 env。
+>
+> 另外 `external_user_id` 只以 **JSON body 字段** 传递，不发 `x-external-user-id` 请求头：服务端 `backend/` 全目录对该 header 零读取（见审计 P2-5）。
+
 ## 6. 错误处理与降级（deepchat 侧）
 
 | 故障            | 行为                                                   |
@@ -350,6 +367,16 @@ D1 → {D2, D3, D4} → D5；联调环境使用 StaffDeck M1 交付的 Compose �
 > **P1-1 补齐（2026-10-24，同一轮）**：本地队列与指数退避已落地，D5 的「可靠性」一栏现在名副其实。做法见 §5.6 的「P1-1 补充修订」与计划文档 §8。要点是 `ok` 的语义从「送达」改成「主进程接手」（落盘也算），否则 renderer 会与队列各重发一份。
 
 > **P1-6 补齐（2026-10-24，同一轮）**：D2 遗留的「远端首轮仅纯文本」已解决。核对源码后确认附件三条通道都可走（文本内联、PDF 提取文本、图片 `data_url`），只有 docx/xlsx/音频因 public_api 无附件上传端点而不支持，且会显式提示。做法见 §5.2 的「P1-6 补充修订」。里程碑里「远端执行能力对齐 D2 契约」这一栏至此不再有已知缺口。
+
+> **P2 运维可观测性补齐（2026-10-24，同一轮）**
+>
+> 三处「功能能用、但出错时看不出哪里错」的地方：
+>
+> 1. **`mcp:invoke` 缺 scope 无法识别**（§5.5）。列表端点要 `agents:read`，MCP 端点是独立的 `mcp:invoke`。只测连接会给出「连接成功」，而对话里一个 `staffdeck_*` 工具都没有。现补一次 `GET /api/v1/mcp/agents/{固定占位}` 探测：该处理器接收 `agent_id` 却不读取，校验 scope 后无条件 405，所以 405 = 有权限、401/403 = 缺权限，整个过程不建会话不调工具。MCP 端点的网络失败**不**报缺 scope——把网络故障说成权限问题会让人去改不需要改的东西。
+> 2. **`external_user_id` 双传法**（§5.7）。删掉 `x-external-user-id` 请求头：服务端 `backend/` 全目录零读取，留着只会让排查者以为列表按用户过滤。
+> 3. **hybrid 会话的重复归档**（§5.2 / §5.6）。审计原文担心的是「将来 hybrid 默认走远端会双份注入工具与技能」，那是假想风险；顺着同一条判据查到的真缺陷是：hybrid 会话被 `switchToRemote` 切到云端后，`reportBackflow` 仍只按 `executionMode !== 'remote'` 放行，于是一段已经在服务端归档的对话又被本地报了一遍，且事后无法区分哪份是真的。现补查绑定状态，查询失败按「已绑定」处理——与 `loadRemoteBinding` 的乐观方向刻意相反，因为这里的错误代价不可见。
+>
+> 剩下三项 P2-2 / P2-3 / P2-4 全是**验证**项：缺的不是代码，是真机服务、启用的 embedding provider 与真实模型，CI 里跑不出来。
 
 ## 9. 风险与开放问题
 
