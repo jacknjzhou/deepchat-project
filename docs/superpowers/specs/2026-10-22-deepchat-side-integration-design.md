@@ -244,6 +244,19 @@ export const digitalEmployeeSchema = z.object({
 >
 > 服务端实现 `backend/app/public_api/external_sessions.py`，客户端 `src/main/digital-employee/backflow.ts` + `backflowRoutes.ts`，采集 `src/renderer/src/features/chat-page/model/backflowEvents.ts` + `composables/useBackflowReporting.ts`。
 
+> **P1-1 补充修订：本地队列与指数退避（2026-10-24，`604a893f`）**
+>
+> 上面「游标只在成功后才前进」这句在实现成队列之后**必须改口径**，否则两边会重复计数：
+>
+> 1. **`ok` 的语义从「送达」改成「主进程接手」**。主进程发不出去时会先把事件落进本地 SQLite 队列（表 `digital_employee_backflow_queue`），那批事件已经有人负责；renderer 若仍保留游标，下一轮会重采同一批，队列里就多出一份。所以 `ok: true` + `reason: 'NETWORK'` 表示「已入队待补发」，renderer 照常前进游标。只有「主进程没接手」（关了回流 / 没配连接 / 事件被服务端明确拒收 / 落盘失败）才是 `ok: false`，此时才保留游标重发。
+> 2. **去重粒度决定了队列的粒度**：一行一个事件，唯一索引 `(session_id, event_id)`。一行一批会和服务端的单事件去重错位——重发时夹带一条已存事件，整批就被判成重复。
+> 3. **退避 30s 起、翻倍、封顶 30 分钟**。不带抖动：这里是单机单客户端，抖动只会让「第几次失败等多久」变得不可预测。**按会话分组发送**（事件端点路径里带会话 id），组内保持 `seq` 升序，否则管理端看到的是倒序对话。
+> 4. **哪些失败值得重试**：`NETWORK` / 5xx / 408 / 429。401 / 403 / 404 / 422 直接丢弃——重试一万次还是同一个结局，留着只会让队列变成永不消失的垃圾。
+> 5. **两条收尾规则**：队列里的事件超 7 天丢弃（长期离线会把 `batchLimit` 名额永远占满，补发成本高于归档价值）；**关掉回流时清空队列**——攒着不发等于把隐私开关做成摆设。
+> 6. **积压要看得见**。新增只读路由 `digitalEmployee.backflowQueueStatus`（只回条数与最早入队时间，不回任何对话内容），设置页据此提示「有 N 条对话尚未归档」。否则「暂时连不上」和「一直没归档」在界面上长得一样。
+>
+> 顺带修：`reportBackflow` 之前收了 `title` 但没往下传，服务端那条会话因此永远没有标题。
+
 ### 5.7 部署与配置注入
 
 - 构建时/运行时配置：`STAFFDECK_BASE_URL`、`STAFFDECK_API_KEY`、`STAFFDECK_EXTERNAL_USER_ID`（端上用户唯一标识生成规则：首启生成 UUID 并持久化）、`STAFFDECK_SYNC_INTERVAL`（知识同步间隔）；
@@ -319,7 +332,9 @@ D1 → {D2, D3, D4} → D5；联调环境使用 StaffDeck M1 交付的 Compose �
 > 1. **没有调用方**。`reportBackflow` 自 `bee793f5` 起就定义、导出、有单测，但 `.vue` 与 main 的 session/agent 目录零调用——没有任何一轮对话会被上报。补齐方式：`useBackflowReporting` 挂在聊天页，触点是「流结束」而非「用户发消息」（一轮可能含多轮工具调用，中途没有完整边界）。
 > 2. **发包必然 404**。本地执行的会话在服务端没有 `ChatSession` 行，`events:batch` 要求该行属于本凭证并在 `ExternalSessionBinding` 里登记。补齐方式：第一次上报先按 `external_session_id` 建会话（服务端按此键幂等），缓存服务端 id，404 时丢缓存重建一次。早期握手「通过」只是因为联调脚本手工调过 create-session。
 >
-> 仍未做：本地 SQLite 队列与指数退避重试（审计 P1-1，spec §5.6 有要求），当前是一次性 `flush()`，离线那一轮不会补发。
+> ~~仍未做：本地 SQLite 队列与指数退避重试（审计 P1-1，spec §5.6 有要求），当前是一次性 `flush()`，离线那一轮不会补发。~~
+>
+> **P1-1 补齐（2026-10-24，同一轮）**：本地队列与指数退避已落地，D5 的「可靠性」一栏现在名副其实。做法见 §5.6 的「P1-1 补充修订」与计划文档 §8。要点是 `ok` 的语义从「送达」改成「主进程接手」（落盘也算），否则 renderer 会与队列各重发一份。
 
 ## 9. 风险与开放问题
 
