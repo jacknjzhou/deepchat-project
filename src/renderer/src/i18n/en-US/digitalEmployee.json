@@ -92,7 +92,8 @@
       "runInProgress": "Another turn is still running in the cloud for this conversation. Wait for it to finish.",
       "sessionUnavailable": "Could not create the cloud session. Check the service configuration and retry.",
       "transportError": "Cannot reach the cloud service. Check your network and the base URL."
-    }
+    },
+    "skippedAttachments": "{count} attachment(s) could not be sent to the cloud ({names}); this reply does not include their contents."
   },
   "local": {
     "badge": "Local run"

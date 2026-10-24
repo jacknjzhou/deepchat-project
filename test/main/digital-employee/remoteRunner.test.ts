@@ -5,6 +5,7 @@ import {
   type StaffdeckRemoteRunnerDeps
 } from '../../../src/main/digital-employee/remoteRunner'
 import type { StaffdeckSseFrame } from '../../../src/main/digital-employee/sseParser'
+import type { MessageFile } from '../../../src/shared/types/agent-interface'
 
 const BINDING = {
   remoteSessionId: 'remote-1',
@@ -450,7 +451,13 @@ describe('StaffdeckRemoteRunner hybrid fallback', () => {
     const store = new Map<string, unknown>([
       [
         's1',
-        { remoteSessionId: 'remote-1', employeeId: 'emp-1', runId: null, lastEventId: null, executionMode }
+        {
+          remoteSessionId: 'remote-1',
+          employeeId: 'emp-1',
+          runId: null,
+          lastEventId: null,
+          executionMode
+        }
       ]
     ])
     harness.registry.get.mockImplementation((sessionId: string) => store.get(sessionId) ?? null)
@@ -534,5 +541,134 @@ describe('StaffdeckRemoteRunner hybrid fallback', () => {
       (entry) => entry.name === 'digitalEmployee.remoteRunUpdated'
     )
     expect(phases.at(-1)?.payload).not.toHaveProperty('fallbackToLocal')
+  })
+})
+
+describe('StaffdeckRemoteRunner attachments', () => {
+  const PNG =
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
+
+  function imageFile(): MessageFile {
+    return {
+      name: 'shot.png',
+      path: '/tmp/shot.png',
+      mimeType: 'image/png',
+      content: `data:image/png;base64,${PNG}`
+    }
+  }
+
+  it('forwards planned attachments on the first stream request', async () => {
+    const harness = createHarness()
+    replayFrames(harness.client, [frame('run.succeeded', { job_id: 'run-1' }, 1)])
+
+    await new StaffdeckRemoteRunner(harness.deps).run({
+      sessionId: 's1',
+      employeeId: 'emp-1',
+      input: '看图',
+      turnKey: 't',
+      files: [imageFile(), { name: 'notes.md', path: '/tmp/notes.md', content: '# hi' }]
+    })
+
+    const sent = harness.client.streamRun.mock.calls[0][0] as {
+      attachments?: Array<{ filename: string; kind: string }>
+    }
+    expect(sent.attachments?.map((item) => item.filename)).toEqual(['shot.png', 'notes.md'])
+    expect(sent.attachments?.map((item) => item.kind)).toEqual(['image', 'text'])
+  })
+
+  it('omits the attachments field entirely when nothing can be sent', async () => {
+    const harness = createHarness()
+    replayFrames(harness.client, [frame('run.succeeded', { job_id: 'run-1' }, 1)])
+
+    await new StaffdeckRemoteRunner(harness.deps).run({
+      sessionId: 's1',
+      employeeId: 'emp-1',
+      input: 'x',
+      turnKey: 't'
+    })
+
+    const sent = harness.client.streamRun.mock.calls[0][0] as Record<string, unknown>
+    // 空数组与缺字段服务端等价，但传空数组会让日志分不清「没附件」与「老客户端」。
+    expect(sent).not.toHaveProperty('attachments')
+  })
+
+  it('tells the renderer which attachments were dropped and why', async () => {
+    const harness = createHarness()
+    replayFrames(harness.client, [frame('run.succeeded', { job_id: 'run-1' }, 1)])
+
+    await new StaffdeckRemoteRunner(harness.deps).run({
+      sessionId: 's1',
+      employeeId: 'emp-1',
+      input: 'x',
+      turnKey: 't',
+      files: [{ name: 'deck.pptx', path: '/tmp/deck.pptx', content: 'x' }, imageFile()]
+    })
+
+    const started = harness.published.find(
+      (entry) =>
+        entry.name === 'digitalEmployee.remoteRunUpdated' &&
+        (entry.payload as { phase: string }).phase === 'started'
+    )
+    expect((started?.payload as { skippedAttachments?: unknown }).skippedAttachments).toEqual([
+      { name: 'deck.pptx', reason: 'unsupported_type' }
+    ])
+
+    // 附件仍然照常发出：一件失败不该拖累另一件。
+    const sent = harness.client.streamRun.mock.calls[0][0] as {
+      attachments?: Array<{ filename: string }>
+    }
+    expect(sent.attachments?.map((item) => item.filename)).toEqual(['shot.png'])
+  })
+
+  it('does not repeat the skip notice on later phases of the same turn', async () => {
+    const harness = createHarness()
+    replayFrames(harness.client, [
+      frame('run.output.delta', { content: 'ok' }, 1),
+      frame('run.succeeded', { job_id: 'run-1' }, 2)
+    ])
+
+    await new StaffdeckRemoteRunner(harness.deps).run({
+      sessionId: 's1',
+      employeeId: 'emp-1',
+      input: 'x',
+      turnKey: 't',
+      files: [{ name: 'deck.pptx', path: '/tmp/deck.pptx', content: 'x' }]
+    })
+
+    const phases = harness.published
+      .filter((entry) => entry.name === 'digitalEmployee.remoteRunUpdated')
+      .map((entry) => entry.payload as { phase: string; skippedAttachments?: unknown[] })
+    // 同一轮的所有相位共享同一份，通知不必每帧重复一次。
+    expect(phases.every((pay) => pay.skippedAttachments?.length === 1)).toBe(true)
+  })
+
+  it('clears the previous turn notice when the next turn has nothing dropped', async () => {
+    const harness = createHarness()
+    replayFrames(harness.client, [frame('run.succeeded', { job_id: 'run-1' }, 1)])
+    const runner = new StaffdeckRemoteRunner(harness.deps)
+
+    await runner.run({
+      sessionId: 's1',
+      employeeId: 'emp-1',
+      input: 'first',
+      turnKey: 't1',
+      files: [{ name: 'deck.pptx', path: '/tmp/deck.pptx', content: 'x' }]
+    })
+    harness.published.length = 0
+
+    await runner.run({
+      sessionId: 's1',
+      employeeId: 'emp-1',
+      input: 'second',
+      turnKey: 't2'
+    })
+
+    const started = harness.published.find(
+      (entry) =>
+        entry.name === 'digitalEmployee.remoteRunUpdated' &&
+        (entry.payload as { phase: string }).phase === 'started'
+    )
+    // 上一轮的告警不能挂在下一轮身上。
+    expect(started?.payload).not.toHaveProperty('skippedAttachments')
   })
 })

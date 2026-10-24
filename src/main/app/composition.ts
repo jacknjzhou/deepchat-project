@@ -37,7 +37,7 @@ import { ShortcutPresenter } from '../desktop/shortcut'
 import type { FileServicePort } from '@shared/types/file'
 import type { ToolchainKind } from '@shared/types/toolchains'
 import type { WorkspaceServicePort } from '@shared/types/workspace'
-import type { AssistantMessageBlock } from '@shared/types/agent-interface'
+import type { AssistantMessageBlock, SendMessageInput } from '@shared/types/agent-interface'
 import { projectFinalAssistantAnswer } from '@shared/lib/assistantDeliverySegments'
 import type { SkillMetadataSnapshotPort, SkillServicePort } from '@shared/types/skill'
 import type { SkillSyncServicePort } from '@shared/types/skillSync'
@@ -3447,9 +3447,7 @@ export async function createMainProcessControl(dependencies: {
       // 用户可能在主设置里删掉某个员工库：状态表还在，但向量库已不存在。
       // 交给 renderer 一个「查得到」的 id 才有意义，所以这里顺手校验一次。
       hasKnowledgeBase: (knowledgeBaseId) =>
-        knowledgeSettings
-          .getKnowledgeConfigs()
-          .some((config) => config.id === knowledgeBaseId)
+        knowledgeSettings.getKnowledgeConfigs().some((config) => config.id === knowledgeBaseId)
     })
 
     // 员工本地执行的准备工作（D4）：远端工具注册 + 技能包安装。
@@ -3825,7 +3823,7 @@ export async function createMainProcessControl(dependencies: {
         ? {
             remoteTurn: {
               handles: (sessionId: string) => remoteSessionRegistry.has(sessionId),
-              send: async (sessionId: string, content: { text: string }) => {
+              send: async (sessionId: string, content: SendMessageInput) => {
                 const binding = remoteSessionRegistry.get(sessionId)
                 if (!remoteRunner || !binding) {
                   // 绑定在 handles 与 send 之间被删除（例如用户切换执行位置）：
@@ -3840,7 +3838,9 @@ export async function createMainProcessControl(dependencies: {
                   sessionId,
                   employeeId: binding.employeeId,
                   input: content.text,
-                  turnKey: `${Date.now()}`
+                  turnKey: `${Date.now()}`,
+                  // 附件的可用性由 remoteRunner 按服务端接收能力裁剪，这里不做判断。
+                  ...(content.files?.length ? { files: content.files } : {})
                 })
                 return {
                   accepted: outcome.phase !== 'failed',

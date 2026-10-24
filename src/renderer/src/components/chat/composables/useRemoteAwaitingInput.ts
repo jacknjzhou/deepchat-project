@@ -1,6 +1,7 @@
 import { computed, getCurrentScope, onScopeDispose, ref, watch, type Ref } from 'vue'
 import type { DigitalEmployeeRemoteStatus } from '@api/DigitalEmployeeClient'
 import type { StaffdeckAwaitingInput } from '@shared/contracts/routes'
+import type { DigitalEmployeeSkippedAttachment } from '@shared/contracts/events'
 
 /** `digitalEmployee.remoteRunUpdated` 的最小形状；避免 renderer 依赖事件契约的全部细节。 */
 export interface RemoteRunUpdatedPayload {
@@ -11,6 +12,8 @@ export interface RemoteRunUpdatedPayload {
   messageCode?: string
   /** hybrid 会话失败后已退回本地执行；绑定表在 main，只有它能给出这个结论。 */
   fallbackToLocal?: boolean
+  /** 本轮未被服务端接收的本地附件；只有文件名与原因码，不含内容。 */
+  skippedAttachments?: DigitalEmployeeSkippedAttachment[]
   updatedAt: number
 }
 
@@ -43,6 +46,14 @@ export function useRemoteAwaitingInput(options: UseRemoteAwaitingInputOptions) {
    */
   const fellBackToLocal = ref(false)
 
+  /**
+   * 本轮被丢弃的附件。
+   *
+   * 与 `failureCode` 分开：run 可以完全成功，只是附件没送到——把它塞进错误码
+   * 会让一次正常的回答旁边挂一条红色失败提示。
+   */
+  const skippedAttachments = ref<DigitalEmployeeSkippedAttachment[]>([])
+
   // 只接受最后一次回查的结果：连续两轮追问时，先发后到的旧响应不能覆盖新结果。
   let lookupToken = 0
 
@@ -71,6 +82,10 @@ export function useRemoteAwaitingInput(options: UseRemoteAwaitingInputOptions) {
     // 放在相位分支之前，因为 `failed` 分支会调用 reset() 清掉临时状态。
     if (payload.fallbackToLocal) fellBackToLocal.value = true
 
+    // 附件提示跟着本轮走：主进程只在真正丢弃了东西时才下发该字段，
+    // 没有该字段 = 本轮没附件或全部送到，必须清掉上一轮的残留。
+    skippedAttachments.value = payload.skippedAttachments ?? []
+
     if (payload.phase === 'awaiting_input') {
       failureCode.value = null
       void loadStatus(payload.sessionId)
@@ -86,6 +101,7 @@ export function useRemoteAwaitingInput(options: UseRemoteAwaitingInputOptions) {
   watch(options.sessionId, () => {
     reset()
     fellBackToLocal.value = false
+    skippedAttachments.value = []
   })
 
   // 组件内使用时随作用域自动回收；脱离作用域调用（测试/工具函数）时由调用方 dispose。
@@ -99,6 +115,7 @@ export function useRemoteAwaitingInput(options: UseRemoteAwaitingInputOptions) {
     awaitingInput,
     failureCode,
     fellBackToLocal,
+    skippedAttachments,
     isAwaitingInput: computed(() => awaitingInput.value !== null),
     dispose: () => unsubscribe()
   }

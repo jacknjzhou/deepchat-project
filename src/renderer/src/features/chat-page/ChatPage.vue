@@ -167,7 +167,20 @@
             class="mx-auto w-full max-w-4xl rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300"
           >
             {{ t('digitalEmployee.hybrid.fellBackToLocal') }}
-            <span class="ml-1 opacity-80">{{ t('digitalEmployee.hybrid.fellBackToLocalHint') }}</span>
+            <span class="ml-1 opacity-80">{{
+              t('digitalEmployee.hybrid.fellBackToLocalHint')
+            }}</span>
+          </p>
+          <!--
+            附件没送到必须说一句：模型看不到它，回答会显得「理解能力不行」，
+            而真正的原因在传输层，用户无从自查。
+          -->
+          <p
+            v-if="remoteSkippedAttachmentMessage"
+            data-testid="chat-remote-skipped-attachments"
+            class="mx-auto w-full max-w-4xl rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300"
+          >
+            {{ remoteSkippedAttachmentMessage }}
           </p>
           <KnowledgeStaleBanner
             v-if="knowledgeNotice"
@@ -1364,7 +1377,8 @@ const { start: startChatPageEventBridge, stop: stopChatPageEventBridge } = useCh
 const {
   awaitingInput: remoteAwaitingInput,
   failureCode: remoteFailureCode,
-  fellBackToLocal: remoteFellBackToLocal
+  fellBackToLocal: remoteFellBackToLocal,
+  skippedAttachments: remoteSkippedAttachments
 } = useRemoteAwaitingInput({
   sessionId: computed(() => props.sessionId),
   client: digitalEmployeeClient
@@ -1372,6 +1386,22 @@ const {
 const remoteFailureMessage = computed(() =>
   remoteFailureCode.value ? t(staffdeckErrorCodeToI18nKey(remoteFailureCode.value)) : null
 )
+
+/**
+ * 附件没送到必须说出来。
+ *
+ * 服务端没有附件上传端点，图片之外的二进制文件只能走「本地先抽文本」这一条路，
+ * 而抽取能力并不覆盖所有格式。对话框里明摆着一个文件、模型却完全不知道它存在，
+ * 是比报错更难自查的失败——用户会以为是模型理解能力不行。
+ */
+const remoteSkippedAttachmentMessage = computed(() => {
+  const skipped = remoteSkippedAttachments.value
+  if (skipped.length === 0) return null
+  return t('digitalEmployee.remote.skippedAttachments', {
+    count: skipped.length,
+    names: skipped.map((item) => item.name).join('、')
+  })
+})
 
 // 本地知识同步可能过期：只对绑定了数字员工的会话查询，且失败静默。
 const knowledgeNotice = ref<{

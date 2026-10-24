@@ -134,6 +134,49 @@ describe('StaffdeckRemoteClient.streamRun', () => {
     expect(body.input).toBe('你好')
     expect(body.session_id).toBe('remote-1')
     expect(body.external_user_id).toBe('user-1')
+    // 没有附件时不带该字段：让服务端日志能区分「没附件」与「老客户端」。
+    expect(body).not.toHaveProperty('attachments')
+  })
+
+  it('sends attachment descriptors in the run body when present', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      streamResponse(['id: 1\nevent: run.succeeded\ndata: {}\n\n'], {
+        headers: { 'X-Run-ID': 'run-9' }
+      })
+    )
+    const client = new StaffdeckRemoteClient(config, fetchMock)
+
+    await client.streamRun(
+      {
+        employeeId: 'emp-1',
+        remoteSessionId: 'remote-1',
+        runKey: 'deepchat:local-1:turn-1',
+        input: '看图',
+        attachments: [
+          {
+            id: 'att_1',
+            filename: 'shot.png',
+            content_type: 'image/png',
+            size: 70,
+            kind: 'image',
+            data_url: 'data:image/png;base64,AAAA'
+          }
+        ]
+      },
+      () => {}
+    )
+
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body)
+    expect(body.attachments).toEqual([
+      {
+        id: 'att_1',
+        filename: 'shot.png',
+        content_type: 'image/png',
+        size: 70,
+        kind: 'image',
+        data_url: 'data:image/png;base64,AAAA'
+      }
+    ])
   })
 
   it('fails loudly when the response omits X-Run-ID', async () => {

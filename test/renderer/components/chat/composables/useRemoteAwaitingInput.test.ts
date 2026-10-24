@@ -11,6 +11,7 @@ type Listener = (payload: {
   runId?: string
   messageCode?: string
   fallbackToLocal?: boolean
+  skippedAttachments?: Array<{ name: string; reason: string }>
   updatedAt: number
 }) => void
 
@@ -41,7 +42,14 @@ function createHarness(statuses: Record<string, DigitalEmployeeRemoteStatus> = {
     }
   })
 
-  return { ...result, sessionId, remoteStatus, unobserve, emit: (payload: Parameters<Listener>[0]) => listener?.(payload), hasListener: () => listener !== null }
+  return {
+    ...result,
+    sessionId,
+    remoteStatus,
+    unobserve,
+    emit: (payload: Parameters<Listener>[0]) => listener?.(payload),
+    hasListener: () => listener !== null
+  }
 }
 
 const awaiting: StaffdeckAwaitingInput = {
@@ -237,8 +245,18 @@ describe('useRemoteAwaitingInput', () => {
       }
     })
 
-    listener!({ sessionId: 'session-1', employeeId: 'emp-1', phase: 'awaiting_input', updatedAt: 1 })
-    listener!({ sessionId: 'session-1', employeeId: 'emp-1', phase: 'awaiting_input', updatedAt: 2 })
+    listener!({
+      sessionId: 'session-1',
+      employeeId: 'emp-1',
+      phase: 'awaiting_input',
+      updatedAt: 1
+    })
+    listener!({
+      sessionId: 'session-1',
+      employeeId: 'emp-1',
+      phase: 'awaiting_input',
+      updatedAt: 2
+    })
     await vi.waitFor(() => expect(state.awaitingInput.value?.task_id).toBe('task-2'))
 
     // 先发后到的旧响应不得覆盖新结果
@@ -375,5 +393,89 @@ describe('useRemoteAwaitingInput hybrid fallback flag', () => {
 
     harness.sessionId.value = 'session-2'
     await vi.waitFor(() => expect(harness.fellBackToLocal.value).toBe(false))
+  })
+})
+
+describe('useRemoteAwaitingInput skipped attachments', () => {
+  it('starts with no skip notice', () => {
+    const harness = createHarness()
+
+    expect(harness.skippedAttachments.value).toEqual([])
+  })
+
+  it('carries the skipped attachment names for the banner copy', () => {
+    const harness = createHarness()
+
+    harness.emit({
+      sessionId: 'session-1',
+      employeeId: 'emp-1',
+      phase: 'started',
+      skippedAttachments: [
+        { name: 'deck.pptx', reason: 'unsupported_type' },
+        { name: 'huge.png', reason: 'image_too_large' }
+      ],
+      updatedAt: 1
+    })
+
+    // 只带名字与原因码：内容本身不进事件，避免把 3MB base64 塞进 IPC。
+    expect(harness.skippedAttachments.value).toEqual([
+      { name: 'deck.pptx', reason: 'unsupported_type' },
+      { name: 'huge.png', reason: 'image_too_large' }
+    ])
+  })
+
+  it('clears the notice on a later turn that dropped nothing', () => {
+    const harness = createHarness()
+
+    harness.emit({
+      sessionId: 'session-1',
+      employeeId: 'emp-1',
+      phase: 'started',
+      skippedAttachments: [{ name: 'deck.pptx', reason: 'unsupported_type' }],
+      updatedAt: 1
+    })
+    harness.emit({ sessionId: 'session-1', employeeId: 'emp-1', phase: 'started', updatedAt: 2 })
+
+    // 上一轮的告警挂在下一轮身上，会让人以为这轮也丢了附件。
+    expect(harness.skippedAttachments.value).toEqual([])
+  })
+
+  it('survives a phase change within the same turn', () => {
+    const harness = createHarness()
+
+    harness.emit({
+      sessionId: 'session-1',
+      employeeId: 'emp-1',
+      phase: 'started',
+      skippedAttachments: [{ name: 'deck.pptx', reason: 'unsupported_type' }],
+      updatedAt: 1
+    })
+    harness.emit({
+      sessionId: 'session-1',
+      employeeId: 'emp-1',
+      phase: 'completed',
+      skippedAttachments: [{ name: 'deck.pptx', reason: 'unsupported_type' }],
+      updatedAt: 2
+    })
+
+    // 附件没送到是这一整轮的事实，不因为 run 成功而变得不成立。
+    expect(harness.skippedAttachments.value).toHaveLength(1)
+    expect(harness.failureCode.value).toBeNull()
+  })
+
+  it('clears the notice when the user moves to another session', async () => {
+    const harness = createHarness()
+
+    harness.emit({
+      sessionId: 'session-1',
+      employeeId: 'emp-1',
+      phase: 'started',
+      skippedAttachments: [{ name: 'deck.pptx', reason: 'unsupported_type' }],
+      updatedAt: 1
+    })
+    expect(harness.skippedAttachments.value).toHaveLength(1)
+
+    harness.sessionId.value = 'session-2'
+    await vi.waitFor(() => expect(harness.skippedAttachments.value).toEqual([]))
   })
 })

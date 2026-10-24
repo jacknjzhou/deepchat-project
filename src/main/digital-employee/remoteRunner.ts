@@ -1,4 +1,4 @@
-import type { AssistantMessageBlock } from '@shared/types/agent-interface'
+import type { AssistantMessageBlock, MessageFile } from '@shared/types/agent-interface'
 import {
   staffdeckAwaitingInputSchema,
   type StaffdeckAwaitingInput,
@@ -12,6 +12,7 @@ import {
 } from './remoteClient'
 import type { RemoteSessionBinding } from './remoteSessionRegistry'
 import type { StaffdeckSseFrame } from './sseParser'
+import { planRemoteAttachments, type SkippedRemoteAttachment } from './remoteAttachments'
 
 /**
  * 远端 run 的执行编排：SSE → blocks → 落库 + 事件。
@@ -42,6 +43,11 @@ export interface RemoteRunInput {
   input: string
   /** 本地轮次标识，参与确定性幂等键 */
   turnKey: string
+  /**
+   * 本轮的本地附件。只在这一轮首发时透传：断线续传走 `runs/{id}/events`，
+   * 服务端已经从首个请求里存下了附件，重放一份只会制造重复描述符。
+   */
+  files?: MessageFile[]
 }
 
 export interface RemoteRunOutcome {
@@ -122,6 +128,15 @@ export class StaffdeckRemoteRunner {
   /** 同一会话同时只允许一轮：两轮争用同一远端会话会让 blocks 互相覆盖。 */
   private readonly running = new Set<string>()
 
+  /**
+   * 本轮被丢弃的附件，随相位事件下发给 renderer。
+   *
+   * 放实例字段而不是 `run` 的局部变量：`emitPhase` 在各条收尾路径里都要用，
+   * 逐层传参会污染每一个分支的签名。同一会话同时只有一轮（`running` 保证），
+   * 因此不会有交叉写入。
+   */
+  private skippedAttachments: SkippedRemoteAttachment[] = []
+
   constructor(private readonly deps: StaffdeckRemoteRunnerDeps) {}
 
   private get now(): number {
@@ -189,6 +204,9 @@ export class StaffdeckRemoteRunner {
     let lastEventId: string | null = binding.lastEventId
     let terminalEvent: string | null = null
 
+    const plan = planRemoteAttachments(input.files)
+    this.reportSkippedAttachments(input.sessionId, input.employeeId, plan.skipped)
+
     this.emitPhase(input.sessionId, input.employeeId, 'started', null, null)
 
     const onFrame: StaffdeckFrameHandler = (frame) => {
@@ -204,7 +222,8 @@ export class StaffdeckRemoteRunner {
           employeeId: input.employeeId,
           remoteSessionId: binding.remoteSessionId,
           runKey: `deepchat:${input.sessionId}:${input.turnKey}`,
-          input: input.input
+          input: input.input,
+          ...(plan.attachments.length ? { attachments: plan.attachments } : {})
         },
         onFrame
       )
@@ -481,7 +500,10 @@ export class StaffdeckRemoteRunner {
     })
     this.emitPhase(state.sessionId, employeeId, 'failed', runId, messageCode, fellBackToLocal)
 
-    return { ...this.failureOutcome(runId, state.messageId, messageCode, state.text), fellBackToLocal }
+    return {
+      ...this.failureOutcome(runId, state.messageId, messageCode, state.text),
+      fellBackToLocal
+    }
   }
 
   /**
@@ -516,8 +538,33 @@ export class StaffdeckRemoteRunner {
       ...(runId ? { runId } : {}),
       ...(messageCode ? { messageCode } : {}),
       ...(fallbackToLocal ? { fallbackToLocal: true } : {}),
+      ...(this.skippedAttachments.length ? { skippedAttachments: this.skippedAttachments } : {}),
       updatedAt: this.now
     })
+  }
+
+  /**
+   * 记下本轮被丢弃的附件，随下一次 `started` 事件一并告知。
+   *
+   * 不单独发一条事件：附件是本轮的属性，脱离某一轮去提示只会让用户不知道
+   * 说的是哪句话。这里的赋值发生在 `emitPhase('started')` 之前，因此首批事件
+   * 就一定带上它，而后续相位沿用同一份，直到下一轮覆盖。
+   */
+  private reportSkippedAttachments(
+    sessionId: string,
+    employeeId: string,
+    skipped: SkippedRemoteAttachment[]
+  ): void {
+    if (skipped.length === 0) {
+      this.skippedAttachments = []
+      return
+    }
+    this.skippedAttachments = skipped
+    console.warn(
+      `[digitalEmployee] ${skipped.length} attachment(s) not forwarded for session ${sessionId} / ${employeeId}: ${skipped
+        .map((item) => `${item.name}(${item.reason})`)
+        .join(', ')}`
+    )
   }
 
   /** 指数退避续传；全部失败返回 false，由调用方按传输失败收尾。 */

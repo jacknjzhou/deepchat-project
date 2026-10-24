@@ -6,6 +6,7 @@ import {
   type StaffdeckRunResult
 } from '@shared/contracts/routes'
 import { createSseParser, type StaffdeckSseFrame } from './sseParser'
+import type { StaffdeckAttachmentDescriptor } from './remoteAttachments'
 
 /**
  * StaffDeck Public API v1 的 HTTP 面。
@@ -69,6 +70,8 @@ export interface StreamRunInput {
   /** 确定性幂等键：同一次本地轮次重发不会在服务端产生第二个 run */
   runKey: string
   input: string
+  /** 已按服务端接收能力裁剪过的附件描述符；空数组表示本轮不带附件。 */
+  attachments?: StaffdeckAttachmentDescriptor[]
 }
 
 export interface StreamRunOutcome {
@@ -169,7 +172,9 @@ export class StaffdeckRemoteClient {
         session_id: input.remoteSessionId,
         external_user_id: this.config.externalUserId,
         session_mode: 'stateful',
-        metadata: { source: 'deepchat' }
+        metadata: { source: 'deepchat' },
+        // 空数组等价于不带该字段，但显式给出能让服务端日志区分「没附件」与「老客户端」。
+        ...(input.attachments?.length ? { attachments: input.attachments } : {})
       }),
       signal: AbortSignal.timeout(STREAM_IDLE_TIMEOUT_MS)
     })
