@@ -248,6 +248,8 @@ import { createKnowledgeSyncStateStore } from '@/digital-employee/knowledgeSyncS
 import { createDigitalEmployeeKnowledgeRoutes } from '@/digital-employee/knowledgeRoutes'
 import { provisionLocalKnowledgeBase } from '@/digital-employee/knowledgeProvisioning'
 import { createStaffdeckMcpRegistrar } from '@/digital-employee/mcpRegistration'
+import { createStaffdeckMcpReconciler } from '@/digital-employee/mcpReconcile'
+import { mcpServerNameForEmployee } from '@/digital-employee/employeeScope'
 import { createStaffdeckSkillSync } from '@/digital-employee/skillSync'
 import { createEmployeeProvisioner } from '@/digital-employee/provisioning'
 import type { EmployeeProvisioner } from '@/digital-employee/provisioning'
@@ -3501,6 +3503,34 @@ export async function createMainProcessControl(dependencies: {
       provisioner
     })
     employeeProvisioner = provisioner
+
+    /**
+     * 清理残留的 `staffdeck-*` MCP 注册（D4）。
+     *
+     * 注册只在「点开始对话」时发生；员工被删除、被改成 remote、或被停用之后
+     * 没人会再点它，那条注册就永久留在配置里，工具出现在所有会话中。
+     *
+     * 名单只认 **http 来源且仍启用** 的员工：降级到 mock 时列表里是假员工 id，
+     * 按它清理会把真实注册全删掉，所以那种情况直接返回 null 跳过整轮。
+     * hybrid 计入保留——它可能仍在本地执行。
+     */
+    const staffdeckMcpReconciler = createStaffdeckMcpReconciler({
+      mcpSettings: dependencies.mcpSettings,
+      stopServer: (name) => mcpService.stopServer(name),
+      mcpServerNameFor: mcpServerNameForEmployee,
+      listLocalEmployeeIds: async () => {
+        const provider = digitalEmployeeProviderHolder.current()
+        if (provider.source !== 'http') return null
+        const employees = await provider.list()
+        return employees
+          .filter((employee) => employee.enabled && employee.executionMode !== 'remote')
+          .map((employee) => employee.id)
+      }
+    })
+    // 启动时扫一遍。失败只记日志：清理是维护动作，不能挡住应用启动。
+    void staffdeckMcpReconciler().catch((error) => {
+      console.warn('[digitalEmployee] MCP registration cleanup failed', error)
+    })
 
     // Reading the switch with `!== false` rather than `=== true` is deliberate:
     // an unset key must mean "report", because switching reporting off by
