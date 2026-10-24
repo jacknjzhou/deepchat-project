@@ -314,6 +314,13 @@ D1 → {D2, D3, D4} → D5；联调环境使用 StaffDeck M1 交付的 Compose �
 
 > **D3 补交付（2026-10-23，缺口审计后）**：D3 原交付只做到「索引写进本地库」，没接「对话从本地库检索」，里程碑里的交付标志「本地对话带知识引用」实际未达成。补齐方式见 §5.4 的补充修订（新增 `digitalEmployee.knowledgeLocalBase` 窄契约 + 渲染侧改用本地库 id 寻址）。完整缺口清单见 `docs/superpowers/plans/2026-10-23-staffdeck-integration-gap-audit.md`。
 
+> **D5 交付记录（2026-10-24）**：已完成，计划见 `docs/superpowers/plans/2026-10-24-staffdeck-d5-backflow.md`。交付标志「管理端看板可见本地执行会话」在补齐两个缺陷后才成立：
+>
+> 1. **没有调用方**。`reportBackflow` 自 `bee793f5` 起就定义、导出、有单测，但 `.vue` 与 main 的 session/agent 目录零调用——没有任何一轮对话会被上报。补齐方式：`useBackflowReporting` 挂在聊天页，触点是「流结束」而非「用户发消息」（一轮可能含多轮工具调用，中途没有完整边界）。
+> 2. **发包必然 404**。本地执行的会话在服务端没有 `ChatSession` 行，`events:batch` 要求该行属于本凭证并在 `ExternalSessionBinding` 里登记。补齐方式：第一次上报先按 `external_session_id` 建会话（服务端按此键幂等），缓存服务端 id，404 时丢缓存重建一次。早期握手「通过」只是因为联调脚本手工调过 create-session。
+>
+> 仍未做：本地 SQLite 队列与指数退避重试（审计 P1-1，spec §5.6 有要求），当前是一次性 `flush()`，离线那一轮不会补发。
+
 ## 9. 风险与开放问题
 
 | 风险                                               | 缓解                                                                                                                                                                                                  |
