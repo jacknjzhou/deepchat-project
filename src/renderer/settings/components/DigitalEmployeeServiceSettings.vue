@@ -138,6 +138,48 @@
           </p>
         </div>
 
+        <div class="space-y-2 rounded-lg border border-border/60 p-3">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0 space-y-1">
+              <Label for="staffdeck-sync-interval" class="text-sm">
+                {{ t('digitalEmployee.service.syncIntervalLabel') }}
+              </Label>
+              <p class="text-xs text-muted-foreground">
+                {{ t('digitalEmployee.service.syncIntervalHint') }}
+              </p>
+            </div>
+            <div class="flex shrink-0 items-center gap-1.5">
+              <Input
+                id="staffdeck-sync-interval"
+                data-testid="digital-employee-sync-interval"
+                type="number"
+                :min="60"
+                :max="86400"
+                :step="60"
+                class="w-24"
+                :model-value="form.syncIntervalSeconds"
+                :disabled="!settingsReady || saving"
+                @update:model-value="onSyncIntervalInput"
+              />
+              <span class="text-xs text-muted-foreground">
+                {{ t('digitalEmployee.service.syncIntervalUnit') }}
+              </span>
+            </div>
+          </div>
+          <!-- 越界值不静默修正：用户填 10 却按 60 跑，比直接告诉他下限更让人困惑。 -->
+          <p
+            v-if="syncIntervalError"
+            data-testid="digital-employee-sync-interval-error"
+            class="flex items-start gap-1.5 text-xs text-destructive"
+          >
+            <Icon icon="lucide:triangle-alert" class="mt-0.5 size-3.5 shrink-0" />
+            <span>{{ t(syncIntervalError) }}</span>
+          </p>
+          <p v-else class="text-xs text-muted-foreground">
+            {{ t('digitalEmployee.service.syncIntervalEffective', { seconds: form.syncIntervalSeconds }) }}
+          </p>
+        </div>
+
         <div class="flex flex-wrap items-center gap-2">
           <DcButton
             variant="outline"
@@ -246,8 +288,31 @@ const form = reactive({
   externalUserId: '',
   apiKey: '',
   // 与 main 侧 `!== false` 一致：未设置过就是开启。
-  backflowEnabled: true
+  backflowEnabled: true,
+  // main 回传的是生效值，所以这里的初值只是占位，load 之后立刻被覆盖。
+  syncIntervalSeconds: 3600
 })
+
+/**
+ * 间隔非法时的文案键；`null` 表示当前输入可用。
+ *
+ * 与契约上下限一致（60–86400）：前端先拦一次，用户不必等保存失败才知道填错了。
+ * 空值也算非法——「不填」在用户心里的意思通常是「别同步」，而实际行为是回落默认，
+ * 两者差别很大，必须让他看到。
+ */
+const syncIntervalError = computed<string | null>(() => {
+  const value = form.syncIntervalSeconds
+  if (!Number.isFinite(value)) return 'digitalEmployee.service.syncIntervalInvalid'
+  if (value < 60) return 'digitalEmployee.service.syncIntervalTooShort'
+  if (value > 86400) return 'digitalEmployee.service.syncIntervalTooLong'
+  return null
+})
+
+const onSyncIntervalInput = (value: string | number): void => {
+  const parsed = typeof value === 'number' ? value : Number(value)
+  // 保持数字类型：契约是 int，传字符串会被 zod 以「类型不符」整单拒绝。
+  form.syncIntervalSeconds = Number.isFinite(parsed) ? Math.floor(parsed) : Number.NaN
+}
 
 const baseUrlInvalid = computed(() => {
   const value = form.baseUrl.trim()
@@ -266,6 +331,7 @@ const applyState = (next: DigitalEmployeeSettingsState): void => {
   form.baseUrl = next.baseUrl
   form.externalUserId = next.externalUserId
   form.backflowEnabled = next.backflowEnabled
+  form.syncIntervalSeconds = next.syncIntervalSeconds
   // 保存/清除后输入框总是回到空值，避免明文密钥停留或被当成本地副本。
   form.apiKey = ''
 }
@@ -298,7 +364,7 @@ const testConnection = async (): Promise<void> => {
 
 const save = async (): Promise<void> => {
   // 前端先拦一次，避免把明显非法的 URL 发到 main；main 仍会二次校验。
-  if (baseUrlInvalid.value) return
+  if (baseUrlInvalid.value || syncIntervalError.value) return
   saving.value = true
   saveError.value = false
   saved.value = false
@@ -309,6 +375,7 @@ const save = async (): Promise<void> => {
         baseUrl: form.baseUrl.trim(),
         externalUserId: form.externalUserId.trim(),
         backflowEnabled: form.backflowEnabled,
+        syncIntervalSeconds: form.syncIntervalSeconds,
         ...(form.apiKey.trim() ? { apiKey: form.apiKey.trim() } : {})
       })
     )

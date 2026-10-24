@@ -53,7 +53,14 @@
       "httpError": "服务返回异常状态，请稍后重试或联系服务管理员。",
       "networkError": "无法连接服务，请检查服务地址与网络。",
       "invalidPayload": "服务响应格式不符合预期，请确认服务版本。"
-    }
+    },
+    "syncIntervalLabel": "知识同步间隔",
+    "syncIntervalHint": "后台每隔这么久检查一次数字员工的知识库，有变化才下载。",
+    "syncIntervalUnit": "秒",
+    "syncIntervalEffective": "当前生效间隔：{seconds} 秒",
+    "syncIntervalInvalid": "请填写数字；留空不会关闭同步，而是回落到默认值。",
+    "syncIntervalTooShort": "间隔不能短于 60 秒；更短不会更实时，只会把服务端和本地索引一起打满。",
+    "syncIntervalTooLong": "间隔不能超过 86400 秒（一天）。"
   },
   "banner": {
     "degraded": "StaffDeck 服务暂不可用，当前展示本地 Mock 数字员工数据",
@@ -111,5 +118,10 @@
     "switchFailed": "切换失败，请稍后重试或检查服务配置。",
     "fellBackToLocal": "云端执行失败，已自动切回本地执行",
     "fellBackToLocalHint": "本会话后续消息由本地引擎执行，配置、技能与知识仍按当前设置生效。"
+  },
+  "provision": {
+    "degradedTitle": "部分能力未能就绪",
+    "degradedTools": "云端工具没有注册成功，这个员工的工具本轮不可用。对话本身不受影响。",
+    "degradedSkills": "有 {count} 个技能没有安装成功，本轮不会生效。对话本身不受影响。"
   }
 }

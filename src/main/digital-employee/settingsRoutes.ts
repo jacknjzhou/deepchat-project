@@ -10,6 +10,7 @@ import {
   type DigitalEmployeeTestMessageCode
 } from '@shared/contracts/routes'
 import { createRouteMap, type DeepchatRouteMap } from '@/routes/routeRegistry'
+import { DEFAULT_SYNC_INTERVAL_SECONDS } from './knowledgeSyncScheduler'
 import { EXTERNAL_USER_ID_HEADER } from './provider'
 
 const TEST_CONNECTION_TIMEOUT_MS = 10_000
@@ -72,8 +73,26 @@ const readState = (
   // `!== false` 与上报侧同一口径：未设置过必须读成「开启」，否则用户一进设置页
   // 看到的默认状态就和实际行为不一致。
   backflowEnabled:
-    deps.settings.get<boolean>(digitalEmployeeSettingsKeys.backflowEnabled) !== false
+    deps.settings.get<boolean>(digitalEmployeeSettingsKeys.backflowEnabled) !== false,
+  // 回传生效值：调度器在缺省/非法时按默认值跑，这里必须说同一个数，否则
+  // 设置页会显示成「未设置」，而后台其实一直在同步。
+  syncIntervalSeconds: readIntervalSeconds(deps)
 })
+
+/**
+ * 知识同步间隔的生效值。
+ *
+ * 与调度器同一口径：缺省、非法、非正数一律回落到 `DEFAULT_SYNC_INTERVAL_SECONDS`。
+ * 读同一份规则而不是在这里另写一遍，是为了让「设置页显示的」和「后台实际跑的」
+ * 永远是同一个数。
+ */
+const readIntervalSeconds = (deps: DigitalEmployeeSettingsDeps): number => {
+  const raw = deps.settings.get<number>(digitalEmployeeSettingsKeys.syncIntervalSeconds)
+  if (typeof raw !== 'number' || !Number.isFinite(raw) || raw <= 0) {
+    return DEFAULT_SYNC_INTERVAL_SECONDS
+  }
+  return Math.floor(raw)
+}
 
 /**
  * External User ID 首次为空时生成并持久化；生成必须幂等，不能每次 get 覆盖。
@@ -150,7 +169,8 @@ export function createDigitalEmployeeSettingsRoutes(
           digitalEmployeeSettingsKeys.enabled,
           digitalEmployeeSettingsKeys.baseUrl,
           digitalEmployeeSettingsKeys.externalUserId,
-          digitalEmployeeSettingsKeys.backflowEnabled
+          digitalEmployeeSettingsKeys.backflowEnabled,
+          digitalEmployeeSettingsKeys.syncIntervalSeconds
         ])
         const previousWrappedKey = deps.secretStore.getWrapped(digitalEmployeeSettingsKeys.apiKey)
 
@@ -162,6 +182,13 @@ export function createDigitalEmployeeSettingsRoutes(
           // 否则旧版 renderer 一保存就会把用户关掉的回流悄悄打开。
           if (input.backflowEnabled !== undefined) {
             deps.settings.set(digitalEmployeeSettingsKeys.backflowEnabled, input.backflowEnabled)
+          }
+          // 与 backflowEnabled 同理：省略是「保留」，不是「改回默认」。
+          if (input.syncIntervalSeconds !== undefined) {
+            deps.settings.set(
+              digitalEmployeeSettingsKeys.syncIntervalSeconds,
+              input.syncIntervalSeconds
+            )
           }
           if (wrappedKey) {
             deps.secretStore.setWrapped(digitalEmployeeSettingsKeys.apiKey, wrappedKey)

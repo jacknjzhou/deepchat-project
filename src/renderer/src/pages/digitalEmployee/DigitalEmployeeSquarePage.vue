@@ -285,6 +285,7 @@ import {
   DialogHeader,
   DialogTitle
 } from '@shadcn/components/ui/dialog'
+import { notifyRenderer } from '@renderer-notifications/rendererNotificationPort'
 import { useDigitalEmployeeStore } from '@/stores/digitalEmployeeStore'
 import { useMcpStore } from '@/stores/mcp'
 import type { DigitalEmployee } from '@shared/contracts/routes'
@@ -349,6 +350,36 @@ const openDetail = (employee: DigitalEmployee) => {
   openingQuestion.value = ''
 }
 
+/**
+ * 把「准备工作降级了什么」告诉用户。
+ *
+ * 准备失败一律不阻断对话（这是设计），但什么都不说就变成静默降级：用户以为
+ * 员工带着全部技能和工具在跑，实际少了几个，只会觉得「这个员工怎么不会用工具」。
+ *
+ * 跳转之后再提示，而不是跳转之前：提示条挂在聊天页上，页面还没切过去就发通知
+ * 会被旧页面的卸载冲掉。
+ */
+const reportDegradedProvisioning = (
+  provisioned: Awaited<ReturnType<typeof store.provisionEmployee>>
+): void => {
+  if (!provisioned) return
+  // remote 员工本来就不在本地准备，`skipped` 不是降级信号。
+  if (provisioned.skipped !== null) return
+
+  const missingSkills = provisioned.failedSkills.length
+  const toolsUnavailable = !provisioned.toolsReady
+  if (!toolsUnavailable && missingSkills === 0) return
+
+  notifyRenderer({
+    kind: 'warning',
+    code: 'digitalEmployee.provision.degraded',
+    title: t('digitalEmployee.provision.degradedTitle'),
+    description: toolsUnavailable
+      ? t('digitalEmployee.provision.degradedTools')
+      : t('digitalEmployee.provision.degradedSkills', { count: missingSkills })
+  })
+}
+
 const startConversation = async () => {
   const employee = detailEmployee.value
   // 忙碌中禁止重复点击，避免重复创建会话
@@ -371,6 +402,7 @@ const startConversation = async () => {
     })
     detailEmployee.value = null
     await router.push({ name: 'chat' })
+    reportDegradedProvisioning(provisioned)
     void sessionId
   } catch (error) {
     console.error('[DigitalEmployeeSquarePage] startConversation failed', error)

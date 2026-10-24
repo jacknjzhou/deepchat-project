@@ -17,6 +17,8 @@ export interface DigitalEmployeeSettingsDraft {
   apiKey?: string
   /** 省略表示保留当前值：老版本保存时不会带上这个字段。 */
   backflowEnabled?: boolean
+  /** 同上：省略表示保留当前值。 */
+  syncIntervalSeconds?: number
 }
 
 export function createDigitalEmployeeSettingsClient(bridge: DeepchatBridge = getDeepchatBridge()) {

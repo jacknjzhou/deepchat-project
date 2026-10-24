@@ -3500,7 +3500,31 @@ export async function createMainProcessControl(dependencies: {
       skillSync: staffdeckSkillSync
     })
     const digitalEmployeeProvisioningRoutes = createDigitalEmployeeProvisioningRoutes({
-      provisioner
+      provisioner,
+      /**
+       * 首轮对话触发知识同步：用户第一次跟这个员工说话时先把知识拉下来，
+       * 否则只能等定时轮（默认 1h），期间检索永远为空。
+       *
+       * 读完本轮员工就立即返回，同步在后台跑——它要下载几十个概念并建向量索引，
+       * 同步等它会把「开始对话」卡住几十秒。
+       */
+      triggerKnowledgeSync: (employeeId) => {
+        void (async () => {
+          const scheduler = knowledgeSyncScheduler
+          if (!scheduler) return
+          const provider = digitalEmployeeProviderHolder.current()
+          // 降级到 mock 时员工 id 是假的，拿去同步只会在服务端刷 404。
+          if (provider.source !== 'http') return
+          const employees = await provider.list()
+          const employee = employees.find((item) => item.id === employeeId)
+          // 没配知识库的员工占多数：交给调度器整轮跑一遍纯属浪费。
+          if (!employee || employee.knowledgeBaseIds.length === 0) return
+          await scheduler.runOnce()
+        })().catch((error) => {
+          // 同步失败只意味着这轮检索不到知识，绝不能影响对话本身。
+          console.warn('[digitalEmployee] first-turn knowledge sync failed', error)
+        })
+      }
     })
     employeeProvisioner = provisioner
 

@@ -41,7 +41,14 @@ export const DigitalEmployeeSettingsStateSchema = z.object({
   externalUserId: z.string(),
   apiKeyConfigured: z.boolean(),
   /** 本地执行的对话是否回流归档。缺省视为开启，见 `backflowEnabled` 键的说明。 */
-  backflowEnabled: z.boolean()
+  backflowEnabled: z.boolean(),
+  /**
+   * 知识同步的轮询间隔（秒）。
+   *
+   * 回传**生效值**而不是原始配置：用户没设置过时是默认值，回传 `null` 会让
+   * 设置页显示成「未设置」，而后台其实按 3600 在跑。
+   */
+  syncIntervalSeconds: z.number().int().positive()
 })
 
 export const digitalEmployeeSettingsGetRoute = defineRouteContract({
@@ -60,7 +67,14 @@ export const digitalEmployeeSettingsSaveRoute = defineRouteContract({
       /** 空字符串或省略表示保留已存密钥 */
       apiKey: z.string().max(512).optional(),
       /** 省略表示保留当前值：老版本 renderer 不会带这个字段。 */
-      backflowEnabled: z.boolean().optional()
+      backflowEnabled: z.boolean().optional(),
+      /**
+       * 知识同步间隔（秒）。省略表示保留当前值。
+       *
+       * 下限 60 秒：更短的间隔不会更实时（同步本身要下载并建索引），只会把
+       * 服务端和本地嵌入模型一起打满。
+       */
+      syncIntervalSeconds: z.number().int().min(60).max(86_400).optional()
     })
     .strict(),
   output: DigitalEmployeeSettingsStateSchema

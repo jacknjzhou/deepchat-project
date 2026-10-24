@@ -164,7 +164,9 @@ describe('digitalEmployeeSettings routes', () => {
       baseUrl: '',
       externalUserId: 'user-1',
       apiKeyConfigured: true,
-      backflowEnabled: true
+      backflowEnabled: true,
+      // 未设置过时回传生效值而不是 null：后台按 3600 在跑，界面必须说同一个数。
+      syncIntervalSeconds: 3600
     })
     expect(JSON.stringify(result)).not.toContain('sd_live_secret')
     expect(JSON.stringify(result)).not.toContain('wrapped:')
@@ -245,6 +247,58 @@ describe('digitalEmployeeSettings routes', () => {
       expect.anything()
     )
     expect(result.backflowEnabled).toBe(false)
+  })
+
+  it('persists the knowledge sync interval when supplied', async () => {
+    const result = (await harness.handlers.save({
+      enabled: true,
+      baseUrl: 'https://sd.example',
+      externalUserId: 'user-1',
+      syncIntervalSeconds: 1800
+    })) as { syncIntervalSeconds: number }
+
+    expect(harness.settings.set).toHaveBeenCalledWith(
+      'digitalEmployee.knowledgeSyncIntervalSeconds',
+      1800
+    )
+    expect(result.syncIntervalSeconds).toBe(1800)
+  })
+
+  it('leaves the sync interval untouched when the caller omits it', async () => {
+    harness.settingsStore.set('digitalEmployee.knowledgeSyncIntervalSeconds', 900)
+
+    const result = (await harness.handlers.save({
+      enabled: true,
+      baseUrl: 'https://sd.example',
+      externalUserId: 'user-1'
+    })) as { syncIntervalSeconds: number }
+
+    // 省略是「保留」，不是「改回默认」——旧版 renderer 保存一次就把用户的设置冲掉了。
+    expect(harness.settings.set).not.toHaveBeenCalledWith(
+      'digitalEmployee.knowledgeSyncIntervalSeconds',
+      expect.anything()
+    )
+    expect(result.syncIntervalSeconds).toBe(900)
+  })
+
+  it('reports the effective default when the stored interval is unusable', async () => {
+    harness.settingsStore.set('digitalEmployee.knowledgeSyncIntervalSeconds', 0)
+
+    const result = (await harness.handlers.get()) as { syncIntervalSeconds: number }
+
+    // 0 会让调度器回落到 3600；界面若照抄 0 就会显示「不同步」，与事实相反。
+    expect(result.syncIntervalSeconds).toBe(3600)
+  })
+
+  it('rejects an interval below the floor instead of silently clamping it', async () => {
+    await expect(
+      harness.handlers.save({
+        enabled: true,
+        baseUrl: 'https://sd.example',
+        externalUserId: 'user-1',
+        syncIntervalSeconds: 10
+      })
+    ).rejects.toThrow()
   })
 
   it('wraps a new key before persisting it', async () => {

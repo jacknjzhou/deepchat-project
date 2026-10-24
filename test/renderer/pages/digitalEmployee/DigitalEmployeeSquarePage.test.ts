@@ -49,6 +49,8 @@ const configurationChangedListenerRef: { current: (() => void) | null } = { curr
 
 const pushMock = vi.fn(async () => {})
 
+const notifyRenderer = vi.hoisted(() => vi.fn())
+
 const mcpStubStore = {
   tools: [] as Array<{ function: { name: string } }>,
   loadTools: vi.fn(async () => {})
@@ -88,6 +90,7 @@ const dcEmptyStub = defineComponent({
 
 async function setup() {
   vi.resetModules()
+  notifyRenderer.mockClear()
   stubStore.employees = [
     makeEmployee(),
     makeEmployee({ id: 'emp-2', name: '数据分析师', role: '分析师', capabilities: ['数据分析'], sops: [], knowledgeBaseIds: [] }),
@@ -119,6 +122,9 @@ async function setup() {
   }))
   vi.doMock('vue-router', () => ({
     useRouter: () => ({ push: pushMock })
+  }))
+  vi.doMock('@renderer-notifications/rendererNotificationPort', () => ({
+    notifyRenderer
   }))
   const DigitalEmployeeSquarePage = (
     await import('../../../../src/renderer/src/pages/digitalEmployee/DigitalEmployeeSquarePage.vue')
@@ -293,6 +299,103 @@ describe('DigitalEmployeeSquarePage', () => {
       stubStore.employees[0],
       expect.objectContaining({ activeSkillNames: ['de-emp-1-writing'] })
     )
+  })
+
+  it('says nothing when provisioning was fully successful', async () => {
+    const { wrapper } = await setup()
+    await wrapper.get('[data-testid="digital-employee-card-emp-1"]').trigger('click')
+    await flushPromises()
+
+    stubStore.provisionEmployee.mockResolvedValue({
+      employeeId: 'emp-1',
+      skipped: null,
+      toolsReady: true,
+      installedSkills: 1,
+      failedSkills: [],
+      skillNames: ['de-emp-1-writing'],
+      failures: []
+    })
+
+    await wrapper.get('[data-testid="digital-employee-start-button"]').trigger('click')
+    await flushPromises()
+
+    expect(notifyRenderer).not.toHaveBeenCalled()
+  })
+
+  it('warns when the cloud tools never registered', async () => {
+    const { wrapper } = await setup()
+    await wrapper.get('[data-testid="digital-employee-card-emp-1"]').trigger('click')
+    await flushPromises()
+
+    stubStore.provisionEmployee.mockResolvedValue({
+      employeeId: 'emp-1',
+      skipped: null,
+      toolsReady: false,
+      installedSkills: 1,
+      failedSkills: [],
+      skillNames: ['de-emp-1-writing'],
+      failures: ['mcp']
+    })
+
+    await wrapper.get('[data-testid="digital-employee-start-button"]').trigger('click')
+    await flushPromises()
+
+    // 静默降级会让用户以为员工带着工具在跑，只觉得「它怎么不会用工具」。
+    expect(notifyRenderer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: 'warning',
+        description: 'digitalEmployee.provision.degradedTools'
+      })
+    )
+    expect(pushMock).toHaveBeenCalledWith({ name: 'chat' })
+  })
+
+  it('warns with the count when some skills failed to install', async () => {
+    const { wrapper } = await setup()
+    await wrapper.get('[data-testid="digital-employee-card-emp-1"]').trigger('click')
+    await flushPromises()
+
+    stubStore.provisionEmployee.mockResolvedValue({
+      employeeId: 'emp-1',
+      skipped: null,
+      toolsReady: true,
+      installedSkills: 1,
+      failedSkills: ['broken-pkg'],
+      skillNames: ['de-emp-1-writing'],
+      failures: ['skills']
+    })
+
+    await wrapper.get('[data-testid="digital-employee-start-button"]').trigger('click')
+    await flushPromises()
+
+    expect(notifyRenderer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: 'warning',
+        description: expect.stringContaining('degradedSkills')
+      })
+    )
+  })
+
+  it('keeps quiet when provisioning was skipped, which is not a degradation', async () => {
+    const { wrapper } = await setup()
+    await wrapper.get('[data-testid="digital-employee-card-emp-1"]').trigger('click')
+    await flushPromises()
+
+    stubStore.provisionEmployee.mockResolvedValue({
+      employeeId: 'emp-1',
+      skipped: 'NOT_LOCAL',
+      toolsReady: false,
+      installedSkills: 0,
+      failedSkills: [],
+      skillNames: [],
+      failures: []
+    })
+
+    await wrapper.get('[data-testid="digital-employee-start-button"]').trigger('click')
+    await flushPromises()
+
+    // remote 员工本来就不在本地准备，`skipped` 不是降级信号。
+    expect(notifyRenderer).not.toHaveBeenCalled()
   })
 
   it('starts the conversation even when provisioning throws', async () => {

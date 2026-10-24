@@ -53,7 +53,14 @@
       "httpError": "The service returned an error status. Try again later or contact the administrator.",
       "networkError": "Cannot reach the service. Check the base URL and your network.",
       "invalidPayload": "The service response did not match the expected format. Check the service version."
-    }
+    },
+    "syncIntervalLabel": "Knowledge sync interval",
+    "syncIntervalHint": "How often the background job checks each employee's knowledge bases; nothing is downloaded unless something changed.",
+    "syncIntervalUnit": "seconds",
+    "syncIntervalEffective": "Effective interval: {seconds} seconds",
+    "syncIntervalInvalid": "Enter a number. Leaving it empty does not disable sync — it falls back to the default.",
+    "syncIntervalTooShort": "The interval cannot be shorter than 60 seconds; it would not be more current, only busier for the server and the local index.",
+    "syncIntervalTooLong": "The interval cannot exceed 86400 seconds (one day)."
   },
   "banner": {
     "degraded": "StaffDeck service is unavailable. Showing local mock digital employees.",
@@ -111,5 +118,10 @@
     "switchFailed": "Switch failed. Retry later or check the service configuration.",
     "fellBackToLocal": "Cloud execution failed and fell back to local execution",
     "fellBackToLocalHint": "Later messages use the local engine; configuration, skills and knowledge still apply."
+  },
+  "provision": {
+    "degradedTitle": "Some capabilities are not ready",
+    "degradedTools": "The cloud tools did not register, so this employee cannot use them in this session. The conversation itself is unaffected.",
+    "degradedSkills": "{count} skill(s) failed to install and will not apply this session. The conversation itself is unaffected."
   }
 }
