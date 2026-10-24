@@ -126,6 +126,8 @@ export function createDigitalEmployeeClient(bridge: DeepchatBridge = getDeepchat
   async function backflow(input: {
     employeeId: string
     sessionId: string
+    /** 会话标题，只在首次上报（服务端建会话）时用到。 */
+    title?: string
     events: BackflowEventInput[]
   }): Promise<DigitalEmployeeBackflowResult> {
     const result = await bridge.invoke(digitalEmployeeBackflowRoute.name, input)

@@ -39,6 +39,7 @@
     "backflowEnabledHint": "Every locally executed turn (messages, tool calls, token usage) is archived to StaffDeck for administrator review.",
     "backflowDisabledWarning": "Off: locally executed conversations are not archived and administrators cannot see them.",
     "backflowSaveHint": "Applies together with Save below.",
+    "backflowPending": "{count} conversation(s) not archived yet; they will be retried once the connection recovers.",
     "testConnection": "Test connection",
     "save": "Save",
     "clearApiKey": "Clear API key",

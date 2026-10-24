@@ -256,6 +256,9 @@ import type { EmployeeProvisioner } from '@/digital-employee/provisioning'
 import { createDigitalEmployeeProvisioningRoutes } from '@/digital-employee/provisioningRoutes'
 import { createStaffdeckBackflow } from '@/digital-employee/backflow'
 import type { StaffdeckBackflow } from '@/digital-employee/backflow'
+import { BackflowQueueTable } from '@/digital-employee/data/tables/backflowQueue'
+import { createBackflowRetryWorker } from '@/digital-employee/backflowRetry'
+import type { BackflowRetryWorker } from '@/digital-employee/backflowRetry'
 import { createDigitalEmployeeBackflowRoutes } from '@/digital-employee/backflowRoutes'
 import { createSkillSyncStateStore } from '@/digital-employee/skillSyncState'
 import { RecognitionTaskManager } from '@/documents/taskManager'
@@ -709,6 +712,8 @@ export async function createMainProcessControl(dependencies: {
   let employeeProvisioner: EmployeeProvisioner | undefined
   // 同上：配置变更要丢弃按旧凭证建立的服务端会话 id 缓存。
   let staffdeckBackflow: StaffdeckBackflow | undefined
+  // 回流补发器：离线那几轮对话靠它从本地队列里补发出去。
+  let backflowRetryWorker: BackflowRetryWorker | undefined
   let cliComputeService: CliComputeService
   let cliAudioTranscriptionService: CliAudioTranscriptionService
   let cliOcrService: CliOcrService
@@ -2981,6 +2986,7 @@ export async function createMainProcessControl(dependencies: {
     await runDestroyStep('acpRuntime.shutdown', () => acpRuntimeOwner.shutdown())
     await runDestroyStep('autoWatchScheduler.stop', () => autoWatchScheduler?.stop())
     await runDestroyStep('knowledgeSyncScheduler.stop', () => knowledgeSyncScheduler?.stop())
+    await runDestroyStep('backflowRetryWorker.stop', () => backflowRetryWorker?.stop())
     await runDestroyStep('mainDatabase.close', () => mainDatabase.close())
     await runDestroyStep('shortcutPresenter.destroy', () => shortcutPresenter.destroy())
     await runDestroyStep('notificationService.clearAllNotifications', () =>
@@ -3413,6 +3419,9 @@ export async function createMainProcessControl(dependencies: {
       employeeProvisioner?.reset()
       // 服务端会话 id 是按旧凭证建的，新凭证在绑定表里看不到它们，必须重建。
       staffdeckBackflow?.reset()
+      // 换完凭证立刻试一次积压：那批事件此前可能就是被旧地址/旧 key 挡住的，
+      // 等满一个 tick 只是让用户多等半分钟才看到归档补齐。
+      backflowRetryWorker?.kick()
       publishDeepchatEvent('digitalEmployee.configurationChanged', { changedAt: Date.now() })
     }
     const digitalEmployeeRemoteRoutes = createDigitalEmployeeRemoteRoutes({
@@ -3578,8 +3587,23 @@ export async function createMainProcessControl(dependencies: {
       fetchImpl: fetch
     })
     staffdeckBackflow = staffdeckBackflowInstance
+
+    // 队列落盘在主库：它是待发的业务数据，不是可重建的缓存，重启后必须还在。
+    const backflowQueue = new BackflowQueueTable(mainDatabase.getDatabase())
+    const backflowRetry = createBackflowRetryWorker({
+      queue: backflowQueue,
+      backflow: staffdeckBackflowInstance,
+      isEnabled: () =>
+        dependencies.settingsStore.get<boolean>(digitalEmployeeSettingsKeys.backflowEnabled) !==
+        false
+    })
+    backflowRetryWorker = backflowRetry
+    backflowRetry.start()
+
     const digitalEmployeeBackflowRoutes = createDigitalEmployeeBackflowRoutes({
-      backflow: staffdeckBackflowInstance
+      backflow: staffdeckBackflowInstance,
+      queue: backflowQueue,
+      retryWorker: backflowRetry
     })
 
     const knowledgeCacheDir = path.join(app.getPath('userData'), 'digital-employee-knowledge')

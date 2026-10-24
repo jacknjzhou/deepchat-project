@@ -414,7 +414,10 @@ import {
   digitalEmployeeKnowledgeLocalBaseRoute,
   digitalEmployeeKnowledgeStatusRoute
 } from './routes/digitalEmployeeKnowledge.routes'
-import { digitalEmployeeBackflowRoute } from './routes/digitalEmployeeBackflow.routes'
+import {
+  digitalEmployeeBackflowQueueStatusRoute,
+  digitalEmployeeBackflowRoute
+} from './routes/digitalEmployeeBackflow.routes'
 import { digitalEmployeeProvisionRoute } from './routes/digitalEmployeeProvisioning.routes'
 import {
   digitalEmployeeSettingsClearApiKeyRoute,
@@ -871,6 +874,7 @@ const DEEPCHAT_ROUTE_CATALOG_PART_1 = {
   [digitalEmployeeKnowledgeStatusRoute.name]: digitalEmployeeKnowledgeStatusRoute,
   [digitalEmployeeKnowledgeLocalBaseRoute.name]: digitalEmployeeKnowledgeLocalBaseRoute,
   [digitalEmployeeBackflowRoute.name]: digitalEmployeeBackflowRoute,
+  [digitalEmployeeBackflowQueueStatusRoute.name]: digitalEmployeeBackflowQueueStatusRoute,
   [digitalEmployeeProvisionRoute.name]: digitalEmployeeProvisionRoute,
   [documentsGetRoute.name]: documentsGetRoute,
   [documentsUpsertRoute.name]: documentsUpsertRoute,

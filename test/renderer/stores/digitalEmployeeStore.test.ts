@@ -333,6 +333,38 @@ describe('digitalEmployeeStore', () => {
     })
   })
 
+  it('reportBackflow passes the title so the remote session gets a name', async () => {
+    // 标题只在首次建远端会话时用一次；store 吞掉它就等于服务端那条会话永远没名字。
+    const store = useDigitalEmployeeStore()
+    await store.fetchEmployees()
+
+    await store.reportBackflow({
+      employeeId: 'finance',
+      sessionId: 'session-1',
+      title: '报销查询',
+      events: [{ type: 'message', eventId: 'e1', role: 'user', content: 'hi' }]
+    })
+
+    expect(digitalEmployeeClientMock.backflow).toHaveBeenCalledWith(
+      expect.objectContaining({ title: '报销查询' })
+    )
+  })
+
+  it('reportBackflow omits the title rather than sending an empty string', async () => {
+    const store = useDigitalEmployeeStore()
+    await store.fetchEmployees()
+
+    await store.reportBackflow({
+      employeeId: 'finance',
+      sessionId: 'session-1',
+      events: [{ type: 'message', eventId: 'e1', role: 'user', content: 'hi' }]
+    })
+
+    // 传空串会让服务端建出一条无标题会话，界面上看起来像「标题丢了」。
+    const payload = digitalEmployeeClientMock.backflow.mock.calls.at(-1)?.[0]
+    expect(payload).not.toHaveProperty('title')
+  })
+
   it('reportBackflow never reports a remote employee', async () => {
     // A remote conversation already lives on the server; filing it again would
     // show the operator two copies of every message.

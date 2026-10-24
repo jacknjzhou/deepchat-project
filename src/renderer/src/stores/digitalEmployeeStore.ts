@@ -408,7 +408,14 @@ export const useDigitalEmployeeStore = defineStore('digitalEmployee', () => {
     const employee = employees.value.find((item) => item.id === input.employeeId)
     if (!employee || employee.executionMode === 'remote') return null
     try {
-      return await client.backflow(input)
+      // `title` 必须一路带到主进程：它只在首次建远端会话时用一次，漏了就不是
+      // 「标题为空」而是「服务端那条会话永远没有标题」。
+      return await client.backflow({
+        employeeId: input.employeeId,
+        sessionId: input.sessionId,
+        ...(input.title ? { title: input.title } : {}),
+        events: input.events
+      })
     } catch (error) {
       console.warn('[digitalEmployee] backflow failed', error)
       return null

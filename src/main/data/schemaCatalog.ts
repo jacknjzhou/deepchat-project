@@ -36,6 +36,7 @@ import { AgentCatalogSettingsTable } from '@/agent/acp/catalog/data/settingsTabl
 import { NewSessionActiveSkillsTable } from '@/session/data/tables/newSessionActiveSkills'
 import { NewSessionDisabledAgentToolsTable } from '@/session/data/tables/newSessionDisabledAgentTools'
 import { SettingsActivityTable } from '@/settings/data/tables/settingsActivity'
+import { BackflowQueueTable } from '@/digital-employee/data/tables/backflowQueue'
 import { DocumentTemplatesTable } from '@/documents/data/tables/documentTemplates'
 import { DocumentsTable } from '@/documents/data/tables/documents'
 import { DocumentTasksTable } from '@/documents/data/tables/documentTasks'
@@ -360,6 +361,10 @@ const CATALOG_DEFINITIONS: CatalogDefinition[] = [
     createTable: (db) => new SettingsActivityTable(db)
   },
   {
+    name: 'digital_employee_backflow_queue',
+    createTable: (db) => new BackflowQueueTable(db)
+  },
+  {
     name: 'cron_jobs',
     createTable: (db) => new CronJobsTable(db)
   },
@@ -530,6 +535,7 @@ export function createMainSchemaCatalog(db: Database.Database): MainSchemaCatalo
   const activeSkills = new NewSessionActiveSkillsTable(db)
   const disabledAgentTools = new NewSessionDisabledAgentToolsTable(db)
   const settingsActivity = new SettingsActivityTable(db)
+  const backflowQueue = new BackflowQueueTable(db)
   const cronJobs = new CronJobsTable(db)
   const cronJobRuns = new CronJobRunsTable(db)
   const cronJobDeliveries = new CronJobDeliveriesTable(db)
@@ -573,6 +579,7 @@ export function createMainSchemaCatalog(db: Database.Database): MainSchemaCatalo
     activeSkills,
     disabledAgentTools,
     settingsActivity,
+    backflowQueue,
     cronJobs,
     cronJobRuns,
     cronJobDeliveries,

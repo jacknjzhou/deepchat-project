@@ -136,6 +136,18 @@
           <p v-else class="text-xs text-muted-foreground">
             {{ t('digitalEmployee.service.backflowSaveHint') }}
           </p>
+          <!-- 积压必须看得见：否则「暂时没归档」和「一直没归档」在界面上长一样，
+               用户只能靠猜。只报条数，不回传任何对话内容。 -->
+          <p
+            v-if="backflowPending > 0"
+            data-testid="digital-employee-backflow-pending"
+            class="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-400"
+          >
+            <Icon icon="lucide:clock" class="mt-0.5 size-3.5 shrink-0" />
+            <span>{{
+              t('digitalEmployee.service.backflowPending', { count: backflowPending })
+            }}</span>
+          </p>
         </div>
 
         <div class="space-y-2 rounded-lg border border-border/60 p-3">
@@ -176,7 +188,11 @@
             <span>{{ t(syncIntervalError) }}</span>
           </p>
           <p v-else class="text-xs text-muted-foreground">
-            {{ t('digitalEmployee.service.syncIntervalEffective', { seconds: form.syncIntervalSeconds }) }}
+            {{
+              t('digitalEmployee.service.syncIntervalEffective', {
+                seconds: form.syncIntervalSeconds
+              })
+            }}
           </p>
         </div>
 
@@ -254,7 +270,10 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Icon } from '@iconify/vue'
-import type { DigitalEmployeeSettingsState, DigitalEmployeeTestMessageCode } from '@shared/contracts/routes'
+import type {
+  DigitalEmployeeSettingsState,
+  DigitalEmployeeTestMessageCode
+} from '@shared/contracts/routes'
 import { createDigitalEmployeeSettingsClient } from '@api/DigitalEmployeeSettingsClient'
 import { Alert, AlertDescription, AlertTitle } from '@shadcn/components/ui/alert'
 import { Input } from '@shadcn/components/ui/input'
@@ -280,6 +299,13 @@ const saveError = ref(false)
 const showApiKey = ref(false)
 const clearConfirmOpen = ref(false)
 const testResult = ref<{ ok: boolean; messageCode: DigitalEmployeeTestMessageCode } | null>(null)
+/**
+ * 补发队列里还没归档的事件数。
+ *
+ * 取一次而不是持续轮询：设置页停留时间短，轮询只是白白多打 IPC；而用户真要确认
+ * 是否在恢复，重新进一次这一页就够了。
+ */
+const backflowPending = ref(0)
 
 // apiKey 初始恒为空：renderer 从不读取已保存的明文密钥。
 const form = reactive({
@@ -341,6 +367,8 @@ const loadSettings = async (): Promise<void> => {
   try {
     applyState(await client.get())
     settingsReady.value = true
+    // 与设置并行取，不阻塞表单：积压提示是附加信息，不是表单内容。
+    backflowPending.value = (await client.backflowQueueStatus()).pending
   } catch {
     loadFailed.value = true
   }

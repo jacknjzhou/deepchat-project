@@ -1,6 +1,7 @@
 import type { DeepchatBridge } from '@shared/contracts/bridge'
 import { digitalEmployeeConfigurationChangedEvent } from '@shared/contracts/events'
 import {
+  digitalEmployeeBackflowQueueStatusRoute,
   digitalEmployeeSettingsClearApiKeyRoute,
   digitalEmployeeSettingsGetRoute,
   digitalEmployeeSettingsSaveRoute,
@@ -9,6 +10,18 @@ import {
   type DigitalEmployeeTestMessageCode
 } from '@shared/contracts/routes'
 import { getDeepchatBridge } from './core'
+
+/**
+ * 补发队列的积压情况。
+ *
+ * 与设置本身放同一个 client 而不是另起一个文件：它唯一的用途是让设置页的
+ * 回流开关能说清「现在还有 N 条没归档」，两者总是出现在同一屏。
+ */
+export interface DigitalEmployeeBackflowQueueStatus {
+  pending: number
+  due: number
+  oldestCreatedAt: number | null
+}
 
 export interface DigitalEmployeeSettingsDraft {
   enabled: boolean
@@ -58,7 +71,24 @@ export function createDigitalEmployeeSettingsClient(bridge: DeepchatBridge = get
     return bridge.on(digitalEmployeeConfigurationChangedEvent.name, () => listener())
   }
 
-  return { get, save, testConnection, clearApiKey, onConfigurationChanged }
+  /**
+   * 读取补发队列的积压情况。
+   *
+   * 查询失败一律按「没有积压」处理：这是纯展示用的信息，为它弹一个错误提示
+   * 反而会让人以为回流出问题了。
+   */
+  async function backflowQueueStatus(): Promise<DigitalEmployeeBackflowQueueStatus> {
+    try {
+      return (await bridge.invoke(
+        digitalEmployeeBackflowQueueStatusRoute.name,
+        {}
+      )) as DigitalEmployeeBackflowQueueStatus
+    } catch {
+      return { pending: 0, due: 0, oldestCreatedAt: null }
+    }
+  }
+
+  return { get, save, testConnection, clearApiKey, backflowQueueStatus, onConfigurationChanged }
 }
 
 export type DigitalEmployeeSettingsClient = ReturnType<typeof createDigitalEmployeeSettingsClient>

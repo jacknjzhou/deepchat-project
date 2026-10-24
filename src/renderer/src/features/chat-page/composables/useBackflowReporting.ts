@@ -9,13 +9,17 @@ import { collectBackflowEvents } from '../model/backflowEvents'
  * 触点选在「流结束」而不是「用户发消息」：一轮可能包含多轮工具调用，中途没有
  * 一个完整的边界，只有结算之后消息记录才是终态。
  *
- * 三条必须守住的约束：
+ * 四条必须守住的约束：
  *
  * - **永不阻塞对话**。上报是 fire-and-forget，任何失败都只静默记日志。
- * - **游标只在成功后前进**。失败时不动游标，下一轮把同一批重发一次；服务端按
- *   单事件 id 去重，所以重发是安全的，而丢掉游标会在归档里留一个洞。
+ * - **游标在「主进程接手」后前进**，不只是「送达后」。主进程发不出去时会落进
+ *   本地队列按退避补发，那批事件已经有人负责，renderer 再重采只会让两边重复
+ *   计数。真正需要保留游标的只有「主进程没接手」（关了回流、没配连接、事件被
+ *   服务端明确拒收）。
  * - **只报本地执行的员工**。远端员工的对话本来就在服务端，重报会让管理端看到
  *   每条消息两份。这个判断在 store 里也有一层，这里是避免白跑一次 IPC。
+ * - **切换会话要重置游标**。游标是模块级 Map，不清就会把上一个会话的进度
+ *   当成这个会话的基线，整个窗口被跳过。
  */
 
 /**
@@ -58,7 +62,8 @@ export function useBackflowReporting(options: UseBackflowReportingOptions): void
       title: employee.name,
       events: collected.events
     })
-    // `null` 是 IPC 层异常，`ok: false` 是服务端拒绝——两种都不前进游标。
+    // `null` 是 IPC 层异常，`ok: false` 是主进程没接手（关了回流/没配连接/被拒收）。
+    // 两种都要保留游标，让下一轮重发同一批。
     if (!result?.ok) return
     if (collected.nextOrderSeq !== null) {
       reportedThrough.set(sessionId, collected.nextOrderSeq)
@@ -68,7 +73,8 @@ export function useBackflowReporting(options: UseBackflowReportingOptions): void
   // 只关心「这个会话刚刚结束一轮」。`isStreaming` 在流被别的会话接管时也会
   // 变 false，所以要同时看它落到哪个会话上，否则会把别处的会话当成自己结束。
   watch(
-    () => messageStore.isStreaming && messageStore.currentStreamSessionId === options.sessionId.value,
+    () =>
+      messageStore.isStreaming && messageStore.currentStreamSessionId === options.sessionId.value,
     (streaming, wasStreaming) => {
       if (!streaming && wasStreaming) {
         void flush(options.sessionId.value).catch(() => undefined)

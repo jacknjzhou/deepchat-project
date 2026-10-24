@@ -18,6 +18,7 @@
   "startConversation": "Start conversation",
   "startConversationFailed": "Échec du démarrage de la conversation. Veuillez réessayer plus tard",
   "service": {
+    "backflowPending": "{count} conversation(s) not archived yet; they will be retried once the connection recovers.",
     "description": "Connect to the StaffDeck digital employee service and manage its base URL, deployment API key and external user id in one place.",
     "connection": "StaffDeck connection",
     "connectionDescription": "When enabled the employee catalog is loaded from StaffDeck; the app falls back to local data when the service is unavailable.",
