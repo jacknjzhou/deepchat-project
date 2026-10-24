@@ -622,7 +622,8 @@ git commit -m "docs(digital-employee): record staffdeck d2 verification and revi
 **开放项（需在 Task 6 用真实运行结果确认）**：
 1. `run.status` 的 phase 取值全集（目前源码只看到 `planning`/`received`/`cancelled`），是否可作为细粒度进度提示。
 2. `GET /runs/{id}/result` 在 `awaiting_input` 场景下的 status 到底是 `succeeded` 还是 `awaiting_input`——`runs.py:495-496` 只允许 succeeded，而 `jobs.py` 侧 status 枚举含 `awaiting_input`。若实际返回非 succeeded，则改为调用 `GET /agents/{id}/sessions/{sid}`（`sessions.py:189-200` 恒返回 `awaiting_input`）。
-3. 附件透传：`AgentRunCreate.attachments` 接受 `ChatAttachmentRead` 形状（`session_schema.py:258-270`），但 deepchat 的 `MessageFile` 与之字段不同，D2 先不传附件（远端首轮仅纯文本），附件能力留到 D2 后续或 D5。
+3. ~~附件透传：`AgentRunCreate.attachments` 接受 `ChatAttachmentRead` 形状（`session_schema.py:258-270`），但 deepchat 的 `MessageFile` 与之字段不同，D2 先不传附件（远端首轮仅纯文本），附件能力留到 D2 后续或 D5。~~
+   **已于 2026-10-24 在 P1-6 补齐**：`remoteAttachments.ts` 把本地附件裁成服务端可接收的三种通道（文本内联、PDF 提取文本、图片 `data_url`），其余类型明确跳过并在聊天页提示。详见审计文档 P1-6。
 
 ### Task 6 实测结论（2026-10-23，本地 StaffDeck 服务 + 真实 client/runner）
 
@@ -634,7 +635,7 @@ git commit -m "docs(digital-employee): record staffdeck d2 verification and revi
 |---|---|---|
 | 1 | `run.status` 的 phase **只有 `planning` 一个值**，不能当细粒度进度 | `core/agent_loop.py:338` 是唯一 `_stream_status(...)` 调用点；取消走独立事件 `stream_cancelled`（其 payload 的 `phase` 为 `cancelled`，事件名映射成 `run.cancelled`），不经过 `run.status` |
 | 2 | awaiting_input 时 job 仍 `succeeded`，`/result` 返回 200，`awaiting_input` 取 `result_json` 顶层 | `public_api/jobs.py:418-428` handler 返回后无条件 `_terminalize_job(status="succeeded")`；`APIJob.status` 无 `awaiting_input` 取值。**不改调 sessions 端点** |
-| 3 | 附件不通传 | `ChatAttachmentRead`（`session_schema.py:258-270`）与 `MessageFile` 异构，D2 远端首轮纯文本 |
+| 3 | ~~附件不通传~~ **已于 2026-10-24 修复（P1-6）** | `ChatAttachmentRead`（`session_schema.py:258-270`）与 `MessageFile` 异构；现由 `remoteAttachments.ts` 做字段映射与能力裁剪 |
 
 **链路实测结果（3 项全绿）：**
 
@@ -649,7 +650,7 @@ git commit -m "docs(digital-employee): record staffdeck d2 verification and revi
 
 **已知限制（不阻塞 D2 交付）：**
 - 追问链路端到端需服务端配置可用模型；D2 侧的 `awaitingInput` 解析、`remoteStatus` 回查与提示条渲染均有单测覆盖。
-- 附件透传未实现（开放项 3）。
+- ~~附件透传未实现（开放项 3）~~ **已于 2026-10-24 修复（P1-6）**：仅 docx/xlsx/音频等无可信通道的格式仍不支持，且会显式提示用户。
 
 
 ## 实施结果（2026-10-23，代码已落地并提交）
@@ -674,7 +675,7 @@ git commit -m "docs(digital-employee): record staffdeck d2 verification and revi
 
 1. deepchat 的 `EXTERNAL_USER_ID_HEADER` 仍在分发请求里发送。已确认惰性无害（分发端点不消费），但同一条 `external_user_id` 有两套传法容易误导后续维护，建议下次动 D1 Provider 时一并清理。
 2. Task 6 的三条链路中，**追问续跑未能在本机走通真实路径**：`awaiting_input` 只在真实 LLM 走到 SOP 的 `expected_user_info` 收集步骤时产生（`harness_v2_engine.py:1503-1512`），而本地库 `model_configs` 为空。D2 侧的 `awaitingInput` 解析、`remoteStatus` 回查、提示条渲染均有单测覆盖，但端到端需服务端配好模型后复验。
-3. 附件透传未实现（`ChatAttachmentRead` 与 `MessageFile` 异构），远端首轮仅纯文本。
+3. ~~附件透传未实现（`ChatAttachmentRead` 与 `MessageFile` 异构），远端首轮仅纯文本。~~ **已于 2026-10-24 修复（P1-6）**。
 4. `tsc -p tsconfig.node.json` 有 10 个既有错误，全部在 `*/data/database.ts`（`better-sqlite3-multiple-ciphers` 具名类型），与 D2 无关。
 5. renderer 全量回归在本机（4GB 默认堆）会 OOM，须按目录分批 + `--maxWorkers=1` 运行。本轮分批结果：`api`/`utils`/`stores`/`components` 有 3 个**既有**失败文件（`documentsClient`（`listTasks` 已改传 `limit:200` 而测试未同步，源于 `aa1e0fd8`）、`pluginCatalogStore`、`providerStore`/`ModelProviderSettings`），经 `git show --name-only` 逐个核对 5 个 D2 提交均未触碰这些文件；其余 16 个目录全绿。
 

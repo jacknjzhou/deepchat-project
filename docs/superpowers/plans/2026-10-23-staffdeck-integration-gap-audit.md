@@ -13,11 +13,11 @@
 | 层 | 含义 | 数量 | 状态（2026-10-24） |
 |---|---|---|---|
 | **P0 真断链** | 代码写完了、测试也过了，但端到端跑起来功能不生效 | 3 | **全部已修** |
-| **P1 能力缺失** | spec/计划明确要求，仓库里找不到实现 | 11 | 已修 5，剩 6 |
+| **P1 能力缺失** | spec/计划明确要求，仓库里找不到实现 | 11 | 已修 6，剩 5 |
 | **P2 验证与运维缺口** | 功能可用，但未验证或有误判风险 | 6 | 未动 |
 
-> **进度（2026-10-24）**：P0-1（`b6c553b0`）、P0-2（并行进程 `eaa22907`）、P0-3 + P1-5（`4c392c2f`）、P1-10（`913ecb3c`）、P1-2 + P1-3 + P1-4 + P1-9（`cbe212da`）、P1-1（`604a893f`）已完成。
-> 剩余：P1-6（附件）、P1-7（公共 MCP，阻塞于服务端）、P1-8（内置技能包，可选）、P2 全部。
+> **进度（2026-10-24）**：P0-1（`b6c553b0`）、P0-2（并行进程 `eaa22907`）、P0-3 + P1-5（`4c392c2f`）、P1-10（`913ecb3c`）、P1-2 + P1-3 + P1-4 + P1-9（`cbe212da`）、P1-1（`604a893f`）、P1-6（本轮）已完成。
+> 剩余：P1-7（公共 MCP，阻塞于服务端）、P1-8（内置技能包，可选）、P2 全部。
 
 最需要立刻知道的一条：**D3 的知识同步与对话检索之间没有接线**。同步把向量索引写进了 `de-{employeeId}` 本地库，而对话检索查的是 payload 里的远端 `knowledgeBaseIds`（`kb_xxx`）——查不到配置直接抛错，被 `.catch(() => [])` 吞掉，表现为「永远召回不到任何知识」。同步下的 25 个概念全在另一个库里，没有任何检索入口指向它。（**已于 2026-10-23 修复**，见 P0-1。）
 
@@ -135,9 +135,29 @@ spec §6 错误处理表：「远端 runs 中断 → Last-Event-ID 续传；**�
 
 `remoteRunner.ts` 只有 `degradedCode` 上报，没有 fallback 分支；`grep -c hybrid src/main/digital-employee/remoteRunner.ts` = **0**。hybrid 会话流断了就只是报错。
 
-### P1-6 附件透传未实现（D2）
+### P1-6 附件透传未实现（D2）——**已修（本轮）**
 
 `remoteClient.createSession`（:124-139）与 remote run 的 body 都没有 `attachments`。D2 已知限制里写明「留待后续」，但 spec §7 与 D1 骨架并未把它标记为可选项，且 D3/D5 也没有接手。
+
+> **修复方式**：新增 `src/main/digital-employee/remoteAttachments.ts` 做「本地附件 → 服务端描述符」的裁剪，`remoteRunner` 在首次 `streamRun` 时透传，`composition` 把 `content.files` 接下去（此前只取了 `content.text`）。
+>
+> 动手前先核对了服务端的真实接收能力，结论与原判断**相反**——原先以为「服务端会剥掉客户端文本、且无 API Key 可用的上传端点，所以只能透图片」，实际是：
+>
+> | 通道 | 服务端事实 | 结论 |
+> |---|---|---|
+> | 文本 | `public_api/runs.py:190` 直接 `ChatAttachmentRead.model_validate`，**不经过** `validate_chat_turn_attachments`（那只在 `api/chat.py:1019,1094` 的会话 cookie 路径上）；`harness_attachments.py:132` 的 `elif attachment.text` 会把文本写进 workspace | **可用**，内联 `text` |
+> | PDF | 同上分支，note 明确写「PDF 附件保存的是服务端提取文本」 | **可用**，送本地已提取的 markdown |
+> | 图片 | `_validated_image_data_url` 仍会二次校验：解码字节数须与 `size` **完全相等**、≤4MB、魔数匹配 `content_type` | **可用**，`data_url` |
+> | docx/xlsx/音频等 | `POST /api/attachments` 走 `get_current_user` 会话鉴权，API Key 进不去 | **不可用**，明确跳过并告知 |
+>
+> 三个实现细节：
+> 1. `sha256` **一律不传**——一旦带上，服务端会去 `read_staged_chat_attachment` 找从未上传过的暂存原件；
+> 2. 图片 `size` 必须用 base64 解码后的字节数（服务端做严格相等比较，差 1 字节整条作废），`image/jpg` 这类别名要连 data URL 前缀一起改写成标准 MIME；
+> 3. 单轮载荷设 8MB 预算——run 请求体会原样存进 `APIJob.request_json` 并参与幂等回放比对，不设限时 8 张 4MB 图会变成 40MB+ 的 SQLite 行。
+>
+> 被跳过的附件不只写日志：`digitalEmployee.remoteRunUpdated` 事件新增 `skippedAttachments`（只有文件名与原因码，不含内容），聊天页据此给一条 amber 提示。理由：对话框里明摆着一个文件、模型却完全不知道它存在，比报错更难自查——用户只会觉得「这个员工理解能力不行」。
+>
+> 测试：`remoteAttachments.test.ts` 18 例（体积/别名/白名单/预算/顺序/稳定 id）、`remoteRunner.test.ts` +5 例（透传、空数组省略、跳过上报、同轮不重复、跨轮清除）、`remoteClient.test.ts` +2 例（请求体有无 `attachments`）、`useRemoteAwaitingInput.test.ts` +5 例。
 
 ### P1-7 公共 MCP 工具直连未实现（D4/spec §5.5 第 3 条）
 

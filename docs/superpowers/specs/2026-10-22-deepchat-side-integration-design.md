@@ -127,12 +127,25 @@ export const digitalEmployeeSchema = z.object({
 >
 > 1. **`run.status` 的 phase 只有一个取值 `planning`**。产生点是 `core/agent_loop.py:338` 唯一一处 `_stream_status(..., "planning", "正在规划本轮任务", ...)`；取消路径走独立事件 `stream_cancelled`（映射为 `run.cancelled`），其 payload 里的 `phase` 是 `cancelled` 而非 `run.status`。结论：`run.status` 不能用作细粒度进度提示，D2 不消费它（保持现状）。
 > 2. **`awaiting_input` 场景下 job 仍是 `succeeded`**。`public_api/jobs.py:418-428` 的 handler 返回后无条件 `_terminalize_job(..., status="succeeded", stage="completed")`，`APIJob.status` 状态机只有 `queued / running / succeeded / failed / cancelled`，不存在 `awaiting_input`。因此 `GET /runs/{id}/result` 的 `status != "succeeded"` 守卫不会在追问场景误报 409，`awaiting_input` 从 `result_json` 顶层字段取（`runs.py:307`）——与 D2 现有实现一致，无需改调 `GET /sessions/{id}`。
-> 3. **附件在 D2 不传**。`AgentRunCreate.attachments` 接受 `ChatAttachmentRead`（`session_schema.py:258-270`），与 deepchat 的 `MessageFile` 字段不同构；D2 远端首轮仅纯文本，附件能力留待后续。
+> 3. ~~**附件在 D2 不传**。`AgentRunCreate.attachments` 接受 `ChatAttachmentRead`（`session_schema.py:258-270`），与 deepchat 的 `MessageFile` 字段不同构；D2 远端首轮仅纯文本，附件能力留待后续。~~ **已于 2026-10-24 补齐，见下方「P1-6 补充修订」。**
 >
 > 实测同时确认了两个此前只能从源码推断的行为：
 >
 > - **服务端把执行期错误当作正文回复**：未配置默认模型时，流里推的是 `run.output.delta` 分片（内容为「Harness v2 执行出错（HARNESS_V2_ERROR）：…」），并以 `run.succeeded` 正常结束，`/result` 的 `reply` 也是这段文本。也就是说 `run.failed` 不是唯一的失败表达——正文可能是错误说明。UI 因此不能把「有正文」等同于「执行成功」，失败提示只由 `remoteRunUpdated` 的 `phase` 与 `messageCode` 驱动。
 > - **`Idempotency-Key` 语义已验证**：同 key 同 body 重放返回同一 `job_id` 的完整流；同 key 不同 body 返回 409 `IDEMPOTENCY_CONFLICT`（problem+json，取 `code`）。D2 用 `deepchat:{sessionId}:{turnId}` 作确定性键，重试不会产生第二个 run。
+
+> **P1-6 补充修订：附件透传的真实边界（2026-10-24）**
+>
+> 原判断「服务端会剥掉客户端文本、且没有 API Key 能用的上传端点」只对了一半，动工时按源码重新核对后修正如下：
+>
+> 1. **文本其实是通的**。`public_api/runs.py:190` 对 `payload["attachments"]` 只做 `ChatAttachmentRead.model_validate`，**没有**调用 `validate_chat_turn_attachments`——后者只在 `api/chat.py:1019,1094` 那条走会话 cookie（`get_current_user`）的路径上。所以客户端的 `text` 不会像网页端那样被剥掉，会一路进到 `harness_attachments.py:132` 的 `elif attachment.text` 分支，被写成 workspace 文件。**「无上传端点」只意味着拿不到原始二进制，不意味着拿不到文本。**
+> 2. **PDF 同理**，但服务端 note 已写明这种情况下保存的是「服务端提取文本」，因此客户端送本地已提取的 markdown 是正确的，而不是把二进制塞成 `text` 冒名顶替。
+> 3. **图片必须过 `_validated_image_data_url` 的二次校验**：base64 解码后的字节数要和 `size` **完全相等**（差 1 字节整条作废）、≤4MB、魔数与 `content_type` 一致、且 data URL 前缀必须逐字等于 `data:{content_type};base64,`。因此 `image/jpg` 这类别名要连前缀一起改写成 `image/jpeg`。
+> 4. **不传 `sha256`**。一旦带上，服务端会走 `read_staged_chat_attachment` 去查暂存原件，而这条路径从未上传过，白跑一趟还会误导日志。
+> 5. **单轮载荷要设预算**。run 的请求体会原样存进 `APIJob.request_json` 并参与幂等回放比对，不设限时 8 张 4MB 图会变成 40MB+ 的 SQLite 行。当前定 8MB。
+> 6. **丢掉附件必须说出来**。docx/xlsx/音频没有可信通道，只能跳过；但「对话框里挂着文件、模型全然不知」比报错更难自查——用户只会归因于模型变笨。因此 `remoteRunUpdated` 带 `skippedAttachments`（仅文件名与原因码），聊天页渲染一条 amber 提示。
+>
+> 落地：`src/main/digital-employee/remoteAttachments.ts`（纯函数裁剪 + 18 例单测），接线在 `remoteRunner.execute` 的首发 `streamRun`；续传走 `runs/{id}/events`，不重发附件。
 
 > **D2 补充修订：hybrid 的「可切换」与「失败降级」（2026-10-24）**
 >
@@ -335,6 +348,8 @@ D1 → {D2, D3, D4} → D5；联调环境使用 StaffDeck M1 交付的 Compose �
 > ~~仍未做：本地 SQLite 队列与指数退避重试（审计 P1-1，spec §5.6 有要求），当前是一次性 `flush()`，离线那一轮不会补发。~~
 >
 > **P1-1 补齐（2026-10-24，同一轮）**：本地队列与指数退避已落地，D5 的「可靠性」一栏现在名副其实。做法见 §5.6 的「P1-1 补充修订」与计划文档 §8。要点是 `ok` 的语义从「送达」改成「主进程接手」（落盘也算），否则 renderer 会与队列各重发一份。
+
+> **P1-6 补齐（2026-10-24，同一轮）**：D2 遗留的「远端首轮仅纯文本」已解决。核对源码后确认附件三条通道都可走（文本内联、PDF 提取文本、图片 `data_url`），只有 docx/xlsx/音频因 public_api 无附件上传端点而不支持，且会显式提示。做法见 §5.2 的「P1-6 补充修订」。里程碑里「远端执行能力对齐 D2 契约」这一栏至此不再有已知缺口。
 
 ## 9. 风险与开放问题
 
