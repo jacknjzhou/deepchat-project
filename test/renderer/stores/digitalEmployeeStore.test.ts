@@ -600,6 +600,102 @@ describe('digitalEmployeeStore', () => {
     })
   })
 
+  describe('switch to remote (hybrid)', () => {
+    it('forwards the session, employee and trimmed summary to the main process', async () => {
+      const store = useDigitalEmployeeStore()
+      await store.fetchEmployees()
+      digitalEmployeeClientMock.switchToRemote.mockResolvedValue({ remoteSessionId: 'remote-1' })
+
+      const result = await store.switchToRemote({
+        sessionId: 'session-9',
+        employeeId: 'hybrid-hr',
+        contextSummary: '  已确认报销单号 R-1  '
+      })
+
+      expect(result).toEqual({ ok: true })
+      expect(digitalEmployeeClientMock.switchToRemote).toHaveBeenCalledWith({
+        sessionId: 'session-9',
+        employeeId: 'hybrid-hr',
+        contextSummary: '已确认报销单号 R-1'
+      })
+    })
+
+    it('omits the summary field entirely when it is blank', async () => {
+      const store = useDigitalEmployeeStore()
+      await store.fetchEmployees()
+      digitalEmployeeClientMock.switchToRemote.mockResolvedValue({ remoteSessionId: 'remote-1' })
+
+      await store.switchToRemote({
+        sessionId: 'session-9',
+        employeeId: 'hybrid-hr',
+        contextSummary: '   '
+      })
+
+      // 空串会让契约校验多一个无意义的字段；不传才表示「没有摘要」。
+      expect(digitalEmployeeClientMock.switchToRemote).toHaveBeenCalledWith({
+        sessionId: 'session-9',
+        employeeId: 'hybrid-hr'
+      })
+    })
+
+    it('reports the failure instead of throwing so the dialog can explain it', async () => {
+      const store = useDigitalEmployeeStore()
+      await store.fetchEmployees()
+      digitalEmployeeClientMock.switchToRemote.mockRejectedValue(
+        new Error('session is already bound to remote execution')
+      )
+
+      const result = await store.switchToRemote({
+        sessionId: 'session-9',
+        employeeId: 'hybrid-hr'
+      })
+
+      // 用户刚点了「切到云端」，什么都没发生必须有解释，不能静默成功。
+      expect(result.ok).toBe(false)
+      expect(result).toHaveProperty('error', 'session is already bound to remote execution')
+    })
+  })
+
+  describe('remote binding lookup', () => {
+    it('reports whether the session is already bound remotely', async () => {
+      const store = useDigitalEmployeeStore()
+      await store.fetchEmployees()
+      digitalEmployeeClientMock.remoteStatus.mockResolvedValue({
+        bound: true,
+        remoteSessionId: 'remote-1',
+        employeeId: 'hybrid-hr',
+        runId: null,
+        awaitingInput: null
+      })
+
+      await expect(store.loadRemoteBinding('session-9')).resolves.toBe(true)
+      expect(digitalEmployeeClientMock.remoteStatus).toHaveBeenCalledWith('session-9')
+    })
+
+    it('treats an unbound session as switchable', async () => {
+      const store = useDigitalEmployeeStore()
+      await store.fetchEmployees()
+      digitalEmployeeClientMock.remoteStatus.mockResolvedValue({
+        bound: false,
+        remoteSessionId: null,
+        employeeId: null,
+        runId: null,
+        awaitingInput: null
+      })
+
+      await expect(store.loadRemoteBinding('session-9')).resolves.toBe(false)
+    })
+
+    it('assumes bound when the lookup fails so the button stays hidden', async () => {
+      const store = useDigitalEmployeeStore()
+      await store.fetchEmployees()
+      digitalEmployeeClientMock.remoteStatus.mockRejectedValue(new Error('bridge down'))
+
+      // 乐观地显示「可切换」会让用户点了才发现切不了；查不到就别给入口。
+      await expect(store.loadRemoteBinding('session-9')).resolves.toBe(true)
+    })
+  })
+
   describe('knowledge status', () => {
     it('surfaces the first stale package for the bound session', async () => {
       digitalEmployeeClientMock.knowledgeStatus.mockResolvedValue({

@@ -96,5 +96,20 @@
     "noEmbeddingAction": "前往设置 → 模型服务，启用一个 embedding 模型后重试。",
     "unauthorized": "访问知识服务被拒绝，「{knowledgeBaseId}」的同步已暂停。",
     "unauthorizedAction": "请检查设置里的 StaffDeck API Key 是否有效。"
+  },
+  "hybrid": {
+    "switchToRemote": "切换到云端",
+    "switchToRemoteHint": "把本会话剩余部分交给 StaffDeck 执行；切换后不可回退",
+    "switchTitle": "切换到云端执行",
+    "switchDescription": "切换后本会话的后续消息由 StaffDeck 执行，本地引擎不再参与。此操作不可撤销。",
+    "switchConfirm": "切换",
+    "summaryLabel": "本地上下文摘要（可选）",
+    "summaryPlaceholder": "把此前在本地讨论的关键结论贴在这里，云端会据此接着做",
+    "summaryHint": "云端看不到本地历史。留空则云端从空白上下文开始，可能重复追问已经说过的信息。",
+    "switchDone": "已切换到云端执行",
+    "switchDoneHint": "本会话后续消息由 StaffDeck 执行。",
+    "switchFailed": "切换失败，请稍后重试或检查服务配置。",
+    "fellBackToLocal": "云端执行失败，已自动切回本地执行",
+    "fellBackToLocalHint": "本会话后续消息由本地引擎执行，配置、技能与知识仍按当前设置生效。"
   }
 }

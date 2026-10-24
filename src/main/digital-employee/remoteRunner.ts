@@ -53,6 +53,8 @@ export interface RemoteRunOutcome {
   awaitingInput: StaffdeckAwaitingInput | null
   /** 便于 UI 提示的错误码；永不含服务端 detail */
   messageCode: string | null
+  /** 本轮失败后已解除远端绑定，后续轮次由本地引擎接手。 */
+  fellBackToLocal?: boolean
 }
 
 /** runner 需要的最小能力集合，全部以接口注入以便脱离 Electron 单测。 */
@@ -465,6 +467,10 @@ export class StaffdeckRemoteRunner {
       this.deps.registry.update(state.sessionId, { runId, lastEventId })
     }
 
+    // 先决定降级再发事件：事件里要带上结论，renderer 才不会在收到「失败」之后
+    // 还要自己去问一遍「那下一轮走哪儿」。
+    const fellBackToLocal = this.shouldFallBackToLocal(state.sessionId)
+
     this.deps.publishEvent('chat.stream.failed', {
       requestId: runId ?? state.messageId,
       sessionId: state.sessionId,
@@ -473,9 +479,26 @@ export class StaffdeckRemoteRunner {
       // 只放错误码，绝不拼服务端 detail（可能含内部路径）。
       error: messageCode
     })
-    this.emitPhase(state.sessionId, employeeId, 'failed', runId, messageCode)
+    this.emitPhase(state.sessionId, employeeId, 'failed', runId, messageCode, fellBackToLocal)
 
-    return this.failureOutcome(runId, state.messageId, messageCode, state.text)
+    return { ...this.failureOutcome(runId, state.messageId, messageCode, state.text), fellBackToLocal }
+  }
+
+  /**
+   * 只有 hybrid 会话可以把失败降级成本地执行。
+   *
+   * remote 员工不能降级：它的提示词、知识库、工具都在服务端，本地跑出来的是
+   * 另一个员工，比报错更糟。绑定表里 `executionMode` 是唯一判据——它由
+   * `switchToRemote` 写入 `hybrid`，由 `bind` 写入 `remote`。
+   *
+   * 解除绑定而不是把模式改回 local：本地的 `ChatService` 只看 `has`，
+   * 表里留一条 `local` 记录等于埋一个永远不走的分支。
+   */
+  private shouldFallBackToLocal(sessionId: string): boolean {
+    const binding = this.deps.registry.get(sessionId)
+    if (!binding || binding.executionMode !== 'hybrid') return false
+    this.deps.registry.delete(sessionId)
+    return true
   }
 
   private emitPhase(
@@ -483,7 +506,8 @@ export class StaffdeckRemoteRunner {
     employeeId: string,
     phase: 'started' | 'awaiting_input' | 'completed' | 'failed' | 'cancelled',
     runId: string | null,
-    messageCode: string | null
+    messageCode: string | null,
+    fallbackToLocal = false
   ): void {
     this.deps.publishEvent('digitalEmployee.remoteRunUpdated', {
       sessionId,
@@ -491,6 +515,7 @@ export class StaffdeckRemoteRunner {
       phase,
       ...(runId ? { runId } : {}),
       ...(messageCode ? { messageCode } : {}),
+      ...(fallbackToLocal ? { fallbackToLocal: true } : {}),
       updatedAt: this.now
     })
   }

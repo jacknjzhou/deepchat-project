@@ -440,3 +440,99 @@ describe('StaffdeckRemoteRunner isolation', () => {
     await first
   })
 })
+
+describe('StaffdeckRemoteRunner hybrid fallback', () => {
+  /** 绑定表里的执行模式决定能否降级；这里直接改 harness 里的那条记录。 */
+  function withMode(
+    harness: ReturnType<typeof createHarness>,
+    executionMode: 'remote' | 'hybrid'
+  ): void {
+    const store = new Map<string, unknown>([
+      [
+        's1',
+        { remoteSessionId: 'remote-1', employeeId: 'emp-1', runId: null, lastEventId: null, executionMode }
+      ]
+    ])
+    harness.registry.get.mockImplementation((sessionId: string) => store.get(sessionId) ?? null)
+    harness.registry.has.mockImplementation((sessionId: string) => store.has(sessionId))
+    harness.registry.delete.mockImplementation((sessionId: string) => {
+      store.delete(sessionId)
+    })
+  }
+
+  it('detaches the binding so the next turn runs locally when a hybrid run fails', async () => {
+    const harness = createHarness()
+    withMode(harness, 'hybrid')
+    harness.client.streamRun.mockRejectedValue(new Error('connection reset'))
+    const runner = new StaffdeckRemoteRunner(harness.deps)
+
+    const outcome = await runner.run({
+      sessionId: 's1',
+      employeeId: 'emp-1',
+      input: 'hello',
+      turnKey: 'turn-1'
+    })
+
+    expect(outcome.phase).toBe('failed')
+    expect(outcome.fellBackToLocal).toBe(true)
+    // 解除绑定是降级的全部机制：ChatService 只看 has()，留着绑定就等于没降级。
+    expect(harness.registry.delete).toHaveBeenCalledWith('s1')
+    expect(harness.registry.has('s1')).toBe(false)
+  })
+
+  it('tells the renderer that the session fell back instead of leaving it to guess', async () => {
+    const harness = createHarness()
+    withMode(harness, 'hybrid')
+    harness.client.streamRun.mockRejectedValue(new Error('boom'))
+    const runner = new StaffdeckRemoteRunner(harness.deps)
+
+    await runner.run({ sessionId: 's1', employeeId: 'emp-1', input: 'x', turnKey: 't' })
+
+    // 同一轮会先发 started 再发 failed，取最后一条才是终态。
+    const phases = harness.published.filter(
+      (entry) => entry.name === 'digitalEmployee.remoteRunUpdated'
+    )
+    expect(phases.at(-1)?.payload).toMatchObject({ phase: 'failed', fallbackToLocal: true })
+  })
+
+  it('keeps a remote session bound and reports the error instead of degrading it', async () => {
+    const harness = createHarness()
+    withMode(harness, 'remote')
+    harness.client.streamRun.mockRejectedValue(new Error('boom'))
+    const runner = new StaffdeckRemoteRunner(harness.deps)
+
+    const outcome = await runner.run({
+      sessionId: 's1',
+      employeeId: 'emp-1',
+      input: 'x',
+      turnKey: 't'
+    })
+
+    // remote 员工的提示词、知识库与工具都在服务端，本地跑出来是另一个员工。
+    expect(outcome.fellBackToLocal).toBe(false)
+    expect(harness.registry.delete).not.toHaveBeenCalled()
+    expect(harness.registry.has('s1')).toBe(true)
+  })
+
+  it('does not claim a fallback when the session was already unbound', async () => {
+    const harness = createHarness()
+    harness.registry.get.mockReturnValue(null)
+    harness.registry.has.mockReturnValue(false)
+    harness.client.createSession.mockRejectedValue(new Error('no agent'))
+    const runner = new StaffdeckRemoteRunner(harness.deps)
+
+    const outcome = await runner.run({
+      sessionId: 's1',
+      employeeId: 'emp-1',
+      input: 'x',
+      turnKey: 't'
+    })
+
+    // 绑定从没建立过，「切回本地」就是一句假话。
+    expect(outcome.fellBackToLocal).toBe(false)
+    const phases = harness.published.filter(
+      (entry) => entry.name === 'digitalEmployee.remoteRunUpdated'
+    )
+    expect(phases.at(-1)?.payload).not.toHaveProperty('fallbackToLocal')
+  })
+})

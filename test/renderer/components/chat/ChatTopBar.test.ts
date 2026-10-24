@@ -49,7 +49,9 @@ const digitalEmployeeStoreMock = vi.hoisted(() => ({
   employeeForSession: vi.fn<
     () => { id: string; name: string; executionMode?: 'local' | 'remote' | 'hybrid' } | null
   >(() => null),
-  ensureLoaded: vi.fn()
+  ensureLoaded: vi.fn(),
+  switchToRemote: vi.fn(),
+  loadRemoteBinding: vi.fn()
 }))
 
 vi.mock('@/stores/ui/session', () => ({
@@ -285,6 +287,139 @@ describe('ChatTopBar digital employee badge', () => {
     const wrapper = mountTopBar()
 
     expect(wrapper.find('[data-testid="chat-digital-employee-mode-badge"]').exists()).toBe(false)
+  })
+})
+
+describe('ChatTopBar hybrid switch entry', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    digitalEmployeeStoreMock.employeeForSession.mockReturnValue(null)
+    digitalEmployeeStoreMock.switchToRemote.mockResolvedValue({ ok: true })
+    digitalEmployeeStoreMock.loadRemoteBinding.mockResolvedValue(false)
+  })
+
+  it('offers the switch only for a hybrid employee still running locally', async () => {
+    digitalEmployeeStoreMock.employeeForSession.mockReturnValue({
+      id: 'hybrid-hr',
+      name: '人事助手',
+      executionMode: 'hybrid'
+    })
+    const wrapper = mountTopBar()
+
+    // 绑定状态在主进程，按钮在查询返回前刻意不渲染（乐观显示会让人点了才发现切不了）。
+    expect(wrapper.find('[data-testid="chat-digital-employee-switch-remote"]').exists()).toBe(false)
+    await flushPromises()
+    expect(wrapper.find('[data-testid="chat-digital-employee-switch-remote"]').exists()).toBe(true)
+    expect(digitalEmployeeStoreMock.loadRemoteBinding).toHaveBeenCalledWith('session-1')
+  })
+
+  it('hides the switch for a plain local employee', async () => {
+    digitalEmployeeStoreMock.employeeForSession.mockReturnValue({
+      id: 'finance',
+      name: '财务助手',
+      executionMode: 'local'
+    })
+    const wrapper = mountTopBar()
+    await flushPromises()
+
+    // local 员工没有云端可切，展示按钮等于给一个必失败的入口。
+    expect(wrapper.find('[data-testid="chat-digital-employee-switch-remote"]').exists()).toBe(false)
+  })
+
+  it('hides the switch once the session is already bound remotely', async () => {
+    digitalEmployeeStoreMock.employeeForSession.mockReturnValue({
+      id: 'hybrid-hr',
+      name: '人事助手',
+      executionMode: 'hybrid'
+    })
+    digitalEmployeeStoreMock.loadRemoteBinding.mockResolvedValue(true)
+    const wrapper = mountTopBar()
+    await flushPromises()
+
+    // 绑定后主进程会以「已绑定」拒绝，按钮留着只会让人反复点。
+    expect(wrapper.find('[data-testid="chat-digital-employee-switch-remote"]').exists()).toBe(false)
+  })
+
+  it('hides the switch for a remote-mode employee without asking the registry', async () => {
+    digitalEmployeeStoreMock.employeeForSession.mockReturnValue({
+      id: 'remote-hr',
+      name: '远程助手',
+      executionMode: 'remote'
+    })
+    const wrapper = mountTopBar()
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="chat-digital-employee-switch-remote"]').exists()).toBe(false)
+    // 非 hybrid 不必白跑一次 IPC。
+    expect(digitalEmployeeStoreMock.loadRemoteBinding).not.toHaveBeenCalled()
+  })
+
+  it('hides the switch in a read-only session', async () => {
+    digitalEmployeeStoreMock.employeeForSession.mockReturnValue({
+      id: 'hybrid-hr',
+      name: '人事助手',
+      executionMode: 'hybrid'
+    })
+    const wrapper = mount(ChatTopBar, {
+      props: { sessionId: 'session-1', title: 'Conversation', project: '', isReadOnly: true }
+    })
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="chat-digital-employee-switch-remote"]').exists()).toBe(false)
+  })
+
+  it('sends the trimmed summary and closes the dialog on success', async () => {
+    digitalEmployeeStoreMock.employeeForSession.mockReturnValue({
+      id: 'hybrid-hr',
+      name: '人事助手',
+      executionMode: 'hybrid'
+    })
+    const wrapper = mountTopBar()
+    const viewModel = wrapper.vm as unknown as {
+      switchToRemoteDialogOpen: boolean
+      switchToRemoteSummary: string
+      handleSwitchToRemoteConfirm(): Promise<void>
+    }
+    viewModel.switchToRemoteDialogOpen = true
+    viewModel.switchToRemoteSummary = '  已确认单号 R-1  '
+
+    await viewModel.handleSwitchToRemoteConfirm()
+    await flushPromises()
+
+    expect(digitalEmployeeStoreMock.switchToRemote).toHaveBeenCalledWith({
+      sessionId: 'session-1',
+      employeeId: 'hybrid-hr',
+      contextSummary: '已确认单号 R-1'
+    })
+    expect(viewModel.switchToRemoteDialogOpen).toBe(false)
+    expect(notifyRenderer).toHaveBeenCalledWith(expect.objectContaining({ kind: 'success' }))
+  })
+
+  it('keeps the dialog open with an explanation when the switch fails', async () => {
+    digitalEmployeeStoreMock.employeeForSession.mockReturnValue({
+      id: 'hybrid-hr',
+      name: '人事助手',
+      executionMode: 'hybrid'
+    })
+    digitalEmployeeStoreMock.switchToRemote.mockResolvedValue({
+      ok: false,
+      error: 'already bound'
+    })
+    const wrapper = mountTopBar()
+    const viewModel = wrapper.vm as unknown as {
+      switchToRemoteDialogOpen: boolean
+      switchToRemoteError: string | null
+      handleSwitchToRemoteConfirm(): Promise<void>
+    }
+    viewModel.switchToRemoteDialogOpen = true
+
+    await viewModel.handleSwitchToRemoteConfirm()
+    await flushPromises()
+
+    // 用户刚点了「切到云端」，没切成必须有原因，不能静默关窗。
+    expect(viewModel.switchToRemoteDialogOpen).toBe(true)
+    expect(viewModel.switchToRemoteError).toBe('digitalEmployee.hybrid.switchFailed')
+    expect(notifyRenderer).not.toHaveBeenCalled()
   })
 })
 

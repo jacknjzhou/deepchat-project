@@ -96,5 +96,20 @@
     "noEmbeddingAction": "Go to Settings → Providers and enable an embedding model, then retry.",
     "unauthorized": "Access to the knowledge service was denied; syncing \"{knowledgeBaseId}\" is paused.",
     "unauthorizedAction": "Check that the StaffDeck API key in Settings is still valid."
+  },
+  "hybrid": {
+    "switchToRemote": "Switch to cloud",
+    "switchToRemoteHint": "Hand the rest of this conversation to StaffDeck; this cannot be undone",
+    "switchTitle": "Switch to cloud execution",
+    "switchDescription": "Later messages in this conversation will be executed by StaffDeck, and the local engine will no longer take part. This cannot be undone.",
+    "switchConfirm": "Switch",
+    "summaryLabel": "Local context summary (optional)",
+    "summaryPlaceholder": "Paste the key conclusions reached locally; the cloud run continues from them",
+    "summaryHint": "The cloud cannot see local history. Leave it empty and the run starts from no context, so it may ask again for things already said.",
+    "switchDone": "Switched to cloud execution",
+    "switchDoneHint": "Later messages in this conversation are executed by StaffDeck.",
+    "switchFailed": "Switch failed. Retry later or check the service configuration.",
+    "fellBackToLocal": "Cloud execution failed and fell back to local execution",
+    "fellBackToLocalHint": "Later messages use the local engine; configuration, skills and knowledge still apply."
   }
 }

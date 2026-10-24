@@ -10,6 +10,7 @@ type Listener = (payload: {
   phase: 'started' | 'awaiting_input' | 'completed' | 'failed' | 'cancelled'
   runId?: string
   messageCode?: string
+  fallbackToLocal?: boolean
   updatedAt: number
 }) => void
 
@@ -308,5 +309,71 @@ describe('useRemoteAwaitingInput', () => {
     harness.emit({ sessionId: 'session-1', employeeId: 'emp-1', phase: 'started', updatedAt: 2 })
 
     expect(harness.failureCode.value).toBeNull()
+  })
+})
+
+describe('useRemoteAwaitingInput hybrid fallback flag', () => {
+  it('remembers that the session fell back to local execution', () => {
+    const harness = createHarness()
+
+    harness.emit({
+      sessionId: 'session-1',
+      employeeId: 'emp-1',
+      phase: 'failed',
+      messageCode: 'REMOTE_TRANSPORT_ERROR',
+      fallbackToLocal: true,
+      updatedAt: 1
+    })
+
+    // 错误码说「这轮为什么失败」，本标记说「下一轮走哪儿」，两者同时为真。
+    expect(harness.fellBackToLocal.value).toBe(true)
+    expect(harness.failureCode.value).toBe('REMOTE_TRANSPORT_ERROR')
+  })
+
+  it('keeps the flag across a later turn because the binding is gone for good', () => {
+    const harness = createHarness()
+
+    harness.emit({
+      sessionId: 'session-1',
+      employeeId: 'emp-1',
+      phase: 'failed',
+      fallbackToLocal: true,
+      updatedAt: 1
+    })
+    harness.emit({ sessionId: 'session-1', employeeId: 'emp-1', phase: 'started', updatedAt: 2 })
+
+    // 降级是粘性的：`started` 清掉的是错误码，不是「已换引擎」这个事实。
+    expect(harness.fellBackToLocal.value).toBe(true)
+    expect(harness.failureCode.value).toBeNull()
+  })
+
+  it('does not flag a plain failure as a fallback', () => {
+    const harness = createHarness()
+
+    harness.emit({
+      sessionId: 'session-1',
+      employeeId: 'emp-1',
+      phase: 'failed',
+      messageCode: 'RUN_FAILED',
+      updatedAt: 1
+    })
+
+    expect(harness.fellBackToLocal.value).toBe(false)
+  })
+
+  it('clears the flag when the user moves to another session', async () => {
+    const harness = createHarness()
+
+    harness.emit({
+      sessionId: 'session-1',
+      employeeId: 'emp-1',
+      phase: 'failed',
+      fallbackToLocal: true,
+      updatedAt: 1
+    })
+    expect(harness.fellBackToLocal.value).toBe(true)
+
+    harness.sessionId.value = 'session-2'
+    await vi.waitFor(() => expect(harness.fellBackToLocal.value).toBe(false))
   })
 })

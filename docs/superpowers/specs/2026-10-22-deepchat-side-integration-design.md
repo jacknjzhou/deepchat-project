@@ -134,6 +134,17 @@ export const digitalEmployeeSchema = z.object({
 > - **服务端把执行期错误当作正文回复**：未配置默认模型时，流里推的是 `run.output.delta` 分片（内容为「Harness v2 执行出错（HARNESS_V2_ERROR）：…」），并以 `run.succeeded` 正常结束，`/result` 的 `reply` 也是这段文本。也就是说 `run.failed` 不是唯一的失败表达——正文可能是错误说明。UI 因此不能把「有正文」等同于「执行成功」，失败提示只由 `remoteRunUpdated` 的 `phase` 与 `messageCode` 驱动。
 > - **`Idempotency-Key` 语义已验证**：同 key 同 body 重放返回同一 `job_id` 的完整流；同 key 不同 body 返回 409 `IDEMPOTENCY_CONFLICT`（problem+json，取 `code`）。D2 用 `deepchat:{sessionId}:{turnId}` 作确定性键，重试不会产生第二个 run。
 
+> **D2 补充修订：hybrid 的「可切换」与「失败降级」（2026-10-24）**
+>
+> §5.2 的 hybrid 只写到「整会话可切换」，没有说清**谁触发、怎么切、失败之后怎么办**。三处都补上了，共同点是「绑定表是唯一真相」：
+>
+> 1. **切换入口在聊天页顶栏，不在下拉菜单**。整会话换执行引擎不可逆，藏进二级菜单容易被误点。按钮出现的条件是三个与关系的交集：员工 `executionMode === 'hybrid'`、会话未绑远端、会话可写。判断「未绑远端」必须查主进程的绑定表（新增 store 方法 `loadRemoteBinding` → `digitalEmployee.remoteStatus` 的 `bound`）——员工的 `executionMode` 说不了这件事，它配的是能力而非某个会话的现状。查询失败按**已绑定**处理：乐观显示「可切换」会让用户点了才发现切不了。
+> 2. **切换前可补一段上下文摘要**。服务端看不到本地历史，这是它「接上上下文」的唯一途径。摘要为空白时整个字段不传（不是传空串），否则远端会多收到一段无意义的上下文。切换失败不静默：确认弹窗保持打开并给出原因，因为用户刚做了一次显式操作。
+> 3. **hybrid 失败降级为本地，remote 失败不降级**。判据是绑定表里的 `executionMode`：`hybrid` 解除绑定（`ChatService.handles` 只读 `has`，删掉这条记录下一轮自然走本地），`remote` 保持绑定并报错——remote 员工的提示词、知识库、工具都在服务端，本地跑出来是另一个员工，比报错更糟。降级结论通过 `digitalEmployee.remoteRunUpdated` 的 `fallbackToLocal: true` 告知渲染层，聊天页据此显示「已自动切回本地执行」。
+> 4. **降级标记是粘性的**：它只说「引擎换了」，不因下一轮的 `started` 事件清除；错误码才随轮次清空。切换会话时两者都重置。
+>
+> 测试：runner 侧 4 例（hybrid 解除绑定并上报、remote 保留绑定、未绑定时不谎称降级、事件带 `fallbackToLocal`），composable 侧 4 例（标记置位、跨轮保持、普通失败不置位、切会话重置），store 侧 6 例（摘要裁剪/省略、失败回报而非抛错、绑定查询三态），顶栏 6 例（四个可见性组合 + 成功/失败两条路径）。
+
 ### 5.3 技能导入
 
 - 分发 payload 的 `skills[].downloadUrl` → 下载 `:export-skill` zip（SKILL.md 包格式，与 deepchat 技能目录同构）；

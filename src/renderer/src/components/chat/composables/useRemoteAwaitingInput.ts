@@ -9,6 +9,8 @@ export interface RemoteRunUpdatedPayload {
   phase: 'started' | 'awaiting_input' | 'completed' | 'failed' | 'cancelled'
   runId?: string
   messageCode?: string
+  /** hybrid 会话失败后已退回本地执行；绑定表在 main，只有它能给出这个结论。 */
+  fallbackToLocal?: boolean
   updatedAt: number
 }
 
@@ -33,6 +35,13 @@ export interface UseRemoteAwaitingInputOptions {
 export function useRemoteAwaitingInput(options: UseRemoteAwaitingInputOptions) {
   const awaitingInput = ref<StaffdeckAwaitingInput | null>(null)
   const failureCode = ref<string | null>(null)
+  /**
+   * 已退回本地执行。
+   *
+   * 与 `failureCode` 分开：错误码说「这轮为什么失败」，本标记说「下一轮走哪儿」。
+   * 两者可以同时为真——失败恰恰是降级的原因。
+   */
+  const fellBackToLocal = ref(false)
 
   // 只接受最后一次回查的结果：连续两轮追问时，先发后到的旧响应不能覆盖新结果。
   let lookupToken = 0
@@ -58,6 +67,10 @@ export function useRemoteAwaitingInput(options: UseRemoteAwaitingInputOptions) {
   const unsubscribe = options.client.onRemoteRunUpdated((payload) => {
     if (payload.sessionId !== options.sessionId.value) return
 
+    // 降级是粘性的：此后这个会话一直走本地，直到用户重新切换。
+    // 放在相位分支之前，因为 `failed` 分支会调用 reset() 清掉临时状态。
+    if (payload.fallbackToLocal) fellBackToLocal.value = true
+
     if (payload.phase === 'awaiting_input') {
       failureCode.value = null
       void loadStatus(payload.sessionId)
@@ -72,6 +85,7 @@ export function useRemoteAwaitingInput(options: UseRemoteAwaitingInputOptions) {
 
   watch(options.sessionId, () => {
     reset()
+    fellBackToLocal.value = false
   })
 
   // 组件内使用时随作用域自动回收；脱离作用域调用（测试/工具函数）时由调用方 dispose。
@@ -84,6 +98,7 @@ export function useRemoteAwaitingInput(options: UseRemoteAwaitingInputOptions) {
   return {
     awaitingInput,
     failureCode,
+    fellBackToLocal,
     isAwaitingInput: computed(() => awaitingInput.value !== null),
     dispose: () => unsubscribe()
   }

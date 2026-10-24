@@ -33,6 +33,13 @@ export const digitalEmployeeRemoteRunUpdatedEvent = defineEventContract({
     runId: z.string().min(1).optional(),
     /** 便于直接提示的错误码（如 RUN_NOT_SUCCEEDED），不含服务端 detail */
     messageCode: z.string().max(128).optional(),
+    /**
+     * hybrid 会话在本轮失败后已退回本地执行。
+     *
+     * 必须由主进程告知：绑定表在 main，renderer 无从推断「下一轮会走哪条路」，
+     * 用户刚看到一次失败、下一条消息却突然由本地执行，没有这句话就是静默换引擎。
+     */
+    fallbackToLocal: z.boolean().optional(),
     updatedAt: TimestampMsSchema
   })
 })

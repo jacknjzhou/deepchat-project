@@ -119,6 +119,24 @@
         <Icon :icon="executionMode === 'local' ? 'lucide:laptop' : 'lucide:cloud'" class="size-3" />
         {{ modeBadgeLabel }}
       </span>
+      <!--
+        hybrid 员工本地执行时的唯一切换入口。不做成下拉里的一个菜单项：这是
+        整会话换执行引擎，不可逆，藏在二级菜单里容易被误点。
+      -->
+      <DcButton
+        v-if="canSwitchToRemote"
+        data-testid="chat-digital-employee-switch-remote"
+        variant="ghost"
+        size="sm"
+        icon="lucide:cloud-upload"
+        class="no-drag h-6 shrink-0 gap-1 px-1.5 text-[10px] text-muted-foreground hover:text-foreground"
+        :label="t('digitalEmployee.hybrid.switchToRemote')"
+        :title="t('digitalEmployee.hybrid.switchToRemoteHint')"
+        :disabled="switchToRemoteBusy"
+        @click="openSwitchToRemoteDialog"
+      >
+        <span>{{ t('digitalEmployee.hybrid.switchToRemote') }}</span>
+      </DcButton>
     </div>
 
     <div class="flex items-center gap-1 no-drag">
@@ -255,6 +273,34 @@
     :error="moveDialogError"
     @confirm-move="handleMoveConfirm"
   />
+
+  <DcConfirmDialog
+    :open="switchToRemoteDialogOpen"
+    :title="t('digitalEmployee.hybrid.switchTitle')"
+    :description="t('digitalEmployee.hybrid.switchDescription')"
+    :confirm-label="t('digitalEmployee.hybrid.switchConfirm')"
+    :busy="switchToRemoteBusy"
+    @update:open="handleSwitchToRemoteDialogOpenChange"
+    @confirm="handleSwitchToRemoteConfirm"
+  >
+    <div class="space-y-2">
+      <label class="block text-xs font-medium text-foreground" for="switch-remote-summary">
+        {{ t('digitalEmployee.hybrid.summaryLabel') }}
+      </label>
+      <textarea
+        id="switch-remote-summary"
+        v-model="switchToRemoteSummary"
+        data-testid="chat-switch-remote-summary"
+        rows="4"
+        class="w-full resize-none rounded-md border border-border bg-background px-2 py-1.5 text-xs outline-none focus-visible:ring-1 focus-visible:ring-ring/60"
+        :placeholder="t('digitalEmployee.hybrid.summaryPlaceholder')"
+      />
+      <p class="text-[11px] leading-4 text-muted-foreground">
+        {{ t('digitalEmployee.hybrid.summaryHint') }}
+      </p>
+      <DcInlineError v-if="switchToRemoteError" :error="switchToRemoteError" />
+    </div>
+  </DcConfirmDialog>
 </template>
 
 <script setup lang="ts">
@@ -337,12 +383,102 @@ const modeBadgeLabel = computed(() =>
     ? t('digitalEmployee.local.badge')
     : t('digitalEmployee.remote.badge')
 )
+/**
+ * 能否切到云端：只有 hybrid 员工、且会话当前还没绑远端时才有意义。
+ *
+ * `remote` 员工在建会话时就已绑定，`local` 员工没有云端可切——
+ * 对它们展示按钮会立刻被主进程以「已绑定」拒绝，等于给用户一个必失败的入口。
+ */
+const switchToRemoteDialogOpen = ref(false)
+const switchToRemoteBusy = ref(false)
+const switchToRemoteError = ref<string | null>(null)
+const switchToRemoteSummary = ref('')
+
+const openSwitchToRemoteDialog = (): void => {
+  switchToRemoteError.value = null
+  switchToRemoteDialogOpen.value = true
+}
+
+const handleSwitchToRemoteDialogOpenChange = (open: boolean): void => {
+  // 提交中不允许关闭：绑定可能已经写进主进程，此时关掉弹窗会让用户以为没切。
+  if (switchToRemoteBusy.value) return
+  switchToRemoteDialogOpen.value = open
+  if (!open) switchToRemoteError.value = null
+}
+
+const handleSwitchToRemoteConfirm = async (): Promise<void> => {
+  const employee = boundDigitalEmployee.value
+  if (!employee || switchToRemoteBusy.value) return
+
+  switchToRemoteBusy.value = true
+  switchToRemoteError.value = null
+  try {
+    const result = await digitalEmployeeStore.switchToRemote({
+      sessionId: props.sessionId,
+      employeeId: employee.id,
+      ...(switchToRemoteSummary.value.trim()
+        ? { contextSummary: switchToRemoteSummary.value.trim() }
+        : {})
+    })
+    if (!result.ok) {
+      switchToRemoteError.value = t('digitalEmployee.hybrid.switchFailed')
+      return
+    }
+    switchToRemoteDialogOpen.value = false
+    switchToRemoteSummary.value = ''
+    // 绑定已经写进主进程，本地这份标记必须同步，否则按钮会一直留着让人再点一次。
+    remoteBound.value = true
+    notifyRenderer({
+      kind: 'success',
+      code: 'digitalEmployee.hybrid.switchDone',
+      title: t('digitalEmployee.hybrid.switchDone'),
+      description: t('digitalEmployee.hybrid.switchDoneHint')
+    })
+  } finally {
+    switchToRemoteBusy.value = false
+  }
+}
 const showCollapsedNewChatSpacer = computed(
   () => sidebarStore.collapsed && Boolean(sessionStore.newConversationTargetAgentId)
 )
 const parentSessionId = computed(() => currentSession.value?.parentSessionId ?? null)
 const isPinned = computed(() => Boolean(currentSession.value?.isPinned))
 const isReadOnly = computed(() => props.isReadOnly === true)
+
+/**
+ * 能否切到云端：只有 hybrid 员工、且会话当前还没绑远端时才有意义。
+ *
+ * `remote` 员工在建会话时就已绑定，`local` 员工没有云端可切——
+ * 对它们展示按钮会立刻被主进程以「已绑定」拒绝，等于给用户一个必失败的入口。
+ *
+ * 员工的 `executionMode` 说不了这件事：它配的是 `hybrid`，某个具体会话可能仍
+ * 在本地跑。绑定状态只存在于主进程的绑定表，必须查一次。
+ */
+const remoteBound = ref(true)
+watch(
+  () => [props.sessionId, boundDigitalEmployee.value?.id] as const,
+  async () => {
+    const employee = boundDigitalEmployee.value
+    if (!employee || employee.executionMode !== 'hybrid') {
+      remoteBound.value = false
+      return
+    }
+    const bound = await digitalEmployeeStore.loadRemoteBinding(props.sessionId)
+    // 查询期间会话可能已被切走：只接受当前会话的结果，否则会把别的会话的
+    // 「已绑定」渲染成这里的「不可切换」。
+    if (boundDigitalEmployee.value?.id !== employee.id) return
+    remoteBound.value = bound
+  },
+  { immediate: true }
+)
+
+const canSwitchToRemote = computed(
+  () =>
+    !isReadOnly.value &&
+    boundDigitalEmployee.value !== null &&
+    boundDigitalEmployee.value.executionMode === 'hybrid' &&
+    !remoteBound.value
+)
 const currentAgent = computed(
   () => agentStore.agents.find((agent) => agent.id === currentSession.value?.agentId) ?? null
 )

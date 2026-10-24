@@ -157,6 +157,18 @@
           >
             {{ remoteFailureMessage }}
           </p>
+          <!--
+            降级必须自己说一句：用户刚经历一次失败，下一条消息忽然由本地执行，
+            不说清楚就等于静默换了引擎，还会以为云端其实成功了。
+          -->
+          <p
+            v-if="remoteFellBackToLocal"
+            data-testid="chat-remote-fallback-message"
+            class="mx-auto w-full max-w-4xl rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300"
+          >
+            {{ t('digitalEmployee.hybrid.fellBackToLocal') }}
+            <span class="ml-1 opacity-80">{{ t('digitalEmployee.hybrid.fellBackToLocalHint') }}</span>
+          </p>
           <KnowledgeStaleBanner
             v-if="knowledgeNotice"
             :knowledge-base-id="knowledgeNotice.knowledgeBaseId"
@@ -1349,11 +1361,14 @@ const { start: startChatPageEventBridge, stop: stopChatPageEventBridge } = useCh
 })
 
 // 远端（StaffDeck）执行的追问提示：只有远端 run 会推事件，本地会话保持静默。
-const { awaitingInput: remoteAwaitingInput, failureCode: remoteFailureCode } =
-  useRemoteAwaitingInput({
-    sessionId: computed(() => props.sessionId),
-    client: digitalEmployeeClient
-  })
+const {
+  awaitingInput: remoteAwaitingInput,
+  failureCode: remoteFailureCode,
+  fellBackToLocal: remoteFellBackToLocal
+} = useRemoteAwaitingInput({
+  sessionId: computed(() => props.sessionId),
+  client: digitalEmployeeClient
+})
 const remoteFailureMessage = computed(() =>
   remoteFailureCode.value ? t(staffdeckErrorCodeToI18nKey(remoteFailureCode.value)) : null
 )

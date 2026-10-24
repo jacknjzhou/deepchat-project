@@ -415,6 +415,51 @@ export const useDigitalEmployeeStore = defineStore('digitalEmployee', () => {
     }
   }
 
+  /**
+   * 这个会话是否已经绑到远端。
+   *
+   * 与员工的 `executionMode` 是两件事：员工配的是 `hybrid`，某个会话可能还在
+   * 本地跑。绑定表在主进程，只有它能回答，所以这里必须查一次而不是推断。
+   * 查询失败按「已绑定」处理——乐观地显示「可切换」会让用户点了才发现切不了。
+   */
+  async function loadRemoteBinding(sessionId: string): Promise<boolean> {
+    try {
+      const status = await client.remoteStatus(sessionId)
+      return status.bound
+    } catch {
+      return true
+    }
+  }
+
+  /**
+   * 把当前本地会话显式切到云端执行（hybrid 员工的「可切换」那一半）。
+   *
+   * 切换**不可逆**：来回切会让「哪一段在哪个引擎执行」失去唯一答案，归档与
+   * 回流也再对不上。所以这里只在会话未绑定时调用，绑定后由主进程拒绝。
+   *
+   * `contextSummary` 是远端「接上上下文」的唯一途径——服务端看不到本地历史。
+   * 不传就只是建绑定，下一轮从空白上下文开始。
+   */
+  async function switchToRemote(input: {
+    sessionId: string
+    employeeId: string
+    contextSummary?: string
+  }): Promise<{ ok: true } | { ok: false; error: string }> {
+    try {
+      // 先裁再判空：全空格等于没写，发出去只会让远端多收到一段空白上下文。
+      const summary = input.contextSummary?.trim()
+      await client.switchToRemote({
+        sessionId: input.sessionId,
+        employeeId: input.employeeId,
+        ...(summary ? { contextSummary: summary } : {})
+      })
+      return { ok: true }
+    } catch (error) {
+      // 不静默：用户刚点了「切到云端」，什么都没发生必须有解释。
+      return { ok: false, error: error instanceof Error ? error.message : String(error) }
+    }
+  }
+
   return {
     employees,
     loading,
@@ -439,6 +484,8 @@ export const useDigitalEmployeeStore = defineStore('digitalEmployee', () => {
     loadKnowledgeStatus,
     provisionEmployee,
     reportBackflow,
+    loadRemoteBinding,
+    switchToRemote,
     startConversation
   }
 })
