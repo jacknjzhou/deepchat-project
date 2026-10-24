@@ -6,6 +6,7 @@ import {
 import { createRouteMap, type DeepchatRouteMap } from '@/routes/routeRegistry'
 import type { StaffdeckRemoteClient } from './remoteClient'
 import type { StaffdeckRemoteRunner, RemoteRunOutcome } from './remoteRunner'
+import type { RemoteRunOutcomeStore } from './remoteRunOutcomes'
 import type { RemoteSessionRegistry } from './remoteSessionRegistry'
 
 /**
@@ -20,6 +21,15 @@ export interface DigitalEmployeeRemoteRoutesDeps {
   client: Pick<StaffdeckRemoteClient, 'createSession'>
   registry: RemoteSessionRegistry
   runner: Pick<StaffdeckRemoteRunner, 'run'>
+  /**
+   * 追问明细的共享暂存。
+   *
+   * 首轮（bind / switch）与后续轮（`ChatService` 的 `remoteTurn.send`）都会写入，
+   * `remoteStatus` 从同一份里读。路由自己持有一份私有 Map 是原实现的缺陷：
+   * 第二轮起 run 由 `remoteTurn` 发起，写不进这个 Map，于是追问提示条从第二轮
+   * 起恒为空——而追问恰恰多半发生在第二、第三轮。
+   */
+  outcomes: RemoteRunOutcomeStore
 }
 
 /** 首轮轮次键固定，保证 bind 重试不会在服务端产生第二个 run。 */
@@ -28,11 +38,8 @@ const OPENING_TURN_KEY = 'opening'
 export function createDigitalEmployeeRemoteRoutes(
   deps: DigitalEmployeeRemoteRoutesDeps
 ): DeepchatRouteMap {
-  /** 进程内缓存每轮终态，route 只在需要时读取，不落库（避免与 run 状态耦合）。 */
-  const outcomes = new Map<string, RemoteRunOutcome>()
-
   const remember = (sessionId: string, outcome: RemoteRunOutcome): void => {
-    outcomes.set(sessionId, outcome)
+    deps.outcomes.remember(sessionId, outcome.awaitingInput)
   }
 
   const bind = async (sessionId: string, employeeId: string): Promise<string> => {
@@ -107,7 +114,7 @@ export function createDigitalEmployeeRemoteRoutes(
           remoteSessionId: binding.remoteSessionId,
           employeeId: binding.employeeId,
           runId: binding.runId,
-          awaitingInput: outcomes.get(input.sessionId)?.awaitingInput ?? null
+          awaitingInput: deps.outcomes.awaitingInputOf(input.sessionId)
         })
       }
     ],

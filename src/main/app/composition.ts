@@ -238,6 +238,7 @@ import { StaffdeckRemoteClient } from '@/digital-employee/remoteClient'
 import { StaffdeckRemoteRunner } from '@/digital-employee/remoteRunner'
 import { createDigitalEmployeeRemoteRoutes } from '@/digital-employee/remoteRoutes'
 import { createRemoteSessionRegistry } from '@/digital-employee/remoteSessionRegistry'
+import { createRemoteRunOutcomeStore } from '@/digital-employee/remoteRunOutcomes'
 import { StaffdeckKnowledgeClient } from '@/digital-employee/knowledgeClient'
 import { createKnowledgeSync } from '@/digital-employee/knowledgeSync'
 import {
@@ -3364,6 +3365,9 @@ export async function createMainProcessControl(dependencies: {
         set: (key: string, value: unknown) => dependencies.settingsStore.set(key, value)
       }
     })
+    // 追问明细的唯一副本：首轮由 remoteRoutes 写，之后每轮由 remoteTurn 写，
+    // remoteStatus 都从这里读。分开存会让第二轮起的提示条恒为空。
+    const remoteRunOutcomes = createRemoteRunOutcomeStore()
     const readStaffdeckConnection = (): {
       baseUrl: string
       apiKey: string
@@ -3429,6 +3433,7 @@ export async function createMainProcessControl(dependencies: {
         return remoteClient as StaffdeckRemoteClient
       },
       registry: remoteSessionRegistry,
+      outcomes: remoteRunOutcomes,
       get runner() {
         return remoteRunner as StaffdeckRemoteRunner
       }
@@ -3842,6 +3847,11 @@ export async function createMainProcessControl(dependencies: {
                   // 附件的可用性由 remoteRunner 按服务端接收能力裁剪，这里不做判断。
                   ...(content.files?.length ? { files: content.files } : {})
                 })
+                // 每轮都写，含 `null`：那一轮没有追问正是「撤掉上一条提示」的信号。
+                // 漏掉这一步，第二轮起的追问提示条将永远为空——`remoteStatus`
+                // 只从这一份存储里读，而首轮之后没人再往里写。
+                remoteRunOutcomes.remember(sessionId, outcome.awaitingInput)
+                if (outcome.fellBackToLocal) remoteRunOutcomes.forget(sessionId)
                 return {
                   accepted: outcome.phase !== 'failed',
                   requestId: outcome.runId,

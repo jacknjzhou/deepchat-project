@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { StaffdeckProblemError } from '../../../src/main/digital-employee/remoteClient'
 import { createDigitalEmployeeRemoteRoutes } from '../../../src/main/digital-employee/remoteRoutes'
+import { createRemoteRunOutcomeStore } from '../../../src/main/digital-employee/remoteRunOutcomes'
 
 const BINDING = {
   remoteSessionId: 'remote-1',
@@ -33,6 +34,8 @@ function createHarness() {
     currentRunId: null
   }
 
+  const outcomes = createRemoteRunOutcomeStore()
+
   const runner = {
     run: vi.fn().mockResolvedValue({
       phase: 'completed',
@@ -48,6 +51,7 @@ function createHarness() {
     client: client as never,
     registry: registry as never,
     runner: runner as never,
+    outcomes,
     createAssistantPlaceholder: vi.fn(() => 'm1'),
     now: () => 1_700_000_000_000
   })
@@ -58,7 +62,7 @@ function createHarness() {
     return await handler(input, { caller: { kind: 'renderer', webContentsId: 1, windowId: null } })
   }
 
-  return { routes, registry, client, runner, bindings, call }
+  return { routes, registry, client, runner, bindings, outcomes, call }
 }
 
 describe('digitalEmployee.bindRemoteSession', () => {
@@ -172,6 +176,47 @@ describe('digitalEmployee.remoteStatus', () => {
       remoteSessionId: 'remote-1',
       employeeId: 'emp-1'
     })
+  })
+
+  /**
+   * 追问明细必须跨轮存续。
+   *
+   * 原实现对 `awaitingInput` 用路由私有 Map，只有 bind / switch 会写；第二轮起
+   * 的 run 由 `ChatService` 的 `remoteTurn` 发起，写不进去，于是第二轮之后的
+   * 追问提示条恒为空——而真实对话里追问恰恰多发生在第二、三轮。
+   */
+  it('surfaces an awaiting_input recorded by a later turn', async () => {
+    const harness = createHarness()
+    harness.bindings.set('local-1', BINDING)
+    harness.registry.get.mockReturnValue(BINDING)
+
+    // 模拟 remoteTurn.send 写入第二轮的结果：路由自己没参与这一轮。
+    harness.outcomes.remember('local-1', {
+      task_id: 't2',
+      expected_fields: ['发票号'],
+      question_summary: '请补充发票号'
+    })
+
+    const output = await harness.call('digitalEmployee.remoteStatus', { sessionId: 'local-1' })
+
+    expect(output.awaitingInput).toMatchObject({
+      task_id: 't2',
+      expected_fields: ['发票号']
+    })
+  })
+
+  it('clears the previous awaiting_input when a later turn asks nothing', async () => {
+    const harness = createHarness()
+    harness.bindings.set('local-1', BINDING)
+    harness.registry.get.mockReturnValue(BINDING)
+
+    harness.outcomes.remember('local-1', { task_id: 't1', expected_fields: ['金额'] })
+    // 用户答完之后这一轮结束了：必须显式写 null，否则提示条会一直挂着。
+    harness.outcomes.remember('local-1', null)
+
+    const output = await harness.call('digitalEmployee.remoteStatus', { sessionId: 'local-1' })
+
+    expect(output.awaitingInput).toBeNull()
   })
 })
 
