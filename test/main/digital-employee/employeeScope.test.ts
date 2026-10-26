@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest'
 import {
   employeeSkillName,
   employeeSkillPrefix,
+  isEmployeeKnowledgeServerName,
+  isEmployeeMcpServerName,
+  knowledgeServerNameForEmployee,
   mcpServerNameForEmployee
 } from '../../../src/main/digital-employee/employeeScope'
 
@@ -61,7 +64,9 @@ describe('employeeSkillName', () => {
   })
 
   it('keeps a non-ASCII skill name distinguishable', () => {
-    expect(employeeSkillName('agent_1', '报销流程')).not.toBe(employeeSkillName('agent_1', '结算流程'))
+    expect(employeeSkillName('agent_1', '报销流程')).not.toBe(
+      employeeSkillName('agent_1', '结算流程')
+    )
   })
 })
 
@@ -83,5 +88,24 @@ describe('mcpServerNameForEmployee', () => {
 
   it('also satisfies the agent-id charset, since it may be reused there', () => {
     expect(mcpServerNameForEmployee('财务/001')).toMatch(SAFE_AGENT_ID)
+  })
+})
+
+describe('knowledgeServerNameForEmployee', () => {
+  it('is stable and keeps two employees apart', () => {
+    expect(knowledgeServerNameForEmployee('agent_1')).toBe(knowledgeServerNameForEmployee('agent_1'))
+    expect(knowledgeServerNameForEmployee('a:b')).not.toBe(knowledgeServerNameForEmployee('a/b'))
+  })
+
+  it('is recognisable as ours and distinct from the staffdeck remote server', () => {
+    const name = knowledgeServerNameForEmployee('agent_1')
+    expect(isEmployeeKnowledgeServerName(name)).toBe(true)
+    expect(isEmployeeMcpServerName(name)).toBe(false)
+    expect(name).toMatch(SAFE_AGENT_ID)
+  })
+
+  it('does not claim foreign server names', () => {
+    expect(isEmployeeKnowledgeServerName('staffdeck-agent_1-deadbeef')).toBe(false)
+    expect(isEmployeeKnowledgeServerName('my-own-server')).toBe(false)
   })
 })

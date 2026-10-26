@@ -11,6 +11,7 @@ import { AutoPromptingServer } from './autoPromptingServer'
 import { ConversationSearchServer } from './conversationSearchServer'
 import { BuiltinKnowledgeServer } from './builtinKnowledgeServer'
 import { AppleServer } from './appleServer'
+import { DigitalEmployeeKnowledgeServer } from '@/digital-employee/knowledgeToolServer'
 import type { SessionDatabase } from '@/session/data/database'
 import type { AppSessionService } from '@/agent/shared/appSessionService'
 import type { SessionTranscript } from '@/session/data/transcript'
@@ -43,6 +44,16 @@ function buildInMemoryServer(
   _args: string[],
   env?: Record<string, unknown>
 ) {
+  // Per-employee knowledge servers are keyed by their settings name
+  // (`de-kb-{id}-{digest}`, see `knowledgeServerNameForEmployee`); the employee
+  // binding travels in the server config's env, which mcpClient forwards here.
+  if (serverName.startsWith('de-kb-')) {
+    return new DigitalEmployeeKnowledgeServer({
+      knowledge: dependencies.knowledgeService,
+      localKnowledgeBaseId:
+        typeof env?.localKnowledgeBaseId === 'string' ? env.localKnowledgeBaseId : ''
+    })
+  }
   switch (serverName) {
     // buildInFileSystem has been removed - filesystem capabilities are now provided via Agent tools
     case 'Artifacts':

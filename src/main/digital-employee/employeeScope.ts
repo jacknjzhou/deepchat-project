@@ -20,6 +20,7 @@ import { createHash } from 'node:crypto'
 
 const SKILL_PREFIX_TAG = 'de-'
 const MCP_SERVER_TAG = 'staffdeck-'
+const KNOWLEDGE_SERVER_TAG = 'de-kb-'
 const DIGEST_LENGTH = 8
 
 /** Keeps the total inside the 255-char Skill name limit with room for the slug. */
@@ -90,3 +91,19 @@ export const mcpServerNameForEmployee = (employeeId: string): string => {
 
 /** True when the server was registered by this feature rather than by the user. */
 export const isEmployeeMcpServerName = (name: string): boolean => name.startsWith(MCP_SERVER_TAG)
+
+/**
+ * The key one employee's local knowledge search server is stored under.
+ *
+ * Same prefix/digest discipline as `mcpServerNameForEmployee`, but a distinct
+ * tag: the knowledge server is in-memory and per-employee, and a cleanup for
+ * the remote tool server must never take the knowledge server with it.
+ */
+export const knowledgeServerNameForEmployee = (employeeId: string): string => {
+  const idPart = toSafeSegment(employeeId, MAX_ID_SEGMENT) || 'employee'
+  return `${KNOWLEDGE_SERVER_TAG}${idPart}-${digest(employeeId)}`
+}
+
+/** True when the in-memory server belongs to the digital-employee knowledge feature. */
+export const isEmployeeKnowledgeServerName = (name: string): boolean =>
+  name.startsWith(KNOWLEDGE_SERVER_TAG)
