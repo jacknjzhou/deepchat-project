@@ -1,3 +1,4 @@
+import { unzipSync, zipSync } from 'fflate'
 import type { StaffdeckConnection } from './mcpRegistration'
 import { employeeSkillName } from './employeeScope'
 
@@ -73,6 +74,61 @@ const SKILL_AGENT_ID = 'deepchat'
 const normalizeBaseUrl = (baseUrl: string): string => baseUrl.trim().replace(/\/+$/, '')
 
 /**
+ * 修补服务端导出包里缺失的 SKILL.md frontmatter。
+ *
+ * StaffDeck 生成技能正文时不带 frontmatter（实测 `# 标题` 直接开头），而本地
+ * 安装器要求 frontmatter 里必须有非空 `name`，否则三个环节全数拒装。这里在
+ * 同步路径上注入最小合法 frontmatter 兜底：
+ * - `name` 用清洗后的 slug（frontmatter 名有 `[a-z0-9._-]` 规范，中文显示名
+ *   不合格）；最终目录名仍由 `targetName` 决定，不受影响。
+ * - `description` 用服务端显示名（无格式限制，JSON 编码保证 YAML 合法）。
+ * - 已带 frontmatter 的包原样透传；任何异常回退原始 bytes——修补失败不能
+ *   比不修补更糟，安装器会对原始包给出自己的错误。
+ */
+const MAX_FRONTMATTER_PATCH_BYTES = 64 * 1024 * 1024
+
+const sanitizeFrontmatterName = (slug: string): string => {
+  const cleaned = slug
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, '-')
+    .replace(/^[._-]+/, '')
+  return cleaned || 'skill'
+}
+
+const hasFrontmatter = (content: string): boolean => /^\uFEFF?\s*---/.test(content)
+
+export const ensureSkillFrontmatter = (
+  bytes: Uint8Array,
+  skill: Pick<DistributedSkill, 'name' | 'slug'>
+): Uint8Array => {
+  if (bytes.byteLength === 0 || bytes.byteLength > MAX_FRONTMATTER_PATCH_BYTES) return bytes
+  try {
+    const files = unzipSync(bytes)
+    const skillMdKey = Object.keys(files).find((key) => key === 'SKILL.md')
+    if (!skillMdKey) return bytes
+    const content = Buffer.from(files[skillMdKey]).toString('utf8')
+    if (hasFrontmatter(content)) return bytes
+    const description = skill.name?.trim() || skill.slug
+    const patched =
+      `---\n` +
+      `name: ${sanitizeFrontmatterName(skill.slug)}\n` +
+      `description: ${JSON.stringify(description)}\n` +
+      `---\n` +
+      `${content.replace(/^\uFEFF/, '')}`
+    const repacked: Record<string, Uint8Array> = {}
+    for (const [key, value] of Object.entries(files)) {
+      // 目录项（以 `/` 结尾的空 entry）交给打包器按路径推断，原样带过去会生成怪条目。
+      if (key.endsWith('/')) continue
+      repacked[key] = value
+    }
+    repacked[skillMdKey] = Buffer.from(patched, 'utf8')
+    return zipSync(repacked)
+  } catch {
+    return bytes
+  }
+}
+
+/**
  * Rebuild the export URL from the client's own base URL.
  *
  * `downloadUrl` carries the server's `tool_base_url` (defaults to
@@ -105,7 +161,7 @@ export function createStaffdeckSkillSync(deps: StaffdeckSkillSyncDeps): Staffdec
       const bytes = new Uint8Array(await response.arrayBuffer())
       if (bytes.byteLength === 0) return 'empty response body'
 
-      zipPath = await deps.writeTempFile(bytes)
+      zipPath = await deps.writeTempFile(ensureSkillFrontmatter(bytes, skill))
       const targetName = employeeSkillName(employeeId, skill.slug)
       const result = await deps.skills.installFromZipForAgent(SKILL_AGENT_ID, zipPath, {
         // A re-published skill must replace the old folder, not collide with it.

@@ -1,3 +1,4 @@
+import { unzipSync, zipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
 import {
   createStaffdeckSkillSync,
@@ -22,6 +23,7 @@ type Skill = { id: string; name: string; slug: string; downloadUrl: string }
 type State = {
   installed: Record<string, string>
   downloads: string[]
+  lastBytes: Uint8Array | null
 }
 
 function createHarness(
@@ -32,7 +34,11 @@ function createHarness(
     initialInstalled?: Record<string, string>
   } = {}
 ) {
-  const state: State = { installed: { ...(options.initialInstalled ?? {}) }, downloads: [] }
+  const state: State = {
+    installed: { ...(options.initialInstalled ?? {}) },
+    downloads: [],
+    lastBytes: null
+  }
   const baseUrl = options.connection?.baseUrl ?? 'http://staffdeck.test'
 
   const deps: StaffdeckSkillSyncDeps = {
@@ -47,6 +53,7 @@ function createHarness(
       return new Response(response.bytes ?? new Uint8Array([1, 2, 3]), { status: 200 })
     }) as typeof fetch,
     writeTempFile: async (bytes) => {
+      state.lastBytes = bytes
       const path = `/tmp/fake-${bytes.byteLength}-${state.downloads.length}.zip`
       return path
     },
@@ -308,5 +315,51 @@ describe('syncEmployee', () => {
 
     // 基线里留着已下线的技能，将来同名技能重新上线时会被误判为「已装过」。
     expect(harness.state.installed[`__baseline__${EMPLOYEE}`]).not.toContain('sk_beta')
+  })
+
+  it('patches a missing SKILL.md frontmatter before installing', async () => {
+    // 服务端（knowledge/skill 生成端）导出的包实测没有 frontmatter，直接以标题开头。
+    const bare = zipSync({ 'SKILL.md': Buffer.from('# 文本翻译\n\n正文。\n', 'utf8') })
+    const harness = createHarness({
+      responses: { 'slug=text-translation': { ok: true, bytes: bare } }
+    })
+    const named: Skill = {
+      id: 'sk_tt',
+      name: '文本翻译',
+      slug: 'text-translation',
+      downloadUrl: ''
+    }
+
+    const result = await createStaffdeckSkillSync(harness.deps).syncEmployee({
+      employeeId: EMPLOYEE,
+      skills: [named]
+    })
+
+    expect(result.ok).toBe(true)
+    const files = unzipSync(harness.state.lastBytes ?? new Uint8Array())
+    const patched = Buffer.from(files['SKILL.md']).toString('utf8')
+    // name 走 slug 清洗（frontmatter 名不允许中文），description 走服务端显示名。
+    expect(patched.startsWith('---\nname: text-translation\ndescription: "文本翻译"\n---\n')).toBe(
+      true
+    )
+    // 原正文必须原样保留在 frontmatter 之后。
+    expect(patched).toContain('# 文本翻译\n\n正文。')
+  })
+
+  it('keeps an existing SKILL.md frontmatter untouched', async () => {
+    const withFrontmatter = zipSync({
+      'SKILL.md': Buffer.from('---\nname: alpha\ndescription: x\n---\n# Alpha\n', 'utf8')
+    })
+    const harness = createHarness({
+      responses: { 'slug=alpha': { ok: true, bytes: withFrontmatter } }
+    })
+
+    await createStaffdeckSkillSync(harness.deps).syncEmployee({
+      employeeId: EMPLOYEE,
+      skills: [skill('alpha')]
+    })
+
+    // 已合规的包不做任何重打包：bytes 与下载内容逐字节一致。
+    expect(harness.state.lastBytes).toEqual(withFrontmatter)
   })
 })
