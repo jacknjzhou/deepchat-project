@@ -126,11 +126,16 @@ async function createHarness(cacheDir: string): Promise<Harness> {
   return harness
 }
 
-const runSync = (harness: Harness, knowledgeBaseIds: string[] = ['kb-1']) =>
+const runSync = (
+  harness: Harness,
+  knowledgeBaseIds: string[] = ['kb-1'],
+  sops: Array<{ title: string; content: string }> = []
+) =>
   createKnowledgeSync(harness.deps).syncEmployee({
     employeeId: EMPLOYEE_ID,
     employeeName: EMPLOYEE_NAME,
-    knowledgeBaseIds
+    knowledgeBaseIds,
+    sops
   })
 
 describe('knowledgeSync', () => {
@@ -468,6 +473,63 @@ describe('knowledgeSync', () => {
       'PARTIAL',
       'NO_EMBEDDING_MODEL',
       'INDEX_FAILED'
+    ])
+  })
+
+  it('writes sops into the local knowledge base even when the manifest is empty', async () => {
+    const harness = await createHarness(cacheDir)
+    harness.setPackages([])
+
+    const result = await runSync(harness, ['kb-1'], [{ title: '报销流程', content: '先提交 OA' }])
+
+    // SOP 与清单解耦：清单为空也必须把 SOP 送进可检索的本地库。
+    expect(result.ok).toBe(true)
+    expect(harness.provisionCalls).toBe(1)
+    const sopPath = path.join(cacheDir, LOCAL_KB_ID, 'sops', '报销流程.md')
+    expect(harness.calls.add).toEqual([sopPath])
+    await expect(readFile(sopPath, 'utf8')).resolves.toBe('报销流程\n\n先提交 OA')
+    const state = harness.store.getEmployee(EMPLOYEE_ID)
+    expect(state?.sops?.['sops/报销流程.md']?.hash).toBeTruthy()
+  })
+
+  it('rewrites a sop in place only when its content changes', async () => {
+    const harness = await createHarness(cacheDir)
+    harness.setPackages([])
+    await runSync(harness, ['kb-1'], [{ title: '报销流程', content: 'v1' }])
+    const fileId = harness.store.getEmployee(EMPLOYEE_ID)?.sops?.['sops/报销流程.md']?.fileId
+    harness.calls.add.length = 0
+    harness.calls.reAdd.length = 0
+
+    // 未变化的 SOP 不触发任何文件操作，也不重复建库。
+    await runSync(harness, ['kb-1'], [{ title: '报销流程', content: 'v1' }])
+    expect(harness.calls.add).toEqual([])
+    expect(harness.calls.reAdd).toEqual([])
+
+    // 内容变了：复用原 fileId 原地重建，文件正文同步更新。
+    await runSync(harness, ['kb-1'], [{ title: '报销流程', content: 'v2' }])
+    expect(harness.calls.reAdd).toEqual([fileId])
+    const sopPath = path.join(cacheDir, LOCAL_KB_ID, 'sops', '报销流程.md')
+    await expect(readFile(sopPath, 'utf8')).resolves.toBe('报销流程\n\nv2')
+  })
+
+  it('deletes sops the configuration removed', async () => {
+    const harness = await createHarness(cacheDir)
+    harness.setPackages([])
+    await runSync(
+      harness,
+      ['kb-1'],
+      [
+        { title: '报销流程', content: 'a' },
+        { title: '采购流程', content: 'b' }
+      ]
+    )
+    const removedFileId = harness.store.getEmployee(EMPLOYEE_ID)?.sops?.['sops/采购流程.md']?.fileId
+
+    await runSync(harness, ['kb-1'], [{ title: '报销流程', content: 'a' }])
+
+    expect(harness.calls.delete).toEqual([removedFileId])
+    expect(Object.keys(harness.store.getEmployee(EMPLOYEE_ID)?.sops ?? {})).toEqual([
+      'sops/报销流程.md'
     ])
   })
 })

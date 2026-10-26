@@ -1,4 +1,4 @@
-import type { KnowledgeSyncResult } from './knowledgeSync'
+import type { KnowledgeSyncInput, KnowledgeSyncResult } from './knowledgeSync'
 
 /**
  * 知识同步调度器。
@@ -19,6 +19,12 @@ export interface KnowledgeSyncEmployee {
   id: string
   name: string
   knowledgeBaseIds: string[]
+  /**
+   * 员工 SOP 必须随配置一起带进来：syncEmployee 拿它做增量比对。
+   * 不带的话 syncSopsIfNeeded 会把仍在使用的 SOP 记账当成「已移除」，
+   * 定时轮每跑一次就删一遍 SOP——这是数据删除，不是可忽略的优化项。
+   */
+  sops?: KnowledgeSyncInput['sops']
 }
 
 export interface KnowledgeSyncSchedulerDeps {
@@ -30,11 +36,7 @@ export interface KnowledgeSyncSchedulerDeps {
    * 假员工 id 一旦被拿去同步，会在服务端刷出一串 404。
    */
   listEmployees: () => Promise<KnowledgeSyncEmployee[]>
-  syncEmployee: (input: {
-    employeeId: string
-    employeeName: string
-    knowledgeBaseIds: string[]
-  }) => Promise<KnowledgeSyncResult>
+  syncEmployee: (input: KnowledgeSyncInput) => Promise<KnowledgeSyncResult>
   /** 读配置的同步间隔（秒）；非法值由实现侧兜底成 `DEFAULT_SYNC_INTERVAL_SECONDS`。 */
   readIntervalSeconds: () => number
   /** 注入定时器与清理函数，便于测试用假时钟推进。 */
@@ -85,7 +87,8 @@ export function createKnowledgeSyncScheduler(
         await deps.syncEmployee({
           employeeId: employee.id,
           employeeName: employee.name,
-          knowledgeBaseIds: employee.knowledgeBaseIds
+          knowledgeBaseIds: employee.knowledgeBaseIds,
+          sops: employee.sops
         })
       } catch {
         // 单员工失败必须隔离：否则一个坏员工会让整个租户的同步永久停摆。

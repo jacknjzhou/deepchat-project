@@ -41,13 +41,31 @@ export interface DigitalEmployeeKnowledgeNotice {
 
 export const DIGITAL_EMPLOYEE_AGENT_ID = 'deepchat'
 
+/**
+ * 单条 SOP 直接注入提示词的正文上限。
+ *
+ * SOP 全文随同步进了本地知识库，可被 `de_knowledge_search` 检索；提示词里
+ * 只保留开头部分让模型「知道有这么个流程」，超长内容检索时再看，避免
+ * SOP 堆积把上下文顶爆。
+ */
+const SOP_PROMPT_LIMIT = 600
+
 export function buildDigitalEmployeeSystemPrompt(
   employee: DigitalEmployee,
   options?: Pick<DigitalEmployeeConversationOptions, 'knowledgeSnippets'>
 ): string {
   const sections: string[] = [employee.systemPrompt]
   for (const sop of employee.sops) {
-    sections.push(`## SOP：${sop.title}\n${sop.content}`)
+    const body =
+      sop.content.length > SOP_PROMPT_LIMIT
+        ? `${sop.content.slice(0, SOP_PROMPT_LIMIT)}…（truncated）`
+        : sop.content
+    sections.push(`## SOP：${sop.title}\n${body}`)
+  }
+  if (employee.sops.length > 0) {
+    sections.push(
+      '## SOP 全文\n以上 SOP 可能被截断。需要完整步骤时，用 `de_knowledge_search` 工具在本地知识库中检索 SOP 标题。'
+    )
   }
   if (employee.greeting) {
     sections.push(`## 开场白\n你的第一句回复必须以以下问候开始：\n${employee.greeting}`)

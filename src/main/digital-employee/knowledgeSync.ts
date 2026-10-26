@@ -60,6 +60,11 @@ export interface KnowledgeSyncInput {
   employeeId: string
   employeeName: string
   knowledgeBaseIds: string[]
+  /**
+   * 员工 SOP（`{title, content}`）。与知识清单无关：清单 304 时 SOP 也可能
+   * 改过，所以每轮都随员工配置带进来做增量比对。
+   */
+  sops?: ReadonlyArray<{ title: string; content: string }>
 }
 
 export interface KnowledgeSyncResult {
@@ -109,6 +114,18 @@ export function conceptFilePath(conceptId: string): string {
   const last = segments[segments.length - 1]
   segments[segments.length - 1] = last.endsWith('.md') ? last : `${last}.md`
   return path.join(...segments)
+}
+
+/**
+ * SOP 在本地库缓存里的相对路径：统一放 `sops/` 子目录，标题做文件名。
+ *
+ * 统一用 `/` 而不是 path.join：这个字符串同时是状态表的记账 key，必须跨
+ * 平台稳定；fs API 在 Windows 上同样接受正斜杠。标题清洗后为空（如全空格）
+ * 用固定名兜底；`.md` 后缀保证了清洗结果再奇怪也不会构成 `..` 逃逸。
+ */
+function sopFilePath(title: string): string {
+  const name = sanitizeSegment(title.trim())
+  return `sops/${name === '' ? 'sop' : name}.md`
 }
 
 /** 原子写：先写 `.tmp` 再 rename，避免半截文件被索引器读到。 */
@@ -255,10 +272,86 @@ export function createKnowledgeSync(deps: KnowledgeSyncDeps): KnowledgeSync {
           lastSyncAt: now(),
           concepts: workingConcepts
         }
-      }
+      },
+      // SOP 记账不属于任何包，包级写回必须原样带走，否则会被 zod 剥掉。
+      sops: employeeState?.sops
     })
 
     return { ok: !failed, downloaded, reason: failed ? 'PARTIAL' : undefined }
+  }
+
+  /**
+   * 把员工 SOP 增量写入本地库（`sops/` 子目录，标题做文件名）。
+   *
+   * 与概念的增量机制同构：per-SOP hash（title+content）比对记账，没变就
+   * 一行文件都不动。SOP 不随清单走，所以这步在清单请求**之前**执行——
+   * 清单 304 甚至失败时，SOP 也要保持最新。
+   *
+   * 返回建库失败的原因（整轮受阻）；`null` 表示无需处理或已成功。
+   */
+  const syncSopsIfNeeded = async (input: {
+    employeeId: string
+    sops: ReadonlyArray<{ title: string; content: string }>
+    ensureProvisioned: () => Promise<ProvisioningResult>
+  }): Promise<KnowledgeStaleReason | null> => {
+    const previous = deps.stateStore.getEmployee(input.employeeId)?.sops ?? {}
+    const hashOf = (sop: { title: string; content: string }) =>
+      createHash('sha256').update(`${sop.title}\n${sop.content}`).digest('hex').slice(0, 16)
+
+    // 重复标题在 Map 里后者覆盖前者：文件只有一份，内容与记账保持一致。
+    const wanted = new Map<string, { hash: string; body: string }>()
+    for (const sop of input.sops) {
+      wanted.set(sopFilePath(sop.title), {
+        hash: hashOf(sop),
+        body: `${sop.title}\n\n${sop.content}`
+      })
+    }
+
+    const changed = [...wanted].filter(([relPath, sop]) => previous[relPath]?.hash !== sop.hash)
+    const removed = Object.keys(previous).filter((relPath) => !wanted.has(relPath))
+    if (changed.length === 0 && removed.length === 0) return null
+
+    const provisioned = await input.ensureProvisioned()
+    if (!provisioned.ok) return provisioned.reason ?? 'NO_EMBEDDING_MODEL'
+    const localKnowledgeBaseId = provisioned.knowledgeBaseId
+    const localDir = path.join(deps.cacheDir, localKnowledgeBaseId)
+
+    const working: Record<string, { hash: string; fileId: string }> = { ...previous }
+    for (const relPath of removed) delete working[relPath]
+
+    // 已下线的 SOP 从索引移除。删失败与概念同策略：不致命，孤儿向量留待重建索引。
+    for (const relPath of removed) {
+      const fileId = previous[relPath]?.fileId
+      if (!fileId) continue
+      try {
+        await deps.knowledge.deleteFile(localKnowledgeBaseId, fileId)
+      } catch {
+        // 文件与记账已分家：下轮 hash 对不上会重写，不在这里重试。
+      }
+    }
+
+    for (const [relPath, sop] of changed) {
+      try {
+        const target = path.join(localDir, relPath)
+        await writeFileAtomic(target, sop.body)
+        const existingFileId = previous[relPath]?.fileId
+        const result = existingFileId
+          ? await deps.knowledge.reAddFile(localKnowledgeBaseId, existingFileId)
+          : await deps.knowledge.addFile(localKnowledgeBaseId, target)
+        if (result.error || !result.data?.id) continue
+        working[relPath] = { hash: sop.hash, fileId: result.data.id }
+      } catch {
+        // 索引失败不记账：记了下一轮就会以为已同步，永远补不上。
+      }
+    }
+
+    const employeeState = deps.stateStore.getEmployee(input.employeeId)
+    deps.stateStore.setEmployee(input.employeeId, {
+      localKnowledgeBaseId: employeeState?.localKnowledgeBaseId ?? localKnowledgeBaseId,
+      packages: employeeState?.packages ?? {},
+      sops: working
+    })
+    return null
   }
 
   return {
@@ -266,12 +359,37 @@ export function createKnowledgeSync(deps: KnowledgeSyncDeps): KnowledgeSync {
       const requested = new Set(input.knowledgeBaseIds.filter((id) => id !== ''))
       const previousEmployee = deps.stateStore.getEmployee(input.employeeId)
 
+      // 员工名下没有任何 KB 就没必要打服务端：这是「员工未配知识」的常态。
+      // SOP 检索也挂在这个闸门下——没有 KB 的员工不会注册检索工具，
+      // 把 SOP 写进索引也无人能查，留着提示词注入即可。
+      if (requested.size === 0) {
+        return { ok: true, downloaded: 0, failedPackages: 0 }
+      }
+
+      // 建库是幂等的，SOP 与概念共用同一个本地库；只在第一处需要时建立。
+      let provisioned: ProvisioningResult | null = null
+      const ensureProvisioned = async (): Promise<ProvisioningResult> => {
+        if (provisioned !== null) return provisioned
+        const result = await deps.provision({
+          employeeId: input.employeeId,
+          employeeName: input.employeeName
+        })
+        if (result.ok) provisioned = result
+        return result
+      }
+
+      const sopReason = await syncSopsIfNeeded({
+        employeeId: input.employeeId,
+        sops: input.sops ?? [],
+        ensureProvisioned
+      })
+      if (sopReason !== null) {
+        // 没有嵌入模型就没有索引入口，SOP 与概念都进不去，整轮跳过。
+        return { ok: true, downloaded: 0, failedPackages: 0, reason: sopReason }
+      }
+
       let manifest: KnowledgeManifest | null
       try {
-        // 员工名下没有任何 KB 就没必要打服务端：这是「员工未配知识」的常态。
-        if (requested.size === 0) {
-          return { ok: true, downloaded: 0, failedPackages: 0 }
-        }
         manifest = await deps.client.fetchManifest(
           input.employeeId,
           previousEmployee?.packages[
@@ -299,23 +417,20 @@ export function createKnowledgeSync(deps: KnowledgeSyncDeps): KnowledgeSync {
         return { ok: true, downloaded: 0, failedPackages: 0 }
       }
 
-      const provisioned = await deps.provision({
-        employeeId: input.employeeId,
-        employeeName: input.employeeName
-      })
-      if (!provisioned.ok) {
+      const pkgProvisioned = await ensureProvisioned()
+      if (!pkgProvisioned.ok) {
         // 没有嵌入模型就没有索引入口，下载了也进不去索引，故直接跳过。
-        return { ok: true, downloaded: 0, failedPackages: 0, reason: provisioned.reason }
+        return { ok: true, downloaded: 0, failedPackages: 0, reason: pkgProvisioned.reason }
       }
 
-      const localDir = path.join(deps.cacheDir, provisioned.knowledgeBaseId)
+      const localDir = path.join(deps.cacheDir, pkgProvisioned.knowledgeBaseId)
       let downloaded = 0
       let failedPackages = 0
 
       for (const pkg of targets) {
         const outcome = await syncPackage({
           employeeId: input.employeeId,
-          localKnowledgeBaseId: provisioned.knowledgeBaseId,
+          localKnowledgeBaseId: pkgProvisioned.knowledgeBaseId,
           localDir,
           pkg,
           etag: manifest.etag,

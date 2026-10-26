@@ -202,6 +202,21 @@ describe('digitalEmployeeStore', () => {
     expect(prompt).toContain('[1] 片段A')
   })
 
+  it('buildDigitalEmployeeSystemPrompt truncates long sops and points to de_knowledge_search', () => {
+    // 601 个 x：截断后只保留前 600 个。
+    const content = 'x'.repeat(601)
+    const employee = {
+      ...makeEmployee('finance'),
+      sops: [{ title: '报销流程', content }]
+    }
+    const prompt = buildDigitalEmployeeSystemPrompt(employee)
+    expect(prompt).toContain('x'.repeat(600))
+    expect(prompt).toContain('…（truncated）')
+    // 第 601 个 x 不能出现，否则等于没截。
+    expect(prompt).not.toContain(`${'x'.repeat(601)}`)
+    expect(prompt).toContain('de_knowledge_search')
+  })
+
   it('buildDisabledAgentTools returns complement of whitelist and undefined for empty whitelist', () => {
     const employee = { ...makeEmployee('finance'), tools: ['filesystem_read'] }
     expect(buildDisabledAgentTools(employee, ['filesystem_read', 'web_search'])).toEqual([

@@ -56,7 +56,14 @@ const employeeStateSchema = z.object({
   /** 本地内置知识库 id（`de-` 前缀 + 员工 id 派生） */
   localKnowledgeBaseId: z.string().min(1),
   /** key = 远端 `knowledgeBaseId` */
-  packages: z.record(z.string(), packageStateSchema)
+  packages: z.record(z.string(), packageStateSchema),
+  /**
+   * 员工 SOP 的增量记账（key = `sops/<标题>.md` 相对路径）。
+   *
+   * SOP 属于员工本身，不属于任何远端知识包，所以放在包外：清单 304 时
+   * SOP 也可能改过，必须独立比对。旧记录没有该字段，optional 保持兼容。
+   */
+  sops: z.record(z.string(), conceptRecordSchema).optional()
 })
 
 export type KnowledgePackageState = z.infer<typeof packageStateSchema>

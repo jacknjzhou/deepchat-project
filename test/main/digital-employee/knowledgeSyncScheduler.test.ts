@@ -14,9 +14,17 @@ import {
 interface Harness {
   deps: KnowledgeSyncSchedulerDeps
   syncCalls: string[]
+  syncSops: Array<ReadonlyArray<{ title: string; content: string }> | undefined>
   advance: (ms: number) => void
   triggerTick: () => void
-  setEmployees: (next: Array<{ id: string; name: string; knowledgeBaseIds: string[] }>) => void
+  setEmployees: (
+    next: Array<{
+      id: string
+      name: string
+      knowledgeBaseIds: string[]
+      sops?: Array<{ title: string; content: string }>
+    }>
+  ) => void
   failFor: Set<string>
   runningCount: () => number
   maxConcurrent: () => number
@@ -25,8 +33,14 @@ interface Harness {
 function createHarness(overrides: Partial<KnowledgeSyncSchedulerDeps> = {}): Harness {
   let clock = 1_000_000
   let handlers: Array<() => void> = []
-  let employees: Array<{ id: string; name: string; knowledgeBaseIds: string[] }> = []
+  let employees: Array<{
+    id: string
+    name: string
+    knowledgeBaseIds: string[]
+    sops?: Array<{ title: string; content: string }>
+  }> = []
   const syncCalls: string[] = []
+  const syncSops: Array<ReadonlyArray<{ title: string; content: string }> | undefined> = []
   const failFor = new Set<string>()
   let inFlight = 0
   let maxInFlight = 0
@@ -34,6 +48,7 @@ function createHarness(overrides: Partial<KnowledgeSyncSchedulerDeps> = {}): Har
   const harness: Harness = {
     deps: undefined as unknown as KnowledgeSyncSchedulerDeps,
     syncCalls,
+    syncSops,
     advance: (ms) => {
       clock += ms
     },
@@ -56,6 +71,7 @@ function createHarness(overrides: Partial<KnowledgeSyncSchedulerDeps> = {}): Har
       inFlight += 1
       maxInFlight = Math.max(maxInFlight, inFlight)
       syncCalls.push(input.employeeId)
+      syncSops.push(input.sops)
       try {
         if (failFor.has(input.employeeId)) throw new Error('boom')
         return { ok: true, downloaded: 0, failedPackages: 0 }
@@ -160,6 +176,25 @@ describe('knowledgeSyncScheduler', () => {
 
     // 没配知识的员工占大多数，逐个打服务端纯属浪费。
     expect(harness.syncCalls).toEqual(['agent_2'])
+  })
+
+  it('passes employee sops through to the sync layer', async () => {
+    const harness = createHarness()
+    harness.setEmployees([
+      {
+        id: 'agent_1',
+        name: 'A',
+        knowledgeBaseIds: ['kb-1'],
+        sops: [{ title: '报销流程', content: '先提交 OA' }]
+      }
+    ])
+    const scheduler = createKnowledgeSyncScheduler(harness.deps)
+
+    await scheduler.runOnce()
+
+    // SOP 不透传，同步层会把仍在使用的 SOP 记账当成已移除——数据删除级回归。
+    expect(harness.syncCalls).toEqual(['agent_1'])
+    expect(harness.syncSops).toEqual([[{ title: '报销流程', content: '先提交 OA' }]])
   })
 
   it('ignores a concurrent tick while a round is still running', async () => {

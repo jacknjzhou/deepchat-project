@@ -3659,7 +3659,9 @@ export async function createMainProcessControl(dependencies: {
           return employees.map((employee) => ({
             id: employee.id,
             name: employee.name,
-            knowledgeBaseIds: employee.knowledgeBaseIds
+            knowledgeBaseIds: employee.knowledgeBaseIds,
+            // SOP 必须随配置透传：不带的话同步层会把仍在使用的 SOP 当作已移除删掉。
+            sops: employee.sops
           }))
         },
         syncEmployee: (input) => sync.syncEmployee(input),
