@@ -1,8 +1,9 @@
 import type { MCPServerConfig } from '@shared/types/mcp'
 import { listEmployeeMcpServers } from './mcpRegistration'
+import { knowledgeServerNameForEmployee } from './employeeScope'
 
 /**
- * 清掉已经不该存在的 `staffdeck-*` MCP 注册。
+ * 清掉已经不该存在的 `staffdeck-*` / `de-kb-*` MCP 注册。
  *
  * 注册只在「用户点开始对话」时发生，注销却依赖同一条路径再走一次。员工被删除、
  * 被改成 remote、或管理员停用它之后，用户不会再点它——于是那条注册永久留在
@@ -11,7 +12,8 @@ import { listEmployeeMcpServers } from './mcpRegistration'
  *
  * 三条判定约束：
  *
- * - **只碰自己的命名空间**。前缀是 `staffdeck-`，用户自建的 server 一个都不动。
+ * - **只碰自己的命名空间**。前缀是 `staffdeck-` / `de-kb-`，用户自建的 server
+ *   一个都不动。
  * - **拿不到可信列表就不动**。provider 降级到 mock 时列表里是假员工 id，按它清理
  *   会把所有真实注册删光。宁可留一批孤儿，也不能删错。
  * - **hybrid 要留**。它可能还在本地执行，注册仍然有用。
@@ -64,7 +66,14 @@ export function createStaffdeckMcpReconciler(
     const registered = listEmployeeMcpServers(servers)
     if (registered.length === 0) return { removed: [], skipped: false }
 
-    const keep = new Set(employeeIds.map(deps.mcpServerNameFor))
+    // 在册员工保留两种注册：远端工具（staffdeck-）与本地知识检索（de-kb-）。
+    // 员工只是清空了知识库时，provision 自己会 unregister 那一条；
+    // 对账只负责员工整个消失的情况。
+    const keep = new Set<string>()
+    for (const id of employeeIds) {
+      keep.add(deps.mcpServerNameFor(id))
+      keep.add(knowledgeServerNameForEmployee(id))
+    }
     const stale = registered.filter((name) => !keep.has(name))
 
     const removed: string[] = []

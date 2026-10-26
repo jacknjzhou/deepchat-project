@@ -220,17 +220,20 @@ describe('registerForEmployee', () => {
   })
 
   it('never removes a server the user configured themselves', async () => {
-    const harness = createHarness({}, {
-      'my-own-server': {
-        command: 'npx',
-        args: [],
-        env: {},
-        descriptions: '',
-        icons: '',
-        enabled: true,
-        type: 'stdio'
+    const harness = createHarness(
+      {},
+      {
+        'my-own-server': {
+          command: 'npx',
+          args: [],
+          env: {},
+          descriptions: '',
+          icons: '',
+          enabled: true,
+          type: 'stdio'
+        }
       }
-    })
+    )
 
     const registrar = createStaffdeckMcpRegistrar(harness.deps)
     await registrar.registerForEmployee({
@@ -240,6 +243,47 @@ describe('registerForEmployee', () => {
     await registrar.registerForEmployee({ employeeId: EMPLOYEE, tools: [] })
 
     expect(harness.servers.has('my-own-server')).toBe(true)
+  })
+
+  it('keeps a user-disabled server disabled across unchanged rounds', async () => {
+    // 配置是系统托管的，开关是用户的：provision 不能把用户刚关掉的 server 静默打开。
+    const harness = createHarness()
+    const registrar = createStaffdeckMcpRegistrar(harness.deps)
+    await registrar.registerForEmployee({ employeeId: EMPLOYEE, tools: ['staffdeck_a'] })
+    await harness.deps.mcpSettings.updateMcpServer(SERVER_NAME, { enabled: false })
+
+    await registrar.registerForEmployee({ employeeId: EMPLOYEE, tools: ['staffdeck_a'] })
+
+    expect(harness.servers.get(SERVER_NAME)?.enabled).toBe(false)
+  })
+
+  it('carries the user-disabled toggle through a target change', async () => {
+    // 密钥轮换要生效，但轮换不能顺手把禁用状态改回启用。
+    let apiKey = 'sd_live_old'
+    const harness = createHarness({ getConnection: () => ({ baseUrl: 'http://x', apiKey }) })
+    const registrar = createStaffdeckMcpRegistrar(harness.deps)
+    await registrar.registerForEmployee({ employeeId: EMPLOYEE, tools: ['staffdeck_a'] })
+    await harness.deps.mcpSettings.updateMcpServer(SERVER_NAME, { enabled: false })
+
+    apiKey = 'sd_live_new'
+    await registrar.registerForEmployee({ employeeId: EMPLOYEE, tools: ['staffdeck_a'] })
+
+    const config = harness.servers.get(SERVER_NAME)
+    expect(config?.customHeaders?.Authorization).toBe('Bearer sd_live_new')
+    expect(config?.enabled).toBe(false)
+  })
+
+  it('labels the card with the employee name for the MCP center', async () => {
+    const harness = createHarness()
+
+    await createStaffdeckMcpRegistrar(harness.deps).registerForEmployee({
+      employeeId: EMPLOYEE,
+      tools: ['staffdeck_a'],
+      employeeName: '财务助手'
+    })
+
+    // 设置页里一串 `staffdeck-agent_<id>-<摘要>` 没法认，描述里的员工名才是可读标识。
+    expect(harness.servers.get(SERVER_NAME)?.descriptions).toContain('财务助手')
   })
 })
 

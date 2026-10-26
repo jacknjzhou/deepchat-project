@@ -31,6 +31,8 @@ import type { DistributedSkill, StaffdeckSkillSync, StaffdeckSkillSyncResult } f
 /** Only what provisioning needs; the rest of `DigitalEmployee` is irrelevant here. */
 export interface EmployeeProvisioningTarget {
   id: string
+  /** Card label for the MCP center; carried through from the distributed list. */
+  name: string
   executionMode: 'local' | 'remote' | 'hybrid'
   tools: readonly string[]
   skills: readonly DistributedSkill[]
@@ -74,6 +76,16 @@ export interface EmployeeProvisionerDeps {
   registrar: Pick<StaffdeckMcpRegistrar, 'registerForEmployee' | 'unregister'>
   skillSync: Pick<StaffdeckSkillSync, 'syncEmployee'>
   knowledgeRegistrar: Pick<KnowledgeToolRegistrar, 'registerForEmployee' | 'unregister'>
+  /**
+   * Runs the stale-registration sweep after a round finishes.
+   *
+   * Reconciliation only used to happen at app start, so an employee deleted
+   * while the app was running kept its tools alive in every conversation until
+   * the next restart. Provisioning is the one moment we know the distributed
+   * list is fresh — and someone just used it, which is exactly when a deleted
+   * peer should disappear. Fire-and-forget: failures must not affect the round.
+   */
+  reconcileAfterRun?: () => Promise<void>
 }
 
 export interface EmployeeProvisioner {
@@ -93,6 +105,7 @@ export interface EmployeeProvisioner {
 
 const toTarget = (employee: DigitalEmployee): EmployeeProvisioningTarget => ({
   id: employee.id,
+  name: employee.name,
   executionMode: employee.executionMode,
   tools: employee.tools,
   knowledgeBaseIds: employee.knowledgeBaseIds,
@@ -179,7 +192,12 @@ export function createEmployeeProvisioner(deps: EmployeeProvisionerDeps): Employ
       const failures = base.failures
       const mcp = await runChain(
         'mcp',
-        () => deps.registrar.registerForEmployee({ employeeId, tools: resolved.tools }),
+        () =>
+          deps.registrar.registerForEmployee({
+            employeeId,
+            tools: resolved.tools,
+            employeeName: resolved.name
+          }),
         failures
       )
       const skills = await runChain(
@@ -215,6 +233,8 @@ export function createEmployeeProvisioner(deps: EmployeeProvisionerDeps): Employ
       return await round
     } finally {
       if (inFlight.get(employeeId) === round) inFlight.delete(employeeId)
+      // 启动之外唯一确定名单新鲜的时机。后台跑：对账失败与结果无关。
+      void deps.reconcileAfterRun?.().catch(() => undefined)
     }
   }
 

@@ -4,7 +4,10 @@ import {
   createStaffdeckMcpReconciler,
   type StaffdeckMcpReconcileDeps
 } from '../../../src/main/digital-employee/mcpReconcile'
-import { mcpServerNameForEmployee } from '../../../src/main/digital-employee/employeeScope'
+import {
+  knowledgeServerNameForEmployee,
+  mcpServerNameForEmployee
+} from '../../../src/main/digital-employee/employeeScope'
 
 const serverConfig = (name: string): MCPServerConfig => ({
   command: '',
@@ -82,7 +85,7 @@ describe('staffdeck MCP registration reconcile', () => {
       mcpSettings: {
         getMcpServers: vi.fn(async () => ({
           'my-local-tools': serverConfig('local'),
-          'filesystem': serverConfig('fs')
+          filesystem: serverConfig('fs')
         })),
         removeMcpServer: vi.fn(async () => undefined)
       }
@@ -201,5 +204,40 @@ describe('staffdeck MCP registration reconcile', () => {
     expect(result.removed).toEqual([b])
     expect(harness.deps.mcpSettings.removeMcpServer).toHaveBeenCalledWith(b)
     expect(harness.deps.mcpSettings.removeMcpServer).not.toHaveBeenCalledWith(a)
+  })
+
+  it('also removes the knowledge server of a deleted employee', async () => {
+    // 员工消失后 de-kb-* 与 staffdeck-* 同命：没人会再 provision 它，
+    // 残留的 in-memory 注册就是设置页里一张永久「已停止」的死卡。
+    const gone = knowledgeServerNameForEmployee('emp-gone')
+    const harness = createHarness({
+      mcpSettings: {
+        getMcpServers: vi.fn(async () => ({ [gone]: serverConfig(gone) })),
+        removeMcpServer: vi.fn(async (name: string) => {
+          harness.removed.push(name)
+        })
+      }
+    })
+
+    const result = await createStaffdeckMcpReconciler(harness.deps)()
+
+    expect(result.removed).toEqual([gone])
+    expect(harness.stopped).toEqual([gone])
+  })
+
+  it('keeps the knowledge server of a still-existing employee', async () => {
+    const kept = knowledgeServerNameForEmployee('emp-keep')
+    const harness = createHarness({
+      mcpSettings: {
+        getMcpServers: vi.fn(async () => ({ [kept]: serverConfig(kept) })),
+        removeMcpServer: vi.fn(async () => undefined)
+      }
+    })
+
+    const result = await createStaffdeckMcpReconciler(harness.deps)()
+
+    expect(result.removed).toEqual([])
+    expect(harness.deps.mcpSettings.removeMcpServer).not.toHaveBeenCalled()
+    expect(harness.stopped).toEqual([])
   })
 })

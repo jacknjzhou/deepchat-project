@@ -1,5 +1,9 @@
 import type { MCPServerConfig } from '@shared/types/mcp'
-import { isEmployeeMcpServerName, mcpServerNameForEmployee } from './employeeScope'
+import {
+  isEmployeeKnowledgeServerName,
+  isEmployeeMcpServerName,
+  mcpServerNameForEmployee
+} from './employeeScope'
 
 /**
  * Registers one employee's StaffDeck tools as a remote MCP server.
@@ -53,6 +57,8 @@ export interface StaffdeckMcpRegistrar {
   registerForEmployee(input: {
     employeeId: string
     tools: readonly string[]
+    /** Card label for the MCP center; registration works without it. */
+    employeeName?: string
   }): Promise<StaffdeckMcpRegisterResult>
   unregister(employeeId: string): Promise<void>
 }
@@ -65,13 +71,21 @@ const hasStaffdeckTools = (tools: readonly string[]): boolean =>
 
 const normalizeBaseUrl = (baseUrl: string): string => baseUrl.trim().replace(/\/+$/, '')
 
-const buildConfig = (connection: StaffdeckConnection, employeeId: string): MCPServerConfig => ({
+const buildConfig = (
+  connection: StaffdeckConnection,
+  employeeId: string,
+  employeeName?: string
+): MCPServerConfig => ({
   // The remaining fields exist because `MCPServerConfig` models stdio servers
   // too; `normalizeServerConfig` fills them for http ones.
   command: '',
   args: [],
   env: {},
-  descriptions: 'StaffDeck 远端工具（凭证由服务端持有）',
+  // MCP 中心会把这行当卡片描述展示：设置页里的一串 `staffdeck-agent_<id>-<摘要>`
+  // 没法认，写上员工名它才是一张可读的卡。
+  descriptions: employeeName
+    ? `StaffDeck 远端工具 · ${employeeName}（凭证由服务端持有）`
+    : 'StaffDeck 远端工具（凭证由服务端持有）',
   icons: '',
   enabled: true,
   type: 'http',
@@ -84,14 +98,21 @@ const buildConfig = (connection: StaffdeckConnection, employeeId: string): MCPSe
   customHeaders: { Authorization: `Bearer ${connection.apiKey}` }
 })
 
-/** Fields that decide whether an existing registration is still correct. */
+/**
+ * Fields that decide whether an existing registration is still correct.
+ *
+ * `enabled` deliberately not compared: this entry is system-owned configuration
+ * but the toggle in the MCP center is the user's. Rewriting it would silently
+ * re-enable a server the user just turned off, and `updateMcpServer` below
+ * carries the current value forward for the same reason.
+ */
 const sameTarget = (current: MCPServerConfig | undefined, next: MCPServerConfig): boolean =>
   Boolean(
     current &&
-      current.type === next.type &&
-      current.baseUrl === next.baseUrl &&
-      current.customHeaders?.Authorization === next.customHeaders?.Authorization &&
-      current.enabled === next.enabled
+    current.type === next.type &&
+    current.baseUrl === next.baseUrl &&
+    current.descriptions === next.descriptions &&
+    current.customHeaders?.Authorization === next.customHeaders?.Authorization
   )
 
 export function createStaffdeckMcpRegistrar(
@@ -125,7 +146,7 @@ export function createStaffdeckMcpRegistrar(
   }
 
   return {
-    async registerForEmployee({ employeeId, tools }) {
+    async registerForEmployee({ employeeId, tools, employeeName }) {
       const name = mcpServerNameForEmployee(employeeId)
       const connection = deps.getConnection()
 
@@ -141,7 +162,7 @@ export function createStaffdeckMcpRegistrar(
         return { registered: false, started: false, reason: 'NO_TOOLS' }
       }
 
-      const next = buildConfig(connection, employeeId)
+      const next = buildConfig(connection, employeeId, employeeName)
       const servers = await deps.mcpSettings.getMcpServers()
       const current = servers[name]
 
@@ -149,7 +170,12 @@ export function createStaffdeckMcpRegistrar(
         if (!current) {
           await deps.mcpSettings.addMcpServer(name, next)
         } else if (!sameTarget(current, next)) {
-          await deps.mcpSettings.updateMcpServer(name, next)
+          // The toggle belongs to the user: a target change (rotated key, moved
+          // endpoint, renamed employee) must not re-enable a disabled server.
+          await deps.mcpSettings.updateMcpServer(name, {
+            ...next,
+            enabled: current.enabled ?? true
+          })
         }
       } catch {
         return { registered: false, started: false, reason: 'REGISTER_FAILED' }
@@ -167,4 +193,6 @@ export function createStaffdeckMcpRegistrar(
 
 /** Names this feature owns, so teardown can clean up without touching user servers. */
 export const listEmployeeMcpServers = (servers: Record<string, MCPServerConfig>): string[] =>
-  Object.keys(servers).filter(isEmployeeMcpServerName)
+  Object.keys(servers).filter(
+    (name) => isEmployeeMcpServerName(name) || isEmployeeKnowledgeServerName(name)
+  )

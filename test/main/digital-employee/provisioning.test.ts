@@ -58,6 +58,7 @@ function createHarness(
     skillError?: Error
     knowledgeResult?: KnowledgeToolRegisterResult
     knowledgeError?: Error
+    reconcileAfterRun?: () => Promise<void>
   } = {}
 ): Harness {
   const registered: Harness['registered'] = []
@@ -104,7 +105,8 @@ function createHarness(
       unregister: async (employeeId) => {
         knowledgeUnregistered.push(employeeId)
       }
-    }
+    },
+    reconcileAfterRun: options.reconcileAfterRun
   }
 
   return { deps, registered, unregistered, synced, knowledgeRegistered, knowledgeUnregistered }
@@ -114,6 +116,7 @@ const target = (
   overrides: Partial<EmployeeProvisioningTarget> = {}
 ): EmployeeProvisioningTarget => ({
   id: EMPLOYEE,
+  name: '财务',
   executionMode: 'local',
   tools: ['staffdeck_expense_submit'],
   knowledgeBaseIds: ['kb_1'],
@@ -129,7 +132,7 @@ describe('provisioner gating', () => {
     const outcome = await provisioner.provision(target())
 
     expect(harness.registered).toEqual([
-      { employeeId: EMPLOYEE, tools: ['staffdeck_expense_submit'] }
+      { employeeId: EMPLOYEE, tools: ['staffdeck_expense_submit'], employeeName: '财务' }
     ])
     expect(harness.synced).toEqual([{ employeeId: EMPLOYEE, slugs: ['staffdeck-api'] }])
     expect(outcome.skipped).toBeNull()
@@ -376,5 +379,51 @@ describe('provisionById', () => {
 
     expect(outcome.skipped).toBeNull()
     expect(harness.synced[0]?.slugs).toEqual(['ok'])
+  })
+
+  it('sweeps stale registrations after a round finishes', async () => {
+    let sweeps = 0
+    const harness = createHarness({
+      reconcileAfterRun: async () => {
+        sweeps += 1
+      }
+    })
+    const provisioner = createEmployeeProvisioner(harness.deps)
+
+    await provisioner.provision(target())
+
+    // 对账在收尾 fire-and-forget，但同一微任务链上 promise 已 resolve；
+    // 稳妥起见让出一个 tick 再断言。
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(sweeps).toBe(1)
+  })
+
+  it('still sweeps when the round was skipped', async () => {
+    // 跳过路径（员工下线/移出本地）正是最需要清孤儿的时刻。
+    let sweeps = 0
+    const harness = createHarness({
+      reconcileAfterRun: async () => {
+        sweeps += 1
+      }
+    })
+    const provisioner = createEmployeeProvisioner(harness.deps)
+
+    await provisioner.provision(target({ executionMode: 'remote' }))
+
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(sweeps).toBe(1)
+  })
+
+  it('survives a failing sweep', async () => {
+    const harness = createHarness({
+      reconcileAfterRun: async () => {
+        throw new Error('list down')
+      }
+    })
+    const provisioner = createEmployeeProvisioner(harness.deps)
+
+    const outcome = await provisioner.provision(target())
+
+    expect(outcome.skipped).toBeNull()
   })
 })

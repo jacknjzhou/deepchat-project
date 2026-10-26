@@ -3500,6 +3500,8 @@ export async function createMainProcessControl(dependencies: {
       },
       stateStore: skillSyncStateStore
     })
+    // 对账器在下方才创建（它不依赖 provisioner），provision 收尾时经此引用调用。
+    let staffdeckMcpReconcilerRef: (() => Promise<unknown>) | undefined
     const provisioner = createEmployeeProvisioner({
       getEmployee: async (employeeId) => {
         const provider = digitalEmployeeProviderHolder.current()
@@ -3518,7 +3520,11 @@ export async function createMainProcessControl(dependencies: {
           startServer: (name) => mcpService.startServer(name),
           stopServer: (name) => mcpService.stopServer(name)
         }
-      })
+      }),
+      // 员工运行中被删除时，孤儿注册要等到下一轮任意 provision 才被清掉。
+      reconcileAfterRun: async () => {
+        await staffdeckMcpReconcilerRef?.()
+      }
     })
     const digitalEmployeeProvisioningRoutes = createDigitalEmployeeProvisioningRoutes({
       provisioner,
@@ -3572,6 +3578,7 @@ export async function createMainProcessControl(dependencies: {
           .map((employee) => employee.id)
       }
     })
+    staffdeckMcpReconcilerRef = staffdeckMcpReconciler
     // 启动时扫一遍。失败只记日志：清理是维护动作，不能挡住应用启动。
     void staffdeckMcpReconciler().catch((error) => {
       console.warn('[digitalEmployee] MCP registration cleanup failed', error)
