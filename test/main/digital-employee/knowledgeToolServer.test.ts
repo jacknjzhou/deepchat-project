@@ -40,7 +40,10 @@ describe('DigitalEmployeeKnowledgeServer', () => {
         throw new Error('index busy')
       })
     }
-    const server = createDigitalEmployeeKnowledgeServer({ knowledge, localKnowledgeBaseId: 'de-emp-1' })
+    const server = createDigitalEmployeeKnowledgeServer({
+      knowledge,
+      localKnowledgeBaseId: 'de-emp-1'
+    })
     const result = await server.callTool('de_knowledge_search', { query: 'x' })
     expect(result.content[0].text).toContain('知识检索失败')
   })

@@ -93,7 +93,9 @@ describe('mcpServerNameForEmployee', () => {
 
 describe('knowledgeServerNameForEmployee', () => {
   it('is stable and keeps two employees apart', () => {
-    expect(knowledgeServerNameForEmployee('agent_1')).toBe(knowledgeServerNameForEmployee('agent_1'))
+    expect(knowledgeServerNameForEmployee('agent_1')).toBe(
+      knowledgeServerNameForEmployee('agent_1')
+    )
     expect(knowledgeServerNameForEmployee('a:b')).not.toBe(knowledgeServerNameForEmployee('a/b'))
   })
 

@@ -83,7 +83,9 @@ export class DigitalEmployeeKnowledgeServer {
           `[${index + 1}] ${result.metadata?.content ?? ''}`.trim()
         )
         .filter((line) => line.length > 4)
-      return { content: [{ type: 'text', text: lines.length > 0 ? lines.join('\n') : EMPTY_NOTICE }] }
+      return {
+        content: [{ type: 'text', text: lines.length > 0 ? lines.join('\n') : EMPTY_NOTICE }]
+      }
     } catch (error) {
       return {
         content: [
