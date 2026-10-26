@@ -8,7 +8,9 @@ import {
   serializeInvoiceWorkbook
 } from '../../../src/main/documents/invoiceSummary'
 
-const makeEntry = (overrides?: Partial<ReimbursementDocumentEntry>): ReimbursementDocumentEntry => ({
+const makeEntry = (
+  overrides?: Partial<ReimbursementDocumentEntry>
+): ReimbursementDocumentEntry => ({
   id: 'doc-1',
   typeKey: 'invoice_vat_special',
   templateName: '增值税专用发票',
@@ -23,7 +25,9 @@ const makeEntry = (overrides?: Partial<ReimbursementDocumentEntry>): Reimburseme
   ...overrides
 })
 
-const makeDocument = (fields: Record<string, { value: unknown; uncertain?: boolean }>): DocumentRecord =>
+const makeDocument = (
+  fields: Record<string, { value: unknown; uncertain?: boolean }>
+): DocumentRecord =>
   ({
     id: 'doc-1',
     templateId: 'tpl-1',
@@ -161,8 +165,20 @@ describe('serializeInvoiceWorkbook', () => {
     expect(() => Buffer.from(serialized)).not.toThrow()
     const grid = readSheet(rows)
     expect(grid[0]).toEqual([
-      '序号', '发票号码', '开票日期', '销售方名称', '销售方税号', '购买方名称',
-      '购买方税号', '价税合计', '税额', '不含税金额', '税率', '金额存疑', '备注', '文件相对路径'
+      '序号',
+      '发票号码',
+      '开票日期',
+      '销售方名称',
+      '销售方税号',
+      '购买方名称',
+      '购买方税号',
+      '价税合计',
+      '税额',
+      '不含税金额',
+      '税率',
+      '金额存疑',
+      '备注',
+      '文件相对路径'
     ])
     expect(grid[1]![0]).toBe(1)
     expect(grid[1]![1]).toBe('11111111')

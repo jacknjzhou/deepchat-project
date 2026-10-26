@@ -65,9 +65,7 @@ describe('HttpDigitalEmployeeProvider', () => {
   const config = { baseUrl: 'https://sd.example', apiKey: 'sd_live_k1' }
 
   it('sends bearer auth to the versioned endpoint', async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValue(jsonResponse(200, { employees: [makeEmployee()] }))
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, { employees: [makeEmployee()] }))
 
     const employees = await new HttpDigitalEmployeeProvider(config, fetchMock).list()
 
@@ -84,9 +82,7 @@ describe('HttpDigitalEmployeeProvider', () => {
   })
 
   it('trims trailing slashes from the configured base url', async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValue(jsonResponse(200, { employees: [makeEmployee()] }))
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, { employees: [makeEmployee()] }))
 
     await new HttpDigitalEmployeeProvider(
       { ...config, baseUrl: 'https://sd.example///' },
@@ -118,9 +114,7 @@ describe('HttpDigitalEmployeeProvider', () => {
   })
 
   it('fills fetchedAt locally when StaffDeck omits it', async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValue(jsonResponse(200, { employees: [makeEmployee()] }))
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, { employees: [makeEmployee()] }))
 
     // 契约要求 fetchedAt 非空；Provider 负责补齐，不把缺失抛给调用方。
     const employees = await new HttpDigitalEmployeeProvider(config, fetchMock).list()

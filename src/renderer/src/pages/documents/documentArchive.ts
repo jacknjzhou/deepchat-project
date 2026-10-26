@@ -113,11 +113,7 @@ export function buildDefaultDateRangeTexts(now = new Date()): { from: string; to
     ].join('-')
   const previousMonth = now.getMonth() - 1
   const previousMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0).getDate()
-  const from = new Date(
-    now.getFullYear(),
-    previousMonth,
-    Math.min(now.getDate(), previousMonthEnd)
-  )
+  const from = new Date(now.getFullYear(), previousMonth, Math.min(now.getDate(), previousMonthEnd))
   return {
     from: toText(from),
     to: toText(now)

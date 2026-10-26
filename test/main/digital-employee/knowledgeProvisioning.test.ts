@@ -16,7 +16,13 @@ const embeddingProvider = (overrides: Partial<LLM_PROVIDER> = {}): LLM_PROVIDER 
   baseUrl: 'https://api.openai.com/v1',
   enable: true,
   models: [
-    { id: 'text-embedding-3-small', name: 'Embedding Small', group: 'embedding', providerId: 'prov-openai', type: ModelType.Embedding },
+    {
+      id: 'text-embedding-3-small',
+      name: 'Embedding Small',
+      group: 'embedding',
+      providerId: 'prov-openai',
+      type: ModelType.Embedding
+    },
     { id: 'gpt-4o', name: 'GPT-4o', group: 'chat', providerId: 'prov-openai', type: ModelType.Chat }
   ],
   ...overrides
@@ -66,7 +72,10 @@ describe('provisionLocalKnowledgeBase', () => {
   it('creates a config bound to the first enabled embedding model', async () => {
     const { deps, stored } = createDeps()
 
-    const result = await provisionLocalKnowledgeBase({ employeeId: 'emp-1', employeeName: '小美' }, deps)
+    const result = await provisionLocalKnowledgeBase(
+      { employeeId: 'emp-1', employeeName: '小美' },
+      deps
+    )
 
     expect(result.ok).toBe(true)
     expect(stored.configs).toHaveLength(1)
@@ -101,7 +110,10 @@ describe('provisionLocalKnowledgeBase', () => {
     }
     const { deps, stored } = createDeps({ getKnowledgeConfigs: () => [existing] })
 
-    const result = await provisionLocalKnowledgeBase({ employeeId: 'emp-1', employeeName: '新名字' }, deps)
+    const result = await provisionLocalKnowledgeBase(
+      { employeeId: 'emp-1', employeeName: '新名字' },
+      deps
+    )
 
     expect(result).toMatchObject({ ok: true, knowledgeBaseId: existing.id, created: false })
     // 复用分支不该写回配置：写回会把用户/历史留下的字段覆盖成默认值。
@@ -116,13 +128,22 @@ describe('provisionLocalKnowledgeBase', () => {
       listProviders: () => [
         embeddingProvider({
           models: [
-            { id: 'gpt-4o', name: 'GPT-4o', group: 'chat', providerId: 'prov-openai', type: ModelType.Chat }
+            {
+              id: 'gpt-4o',
+              name: 'GPT-4o',
+              group: 'chat',
+              providerId: 'prov-openai',
+              type: ModelType.Chat
+            }
           ]
         })
       ]
     })
 
-    const result = await provisionLocalKnowledgeBase({ employeeId: 'emp-1', employeeName: '小美' }, deps)
+    const result = await provisionLocalKnowledgeBase(
+      { employeeId: 'emp-1', employeeName: '小美' },
+      deps
+    )
 
     expect(result).toMatchObject({ ok: false, reason: 'NO_EMBEDDING_MODEL' })
     expect(stored.configs).toHaveLength(0)
@@ -133,7 +154,10 @@ describe('provisionLocalKnowledgeBase', () => {
       listProviders: () => [embeddingProvider({ enable: false })]
     })
 
-    const result = await provisionLocalKnowledgeBase({ employeeId: 'emp-1', employeeName: '小美' }, deps)
+    const result = await provisionLocalKnowledgeBase(
+      { employeeId: 'emp-1', employeeName: '小美' },
+      deps
+    )
 
     expect(result).toMatchObject({ ok: false, reason: 'NO_EMBEDDING_MODEL' })
     expect(stored.configs).toHaveLength(0)
@@ -146,7 +170,10 @@ describe('provisionLocalKnowledgeBase', () => {
       })
     })
 
-    const result = await provisionLocalKnowledgeBase({ employeeId: 'emp-1', employeeName: '小美' }, deps)
+    const result = await provisionLocalKnowledgeBase(
+      { employeeId: 'emp-1', employeeName: '小美' },
+      deps
+    )
 
     expect(result.ok).toBe(true)
     // 探测失败不能凭空编一个维度：用 0 让后续索引失败暴露出来，
@@ -176,6 +203,9 @@ describe('provisionLocalKnowledgeBase', () => {
 
     await provisionLocalKnowledgeBase({ employeeId: 'emp-1', employeeName: '小美' }, deps)
 
-    expect(stored.configs.map((config) => config.id)).toEqual(['user-kb', deriveLocalKnowledgeBaseId('emp-1')])
+    expect(stored.configs.map((config) => config.id)).toEqual([
+      'user-kb',
+      deriveLocalKnowledgeBaseId('emp-1')
+    ])
   })
 })

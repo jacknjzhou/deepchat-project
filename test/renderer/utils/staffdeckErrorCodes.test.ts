@@ -102,7 +102,10 @@ describe('staffdeckErrorCodeToI18nKey', () => {
       key
         .split('.')
         .slice(1)
-        .reduce<unknown>((node, part) => (node as Record<string, unknown> | undefined)?.[part], messages)
+        .reduce<unknown>(
+          (node, part) => (node as Record<string, unknown> | undefined)?.[part],
+          messages
+        )
 
     for (const code of STAFFDECK_KNOWN_ERROR_CODES) {
       const key = staffdeckErrorCodeToI18nKey(code)

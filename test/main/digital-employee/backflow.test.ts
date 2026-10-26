@@ -209,7 +209,12 @@ describe('StaffDeck backflow', () => {
     })
 
     const events = (harness.calls[0].body as { events: Record<string, unknown>[] }).events
-    expect(events[0]).toMatchObject({ type: 'message', event_id: 'e1', content: '你好', role: 'user' })
+    expect(events[0]).toMatchObject({
+      type: 'message',
+      event_id: 'e1',
+      content: '你好',
+      role: 'user'
+    })
   })
 
   it('splits an oversized batch instead of sending one huge request', async () => {
@@ -224,9 +229,7 @@ describe('StaffDeck backflow', () => {
     })
 
     expect(harness.calls).toHaveLength(3)
-    const sizes = harness.calls.map(
-      (call) => (call.body as { events: unknown[] }).events.length
-    )
+    const sizes = harness.calls.map((call) => (call.body as { events: unknown[] }).events.length)
     expect(sizes).toEqual([2, 2, 1])
   })
 

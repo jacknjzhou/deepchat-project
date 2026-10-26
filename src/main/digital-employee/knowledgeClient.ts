@@ -123,26 +123,28 @@ export class StaffdeckKnowledgeClient {
     }
 
     const rawPackages = Array.isArray(body.packages) ? body.packages : []
-    const packages: KnowledgePackage[] = rawPackages.filter(isRecord).map((entry) => {
-      const rawConcepts = Array.isArray(entry.concepts) ? entry.concepts : []
-      const concepts: ConceptEntry[] = rawConcepts.filter(isRecord).map((concept) => ({
-        conceptId: readString(concept.conceptId),
-        type: readString(concept.type),
-        title: readString(concept.title),
-        hash: readString(concept.hash),
-        size: readNumber(concept.size)
-      }))
-      return {
-        knowledgeBaseId: readString(entry.knowledgeBaseId),
-        name: readString(entry.name),
-        version: readString(entry.version),
-        configHash: readString(entry.configHash),
-        concepts,
-        conceptCount: readNumber(entry.conceptCount) || concepts.length
-      }
-    })
-    // 没有 id 的包无法落库也无法对比 hash，直接丢弃而不是留个空壳。
-    .filter((entry) => entry.knowledgeBaseId !== '')
+    const packages: KnowledgePackage[] = rawPackages
+      .filter(isRecord)
+      .map((entry) => {
+        const rawConcepts = Array.isArray(entry.concepts) ? entry.concepts : []
+        const concepts: ConceptEntry[] = rawConcepts.filter(isRecord).map((concept) => ({
+          conceptId: readString(concept.conceptId),
+          type: readString(concept.type),
+          title: readString(concept.title),
+          hash: readString(concept.hash),
+          size: readNumber(concept.size)
+        }))
+        return {
+          knowledgeBaseId: readString(entry.knowledgeBaseId),
+          name: readString(entry.name),
+          version: readString(entry.version),
+          configHash: readString(entry.configHash),
+          concepts,
+          conceptCount: readNumber(entry.conceptCount) || concepts.length
+        }
+      })
+      // 没有 id 的包无法落库也无法对比 hash，直接丢弃而不是留个空壳。
+      .filter((entry) => entry.knowledgeBaseId !== '')
 
     return {
       packages,

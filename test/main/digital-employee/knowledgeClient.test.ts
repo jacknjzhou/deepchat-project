@@ -30,7 +30,13 @@ const manifestBody = {
       bundleUrl: `${BASE}/api/v1/digital-employees/agent_1/knowledge-packages/kb_1:export-bundle`,
       conceptCount: 2,
       concepts: [
-        { conceptId: 'sources/guide', type: 'Source Document', title: 'Guide', hash: 'h1', size: 10 },
+        {
+          conceptId: 'sources/guide',
+          type: 'Source Document',
+          title: 'Guide',
+          hash: 'h1',
+          size: 10
+        },
         {
           conceptId: 'sources/guide/sections/sec-1',
           type: 'Source Section',

@@ -28,7 +28,9 @@ const makeEmployee = (overrides: Record<string, unknown> = {}): Record<string, u
 
 describe('createDigitalEmployeeRoutes', () => {
   const createRoutesWithMock = () =>
-    createDigitalEmployeeRoutes(createDigitalEmployeeProviderHolder(new MockDigitalEmployeeProvider()))
+    createDigitalEmployeeRoutes(
+      createDigitalEmployeeProviderHolder(new MockDigitalEmployeeProvider())
+    )
 
   it('list returns contract-parsed employees with fetchedAt and mock source', async () => {
     const routes = createRoutesWithMock()
@@ -51,7 +53,9 @@ describe('createDigitalEmployeeRoutes', () => {
     const routes = createRoutesWithMock()
     const handler = routes.get(digitalEmployeeGetRoute.name)!
 
-    expect(((await handler({ id: 'finance' })) as { employee: { name: string } | null }).employee?.name).toBe('财务')
+    expect(
+      ((await handler({ id: 'finance' })) as { employee: { name: string } | null }).employee?.name
+    ).toBe('财务')
     expect(((await handler({ id: 'nope' })) as { employee: unknown }).employee).toBeNull()
   })
 

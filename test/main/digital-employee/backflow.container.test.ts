@@ -80,17 +80,40 @@ const provisionCredential = async (label: string): Promise<Session> => {
 
   const credential = await request(
     `/api/v1/api-clients/${(client.body as { id: string }).id}/credentials`,
-    { method: 'POST', token, body: { name: `${label}-key`, scopes: ['sessions:write', 'agents:read'] } }
+    {
+      method: 'POST',
+      token,
+      body: { name: `${label}-key`, scopes: ['sessions:write', 'agents:read'] }
+    }
   )
-  expect(credential.status, `credential create failed: ${JSON.stringify(credential.body)}`).toBe(201)
+  expect(credential.status, `credential create failed: ${JSON.stringify(credential.body)}`).toBe(
+    201
+  )
   return { apiKey: (credential.body as { api_key: string }).api_key }
 }
 
 const oneTurn = (tag: string): BackflowEvent[] => [
   { type: 'message', eventId: `m:u-${tag}`, role: 'user', content: '查一下 A 类物料的库存' },
-  { type: 'tool_call', eventId: `t:a-${tag}:1`, name: 'staffdeck_inventory_lookup', status: 'ok', durationMs: 320 },
-  { type: 'message', eventId: `m:a-${tag}`, role: 'assistant', content: '库存 1234 件，低于安全线。' },
-  { type: 'usage', eventId: `u:a-${tag}`, promptTokens: 1200, completionTokens: 80, totalTokens: 1280 }
+  {
+    type: 'tool_call',
+    eventId: `t:a-${tag}:1`,
+    name: 'staffdeck_inventory_lookup',
+    status: 'ok',
+    durationMs: 320
+  },
+  {
+    type: 'message',
+    eventId: `m:a-${tag}`,
+    role: 'assistant',
+    content: '库存 1234 件，低于安全线。'
+  },
+  {
+    type: 'usage',
+    eventId: `u:a-${tag}`,
+    promptTokens: 1200,
+    completionTokens: 80,
+    totalTokens: 1280
+  }
 ]
 
 describe.skipIf(!BASE_URL)('backflow against a running StaffDeck container', () => {
@@ -128,7 +151,11 @@ describe.skipIf(!BASE_URL)('backflow against a running StaffDeck container', () 
   it('replays the same turn as duplicates without double writing', async () => {
     const backflow = makeBackflow()
     // 先跑一次让远端 id 进缓存，再重放整批：服务端应全部判重，delivered 仍算 4。
-    await backflow.flush({ employeeId: AGENT_ID, sessionId: localSessionId, events: oneTurn('first') })
+    await backflow.flush({
+      employeeId: AGENT_ID,
+      sessionId: localSessionId,
+      events: oneTurn('first')
+    })
     const replay = await backflow.flush({
       employeeId: AGENT_ID,
       sessionId: localSessionId,

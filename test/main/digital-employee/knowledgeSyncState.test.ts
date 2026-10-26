@@ -164,9 +164,11 @@ describe('knowledgeSyncState', () => {
     store.setEmployee('emp-1', { localKnowledgeBaseId: 'de-emp-1', packages: {} })
     store.setEmployee('emp-2', { localKnowledgeBaseId: 'de-emp-2', packages: {} })
 
-    expect(store.listEmployees().map((entry) => entry.employeeId).sort()).toEqual([
-      'emp-1',
-      'emp-2'
-    ])
+    expect(
+      store
+        .listEmployees()
+        .map((entry) => entry.employeeId)
+        .sort()
+    ).toEqual(['emp-1', 'emp-2'])
   })
 })

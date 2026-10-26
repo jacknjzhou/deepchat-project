@@ -6,8 +6,7 @@ import type { ReimbursementDocumentEntry } from './reimbursement'
 // eslint-disable-next-line no-control-regex
 const FORMULA_PREFIX_RE = /^[=+\-@\t\r]/
 
-const safeText = (value: string): string =>
-  FORMULA_PREFIX_RE.test(value) ? `'${value}` : value
+const safeText = (value: string): string => (FORMULA_PREFIX_RE.test(value) ? `'${value}` : value)
 
 /** 金额解析：有限数值直接用；数字字符串转数值；其余返回 null */
 export const parseMoney = (value: unknown): number | null => {
@@ -28,7 +27,7 @@ const fieldText = (document: DocumentRecord | undefined, key: string): string =>
 
 interface MoneyCell {
   parsed: number | null
-  text: string   // 解析失败时的原始文本（供单元格回退展示）
+  text: string // 解析失败时的原始文本（供单元格回退展示）
   uncertain: boolean
 }
 
@@ -74,8 +73,7 @@ export function buildInvoiceRow(input: InvoiceRowInput): InvoiceRow {
   const total = fieldMoney(document, 'total_amount')
   const tax = fieldMoney(document, 'tax_amount')
   const exTax = fieldMoney(document, 'amount_ex_tax')
-  const uncertain =
-    entry.amountUncertain || total.uncertain || tax.uncertain || exTax.uncertain
+  const uncertain = entry.amountUncertain || total.uncertain || tax.uncertain || exTax.uncertain
   return {
     invoiceNumber: fieldText(document, 'invoice_number'),
     invoiceDate: fieldText(document, 'invoice_date'),
@@ -94,8 +92,20 @@ export function buildInvoiceRow(input: InvoiceRowInput): InvoiceRow {
 }
 
 const INVOICE_HEADER: string[] = [
-  '序号', '发票号码', '开票日期', '销售方名称', '销售方税号', '购买方名称',
-  '购买方税号', '价税合计', '税额', '不含税金额', '税率', '金额存疑', '备注', '文件相对路径'
+  '序号',
+  '发票号码',
+  '开票日期',
+  '销售方名称',
+  '销售方税号',
+  '购买方名称',
+  '购买方税号',
+  '价税合计',
+  '税额',
+  '不含税金额',
+  '税率',
+  '金额存疑',
+  '备注',
+  '文件相对路径'
 ]
 
 type MoneyKey = 'totalAmount' | 'taxAmount' | 'amountExTax'
@@ -135,17 +145,37 @@ const dataRow = (row: InvoiceRow, index: number): Array<string | number> => [
 export function serializeInvoiceWorkbook(rows: InvoiceRow[]): Uint8Array {
   const body = rows.map(dataRow)
   const totalRow: Array<string | number> = [
-    '合计', '', '', '', '', '', '',
+    '合计',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
     columnSum(rows, 'totalAmount'),
     columnSum(rows, 'taxAmount'),
     columnSum(rows, 'amountExTax'),
-    '', '', '', ''
+    '',
+    '',
+    '',
+    ''
   ]
   const sheet = XLSX.utils.aoa_to_sheet([INVOICE_HEADER, ...body, totalRow])
   sheet['!cols'] = [
-    { wch: 6 }, { wch: 22 }, { wch: 12 }, { wch: 30 }, { wch: 22 }, { wch: 30 },
-    { wch: 22 }, { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 8 }, { wch: 10 },
-    { wch: 30 }, { wch: 40 }
+    { wch: 6 },
+    { wch: 22 },
+    { wch: 12 },
+    { wch: 30 },
+    { wch: 22 },
+    { wch: 30 },
+    { wch: 22 },
+    { wch: 12 },
+    { wch: 10 },
+    { wch: 12 },
+    { wch: 8 },
+    { wch: 10 },
+    { wch: 30 },
+    { wch: 40 }
   ]
   const book = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(book, sheet, '发票汇总')

@@ -1,7 +1,4 @@
-import {
-  digitalEmployeeGetRoute,
-  digitalEmployeeListRoute
-} from '@shared/contracts/routes'
+import { digitalEmployeeGetRoute, digitalEmployeeListRoute } from '@shared/contracts/routes'
 import { createRouteMap, type DeepchatRouteMap } from '@/routes/routeRegistry'
 import type { DigitalEmployeeProviderHolder } from './providerFactory'
 

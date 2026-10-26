@@ -37,10 +37,7 @@ describe('createDigitalEmployeeProvider', () => {
     'returns the fallback when %s is missing',
     (key) => {
       const fallback = new MockDigitalEmployeeProvider()
-      const provider = createDigitalEmployeeProvider(
-        { ...completeConfig, [key]: '' },
-        fallback
-      )
+      const provider = createDigitalEmployeeProvider({ ...completeConfig, [key]: '' }, fallback)
       expect(provider).toBe(fallback)
     }
   )

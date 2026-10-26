@@ -189,12 +189,7 @@ export async function exportReimbursementPackage(
     }
     for (const customGroup of node.customGroups) {
       const groupDirName = sanitizeDirName(customGroup.group.name)
-      await writeEntries(
-        categoryName,
-        groupDirName,
-        customGroup.buckets,
-        customGroup.group.name
-      )
+      await writeEntries(categoryName, groupDirName, customGroup.buckets, customGroup.group.name)
       const entries = customGroup.buckets.flatMap((bucket) => bucket.documents)
       const invoiceEntries = entries.filter((entry) => invoiceTypeKeys.has(entry.typeKey))
       if (invoiceEntries.length === 0) continue
@@ -202,7 +197,8 @@ export async function exportReimbursementPackage(
         buildInvoiceRow({
           entry,
           document: documentsById.get(entry.id),
-          fileRelPaths: exportedRelPathsById.get(entry.id) ?? entry.fileNames.map((name) => `缺失:${name}`)
+          fileRelPaths:
+            exportedRelPathsById.get(entry.id) ?? entry.fileNames.map((name) => `缺失:${name}`)
         })
       )
       const targetDir = path.join(packageDir, categoryName, groupDirName)

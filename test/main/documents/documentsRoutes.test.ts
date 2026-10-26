@@ -32,7 +32,11 @@ import {
   type DeepchatRouteName
 } from '@shared/contracts/routes'
 import type { DeepchatRouteMap } from '@/routes/routeRegistry'
-import { REIMBURSEMENT_UNASSIGNED, type DocumentRecord, type DocumentTemplate } from '@shared/documents'
+import {
+  REIMBURSEMENT_UNASSIGNED,
+  type DocumentRecord,
+  type DocumentTemplate
+} from '@shared/documents'
 import type { ReimbursementTreeResult } from '@/documents/reimbursement'
 import { defaultReimbursementConfig } from '@/documents/reimbursementConfig'
 import * as XLSX from 'xlsx'
@@ -1775,7 +1779,10 @@ describe('reimbursementExport', () => {
     summary: []
   })
 
-  const invoiceDocument = (id: string, fields: Record<string, { value: unknown }>): DocumentRecord =>
+  const invoiceDocument = (
+    id: string,
+    fields: Record<string, { value: unknown }>
+  ): DocumentRecord =>
     ({
       id,
       templateId: 'tpl-inv',
@@ -1821,18 +1828,23 @@ describe('reimbursementExport', () => {
         {
           documentsById: new Map([
             ['doc-inv', invoiceDocument('doc-inv', INVOICE_FIELDS)],
-            ['doc-inv-2', invoiceDocument('doc-inv-2', {
-              ...INVOICE_FIELDS,
-              invoice_number: { value: '22222222' },
-              total_amount: { value: 226 },
-              tax_amount: { value: 26 },
-              amount_ex_tax: { value: 200 }
-            })]
+            [
+              'doc-inv-2',
+              invoiceDocument('doc-inv-2', {
+                ...INVOICE_FIELDS,
+                invoice_number: { value: '22222222' },
+                total_amount: { value: 226 },
+                tax_amount: { value: 26 },
+                amount_ex_tax: { value: 200 }
+              })
+            ]
           ]),
           invoiceTypeKeys: new Set(['invoice_vat_special'])
         }
       )
-      const write = harness.binaryWrites.find((item) => item.file.endsWith(join('会议费', '重点会议', '发票汇总.xlsx')))
+      const write = harness.binaryWrites.find((item) =>
+        item.file.endsWith(join('会议费', '重点会议', '发票汇总.xlsx'))
+      )
       expect(write).toBeDefined()
       const grid = readInvoiceSheet(write!.data)
       expect(grid[0]![7]).toBe('价税合计')
@@ -1849,7 +1861,20 @@ describe('reimbursementExport', () => {
       const harness = makeHarness()
       const output = await runExport(
         harness,
-        { ...makeCustomGroupTree(), tree: [{ ...makeCustomGroupTree().tree[0]!, customGroups: [{ group: { id: 'grp-a', name: '重点会议', sortOrder: 0 }, buckets: [{ period: '2026-09', documents: [makeEntry('张三')] }] }] }] },
+        {
+          ...makeCustomGroupTree(),
+          tree: [
+            {
+              ...makeCustomGroupTree().tree[0]!,
+              customGroups: [
+                {
+                  group: { id: 'grp-a', name: '重点会议', sortOrder: 0 },
+                  buckets: [{ period: '2026-09', documents: [makeEntry('张三')] }]
+                }
+              ]
+            }
+          ]
+        },
         new Map(),
         { documentsById: new Map(), invoiceTypeKeys: new Set(['invoice_vat_special']) }
       )

@@ -79,8 +79,7 @@ export const MOCK_DIGITAL_EMPLOYEES: DigitalEmployee[] = [
     role: '人事',
     description: '入职引导、考勤假期、社保公积金、制度问答',
     capabilities: ['入转调离', '考勤假期', '制度问答'],
-    systemPrompt:
-      '# 角色：人事助手\n你是「人事」数字员工，熟悉员工全生命周期流程与公司制度。',
+    systemPrompt: '# 角色：人事助手\n你是「人事」数字员工，熟悉员工全生命周期流程与公司制度。',
     sops: [
       {
         title: '入职办理 SOP',

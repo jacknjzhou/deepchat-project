@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  backflowEventId,
-  collectBackflowEvents
-} from '@/features/chat-page/model/backflowEvents'
+import { backflowEventId, collectBackflowEvents } from '@/features/chat-page/model/backflowEvents'
 import type { ChatMessageRecord } from '@shared/types/agent-interface'
 
 /**
@@ -94,10 +91,7 @@ describe('collectBackflowEvents', () => {
   })
 
   it('derives event ids from the message id alone, so a resend stays idempotent', () => {
-    const messages = [
-      userMessage(1, 'hi'),
-      assistantMessage(2, [contentBlock('hello')])
-    ]
+    const messages = [userMessage(1, 'hi'), assistantMessage(2, [contentBlock('hello')])]
 
     const first = collectBackflowEvents({ messages, afterOrderSeq: null })
     // Same messages, different cursor bookkeeping: ids must not move.
@@ -126,10 +120,7 @@ describe('collectBackflowEvents', () => {
   it('reports tool calls as their own events', () => {
     const collected = collectBackflowEvents({
       messages: [
-        assistantMessage(1, [
-          contentBlock('查询中'),
-          toolCallBlock('staffdeck_inventory_lookup')
-        ])
+        assistantMessage(1, [contentBlock('查询中'), toolCallBlock('staffdeck_inventory_lookup')])
       ],
       afterOrderSeq: null
     })

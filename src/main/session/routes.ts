@@ -88,7 +88,11 @@ import {
   type SessionServiceDesktopPort,
   type SessionServiceProjectionPort
 } from './sessionService'
-import { ChatService, type ChatServiceProjectionPort, type ChatServiceRemoteTurnPort } from './chatService'
+import {
+  ChatService,
+  type ChatServiceProjectionPort,
+  type ChatServiceRemoteTurnPort
+} from './chatService'
 import type { SessionHistorySearch } from './sessionHistorySearch'
 import type { SessionTranslation } from './sessionTranslation'
 import type { AgentSettingsPort } from '@/agent/settings'

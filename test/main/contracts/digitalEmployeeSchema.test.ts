@@ -34,8 +34,7 @@ describe('digitalEmployeeSchema (StaffDeck superset)', () => {
           downloadUrl: 'https://sd/api/v1/digital-employees/emp-finance:export-skill'
         }
       ],
-      knowledgePackagesUrl:
-        'https://sd/api/v1/digital-employees/emp-finance/knowledge-packages'
+      knowledgePackagesUrl: 'https://sd/api/v1/digital-employees/emp-finance/knowledge-packages'
     })
 
     expect(parsed.executionMode).toBe('hybrid')

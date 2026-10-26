@@ -34,9 +34,7 @@ export interface SkillSyncStateStoreDeps {
   key?: string
 }
 
-export function createSkillSyncStateStore(
-  deps: SkillSyncStateStoreDeps
-): SkillSyncStateStore {
+export function createSkillSyncStateStore(deps: SkillSyncStateStoreDeps): SkillSyncStateStore {
   const key = deps.key ?? DIGITAL_EMPLOYEE_SKILL_SYNC_KEY
 
   const readAll = (): Record<string, Record<string, string>> => {

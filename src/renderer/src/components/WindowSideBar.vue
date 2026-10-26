@@ -215,7 +215,9 @@
               data-testid="app-digital-employees-button"
               type="button"
               class="flex h-9 w-full items-center gap-3 rounded-lg px-2 text-left text-sm transition-colors hover:bg-accent/60"
-              :class="digitalEmployeesRouteActive ? 'bg-accent/70 text-foreground' : 'text-foreground'"
+              :class="
+                digitalEmployeesRouteActive ? 'bg-accent/70 text-foreground' : 'text-foreground'
+              "
               @click="openDigitalEmployees"
             >
               <Icon icon="lucide:users-round" class="size-4 shrink-0 text-muted-foreground" />

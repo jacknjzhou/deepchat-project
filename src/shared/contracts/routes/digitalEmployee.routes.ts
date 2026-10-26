@@ -23,17 +23,22 @@ export const digitalEmployeeSchema = z.object({
   updatedAt: z.string().min(1),
   executionMode: z.enum(['local', 'remote', 'hybrid']).default('local'),
   configHash: z.string().max(128).optional(),
-  skills: z.array(z.object({
-    id: z.string().min(1).max(64),
-    name: z.string().min(1).max(100),
-    /**
-     * Skill package slug, minted by the server. Required for the export endpoint
-     * (`:export-skill?slug=`); without it a distributed skill cannot be fetched.
-     * Optional only so payloads from before this field existed still parse.
-     */
-    slug: z.string().min(1).max(120).optional(),
-    downloadUrl: z.string().min(1).max(512)
-  })).max(20).optional(),
+  skills: z
+    .array(
+      z.object({
+        id: z.string().min(1).max(64),
+        name: z.string().min(1).max(100),
+        /**
+         * Skill package slug, minted by the server. Required for the export endpoint
+         * (`:export-skill?slug=`); without it a distributed skill cannot be fetched.
+         * Optional only so payloads from before this field existed still parse.
+         */
+        slug: z.string().min(1).max(120).optional(),
+        downloadUrl: z.string().min(1).max(512)
+      })
+    )
+    .max(20)
+    .optional(),
   knowledgePackagesUrl: z.string().max(512).optional()
 })
 

@@ -179,7 +179,12 @@ export function createStaffdeckBackflow(deps: StaffdeckBackflowDeps): StaffdeckB
 
       let delivered = 0
       for (const part of chunk(events, batchSize)) {
-        const outcome = await sendPart(sessionUrl(remoteSessionId), connection.apiKey, part, timeoutMs)
+        const outcome = await sendPart(
+          sessionUrl(remoteSessionId),
+          connection.apiKey,
+          part,
+          timeoutMs
+        )
         if (outcome.ok) {
           delivered += part.length
           continue
