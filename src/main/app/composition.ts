@@ -251,7 +251,10 @@ import { provisionLocalKnowledgeBase } from '@/digital-employee/knowledgeProvisi
 import { createStaffdeckMcpRegistrar } from '@/digital-employee/mcpRegistration'
 import { createKnowledgeToolRegistrar } from '@/digital-employee/knowledgeToolRegistration'
 import { createStaffdeckMcpReconciler } from '@/digital-employee/mcpReconcile'
-import { mcpServerNameForEmployee } from '@/digital-employee/employeeScope'
+import {
+  digitalEmployeeMcpServerAllowList,
+  mcpServerNameForEmployee
+} from '@/digital-employee/employeeScope'
 import { createStaffdeckSkillSync } from '@/digital-employee/skillSync'
 import { createEmployeeProvisioner } from '@/digital-employee/provisioning'
 import type { EmployeeProvisioner } from '@/digital-employee/provisioning'
@@ -1642,6 +1645,20 @@ export async function createMainProcessControl(dependencies: {
       }
     }
   })
+  /**
+   * 数字员工会话的 MCP server 白名单：本员工的远端工具 server + 本地知识检索
+   * server。没有绑定的会话（普通对话）返回 null，回退 agent 级配置——保持
+   * 原语义。名单按绑定实时推导，员工 server 的注册状态不影响名单本身：
+   * universe 里不存在的 server id 等于零工具。
+   */
+  const resolveDigitalEmployeeMcpAllowListForSession = (sessionId: string): string[] | null => {
+    const bindings = dependencies.settingsStore.get<Record<string, string>>(
+      digitalEmployeeSettingsKeys.sessionBindings
+    )
+    const employeeId = bindings?.[sessionId]
+    if (typeof employeeId !== 'string' || employeeId.trim() === '') return null
+    return digitalEmployeeMcpServerAllowList(employeeId)
+  }
   const resolveConversationExecutionAuthorityNow = (conversationId: string) => {
     const session = appSessionService.get(conversationId)
     if (!session) return null
@@ -1657,10 +1674,16 @@ export async function createMainProcessControl(dependencies: {
     const agentType = agentRepository.getAgentType(session.agentId)
     const agentConfig = resolveAgentConfig(session.agentId)
     const persistedDisabledAgentTools = appSessionService.getDisabledAgentTools(session.id)
-    let authority = composeSubagentAuthority({
-      disabledAgentTools: persistedDisabledAgentTools,
-      enabledMcpServerIds: agentConfig.enabledMcpServerIds
-    })
+    let authority = composeSubagentAuthority(
+      { disabledAgentTools: persistedDisabledAgentTools },
+      {
+        // 员工绑定存在时与本机 agent 级白名单取交集（compose 内部语义），
+        // 把其他员工 server 的工具从会话上下文中彻底移除。
+        enabledMcpServerIds:
+          resolveDigitalEmployeeMcpAllowListForSession(session.id) ??
+          agentConfig.enabledMcpServerIds
+      }
+    )
     if (session.sessionKind === 'subagent') {
       const parentSessionId = session.parentSessionId?.trim()
       const parent = parentSessionId ? appSessionService.get(parentSessionId) : null
@@ -2400,7 +2423,19 @@ export async function createMainProcessControl(dependencies: {
     deletion: sessionDeletion,
     deletionGate: sessionDeletionGate,
     permissions: sessionPermissionPort,
-    agentLifecycle
+    agentLifecycle,
+    // 数字员工会话的归属绑定：运行时按它收敛 MCP 工具面（见
+    // resolveConversationExecutionAuthorityNow）。写入失败上抛，建会话失败——
+    // 白名单是安全边界，不能静默降级成全量工具。
+    bindDigitalEmployeeSession: (sessionId, employeeId) => {
+      const bindings = dependencies.settingsStore.get<Record<string, string>>(
+        digitalEmployeeSettingsKeys.sessionBindings
+      )
+      dependencies.settingsStore.set(digitalEmployeeSettingsKeys.sessionBindings, {
+        ...(bindings ?? {}),
+        [sessionId]: employeeId
+      })
+    }
   })
   cliRunService = new CliRunService({
     lifecycle: sessionLifecycle,

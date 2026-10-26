@@ -59,6 +59,15 @@ export interface SessionLifecycleDependencies {
   deletionGate: SessionDeletionGatePort
   permissions?: SessionLifecyclePermissionPort
   agentLifecycle: AgentLifecycleGatePort
+  /**
+   * 记录会话与数字员工的归属。
+   *
+   * 数字员工会话的工具面按员工收敛（`staffdeck-*` / `de-kb-*`），运行时靠这条
+   * 绑定推导白名单——所以必须在 `startInitialTurn` 之前写入：首轮消息的
+   * 工具列表在那时已经组装，写晚了第一轮就会看到全部员工的工具。
+   * 白名单是安全边界，写入失败必须让建会话失败，而不是降级成「全量工具」。
+   */
+  bindDigitalEmployeeSession?: (sessionId: string, employeeId: string) => void
 }
 
 export class SessionLifecycle implements SessionLifecyclePort {
@@ -121,6 +130,12 @@ export class SessionLifecycle implements SessionLifecyclePort {
           : null
     })
     logger.info(`[SessionLifecycle] session created id=${sessionId}`)
+
+    // 归属绑定先于运行时初始化与首轮消息：工具白名单在两者中都可能被读取。
+    const digitalEmployeeId = input.digitalEmployeeId?.trim()
+    if (digitalEmployeeId) {
+      this.dependencies.bindDigitalEmployeeSession?.(sessionId, digitalEmployeeId)
+    }
 
     try {
       options?.signal?.throwIfAborted()

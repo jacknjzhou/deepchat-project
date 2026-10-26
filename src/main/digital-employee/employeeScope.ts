@@ -107,3 +107,16 @@ export const knowledgeServerNameForEmployee = (employeeId: string): string => {
 /** True when the in-memory server belongs to the digital-employee knowledge feature. */
 export const isEmployeeKnowledgeServerName = (name: string): boolean =>
   name.startsWith(KNOWLEDGE_SERVER_TAG)
+
+/**
+ * 员工会话的 MCP server 白名单。
+ *
+ * 数字员工会话只能看到本员工的两个 server（远端工具 + 本地知识检索）。
+ * 名单里多出的 server id 无害——universe 里不存在的 server 就是零工具，
+ * 所以调用方不需要先确认注册是否真的发生过（preset 员工两个都没有，
+ * 白名单恰好把全部 MCP 工具挡掉，这正是想要的）。
+ */
+export const digitalEmployeeMcpServerAllowList = (employeeId: string): [string, string] => [
+  mcpServerNameForEmployee(employeeId),
+  knowledgeServerNameForEmployee(employeeId)
+]

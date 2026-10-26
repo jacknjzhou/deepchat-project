@@ -232,6 +232,9 @@ function createHarness(initialSessions: SessionRecord[] = []) {
   }
   const deletion = { deleteSessionTree: vi.fn().mockResolvedValue([]) }
   const permissions = { cloneSessionPermissions: vi.fn() }
+  const bindDigitalEmployeeSession = vi.fn((sessionId: string) => {
+    order.push(`bind-employee:${sessionId}`)
+  })
   const deletionGate = new SessionDeletionGate()
   const agentLifecycle = {
     runWithAgentOperation: vi.fn(
@@ -254,7 +257,8 @@ function createHarness(initialSessions: SessionRecord[] = []) {
     deletion,
     deletionGate,
     permissions,
-    agentLifecycle
+    agentLifecycle,
+    bindDigitalEmployeeSession
   } as unknown as SessionLifecycleDependencies
 
   return {
@@ -274,11 +278,37 @@ function createHarness(initialSessions: SessionRecord[] = []) {
     desktop,
     deletion,
     deletionGate,
-    permissions
+    permissions,
+    bindDigitalEmployeeSession
   }
 }
 
 describe('SessionLifecycle', () => {
+  it('binds the digital employee before the first turn runs', async () => {
+    // 首轮消息的工具列表在 startInitialTurn 里组装：绑定必须发生在它之前，
+    // 否则第一轮就会把全部员工的 MCP 工具放进会话上下文。
+    const harness = createHarness()
+
+    await harness.coordinator.createSession(
+      { agentId: 'deepchat', message: '你好', digitalEmployeeId: 'agent_1' },
+      42
+    )
+
+    expect(harness.bindDigitalEmployeeSession).toHaveBeenCalledWith('session-1', 'agent_1')
+    const bindIndex = harness.order.indexOf('bind-employee:session-1')
+    const turnIndex = harness.order.indexOf('initial-turn')
+    expect(bindIndex).toBeGreaterThanOrEqual(0)
+    expect(turnIndex).toBeGreaterThan(bindIndex)
+  })
+
+  it('skips the employee binding for ordinary sessions', async () => {
+    const harness = createHarness()
+
+    await harness.coordinator.createSession({ agentId: 'deepchat', message: 'Hello' }, 42)
+
+    expect(harness.bindDigitalEmployeeSession).not.toHaveBeenCalled()
+  })
+
   it('persists proactive policy only for regular DeepChat sessions', async () => {
     const deepChatHarness = createHarness()
 

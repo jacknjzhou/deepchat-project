@@ -342,6 +342,12 @@ export const CreateSessionInputSchema = z.object({
   permissionMode: PermissionModeSchema.optional(),
   activeSkills: z.array(z.string()).optional(),
   disabledAgentTools: z.array(z.string()).optional(),
+  /**
+   * 会话归属的数字员工 id。主进程据此在首轮消息运行前写入会话绑定，
+   * 运行时再由绑定推导出本员工的 MCP server 白名单（`staffdeck-*` 与
+   * `de-kb-*`），把其他员工 server 的工具挡在这个会话的上下文之外。
+   */
+  digitalEmployeeId: z.string().optional(),
   orchestrationPolicy: OrchestrationPolicySchema.optional(),
   toolModeOverride: ToolModeSchema.nullable().optional(),
   generationSettings: SessionGenerationSettingsPatchSchema.optional()

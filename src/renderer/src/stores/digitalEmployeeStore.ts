@@ -332,6 +332,9 @@ export const useDigitalEmployeeStore = defineStore('digitalEmployee', () => {
     if (employee.executionMode === 'remote') {
       const remote = await sessionStore.createSession({
         agentId: DIGITAL_EMPLOYEE_AGENT_ID,
+        // 归属随会话一起交给主进程：首轮消息运行前写好绑定，
+        // 本员工的 MCP 白名单才能在第一轮就生效。
+        digitalEmployeeId: employee.id,
         message: ''
       })
       const sessionId = remote.session.id
@@ -384,6 +387,8 @@ export const useDigitalEmployeeStore = defineStore('digitalEmployee', () => {
 
     const result = await sessionStore.createSession({
       agentId: DIGITAL_EMPLOYEE_AGENT_ID,
+      // 同 remote 分支：归属进主进程，首轮即生效本员工 MCP 白名单。
+      digitalEmployeeId: employee.id,
       message: openingQuestion ?? '',
       ...(activeSkills.length > 0 ? { activeSkills: [...activeSkills] } : {}),
       ...(disabledAgentTools ? { disabledAgentTools } : {}),

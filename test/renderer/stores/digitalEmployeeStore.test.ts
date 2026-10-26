@@ -669,8 +669,10 @@ describe('digitalEmployeeStore', () => {
 
       expect(sessionId).toBe('session-9')
       // 关键：本地会话必须为空——正文由 main 的 runner 直接写，避免两条用户消息。
+      // digitalEmployeeId 让 main 在首轮前写好归属绑定（会话级 MCP 白名单的依据）。
       expect(sessionStoreMock.createSession).toHaveBeenCalledWith({
         agentId: DIGITAL_EMPLOYEE_AGENT_ID,
+        digitalEmployeeId: 'remote-hr',
         message: ''
       })
       expect(digitalEmployeeClientMock.bindRemoteSession).toHaveBeenCalledWith({

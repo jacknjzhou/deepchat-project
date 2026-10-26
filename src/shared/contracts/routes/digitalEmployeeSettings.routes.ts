@@ -20,7 +20,12 @@ export const digitalEmployeeSettingsKeys = {
    * 默认开启（缺省视为 true）：关闭会造成审计盲区，所以「没设置过」不能等于
    * 「不上报」。关闭由用户在设置里显式操作。
    */
-  backflowEnabled: 'digitalEmployee.backflowEnabled'
+  backflowEnabled: 'digitalEmployee.backflowEnabled',
+  /**
+   * sessionId → 数字员工 id 的归属表。renderer 的会话徽标与 main 的会话工具
+   * 白名单都读它；main 在会话创建时写入（renderer 的 bindSession 幂等重写同值）。
+   */
+  sessionBindings: 'digitalEmployee.sessionBindings'
 } as const
 
 /** 测试连接结果码：renderer 依此映射本地化文案，不接收原始响应体。 */

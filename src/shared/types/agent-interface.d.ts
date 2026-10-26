@@ -877,6 +877,8 @@ export interface CreateSessionInput {
   permissionMode?: PermissionMode
   activeSkills?: string[]
   disabledAgentTools?: string[]
+  /** 会话归属的数字员工 id；主进程据此写归属绑定并推导本员工 MCP 白名单。 */
+  digitalEmployeeId?: string
   orchestrationPolicy?: OrchestrationPolicy
   toolModeOverride?: import('../toolMode').ToolModeOverride
   generationSettings?: Partial<SessionGenerationSettings>

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  digitalEmployeeMcpServerAllowList,
   employeeSkillName,
   employeeSkillPrefix,
   isEmployeeKnowledgeServerName,
@@ -109,5 +110,22 @@ describe('knowledgeServerNameForEmployee', () => {
   it('does not claim foreign server names', () => {
     expect(isEmployeeKnowledgeServerName('staffdeck-agent_1-deadbeef')).toBe(false)
     expect(isEmployeeKnowledgeServerName('my-own-server')).toBe(false)
+  })
+})
+
+describe('digitalEmployeeMcpServerAllowList', () => {
+  it('lists both employee servers for the session allowlist', () => {
+    // 两个名字与注册器用的推导完全一致：名单恒定，注册与否不影响名单——
+    // preset 员工两个 server 都不存在，白名单恰好挡掉全部 MCP 工具。
+    expect(digitalEmployeeMcpServerAllowList('agent_1')).toEqual([
+      mcpServerNameForEmployee('agent_1'),
+      knowledgeServerNameForEmployee('agent_1')
+    ])
+  })
+
+  it('keeps two normalise-alike ids apart', () => {
+    const [first] = digitalEmployeeMcpServerAllowList('a:b')
+    const [second] = digitalEmployeeMcpServerAllowList('a/b')
+    expect(first).not.toBe(second)
   })
 })
