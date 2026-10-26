@@ -152,7 +152,11 @@ export const CONFIG_ENTRY_KEYS = [
   // 远端会话绑定表：main 侧分流按 sessionId 读取，进程重启后必须能恢复。
   'digitalEmployee.remoteSessions',
   // 知识同步状态：每员工的本地知识库 id + 每概念的 hash 基线 + stale 标记。
-  'digitalEmployee.knowledgeSync'
+  'digitalEmployee.knowledgeSync',
+  // 数字员工功能总开关：主窗口侧边栏按它决定是否显示「数字员工广场」入口。
+  // 写入走 digitalEmployeeSettings.setFeatureEnabled（触发配置广播），这里只提供
+  // 零副作用的读取通道。
+  'digitalEmployee.featureEnabled'
 ] as const
 
 // Cached verification result for a provider's current connection configuration.
@@ -199,7 +203,8 @@ export const ConfigEntryValuesSchema = z.object({
   // 损坏条目按空表处理，不应让整份 config 快照解析失败。
   'digitalEmployee.remoteSessions': z.record(z.string(), z.unknown()),
   // 同上：knowledgeSyncState 逐员工校验，单条损坏只丢那一条的增量基线。
-  'digitalEmployee.knowledgeSync': z.record(z.string(), z.unknown())
+  'digitalEmployee.knowledgeSync': z.record(z.string(), z.unknown()),
+  'digitalEmployee.featureEnabled': z.boolean()
 })
 
 export const ConfigEntryChangeSchema = z.discriminatedUnion('key', [
@@ -318,6 +323,10 @@ export const ConfigEntryChangeSchema = z.discriminatedUnion('key', [
   z.object({
     key: z.literal('digitalEmployee.knowledgeSync'),
     value: z.record(z.string(), z.unknown())
+  }),
+  z.object({
+    key: z.literal('digitalEmployee.featureEnabled'),
+    value: z.boolean()
   })
 ])
 

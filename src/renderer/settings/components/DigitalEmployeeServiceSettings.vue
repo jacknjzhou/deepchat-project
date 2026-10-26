@@ -5,6 +5,22 @@
     :eyebrow="t('settings.controlCenter.groups.models')"
     data-testid="settings-digital-employee-service-page"
   >
+    <template #actions>
+      <div class="flex items-center gap-2">
+        <Label for="digital-employee-feature" class="text-sm">
+          {{ t('digitalEmployee.service.featureEnabled') }}
+        </Label>
+        <Switch
+          id="digital-employee-feature"
+          data-testid="digital-employee-feature-switch"
+          :aria-label="t('digitalEmployee.service.featureEnabled')"
+          :model-value="featureEnabled"
+          :disabled="featureSaving"
+          @update:model-value="onFeatureEnabledChange"
+        />
+      </div>
+    </template>
+
     <SettingsSectionCard
       :title="t('digitalEmployee.service.connection')"
       :description="t('digitalEmployee.service.connectionDescription')"
@@ -308,6 +324,12 @@ const showApiKey = ref(false)
 const clearConfirmOpen = ref(false)
 const testResult = ref<{ ok: boolean; messageCode: DigitalEmployeeTestMessageCode } | null>(null)
 /**
+ * 功能总开关与 StaffDeck 连接开关分开存取：它必须在连接尚未配置时也能切换，
+ * 所以不进表单、不随「保存」提交，改动即持久化。
+ */
+const featureEnabled = ref(false)
+const featureSaving = ref(false)
+/**
  * 补发队列里还没归档的事件数。
  *
  * 取一次而不是持续轮询：设置页停留时间短，轮询只是白白多打 IPC；而用户真要确认
@@ -361,6 +383,7 @@ const baseUrlInvalid = computed(() => {
 
 const applyState = (next: DigitalEmployeeSettingsState): void => {
   state.value = next
+  featureEnabled.value = next.featureEnabled
   form.enabled = next.enabled
   form.baseUrl = next.baseUrl
   form.externalUserId = next.externalUserId
@@ -379,6 +402,25 @@ const loadSettings = async (): Promise<void> => {
     backflowPending.value = (await client.backflowQueueStatus()).pending
   } catch {
     loadFailed.value = true
+  }
+}
+
+/**
+ * 总开关即时生效：乐观更新，持久化失败回滚并复用保存错误提示。
+ * 失败必须让用户看到——开关没切过去却显示切过去了，比保存失败更误导。
+ */
+const onFeatureEnabledChange = async (value: boolean): Promise<void> => {
+  if (featureSaving.value) return
+  featureSaving.value = true
+  const previous = featureEnabled.value
+  featureEnabled.value = value
+  try {
+    await client.setFeatureEnabled(value)
+  } catch {
+    featureEnabled.value = previous
+    saveError.value = true
+  } finally {
+    featureSaving.value = false
   }
 }
 

@@ -212,6 +212,7 @@
             </button>
 
             <button
+              v-if="digitalEmployeeStore.featureEnabled"
               data-testid="app-digital-employees-button"
               type="button"
               class="flex h-9 w-full items-center gap-3 rounded-lg px-2 text-left text-sm transition-colors hover:bg-accent/60"
@@ -798,6 +799,7 @@ import WindowSideBarSessionItem from './WindowSideBarSessionItem.vue'
 import { useI18n } from 'vue-i18n'
 import { useSidebarStore } from '@/stores/ui/sidebar'
 import { useThemeStore } from '@/stores/theme'
+import { useDigitalEmployeeStore } from '@/stores/digitalEmployeeStore'
 
 const settingsClient = createSettingsClient()
 const { t } = useI18n()
@@ -809,6 +811,9 @@ const sidebarStore = useSidebarStore()
 const spotlightStore = useSpotlightStore()
 const themeStore = useThemeStore()
 const pluginCatalogStore = usePluginCatalogStore()
+// 「数字员工广场」入口的可见性由功能总开关决定；加载幂等且与其他调用方共享。
+const digitalEmployeeStore = useDigitalEmployeeStore()
+void digitalEmployeeStore.ensureLoaded()
 
 // line-md 过渡图标自带线条流动动画：切到该模式时，线条会绘制/morph 成对应形状
 const themeIcon = computed(() => {

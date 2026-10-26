@@ -290,7 +290,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Icon } from '@iconify/vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
@@ -482,6 +482,16 @@ onMounted(() => {
     }
   )
 })
+
+// 总开关在设置里被关掉时（广播驱动 store 更新），用户不能停留在一个已经
+// 「不存在」的功能页面上——立即送回聊天页。把 initialized 一并放进来源：
+// 深链直入时开关尚未加载，要等加载完成后按真实值判定一次。
+watch(
+  () => [store.featureEnabled, store.initialized] as const,
+  ([enabled]) => {
+    if (!enabled) void router.replace({ name: 'chat' })
+  }
+)
 
 onBeforeUnmount(() => {
   unsubscribeConfigurationChanged?.()

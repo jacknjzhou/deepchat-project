@@ -22,6 +22,7 @@
     "connection": "StaffDeck 连接配置",
     "connectionDescription": "启用后员工目录从 StaffDeck 读取；服务不可用时自动回退到本地数据。",
     "enabled": "启用 StaffDeck 服务",
+    "featureEnabled": "数字员工功能",
     "modeMock": "当前模式：本地 Mock。员工数据来自应用内置目录。",
     "modeRemote": "当前模式：StaffDeck 服务。员工数据来自远端服务。",
     "baseUrl": "服务地址（Base URL）",

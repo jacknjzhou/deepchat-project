@@ -33,6 +33,9 @@ const stubStore = reactive({
   selectedDigitalEmployeeId: null as string | null,
   favorites: [] as string[],
   sessionBindings: {} as Record<string, string>,
+  // 页面用总开关判定去留；默认「已开启且已加载」，个别用例再翻转。
+  featureEnabled: true,
+  initialized: true,
   get enabledEmployees(): DigitalEmployee[] {
     return this.employees.filter((employee) => employee.enabled)
   },
@@ -48,6 +51,8 @@ const stubStore = reactive({
 const configurationChangedListenerRef: { current: (() => void) | null } = { current: null }
 
 const pushMock = vi.fn(async () => {})
+
+const replaceMock = vi.fn(async () => {})
 
 const notifyRenderer = vi.hoisted(() => vi.fn())
 
@@ -129,7 +134,7 @@ async function setup() {
     })
   }))
   vi.doMock('vue-router', () => ({
-    useRouter: () => ({ push: pushMock })
+    useRouter: () => ({ push: pushMock, replace: replaceMock })
   }))
   vi.doMock('@renderer-notifications/rendererNotificationPort', () => ({
     notifyRenderer
@@ -177,9 +182,12 @@ describe('DigitalEmployeeSquarePage', () => {
     configurationChangedListenerRef.current = null
     stubStore.startConversation.mockClear()
     stubStore.startConversation.mockResolvedValue('')
+    stubStore.featureEnabled = true
+    stubStore.initialized = true
     mcpStubStore.loadTools.mockClear()
     mcpStubStore.tools = []
     pushMock.mockClear()
+    replaceMock.mockClear()
   })
 
   it('renders all tab cards by default', async () => {
@@ -189,6 +197,17 @@ describe('DigitalEmployeeSquarePage', () => {
     expect(wrapper.find('[data-testid="digital-employee-card-emp-2"]').exists()).toBe(true)
     // disabled 员工不渲染
     expect(wrapper.find('[data-testid="digital-employee-card-emp-3"]').exists()).toBe(false)
+  })
+
+  it('leaves the page when the feature master switch turns off', async () => {
+    // 总开关被关掉后（设置窗口改完广播回来），页面不能停留在已下线的功能里。
+    await setup()
+    expect(replaceMock).not.toHaveBeenCalled()
+
+    stubStore.featureEnabled = false
+    await flushPromises()
+
+    expect(replaceMock).toHaveBeenCalledWith({ name: 'chat' })
   })
 
   it('search filters cards by name/capability', async () => {

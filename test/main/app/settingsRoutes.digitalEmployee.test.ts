@@ -7,6 +7,7 @@ import {
   digitalEmployeeSettingsClearApiKeyRoute,
   digitalEmployeeSettingsGetRoute,
   digitalEmployeeSettingsSaveRoute,
+  digitalEmployeeSettingsSetFeatureEnabledRoute,
   digitalEmployeeSettingsTestConnectionRoute
 } from '../../../src/shared/contracts/routes/digitalEmployeeSettings.routes'
 
@@ -38,6 +39,7 @@ interface Harness {
   handlers: {
     get(input?: unknown): Promise<unknown>
     save(input: unknown): Promise<unknown>
+    setFeatureEnabled(input: unknown): Promise<unknown>
     testConnection(input?: unknown): Promise<unknown>
     clearApiKey(input?: unknown): Promise<unknown>
   }
@@ -120,6 +122,8 @@ const createHarness = (
     handlers: {
       get: (input) => routes.get(digitalEmployeeSettingsGetRoute.name)!(input ?? {}),
       save: (input) => routes.get(digitalEmployeeSettingsSaveRoute.name)!(input),
+      setFeatureEnabled: (input) =>
+        routes.get(digitalEmployeeSettingsSetFeatureEnabledRoute.name)!(input),
       testConnection: (input) =>
         routes.get(digitalEmployeeSettingsTestConnectionRoute.name)!(input ?? {}),
       clearApiKey: (input) => routes.get(digitalEmployeeSettingsClearApiKeyRoute.name)!(input ?? {})
@@ -161,6 +165,8 @@ describe('digitalEmployeeSettings routes', () => {
 
     expect(result).toEqual({
       enabled: false,
+      // 总开关缺省必须读成关闭：入口只能被用户显式打开，不能靠「没设置」猜成开。
+      featureEnabled: false,
       baseUrl: '',
       externalUserId: 'user-1',
       apiKeyConfigured: true,
@@ -171,6 +177,24 @@ describe('digitalEmployeeSettings routes', () => {
     })
     expect(JSON.stringify(result)).not.toContain('sd_live_secret')
     expect(JSON.stringify(result)).not.toContain('wrapped:')
+  })
+
+  it('persists the feature master switch immediately and broadcasts it', async () => {
+    const result = (await harness.handlers.setFeatureEnabled({ enabled: true })) as {
+      featureEnabled: boolean
+    }
+
+    expect(harness.settingsStore.get('digitalEmployee.featureEnabled')).toBe(true)
+    expect(harness.onConfigurationChanged).toHaveBeenCalledTimes(1)
+    expect(result).toEqual({ featureEnabled: true })
+
+    const reread = (await harness.handlers.get()) as { featureEnabled: boolean }
+    expect(reread.featureEnabled).toBe(true)
+
+    await harness.handlers.setFeatureEnabled({ enabled: false })
+    expect((await harness.handlers.get()) as { featureEnabled: boolean }).toMatchObject({
+      featureEnabled: false
+    })
   })
 
   it('flags a wrapped key that cannot be decrypted on this machine', async () => {

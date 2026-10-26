@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { createConfigClient } from '../../api/ConfigClient'
 import { createDigitalEmployeeClient } from '../../api/DigitalEmployeeClient'
+import { createDigitalEmployeeSettingsClient } from '../../api/DigitalEmployeeSettingsClient'
 import { createKnowledgeClient } from '../../api/KnowledgeClient'
 import { useSessionStore } from './ui/session'
 import type {
@@ -101,11 +102,14 @@ export function buildDisabledAgentTools(
 const FAVORITES_KEY = 'digitalEmployee.favorites'
 const SESSION_BINDINGS_KEY = 'digitalEmployee.sessionBindings'
 const CONFIG_HASHES_KEY = 'digitalEmployee.configHashes'
+/** 功能总开关；写入在设置窗口经专用路由持久化并广播，这里只读。 */
+const FEATURE_ENABLED_KEY = 'digitalEmployee.featureEnabled'
 
 export const useDigitalEmployeeStore = defineStore('digitalEmployee', () => {
   const client = createDigitalEmployeeClient()
   const configClient = createConfigClient()
   const knowledgeClient = createKnowledgeClient()
+  const settingsClient = createDigitalEmployeeSettingsClient()
   const sessionStore = useSessionStore()
 
   const employees = ref<DigitalEmployee[]>([])
@@ -117,6 +121,11 @@ export const useDigitalEmployeeStore = defineStore('digitalEmployee', () => {
   const selectedDigitalEmployeeId = ref<string | null>(null)
   const favorites = ref<string[]>([])
   const sessionBindings = ref<Record<string, string>>({})
+  /**
+   * 数字员工功能总开关。缺省（读失败/未设置）一律视为关闭：入口必须由用户
+   * 显式打开后出现，而不是靠猜。
+   */
+  const featureEnabled = ref(false)
   /** 已确认的 hash 基线；首次拉取只建立基线不提示，后续变化才置 hasConfigUpdates */
   let configHashBaseline: Record<string, string> | null = null
 
@@ -221,9 +230,22 @@ export const useDigitalEmployeeStore = defineStore('digitalEmployee', () => {
     }
   }
 
+  /**
+   * 读取功能总开关。读失败按关闭处理：宁可入口暂时不可见（可从设置打开），
+   * 不可在功能已被管理关闭时仍显示入口。
+   */
+  async function readFeatureEnabled(): Promise<void> {
+    try {
+      featureEnabled.value = (await configClient.getSetting(FEATURE_ENABLED_KEY)) === true
+    } catch {
+      featureEnabled.value = false
+    }
+  }
+
   async function loadPersistedState(): Promise<void> {
     favorites.value = await readStringArraySetting(FAVORITES_KEY)
     sessionBindings.value = await readBindingsSetting()
+    await readFeatureEnabled()
     // 基线来自上次确认的持久化快照；无值时保持 null，由首轮拉取建立基线。
     const persistedHashes = await readConfigHashes()
     configHashBaseline = Object.keys(persistedHashes).length > 0 ? persistedHashes : null
@@ -526,6 +548,12 @@ export const useDigitalEmployeeStore = defineStore('digitalEmployee', () => {
     }
   }
 
+  // 设置窗口（独立 renderer 实例）改完总开关后由 main 广播；这里只关心开关
+  // 本身，配置重载等已由广场页自己的订阅处理。随 store 存活，无需退订。
+  settingsClient.onConfigurationChanged(() => {
+    void readFeatureEnabled()
+  })
+
   return {
     employees,
     loading,
@@ -537,6 +565,7 @@ export const useDigitalEmployeeStore = defineStore('digitalEmployee', () => {
     selectedDigitalEmployeeId,
     favorites,
     sessionBindings,
+    featureEnabled,
     enabledEmployees,
     selectedDigitalEmployee,
     fetchEmployees,

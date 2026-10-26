@@ -4,8 +4,15 @@ import { defineComponent } from 'vue'
 
 const passthrough = (name: string) => defineComponent({ name, template: '<div><slot /></div>' })
 
+// 页头承载功能总开关，stub 必须渲染 actions 插槽，否则开关在测试 DOM 里不存在。
+const pageShellStub = defineComponent({
+  name: 'SettingsPageShell',
+  template: '<div><slot name="actions" /><slot /></div>'
+})
+
 const baseState = {
   enabled: false,
+  featureEnabled: false,
   baseUrl: '',
   externalUserId: 'user-1',
   apiKeyConfigured: true,
@@ -20,6 +27,7 @@ const baseState = {
 let clientMock: {
   get: ReturnType<typeof vi.fn>
   save: ReturnType<typeof vi.fn>
+  setFeatureEnabled: ReturnType<typeof vi.fn>
   testConnection: ReturnType<typeof vi.fn>
   clearApiKey: ReturnType<typeof vi.fn>
   backflowQueueStatus: ReturnType<typeof vi.fn>
@@ -40,6 +48,7 @@ async function setup(
     })),
     testConnection: vi.fn(async () => ({ ok: true, messageCode: 'ok' })),
     clearApiKey: vi.fn(async () => ({ apiKeyConfigured: false })),
+    setFeatureEnabled: vi.fn(async (enabled: boolean) => ({ featureEnabled: enabled })),
     backflowQueueStatus: vi.fn(
       async () => overrides.backflowQueueStatus ?? { pending: 0, due: 0, oldestCreatedAt: null }
     )
@@ -62,7 +71,7 @@ async function setup(
   const wrapper = mount(Component, {
     global: {
       stubs: {
-        SettingsPageShell: passthrough('SettingsPageShell'),
+        SettingsPageShell: pageShellStub,
         SettingsSectionCard: passthrough('SettingsSectionCard'),
         Icon: true,
         Spinner: true,
@@ -283,5 +292,28 @@ describe('DigitalEmployeeServiceSettings', () => {
     const notice = wrapper.get('[data-testid="digital-employee-backflow-pending"]')
     expect(notice.text()).toContain('digitalEmployee.service.backflowPending')
     expect(notice.text()).toContain('"count":7')
+  })
+
+  it('persists the feature master switch immediately', async () => {
+    // 总开关不进表单：连接还没配置时也必须能打开，切换即持久化。
+    const wrapper = await setup({ state: { featureEnabled: true } })
+    const featureSwitch = wrapper.get('[data-testid="digital-employee-feature-switch"]')
+
+    expect(featureSwitch.text()).toBe('true')
+    await featureSwitch.trigger('click')
+    await flushPromises()
+
+    expect(clientMock.setFeatureEnabled).toHaveBeenCalledWith(false)
+  })
+
+  it('reverts the feature switch and reports an error when persisting fails', async () => {
+    const wrapper = await setup({ state: { featureEnabled: false } })
+    clientMock.setFeatureEnabled.mockRejectedValueOnce(new Error('disk full'))
+
+    await wrapper.get('[data-testid="digital-employee-feature-switch"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.get('[data-testid="digital-employee-feature-switch"]').text()).toBe('false')
+    expect(wrapper.find('[data-testid="digital-employee-save-error"]').exists()).toBe(true)
   })
 })

@@ -28,6 +28,10 @@ const configClientMock = vi.hoisted(() => ({
   setSetting: vi.fn()
 }))
 
+const digitalEmployeeSettingsClientMock = vi.hoisted(() => ({
+  onConfigurationChanged: vi.fn(() => () => {})
+}))
+
 vi.mock('../../../src/renderer/src/stores/ui/session', () => ({
   useSessionStore: () => sessionStoreMock
 }))
@@ -50,6 +54,10 @@ vi.mock('../../../src/renderer/api/DigitalEmployeeClient', () => ({
 
 vi.mock('../../../src/renderer/api/ConfigClient', () => ({
   createConfigClient: () => configClientMock
+}))
+
+vi.mock('../../../src/renderer/api/DigitalEmployeeSettingsClient', () => ({
+  createDigitalEmployeeSettingsClient: () => digitalEmployeeSettingsClientMock
 }))
 
 const makeEmployee = (id: string, overrides: Partial<DigitalEmployee> = {}): DigitalEmployee => ({
@@ -145,6 +153,7 @@ describe('digitalEmployeeStore', () => {
     digitalEmployeeClientMock.backflow
       .mockReset()
       .mockResolvedValue({ ok: true, reason: null, delivered: 1 })
+    digitalEmployeeSettingsClientMock.onConfigurationChanged.mockClear()
   })
 
   it('ensureLoaded fetches the client only once across repeated invocations', async () => {
@@ -173,6 +182,40 @@ describe('digitalEmployeeStore', () => {
     await store.fetchEmployees()
     expect(store.employees).toHaveLength(2)
     expect(store.enabledEmployees.map((e) => e.id)).toEqual(['finance'])
+  })
+
+  it('loads the feature master switch from persisted config', async () => {
+    // 总开关持久化为 true 时侧边栏入口才出现，读取口径必须与 main 一致。
+    configClientMock.getSetting.mockImplementation(async (key: string) =>
+      key === 'digitalEmployee.featureEnabled' ? true : null
+    )
+    const store = useDigitalEmployeeStore()
+    await store.ensureLoaded()
+    expect(store.featureEnabled).toBe(true)
+  })
+
+  it('treats a failed feature switch read as disabled', async () => {
+    // 读失败宁可隐藏入口（可从设置打开），不可在功能已关闭时仍显示入口。
+    configClientMock.getSetting.mockRejectedValue(new Error('boom'))
+    const store = useDigitalEmployeeStore()
+    await store.ensureLoaded()
+    expect(store.featureEnabled).toBe(false)
+  })
+
+  it('refreshes the feature switch when the configuration-changed event fires', async () => {
+    const store = useDigitalEmployeeStore()
+    await store.ensureLoaded()
+    expect(store.featureEnabled).toBe(false)
+
+    const listener = digitalEmployeeSettingsClientMock.onConfigurationChanged.mock
+      .calls[0][0] as () => void
+    configClientMock.getSetting.mockImplementation(async (key: string) =>
+      key === 'digitalEmployee.featureEnabled' ? true : null
+    )
+    listener()
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(store.featureEnabled).toBe(true)
   })
 
   it('toggleFavorite persists and toggles', async () => {

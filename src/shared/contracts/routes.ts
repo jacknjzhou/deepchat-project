@@ -423,6 +423,7 @@ import {
   digitalEmployeeSettingsClearApiKeyRoute,
   digitalEmployeeSettingsGetRoute,
   digitalEmployeeSettingsSaveRoute,
+  digitalEmployeeSettingsSetFeatureEnabledRoute,
   digitalEmployeeSettingsTestConnectionRoute
 } from './routes/digitalEmployeeSettings.routes'
 import {
@@ -866,6 +867,8 @@ const DEEPCHAT_ROUTE_CATALOG_PART_1 = {
   [digitalEmployeeGetRoute.name]: digitalEmployeeGetRoute,
   [digitalEmployeeSettingsGetRoute.name]: digitalEmployeeSettingsGetRoute,
   [digitalEmployeeSettingsSaveRoute.name]: digitalEmployeeSettingsSaveRoute,
+  [digitalEmployeeSettingsSetFeatureEnabledRoute.name]:
+    digitalEmployeeSettingsSetFeatureEnabledRoute,
   [digitalEmployeeSettingsTestConnectionRoute.name]: digitalEmployeeSettingsTestConnectionRoute,
   [digitalEmployeeSettingsClearApiKeyRoute.name]: digitalEmployeeSettingsClearApiKeyRoute,
   [digitalEmployeeBindRemoteSessionRoute.name]: digitalEmployeeBindRemoteSessionRoute,

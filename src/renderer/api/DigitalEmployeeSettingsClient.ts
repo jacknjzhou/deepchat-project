@@ -5,6 +5,7 @@ import {
   digitalEmployeeSettingsClearApiKeyRoute,
   digitalEmployeeSettingsGetRoute,
   digitalEmployeeSettingsSaveRoute,
+  digitalEmployeeSettingsSetFeatureEnabledRoute,
   digitalEmployeeSettingsTestConnectionRoute,
   type DigitalEmployeeSettingsState,
   type DigitalEmployeeTestMessageCode
@@ -66,6 +67,13 @@ export function createDigitalEmployeeSettingsClient(bridge: DeepchatBridge = get
     }
   }
 
+  /** 功能总开关独立读写：连接未配置时也必须可切换，故不并入 save。 */
+  async function setFeatureEnabled(enabled: boolean): Promise<{ featureEnabled: boolean }> {
+    return (await bridge.invoke(digitalEmployeeSettingsSetFeatureEnabledRoute.name, {
+      enabled
+    })) as { featureEnabled: boolean }
+  }
+
   /** StaffDeck 配置保存/清除后由 main 广播，renderer 据此刷新员工列表。 */
   function onConfigurationChanged(listener: () => void) {
     return bridge.on(digitalEmployeeConfigurationChangedEvent.name, () => listener())
@@ -88,7 +96,15 @@ export function createDigitalEmployeeSettingsClient(bridge: DeepchatBridge = get
     }
   }
 
-  return { get, save, testConnection, clearApiKey, backflowQueueStatus, onConfigurationChanged }
+  return {
+    get,
+    save,
+    setFeatureEnabled,
+    testConnection,
+    clearApiKey,
+    backflowQueueStatus,
+    onConfigurationChanged
+  }
 }
 
 export type DigitalEmployeeSettingsClient = ReturnType<typeof createDigitalEmployeeSettingsClient>

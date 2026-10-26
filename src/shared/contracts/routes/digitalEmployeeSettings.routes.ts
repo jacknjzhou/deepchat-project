@@ -8,6 +8,14 @@ import { defineRouteContract } from '../common'
 
 export const digitalEmployeeSettingsKeys = {
   enabled: 'digitalEmployee.staffdeckEnabled',
+  /**
+   * 数字员工功能总开关。
+   *
+   * 与 `enabled`（StaffDeck 连接开关）是两件事：它控制整个功能是否在产品里
+   * 出现——关闭时主窗口侧边栏隐藏「数字员工广场」入口。默认关闭
+   * （`=== true` 口径：未设置过视为关闭）。
+   */
+  featureEnabled: 'digitalEmployee.featureEnabled',
   baseUrl: 'digitalEmployee.staffdeckBaseUrl',
   externalUserId: 'digitalEmployee.externalUserId',
   /** 仅 SecretStore 读写的 wrapped 值键 */
@@ -50,6 +58,8 @@ export const DigitalEmployeeTestMessageCodeSchema = z.enum(DIGITAL_EMPLOYEE_TEST
 
 export const DigitalEmployeeSettingsStateSchema = z.object({
   enabled: z.boolean(),
+  /** 数字员工功能总开关。缺省视为关闭，见 `featureEnabled` 键的说明。 */
+  featureEnabled: z.boolean(),
   baseUrl: z.string(),
   externalUserId: z.string(),
   apiKeyConfigured: z.boolean(),
@@ -97,6 +107,24 @@ export const digitalEmployeeSettingsSaveRoute = defineRouteContract({
     })
     .strict(),
   output: DigitalEmployeeSettingsStateSchema
+})
+
+/**
+ * 功能总开关的独立读写路由。
+ *
+ * 不并入 save：save 强制校验连接配置（baseUrl/externalUserId），而总开关必须
+ * 在连接尚未配置时也能切换。立即生效、单独持久化，由 main 广播配置变化。
+ */
+export const digitalEmployeeSettingsSetFeatureEnabledRoute = defineRouteContract({
+  name: 'digitalEmployeeSettings.setFeatureEnabled',
+  input: z
+    .object({
+      enabled: z.boolean()
+    })
+    .strict(),
+  output: z.object({
+    featureEnabled: z.boolean()
+  })
 })
 
 export const digitalEmployeeSettingsTestConnectionRoute = defineRouteContract({

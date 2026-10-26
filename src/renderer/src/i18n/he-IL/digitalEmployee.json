@@ -23,6 +23,7 @@
     "connection": "StaffDeck connection",
     "connectionDescription": "When enabled the employee catalog is loaded from StaffDeck; the app falls back to local data when the service is unavailable.",
     "enabled": "Enable StaffDeck service",
+    "featureEnabled": "תכונת עובדים דיגיטליים",
     "modeMock": "Current mode: local mock. Employee data comes from the built-in catalog.",
     "modeRemote": "Current mode: StaffDeck service. Employee data comes from the remote service.",
     "baseUrl": "Base URL",

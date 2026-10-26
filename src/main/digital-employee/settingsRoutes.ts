@@ -5,6 +5,7 @@ import {
   digitalEmployeeSettingsGetRoute,
   digitalEmployeeSettingsKeys,
   digitalEmployeeSettingsSaveRoute,
+  digitalEmployeeSettingsSetFeatureEnabledRoute,
   digitalEmployeeSettingsTestConnectionRoute,
   type DigitalEmployeeSettingsState,
   type DigitalEmployeeTestMessageCode
@@ -68,6 +69,9 @@ const readState = (
   const wrappedKey = deps.secretStore.getWrapped(digitalEmployeeSettingsKeys.apiKey)
   return {
     enabled: deps.settings.get<boolean>(digitalEmployeeSettingsKeys.enabled) === true,
+    // 总开关与连接开关同一口径（`=== true`）：未设置过视为关闭，首次使用必须
+    // 由用户显式打开。
+    featureEnabled: deps.settings.get<boolean>(digitalEmployeeSettingsKeys.featureEnabled) === true,
     baseUrl: deps.settings.get<string>(digitalEmployeeSettingsKeys.baseUrl) ?? '',
     externalUserId,
     apiKeyConfigured: Boolean(wrappedKey),
@@ -246,6 +250,19 @@ export function createDigitalEmployeeSettingsRoutes(
 
         deps.onConfigurationChanged()
         return digitalEmployeeSettingsSaveRoute.output.parse(readState(deps, externalUserId))
+      }
+    ],
+    [
+      digitalEmployeeSettingsSetFeatureEnabledRoute.name,
+      async (rawInput) => {
+        const input = digitalEmployeeSettingsSetFeatureEnabledRoute.input.parse(rawInput)
+        deps.settings.set(digitalEmployeeSettingsKeys.featureEnabled, input.enabled)
+        // 复用既有广播：主窗口据此刷新侧边栏入口；副作用（Provider 重建等）
+        // 对纯 UI 开关无害，只是多一次幂等重建。
+        deps.onConfigurationChanged()
+        return digitalEmployeeSettingsSetFeatureEnabledRoute.output.parse({
+          featureEnabled: input.enabled
+        })
       }
     ],
     [
