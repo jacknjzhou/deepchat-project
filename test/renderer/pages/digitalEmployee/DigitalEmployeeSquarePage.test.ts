@@ -274,8 +274,10 @@ describe('DigitalEmployeeSquarePage', () => {
         employeeId: 'emp-1',
         skipped: null,
         toolsReady: true,
+        knowledgeToolReady: true,
         installedSkills: 1,
         failedSkills: [],
+        failureReasons: {},
         skillNames: ['de-emp-1-writing'],
         failures: []
       }
@@ -302,6 +304,7 @@ describe('DigitalEmployeeSquarePage', () => {
       employeeId: 'emp-1',
       skipped: null,
       toolsReady: true,
+      knowledgeToolReady: true,
       installedSkills: 1,
       failedSkills: [],
       skillNames: ['de-emp-1-writing'],
@@ -327,6 +330,7 @@ describe('DigitalEmployeeSquarePage', () => {
       employeeId: 'emp-1',
       skipped: null,
       toolsReady: true,
+      knowledgeToolReady: true,
       installedSkills: 1,
       failedSkills: [],
       skillNames: ['de-emp-1-writing'],
@@ -348,6 +352,7 @@ describe('DigitalEmployeeSquarePage', () => {
       employeeId: 'emp-1',
       skipped: null,
       toolsReady: false,
+      knowledgeToolReady: true,
       installedSkills: 1,
       failedSkills: [],
       failureReasons: {},
@@ -377,6 +382,7 @@ describe('DigitalEmployeeSquarePage', () => {
       employeeId: 'emp-1',
       skipped: null,
       toolsReady: true,
+      knowledgeToolReady: true,
       installedSkills: 1,
       failedSkills: ['broken-pkg'],
       failureReasons: { 'broken-pkg': 'HTTP 404' },
@@ -399,6 +405,59 @@ describe('DigitalEmployeeSquarePage', () => {
         description: expect.stringContaining('broken-pkg: HTTP 404')
       })
     )
+  })
+
+  it('warns when the local knowledge search did not start', async () => {
+    const { wrapper } = await setup()
+    await wrapper.get('[data-testid="digital-employee-card-emp-1"]').trigger('click')
+    await flushPromises()
+
+    stubStore.provisionEmployee.mockResolvedValue({
+      employeeId: 'emp-1',
+      skipped: null,
+      toolsReady: true,
+      knowledgeToolReady: false,
+      installedSkills: 1,
+      failedSkills: [],
+      failureReasons: {},
+      skillNames: ['de-emp-1-writing'],
+      failures: ['knowledgeTool']
+    })
+
+    await wrapper.get('[data-testid="digital-employee-start-button"]').trigger('click')
+    await flushPromises()
+
+    // 配了知识库但检索工具没起来：会话照常，但模型查不了知识，必须说出来。
+    expect(notifyRenderer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: 'warning',
+        description: 'digitalEmployee.provision.knowledgeToolUnavailable'
+      })
+    )
+  })
+
+  it('stays quiet about the knowledge tool for an employee without knowledge bases', async () => {
+    const { wrapper } = await setup()
+    await wrapper.get('[data-testid="digital-employee-card-emp-2"]').trigger('click')
+    await flushPromises()
+
+    stubStore.provisionEmployee.mockResolvedValue({
+      employeeId: 'emp-2',
+      skipped: null,
+      toolsReady: true,
+      knowledgeToolReady: false,
+      installedSkills: 0,
+      failedSkills: [],
+      failureReasons: {},
+      skillNames: [],
+      failures: []
+    })
+
+    await wrapper.get('[data-testid="digital-employee-start-button"]').trigger('click')
+    await flushPromises()
+
+    // 没配知识库的员工本来就没有检索工具（注册器按常态清理），不是降级。
+    expect(notifyRenderer).not.toHaveBeenCalled()
   })
 
   it('keeps quiet when provisioning was skipped, which is not a degradation', async () => {

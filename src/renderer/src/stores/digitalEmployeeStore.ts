@@ -58,6 +58,15 @@ export function buildDigitalEmployeeSystemPrompt(
   return sections.join('\n\n')
 }
 
+/**
+ * 每员工本地知识检索工具，由主进程的 per-employee in-memory server 暴露。
+ *
+ * 它不来自服务端分发的 `employee.tools`，白名单若只收敛那份列表就会把它
+ * disable 掉——而它注册与否由 provision 决定，不在可用列表里时本函数
+ * 天然不会误伤。
+ */
+const LOCAL_KNOWLEDGE_TOOL_NAME = 'de_knowledge_search'
+
 export function buildDisabledAgentTools(
   employee: DigitalEmployee,
   availableMcpToolNames: string[] | undefined
@@ -66,7 +75,7 @@ export function buildDisabledAgentTools(
   if (employee.tools.length === 0 || !availableMcpToolNames || availableMcpToolNames.length === 0) {
     return undefined
   }
-  const whitelist = new Set(employee.tools)
+  const whitelist = new Set([...employee.tools, LOCAL_KNOWLEDGE_TOOL_NAME])
   const disabled = availableMcpToolNames.filter((name) => !whitelist.has(name))
   return disabled.length > 0 ? disabled : undefined
 }

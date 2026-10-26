@@ -126,6 +126,7 @@
   "provision": {
     "degradedTitle": "Some capabilities are not ready",
     "degradedTools": "The cloud tools did not register, so this employee cannot use them in this session. The conversation itself is unaffected.",
+    "knowledgeToolUnavailable": "The local knowledge search did not start, so this employee cannot query its knowledge base this session. The conversation itself is unaffected.",
     "degradedSkills": "{count} skill(s) failed to install and will not apply this session. The conversation itself is unaffected.",
     "degradedSkillReasons": "Failure reasons: {reasons}"
   }

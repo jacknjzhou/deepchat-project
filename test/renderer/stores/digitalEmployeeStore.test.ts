@@ -212,6 +212,15 @@ describe('digitalEmployeeStore', () => {
     expect(buildDisabledAgentTools(employee, undefined)).toBeUndefined()
   })
 
+  it('buildDisabledAgentTools keeps the local knowledge tool available', () => {
+    const employee = { ...makeEmployee('finance'), tools: ['filesystem_read'] }
+    // de_knowledge_search 不在 employee.tools 里（它由主进程 per-employee
+    // server 注册），白名单若只收敛那份列表就会把知识检索 disable 掉。
+    expect(
+      buildDisabledAgentTools(employee, ['filesystem_read', 'de_knowledge_search'])
+    ).toBeUndefined()
+  })
+
   it('startConversation creates session with capability bindings and records binding', async () => {
     const store = useDigitalEmployeeStore()
     await store.fetchEmployees()
@@ -234,10 +243,7 @@ describe('digitalEmployeeStore', () => {
     // similarityQuery 会抛错并被吞成空结果（知识永远召回不到）。
     expect(digitalEmployeeClientMock.knowledgeLocalBase).toHaveBeenCalledWith('finance')
     expect(knowledgeClientMock.similarityQuery).toHaveBeenCalledWith('de-finance', '帮我查报销进度')
-    expect(knowledgeClientMock.similarityQuery).not.toHaveBeenCalledWith(
-      'kb-1',
-      expect.anything()
-    )
+    expect(knowledgeClientMock.similarityQuery).not.toHaveBeenCalledWith('kb-1', expect.anything())
     expect(store.employeeForSession('session-9')?.id).toBe(employee.id)
   })
 
@@ -250,8 +256,9 @@ describe('digitalEmployeeStore', () => {
     await store.startConversation(store.employees[0], { openingQuestion: '帮我查报销进度' })
 
     expect(knowledgeClientMock.similarityQuery).not.toHaveBeenCalled()
-    expect(sessionStoreMock.createSession.mock.calls[0][0].generationSettings.systemPrompt).not
-      .toContain('## 参考资料')
+    expect(
+      sessionStoreMock.createSession.mock.calls[0][0].generationSettings.systemPrompt
+    ).not.toContain('## 参考资料')
   })
 
   it('skips knowledge retrieval when the local base lookup fails', async () => {

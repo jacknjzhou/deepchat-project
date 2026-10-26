@@ -360,7 +360,8 @@ const openDetail = (employee: DigitalEmployee) => {
  * 会被旧页面的卸载冲掉。
  */
 const reportDegradedProvisioning = (
-  provisioned: Awaited<ReturnType<typeof store.provisionEmployee>>
+  provisioned: Awaited<ReturnType<typeof store.provisionEmployee>>,
+  hasKnowledgeBases: boolean
 ): void => {
   if (!provisioned) return
   // remote 员工本来就不在本地准备，`skipped` 不是降级信号。
@@ -368,7 +369,10 @@ const reportDegradedProvisioning = (
 
   const missingSkills = provisioned.failedSkills.length
   const toolsUnavailable = !provisioned.toolsReady
-  if (!toolsUnavailable && missingSkills === 0) return
+  // 没配知识库的员工本来就没有检索工具（注册器按常态清理，不算失败），
+  // 只有「配了库但工具没起来」才是降级。
+  const knowledgeUnavailable = hasKnowledgeBases && !provisioned.knowledgeToolReady
+  if (!toolsUnavailable && !knowledgeUnavailable && missingSkills === 0) return
 
   // 失败原因随 toast 透出：HTTP 401 和安装器拒绝的处置完全不同（换 key vs
   // 查服务端），只报个数等于让用户继续猜。
@@ -379,11 +383,18 @@ const reportDegradedProvisioning = (
     ? `${t('digitalEmployee.provision.degradedSkills', { count: missingSkills })} ${t('digitalEmployee.provision.degradedSkillReasons', { reasons })}`
     : t('digitalEmployee.provision.degradedSkills', { count: missingSkills })
 
+  const messages: string[] = []
+  if (toolsUnavailable) messages.push(t('digitalEmployee.provision.degradedTools'))
+  if (knowledgeUnavailable) {
+    messages.push(t('digitalEmployee.provision.knowledgeToolUnavailable'))
+  }
+  if (missingSkills > 0) messages.push(skillsDescription)
+
   notifyRenderer({
     kind: 'warning',
     code: 'digitalEmployee.provision.degraded',
     title: t('digitalEmployee.provision.degradedTitle'),
-    description: toolsUnavailable ? t('digitalEmployee.provision.degradedTools') : skillsDescription
+    description: messages.join(' ')
   })
 }
 
@@ -409,7 +420,7 @@ const startConversation = async () => {
     })
     detailEmployee.value = null
     await router.push({ name: 'chat' })
-    reportDegradedProvisioning(provisioned)
+    reportDegradedProvisioning(provisioned, employee.knowledgeBaseIds.length > 0)
     void sessionId
   } catch (error) {
     console.error('[DigitalEmployeeSquarePage] startConversation failed', error)
