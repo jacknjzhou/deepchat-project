@@ -225,6 +225,28 @@
             </h3>
             <p class="mt-1 text-xs">{{ detailEmployee.skillIds.join('、') }}</p>
           </section>
+          <section v-if="detailProvisionResult" data-testid="digital-employee-provision-result">
+            <h3 class="text-xs font-semibold text-muted-foreground">
+              {{ t('digitalEmployee.provision.resultTitle') }}
+            </h3>
+            <p v-if="detailProvisionResult.skillNames.length" class="mt-1 text-xs">
+              {{
+                t('digitalEmployee.provision.installedSkills', {
+                  skills: detailProvisionResult.skillNames.join('、')
+                })
+              }}
+            </p>
+            <template v-if="detailProvisionResult.failedSkills.length">
+              <p class="mt-1 text-xs text-destructive">
+                {{ t('digitalEmployee.provision.skillInstallFailed') }}
+              </p>
+              <ul class="mt-1 list-disc pl-4 text-xs">
+                <li v-for="slug in detailProvisionResult.failedSkills" :key="slug">
+                  {{ slug }}：{{ detailProvisionResult.failureReasons[slug] ?? '' }}
+                </li>
+              </ul>
+            </template>
+          </section>
           <section v-if="detailEmployee.tools.length">
             <h3 class="text-xs font-semibold text-muted-foreground">
               {{ t('digitalEmployee.sectionTools') }}
@@ -310,6 +332,15 @@ const detailEmployee = ref<DigitalEmployee | null>(null)
 const openingQuestion = ref('')
 const startingConversation = ref(false)
 const startError = ref(false)
+/**
+ * 每员工最近一次本地准备的结果，key = employeeId。
+ *
+ * 准备只在「点开始对话」时发生且结果随跳转丢失；详情弹层用它展示实际
+ * 装好的技能与失败原因，让用户不用发起对话也能核对员工的本地能力。
+ */
+const provisionResults = ref<Record<string, Awaited<ReturnType<typeof store.provisionEmployee>>>>(
+  {}
+)
 let unsubscribeConfigurationChanged: (() => void) | null = null
 
 const matchesSearch = (employee: DigitalEmployee) => {
@@ -349,6 +380,16 @@ const openDetail = (employee: DigitalEmployee) => {
   detailEmployee.value = employee
   openingQuestion.value = ''
 }
+
+/** 当前详情弹层员工的最近一次准备结果；没准备过（或 remote 跳过）时为 null。 */
+const detailProvisionResult = computed(() => {
+  const id = detailEmployee.value?.id
+  if (!id) return null
+  const result = provisionResults.value[id] ?? null
+  // remote 员工本地不准备，`skipped` 不携带任何本地能力信息。
+  if (!result || result.skipped !== null) return null
+  return result
+})
 
 /**
  * 把「准备工作降级了什么」告诉用户。
@@ -409,6 +450,7 @@ const startConversation = async () => {
     // 注册晚了第一轮对话就一个 staffdeck_* 工具都没有，之后不会自动重试。
     // provision 内部已吞掉全部失败，这里的 catch 只兜 IPC 层异常。
     const provisioned = await store.provisionEmployee(employee.id).catch(() => null)
+    if (provisioned) provisionResults.value[employee.id] = provisioned
     // 取可用 MCP 工具名供白名单收敛；loadTools 内部已兜错，失败时列表为空 → 放弃收敛（宁多勿缺）。
     // 必须 force：默认走 refresh，30 秒 staleTime 内会直接返回注册前的缓存，
     // 刚注册的 server 工具就看不见，「先注册后读列表」白做。

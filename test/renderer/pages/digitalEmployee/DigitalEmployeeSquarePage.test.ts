@@ -321,6 +321,42 @@ describe('DigitalEmployeeSquarePage', () => {
     )
   })
 
+  it('shows the last provisioning result in the detail dialog', async () => {
+    const { wrapper } = await setup()
+    // 没准备过的员工不显示结果区块。
+    await wrapper.get('[data-testid="digital-employee-card-emp-2"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="digital-employee-provision-result"]').exists()).toBe(false)
+
+    await wrapper.get('[data-testid="digital-employee-card-emp-1"]').trigger('click')
+    await flushPromises()
+
+    stubStore.provisionEmployee.mockResolvedValue({
+      employeeId: 'emp-1',
+      skipped: null,
+      toolsReady: true,
+      knowledgeToolReady: true,
+      installedSkills: 2,
+      failedSkills: ['de-emp-1-broken'],
+      failureReasons: { 'de-emp-1-broken': 'HTTP_401' },
+      skillNames: ['de-emp-1-writing', 'de-emp-1-report'],
+      failures: []
+    })
+
+    await wrapper.get('[data-testid="digital-employee-start-button"]').trigger('click')
+    await flushPromises()
+
+    // 弹层随跳转关闭；重新打开仍能看到最近一次准备的实际结果与失败原因。
+    await wrapper.get('[data-testid="digital-employee-card-emp-1"]').trigger('click')
+    await flushPromises()
+    const result = wrapper.get('[data-testid="digital-employee-provision-result"]')
+    expect(result.text()).toContain('digitalEmployee.provision.installedSkills')
+    expect(result.text()).toContain('de-emp-1-writing')
+    expect(result.text()).toContain('digitalEmployee.provision.skillInstallFailed')
+    expect(result.text()).toContain('de-emp-1-broken')
+    expect(result.text()).toContain('HTTP_401')
+  })
+
   it('says nothing when provisioning was fully successful', async () => {
     const { wrapper } = await setup()
     await wrapper.get('[data-testid="digital-employee-card-emp-1"]').trigger('click')
