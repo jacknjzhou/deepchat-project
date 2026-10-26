@@ -7,6 +7,7 @@ import {
 } from '../../../src/main/digital-employee/provisioning'
 import type { StaffdeckMcpRegisterResult } from '../../../src/main/digital-employee/mcpRegistration'
 import type { StaffdeckSkillSyncResult } from '../../../src/main/digital-employee/skillSync'
+import type { KnowledgeToolRegisterResult } from '../../../src/main/digital-employee/knowledgeToolRegistration'
 
 /**
  * 员工本地执行前的准备工作。
@@ -28,7 +29,7 @@ const employee = (overrides: Partial<DigitalEmployee> = {}): DigitalEmployee => 
   greeting: null,
   systemPrompt: '# 角色',
   sops: [],
-  knowledgeBaseIds: [],
+  knowledgeBaseIds: ['kb_1'],
   skillIds: [],
   tools: ['staffdeck_expense_submit'],
   enabled: true,
@@ -43,6 +44,8 @@ type Harness = {
   registered: Array<{ employeeId: string; tools: readonly string[] }>
   unregistered: string[]
   synced: Array<{ employeeId: string; slugs: string[] }>
+  knowledgeRegistered: Array<{ employeeId: string; knowledgeBaseIds: readonly string[] }>
+  knowledgeUnregistered: string[]
 }
 
 function createHarness(
@@ -53,11 +56,15 @@ function createHarness(
     registerError?: Error
     skillResult?: StaffdeckSkillSyncResult
     skillError?: Error
+    knowledgeResult?: KnowledgeToolRegisterResult
+    knowledgeError?: Error
   } = {}
 ): Harness {
   const registered: Harness['registered'] = []
   const unregistered: string[] = []
   const synced: Harness['synced'] = []
+  const knowledgeRegistered: Harness['knowledgeRegistered'] = []
+  const knowledgeUnregistered: string[] = []
 
   const listed = options.employees ?? [employee()]
 
@@ -87,10 +94,20 @@ function createHarness(
           }
         )
       }
+    },
+    knowledgeRegistrar: {
+      registerForEmployee: async (input) => {
+        knowledgeRegistered.push(input)
+        if (options.knowledgeError) throw options.knowledgeError
+        return options.knowledgeResult ?? { registered: true, started: true }
+      },
+      unregister: async (employeeId) => {
+        knowledgeUnregistered.push(employeeId)
+      }
     }
   }
 
-  return { deps, registered, unregistered, synced }
+  return { deps, registered, unregistered, synced, knowledgeRegistered, knowledgeUnregistered }
 }
 
 const target = (
@@ -99,6 +116,7 @@ const target = (
   id: EMPLOYEE,
   executionMode: 'local',
   tools: ['staffdeck_expense_submit'],
+  knowledgeBaseIds: ['kb_1'],
   skills: [{ id: 'sk_1', name: 'staffdeck-api', slug: 'staffdeck-api', downloadUrl: 'x' }],
   ...overrides
 })
@@ -142,6 +160,7 @@ describe('provisioner gating', () => {
     // A server left over from when this employee ran locally would keep feeding
     // its remote tools into every other conversation's tool list.
     expect(harness.unregistered).toEqual([EMPLOYEE])
+    expect(harness.knowledgeUnregistered).toEqual([EMPLOYEE])
   })
 
   it('skips mock employees, whose tools and skills are fabricated', async () => {
@@ -153,6 +172,29 @@ describe('provisioner gating', () => {
     expect(outcome.skipped).toBe('DEGRADED')
     expect(harness.registered).toHaveLength(0)
     expect(harness.synced).toHaveLength(0)
+  })
+
+  it('registers the local knowledge tool when the employee has knowledge bases', async () => {
+    const harness = createHarness()
+    const provisioner = createEmployeeProvisioner(harness.deps)
+
+    const outcome = await provisioner.provision(target())
+
+    expect(harness.knowledgeRegistered).toEqual([
+      { employeeId: EMPLOYEE, knowledgeBaseIds: ['kb_1'] }
+    ])
+    expect(outcome.knowledgeTool).toEqual({ registered: true, started: true })
+  })
+
+  it('passes empty knowledgeBaseIds through to the knowledge registrar', async () => {
+    const harness = createHarness()
+    const provisioner = createEmployeeProvisioner(harness.deps)
+
+    const outcome = await provisioner.provision(target({ knowledgeBaseIds: [] }))
+
+    // 清不清注册由注册器自己决定（没配知识库是常态而非故障）；编排层只负责透传。
+    expect(harness.knowledgeRegistered).toEqual([{ employeeId: EMPLOYEE, knowledgeBaseIds: [] }])
+    expect(outcome.knowledgeTool).toEqual({ registered: true, started: true })
   })
 })
 
@@ -177,6 +219,18 @@ describe('provisioner failure isolation', () => {
     expect(outcome.mcp?.registered).toBe(true)
     expect(outcome.skills).toBeNull()
     expect(outcome.failures).toContain('skills')
+  })
+
+  it('still registers tools and skills when the knowledge chain throws', async () => {
+    const harness = createHarness({ knowledgeError: new Error('boom') })
+    const provisioner = createEmployeeProvisioner(harness.deps)
+
+    const outcome = await provisioner.provision(target())
+
+    expect(outcome.knowledgeTool).toBeNull()
+    expect(outcome.failures).toContain('knowledgeTool')
+    expect(outcome.mcp?.registered).toBe(true)
+    expect(outcome.skills?.ok).toBe(true)
   })
 
   it('never rejects, even when both chains throw', async () => {

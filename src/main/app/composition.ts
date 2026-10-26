@@ -249,6 +249,7 @@ import { createKnowledgeSyncStateStore } from '@/digital-employee/knowledgeSyncS
 import { createDigitalEmployeeKnowledgeRoutes } from '@/digital-employee/knowledgeRoutes'
 import { provisionLocalKnowledgeBase } from '@/digital-employee/knowledgeProvisioning'
 import { createStaffdeckMcpRegistrar } from '@/digital-employee/mcpRegistration'
+import { createKnowledgeToolRegistrar } from '@/digital-employee/knowledgeToolRegistration'
 import { createStaffdeckMcpReconciler } from '@/digital-employee/mcpReconcile'
 import { mcpServerNameForEmployee } from '@/digital-employee/employeeScope'
 import { createStaffdeckSkillSync } from '@/digital-employee/skillSync'
@@ -3509,7 +3510,15 @@ export async function createMainProcessControl(dependencies: {
       },
       source: () => digitalEmployeeProviderHolder.current().source ?? 'mock',
       registrar: staffdeckMcpRegistrar,
-      skillSync: staffdeckSkillSync
+      skillSync: staffdeckSkillSync,
+      // 会话内主动查知识库的本地工具：注册器自己判断「没配知识库」并清理旧注册。
+      knowledgeRegistrar: createKnowledgeToolRegistrar({
+        mcpSettings: dependencies.mcpSettings,
+        serverManager: {
+          startServer: (name) => mcpService.startServer(name),
+          stopServer: (name) => mcpService.stopServer(name)
+        }
+      })
     })
     const digitalEmployeeProvisioningRoutes = createDigitalEmployeeProvisioningRoutes({
       provisioner,

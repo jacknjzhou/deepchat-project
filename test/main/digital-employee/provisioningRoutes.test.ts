@@ -21,6 +21,7 @@ const outcome = (
   skipped: null,
   mcp: { registered: true, started: true },
   skills: { installed: 2, failedSkills: [], failureReasons: {} },
+  knowledgeTool: { registered: true, started: true },
   skillNames: ['de-emp-1-a', 'de-emp-1-b'],
   failures: [],
   ...overrides
@@ -34,7 +35,7 @@ function createHarness(
 ) {
   const provisionById = vi.fn(async () =>
     options.skipped
-      ? outcome({ skipped: options.skipped, mcp: null, skills: null })
+      ? outcome({ skipped: options.skipped, mcp: null, skills: null, knowledgeTool: null })
       : (options.result ?? outcome())
   )
   const triggerKnowledgeSync = vi.fn()
@@ -64,6 +65,7 @@ describe('digitalEmployeeProvision route', () => {
       employeeId: 'emp-1',
       skipped: null,
       toolsReady: true,
+      knowledgeToolReady: true,
       installedSkills: 2,
       failedSkills: [],
       skillNames: ['de-emp-1-a', 'de-emp-1-b'],
@@ -80,6 +82,19 @@ describe('digitalEmployeeProvision route', () => {
 
     // 注册了但起不来，工具一个都用不了：说成「就绪」会让 P1-9 的提示失真。
     expect(result.toolsReady).toBe(false)
+  })
+
+  it('reports knowledgeToolReady false when the local search server did not start', async () => {
+    const harness = createHarness({
+      result: outcome({
+        knowledgeTool: { registered: true, started: false, reason: 'START_FAILED' }
+      })
+    })
+
+    const result = await call(harness)
+
+    // 同 toolsReady：会话里不会有这个检索工具，不能报「就绪」。
+    expect(result.knowledgeToolReady).toBe(false)
   })
 
   it('forwards per-skill failure reasons so the toast can tell users what to fix', async () => {

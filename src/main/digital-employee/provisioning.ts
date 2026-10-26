@@ -1,9 +1,10 @@
 import type { DigitalEmployee } from '@shared/contracts/routes'
 import { employeeSkillName } from './employeeScope'
 import type {
-  StaffdeckMcpRegistrar,
-  StaffdeckMcpRegisterResult
-} from './mcpRegistration'
+  KnowledgeToolRegistrar,
+  KnowledgeToolRegisterResult
+} from './knowledgeToolRegistration'
+import type { StaffdeckMcpRegistrar, StaffdeckMcpRegisterResult } from './mcpRegistration'
 import type { DistributedSkill, StaffdeckSkillSync, StaffdeckSkillSyncResult } from './skillSync'
 
 /**
@@ -33,6 +34,7 @@ export interface EmployeeProvisioningTarget {
   executionMode: 'local' | 'remote' | 'hybrid'
   tools: readonly string[]
   skills: readonly DistributedSkill[]
+  knowledgeBaseIds: readonly string[]
 }
 
 export type ProvisioningSkipReason =
@@ -50,6 +52,8 @@ export interface EmployeeProvisioningOutcome {
   /** `null` means the chain was not attempted or threw. */
   mcp: StaffdeckMcpRegisterResult | null
   skills: StaffdeckSkillSyncResult | null
+  /** `null` means the chain was not attempted or threw. */
+  knowledgeTool: KnowledgeToolRegisterResult | null
   /**
    * The names the distributed skills are installed under.
    *
@@ -59,7 +63,7 @@ export interface EmployeeProvisioningOutcome {
    */
   skillNames: string[]
   /** Chain names that threw. Empty on a clean round. */
-  failures: Array<'mcp' | 'skills'>
+  failures: Array<'mcp' | 'skills' | 'knowledgeTool'>
 }
 
 export interface EmployeeProvisionerDeps {
@@ -69,6 +73,7 @@ export interface EmployeeProvisionerDeps {
   source: () => 'http' | 'mock'
   registrar: Pick<StaffdeckMcpRegistrar, 'registerForEmployee' | 'unregister'>
   skillSync: Pick<StaffdeckSkillSync, 'syncEmployee'>
+  knowledgeRegistrar: Pick<KnowledgeToolRegistrar, 'registerForEmployee' | 'unregister'>
 }
 
 export interface EmployeeProvisioner {
@@ -90,6 +95,7 @@ const toTarget = (employee: DigitalEmployee): EmployeeProvisioningTarget => ({
   id: employee.id,
   executionMode: employee.executionMode,
   tools: employee.tools,
+  knowledgeBaseIds: employee.knowledgeBaseIds,
   // `skills[]` is optional in the contract because older payloads omit it.
   // A skill without a slug cannot be fetched — the export endpoint addresses it
   // by slug — so it is dropped here rather than failing every round.
@@ -115,15 +121,13 @@ const toTarget = (employee: DigitalEmployee): EmployeeProvisioningTarget => ({
 const needsLocalProvisioning = (executionMode: EmployeeProvisioningTarget['executionMode']) =>
   executionMode !== 'remote'
 
-export function createEmployeeProvisioner(
-  deps: EmployeeProvisionerDeps
-): EmployeeProvisioner {
+export function createEmployeeProvisioner(deps: EmployeeProvisionerDeps): EmployeeProvisioner {
   const inFlight = new Map<string, Promise<EmployeeProvisioningOutcome>>()
 
   const runChain = async <TResult>(
-    name: 'mcp' | 'skills',
+    name: 'mcp' | 'skills' | 'knowledgeTool',
     run: () => Promise<TResult>,
-    failures: Array<'mcp' | 'skills'>
+    failures: Array<'mcp' | 'skills' | 'knowledgeTool'>
   ): Promise<TResult | null> => {
     try {
       return await run()
@@ -156,8 +160,9 @@ export function createEmployeeProvisioner(
         employeeId,
         mcp: null,
         skills: null,
+        knowledgeTool: null,
         skillNames: [] as string[],
-        failures: [] as Array<'mcp' | 'skills'>
+        failures: [] as Array<'mcp' | 'skills' | 'knowledgeTool'>
       }
 
       const resolved = await resolve().catch((): ProvisioningSkipReason => 'NOT_FOUND')
@@ -166,6 +171,7 @@ export function createEmployeeProvisioner(
         // tools would keep showing up in every other conversation.
         if (resolved !== 'DEGRADED') {
           await deps.registrar.unregister(employeeId).catch(() => undefined)
+          await deps.knowledgeRegistrar.unregister(employeeId).catch(() => undefined)
         }
         return { ...base, skipped: resolved }
       }
@@ -181,12 +187,22 @@ export function createEmployeeProvisioner(
         () => deps.skillSync.syncEmployee({ employeeId, skills: resolved.skills }),
         failures
       )
+      const knowledgeTool = await runChain(
+        'knowledgeTool',
+        () =>
+          deps.knowledgeRegistrar.registerForEmployee({
+            employeeId,
+            knowledgeBaseIds: resolved.knowledgeBaseIds
+          }),
+        failures
+      )
 
       return {
         ...base,
         skipped: null,
         mcp,
         skills,
+        knowledgeTool,
         failures,
         // Reported even when the sync threw: a skill installed in an earlier
         // round is still on disk and still worth activating.

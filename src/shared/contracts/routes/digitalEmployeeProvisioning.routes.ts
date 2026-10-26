@@ -24,7 +24,7 @@ export const ProvisioningSkipReasonSchema = z.enum(PROVISIONING_SKIP_REASONS)
 export type ProvisioningSkipReasonValue = z.infer<typeof ProvisioningSkipReasonSchema>
 
 /** 准备失败的链路名；UI 据此提示「工具或技能可能不完整」。 */
-export const PROVISIONING_CHAINS = ['mcp', 'skills'] as const
+export const PROVISIONING_CHAINS = ['mcp', 'skills', 'knowledgeTool'] as const
 export const ProvisioningChainSchema = z.enum(PROVISIONING_CHAINS)
 export type ProvisioningChainValue = z.infer<typeof ProvisioningChainSchema>
 
@@ -37,6 +37,8 @@ export const digitalEmployeeProvisionRoute = defineRouteContract({
     skipped: ProvisioningSkipReasonSchema.nullable().default(null),
     /** 远端 MCP server 是否已注册并可连接。 */
     toolsReady: z.boolean().default(false),
+    /** 本地知识检索工具（会话内可主动查知识库）是否已注册并启动。 */
+    knowledgeToolReady: z.boolean().default(false),
     /** 本轮新装/更新的技能数。 */
     installedSkills: z.number().int().nonnegative().default(0),
     /** 下载或安装失败的技能 slug；下轮会自动重试，UI 只做提示。 */

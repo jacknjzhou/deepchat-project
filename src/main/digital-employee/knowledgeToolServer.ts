@@ -49,7 +49,7 @@ export class DigitalEmployeeKnowledgeServer {
   }
 
   /** 供 MCP handler 与测试共用；返回 MCP tools/list 的响应形状。 */
-  public async listTools(): Promise<{ tools: Array<Record<string, unknown>> }> {
+  public async listTools() {
     return {
       tools: [
         {
