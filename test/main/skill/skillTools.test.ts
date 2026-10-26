@@ -296,4 +296,93 @@ describe('SkillTools', () => {
       expect(mockSkillService.manageDraftSkill).toHaveBeenCalledWith('conv-123', request)
     })
   })
+
+  describe('digital-employee skill scoping', () => {
+    const employeePrefix = 'de-emp-a-1234abcd-'
+    const foreignSkillName = 'de-emp-b-9999ffff-leak'
+    const scopedMetadata: SkillMetadata[] = [
+      {
+        name: `${employeePrefix}invoice-report`,
+        description: 'Employee report skill',
+        path: `/skills/${employeePrefix}invoice-report/SKILL.md`,
+        skillRoot: `/skills/${employeePrefix}invoice-report`
+      },
+      {
+        name: foreignSkillName,
+        description: 'Another employee skill',
+        path: `/skills/${foreignSkillName}/SKILL.md`,
+        skillRoot: `/skills/${foreignSkillName}`
+      },
+      ...mockSkillMetadata
+    ]
+
+    const createScopedSkillService = () =>
+      ({
+        ...mockSkillService,
+        resolveSessionAgentId: vi.fn().mockResolvedValue('deepchat'),
+        getMetadataList: vi.fn().mockResolvedValue(scopedMetadata),
+        getAllSkills: vi.fn().mockResolvedValue(scopedMetadata),
+        viewSkillForAgent: vi.fn().mockResolvedValue({
+          success: true,
+          name: `${employeePrefix}invoice-report`,
+          skillRoot: `/skills/${employeePrefix}invoice-report`,
+          filePath: null,
+          content: '# Report',
+          isPinned: false
+        })
+      }) as unknown as SkillServicePort
+
+    const createScopedSkillTools = (service: SkillServicePort) =>
+      new SkillTools(
+        service,
+        vi.fn((conversationId: string) =>
+          conversationId === 'employee-session' ? employeePrefix : null
+        )
+      )
+
+    it('lists only skills that belong to the bound employee', async () => {
+      const scoped = createScopedSkillTools(createScopedSkillService())
+
+      const result = await scoped.handleSkillList('employee-session', [
+        `${employeePrefix}invoice-report`,
+        foreignSkillName
+      ])
+
+      expect(result.skills.map((skill) => skill.name)).toEqual([`${employeePrefix}invoice-report`])
+      expect(result.totalCount).toBe(1)
+    })
+
+    it('keeps the unscoped catalog for sessions without an employee binding', async () => {
+      const scoped = createScopedSkillTools(createScopedSkillService())
+
+      const result = await scoped.handleSkillList('conv-123')
+
+      expect(result.skills.map((skill) => skill.name)).toContain('code-review')
+      expect(result.skills.map((skill) => skill.name)).toContain(`${employeePrefix}invoice-report`)
+      expect(result.skills.map((skill) => skill.name)).toContain(foreignSkillName)
+    })
+
+    it('views employee-owned skills in the bound session', async () => {
+      const service = createScopedSkillService()
+      const scoped = createScopedSkillTools(service)
+
+      await scoped.handleSkillView('employee-session', { name: `${employeePrefix}invoice-report` })
+
+      expect(service.viewSkillForAgent).toHaveBeenCalledWith(
+        'deepchat',
+        `${employeePrefix}invoice-report`,
+        expect.objectContaining({ conversationId: 'employee-session' })
+      )
+    })
+
+    it('rejects skills outside the bound employee scope', async () => {
+      const service = createScopedSkillService()
+      const scoped = createScopedSkillTools(service)
+
+      await expect(
+        scoped.handleSkillView('employee-session', { name: 'code-review' })
+      ).resolves.toEqual(expect.objectContaining({ success: false, name: 'code-review' }))
+      expect(service.viewSkillForAgent).not.toHaveBeenCalled()
+    })
+  })
 })

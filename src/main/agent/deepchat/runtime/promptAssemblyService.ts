@@ -30,7 +30,12 @@ export interface PromptAssemblyProjectDirPort {
 export interface PromptAssemblyServiceDependencies
   extends Pick<
     SystemPromptBuilderDependencies,
-    'providerSettings' | 'skillSettings' | 'skillService' | 'providerCatalogPort' | 'toolService'
+    | 'providerSettings'
+    | 'skillSettings'
+    | 'skillService'
+    | 'providerCatalogPort'
+    | 'toolService'
+    | 'resolveSessionSkillNamePrefix'
   > {
   registry: SessionScopeRegistry
   identity: Pick<SessionIdentityService, 'isAcpBackedSubagentSession'>
@@ -49,6 +54,7 @@ export class PromptAssemblyService {
       skillService: deps.skillService,
       providerCatalogPort: deps.providerCatalogPort,
       toolService: deps.toolService,
+      resolveSessionSkillNamePrefix: deps.resolveSessionSkillNamePrefix,
       assertCurrent: (sessionId, instance) =>
         deps.registry.scopeFor(toAppSessionId(sessionId), instance).assertCurrent(),
       isAcpBackedSubagentSession: (sessionId, providerId) =>

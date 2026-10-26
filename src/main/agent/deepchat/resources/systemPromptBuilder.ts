@@ -58,6 +58,8 @@ export interface SystemPromptBuilderDependencies {
     instance: DeepChatAgentInstance
   ): string | null
   logSlowStep(sessionId: string, step: string, startedAt: number): void
+  /** 会话可见 Skill 的目录名前缀（数字员工绑定推导）；null 表示无绑定，不过滤。 */
+  resolveSessionSkillNamePrefix?: (sessionId: string) => string | null
 }
 
 export interface SystemPromptBuildInput {
@@ -196,11 +198,17 @@ export async function buildSystemPromptAssemblyWithSkills(
 
   if (skillsEnabled) {
     const metadataStartedAt = Date.now()
+    // 数字员工会话只展示本员工前缀的技能；其他员工与用户个人技能不进入目录，
+    // 也不作为 active/pinned 名单的合法性依据。未绑定的会话不过滤。
+    const sessionSkillNamePrefix =
+      dependencies.resolveSessionSkillNamePrefix?.(sessionId) ?? null
+    const isSkillVisibleForSession = (skillName: string): boolean =>
+      !sessionSkillNamePrefix || skillName.startsWith(sessionSkillNamePrefix)
     try {
       const metadataList = sessionAgentId ? await skillService.getMetadataList(sessionAgentId) : []
       for (const metadata of metadataList) {
         const skillName = metadata?.name?.trim()
-        if (skillName) {
+        if (skillName && isSkillVisibleForSession(skillName)) {
           availableSkills.push({
             name: skillName,
             description: metadata.description?.trim() || '',

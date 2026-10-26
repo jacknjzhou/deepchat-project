@@ -318,5 +318,7 @@ export interface AgentToolDependencies {
   provider: AgentProviderToolPort
   desktop: AgentDesktopToolPort
   permissions: AgentToolPermissionPort
+  /** 会话可见 Skill 的目录名前缀（数字员工绑定推导）；null 表示无绑定，不过滤。 */
+  resolveSessionSkillNamePrefix?: (sessionId: string) => string | null
   cacheImage(data: string): Promise<string>
 }

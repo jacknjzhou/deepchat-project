@@ -175,6 +175,8 @@ function createDeepChatRuntimeServices(deps: DeepChatHarnessDependencies): DeepC
     providerSettings,
     publishEvent,
     publishSessionUpdate,
+    resolveSessionMcpAllowList,
+    resolveSessionSkillNamePrefix,
     runJournalObserver,
     sessionData,
     sessionPermissionPort,
@@ -203,7 +205,8 @@ function createDeepChatRuntimeServices(deps: DeepChatHarnessDependencies): DeepC
     toolService,
     skillService,
     registry: runtime,
-    identity
+    identity,
+    resolveSessionMcpAllowList
   })
   const memory = new MemoryRuntimeCoordinator({
     memoryPort: deps.memoryPort,
@@ -246,7 +249,8 @@ function createDeepChatRuntimeServices(deps: DeepChatHarnessDependencies): DeepC
     identity,
     orchestrationPolicy: toolResolver,
     projectDir: sessionSettings,
-    memoryPromptContributor: memory
+    memoryPromptContributor: memory,
+    resolveSessionSkillNamePrefix
   })
   const hookSink = new RuntimeHookSink({ observer: hookObserver, identity, sessionSettings })
   const pendingInputWakeup = createPendingInputWakeupBinding()

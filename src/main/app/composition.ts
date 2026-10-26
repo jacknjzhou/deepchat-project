@@ -253,6 +253,7 @@ import { createKnowledgeToolRegistrar } from '@/digital-employee/knowledgeToolRe
 import { createStaffdeckMcpReconciler } from '@/digital-employee/mcpReconcile'
 import {
   digitalEmployeeMcpServerAllowList,
+  employeeSkillPrefix,
   mcpServerNameForEmployee
 } from '@/digital-employee/employeeScope'
 import { createStaffdeckSkillSync } from '@/digital-employee/skillSync'
@@ -1646,18 +1647,36 @@ export async function createMainProcessControl(dependencies: {
     }
   })
   /**
+   * 数字员工会话绑定：会话 id → 员工 id。子代理会话没有自己的绑定，回溯
+   * 父会话取绑定，保证子代理与父会话看到同一员工的能力面。
+   */
+  const resolveDigitalEmployeeIdForSession = (sessionId: string): string | null => {
+    const bindings = dependencies.settingsStore.get<Record<string, string>>(
+      digitalEmployeeSettingsKeys.sessionBindings
+    )
+    const direct = bindings?.[sessionId]
+    if (typeof direct === 'string' && direct.trim() !== '') return direct
+    const parentSessionId = sessionData.database.newSessionsTable
+      ?.get?.(sessionId)
+      ?.parent_session_id?.trim()
+    if (!parentSessionId) return null
+    const inherited = bindings?.[parentSessionId]
+    return typeof inherited === 'string' && inherited.trim() !== '' ? inherited : null
+  }
+  /**
    * 数字员工会话的 MCP server 白名单：本员工的远端工具 server + 本地知识检索
    * server。没有绑定的会话（普通对话）返回 null，回退 agent 级配置——保持
    * 原语义。名单按绑定实时推导，员工 server 的注册状态不影响名单本身：
    * universe 里不存在的 server id 等于零工具。
    */
   const resolveDigitalEmployeeMcpAllowListForSession = (sessionId: string): string[] | null => {
-    const bindings = dependencies.settingsStore.get<Record<string, string>>(
-      digitalEmployeeSettingsKeys.sessionBindings
-    )
-    const employeeId = bindings?.[sessionId]
-    if (typeof employeeId !== 'string' || employeeId.trim() === '') return null
-    return digitalEmployeeMcpServerAllowList(employeeId)
+    const employeeId = resolveDigitalEmployeeIdForSession(sessionId)
+    return employeeId ? digitalEmployeeMcpServerAllowList(employeeId) : null
+  }
+  /** 数字员工会话可见 Skill 的目录名前缀；无绑定返回 null（不过滤）。 */
+  const resolveDigitalEmployeeSkillPrefixForSession = (sessionId: string): string | null => {
+    const employeeId = resolveDigitalEmployeeIdForSession(sessionId)
+    return employeeId ? employeeSkillPrefix(employeeId) : null
   }
   const resolveConversationExecutionAuthorityNow = (conversationId: string) => {
     const session = appSessionService.get(conversationId)
@@ -1687,14 +1706,17 @@ export async function createMainProcessControl(dependencies: {
     if (session.sessionKind === 'subagent') {
       const parentSessionId = session.parentSessionId?.trim()
       const parent = parentSessionId ? appSessionService.get(parentSessionId) : null
-      if (!parent || parent.sessionKind !== 'regular') {
+      if (!parent || parent.sessionKind !== 'regular' || !parentSessionId) {
         throw new Error(`Subagent Session ${session.id} has no resolvable parent tool policy.`)
       }
+      // 子代理继承父会话的员工 MCP 白名单，避免经子代理绕过会话级隔离。
+      const parentMcpAllowList = resolveDigitalEmployeeMcpAllowListForSession(parentSessionId)
       authority = composeSubagentAuthority(
         { disabledAgentTools: persistedDisabledAgentTools },
         { disabledAgentTools: appSessionService.getDisabledAgentTools(parent.id) },
         resolveAgentConfig(parent.agentId),
-        agentConfig
+        agentConfig,
+        ...(parentMcpAllowList ? [{ enabledMcpServerIds: parentMcpAllowList }] : [])
       )
     }
     return {
@@ -1953,6 +1975,7 @@ export async function createMainProcessControl(dependencies: {
     },
     liveDelegation: createLivePort(() => liveDelegationService),
     skills: skillService,
+    resolveSessionSkillNamePrefix: resolveDigitalEmployeeSkillPrefixForSession,
     skillExecutionAuthority: new SkillExecutionAuthorityResolver({
       tape: createSkillExecutionAuthorityTapePort(sessionData.tapeStore),
       environments: skillService
@@ -2175,7 +2198,9 @@ export async function createMainProcessControl(dependencies: {
     },
     toolSurfaceRunMode: toolSurfaceRollout,
     agentCliTokenAuthority,
-    programmaticToolParents
+    programmaticToolParents,
+    resolveSessionMcpAllowList: resolveDigitalEmployeeMcpAllowListForSession,
+    resolveSessionSkillNamePrefix: resolveDigitalEmployeeSkillPrefixForSession
   })
   const sessionTranscriptMutations = new SessionTranscriptMutations({
     transcript: sessionData.transcript,

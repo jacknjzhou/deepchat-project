@@ -96,6 +96,10 @@ export interface DeepChatHarnessDependencies {
     AgentCliTokenAuthority,
     'prepareProgrammaticOperation' | 'revokeConversation'
   >
+  /** 会话级 MCP 白名单（数字员工绑定推导）；null 表示无绑定，保持 agent 级配置语义。 */
+  resolveSessionMcpAllowList?: (sessionId: string) => string[] | null
+  /** 会话可见 Skill 的目录名前缀（数字员工绑定推导）；null 表示无绑定，不过滤。 */
+  resolveSessionSkillNamePrefix?: (sessionId: string) => string | null
   runJournalObserver?: RunJournalObserver
   diagnosticNow?: MonotonicClock
 }

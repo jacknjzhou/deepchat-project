@@ -528,6 +528,108 @@ describe('DeepChatToolResolver Subagent capability', () => {
   })
 })
 
+describe('DeepChatToolResolver session MCP allowlist', () => {
+  const createResolver = ({
+    allowListBySession,
+    config
+  }: {
+    allowListBySession: Record<string, string[]>
+    config?: { enabledMcpServerIds?: string[] }
+  }) => {
+    const resourceInstance = createResourceInstance()
+    return new DeepChatToolResolver({
+      agentSettings: {
+        getAgentType: vi.fn(async () => 'deepchat'),
+        resolveDeepChatAgentConfig: vi.fn(async () => config ?? {})
+      },
+      skillSettings: { isEnabled: vi.fn(() => false) },
+      skillService: { getActiveSkills: vi.fn(), validateSkillNames: vi.fn() },
+      sqlitePresenter: {
+        newSessionsTable: {
+          get: vi.fn((sessionId: string) =>
+            sessionId === 'child-1'
+              ? {
+                  agent_id: 'reviewer',
+                  session_kind: 'subagent',
+                  parent_session_id: 'parent-1'
+                }
+              : { agent_id: 'deepchat', session_kind: 'regular' }
+          ),
+          getDisabledAgentTools: vi.fn(() => [])
+        }
+      },
+      toolService: {
+        getAllToolDefinitions: vi.fn().mockResolvedValue([]),
+        syncAgentToolContext: vi.fn()
+      },
+      registry: createScopeRegistry(resourceInstance),
+      identity: {
+        getAgentId: vi.fn((sessionId: string) =>
+          sessionId === 'child-1' ? 'reviewer' : 'deepchat'
+        ),
+        isAcpBackedSubagentSession: vi.fn(() => false)
+      },
+      resolveSessionMcpAllowList: vi.fn(
+        (sessionId: string) => allowListBySession[sessionId] ?? null
+      )
+    } as any)
+  }
+
+  it('narrows the regular session catalog to the employee allow list', async () => {
+    const resolver = createResolver({
+      allowListBySession: { 'session-1': ['staffdeck-a', 'de-kb-a'] },
+      config: { enabledMcpServerIds: ['de-kb-a', 'user-server'] }
+    })
+
+    await expect(resolver.resolveAgentExtensionPolicy('session-1')).resolves.toEqual({
+      enabledMcpServerIds: ['de-kb-a']
+    })
+  })
+
+  it('falls back to the allow list when the Agent has no MCP config', async () => {
+    const resolver = createResolver({
+      allowListBySession: { 'session-1': ['de-kb-a'] }
+    })
+
+    await expect(resolver.resolveAgentExtensionPolicy('session-1')).resolves.toEqual({
+      enabledMcpServerIds: ['de-kb-a']
+    })
+  })
+
+  it('reports zero MCP servers when the employee allow list is empty', async () => {
+    const resolver = createResolver({
+      allowListBySession: { 'session-1': [] },
+      config: { enabledMcpServerIds: ['user-server'] }
+    })
+
+    await expect(resolver.resolveAgentExtensionPolicy('session-1')).resolves.toEqual({
+      enabledMcpServerIds: []
+    })
+  })
+
+  it('keeps the agent-level policy for sessions without an employee binding', async () => {
+    const resolver = createResolver({
+      allowListBySession: {},
+      config: { enabledMcpServerIds: ['user-server'] }
+    })
+
+    await expect(resolver.resolveAgentExtensionPolicy('session-1')).resolves.toEqual({
+      enabledMcpServerIds: ['user-server']
+    })
+  })
+
+  it('intersects the subagent catalog with the inherited employee allow list', async () => {
+    const resolver = createResolver({
+      allowListBySession: { 'child-1': ['de-kb-a', 'staffdeck-a'] },
+      config: { enabledMcpServerIds: ['staffdeck-a', 'user-server'] }
+    })
+
+    await expect(resolver.resolveAgentExtensionPolicy('child-1')).resolves.toEqual({
+      enabledMcpServerIds: ['staffdeck-a']
+    })
+  })
+})
+
 describe('DeepChatToolResolver Agent Skill scope', () => {
   const createResolver = () => {
     const getAllToolDefinitions = vi.fn().mockResolvedValue([])

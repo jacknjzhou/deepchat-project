@@ -2853,7 +2853,10 @@ export class AgentToolManager {
 
   private getSkillTools(): SkillTools {
     if (!this.skillTools) {
-      this.skillTools = new SkillTools(this.getSkillService())
+      this.skillTools = new SkillTools(
+        this.getSkillService(),
+        this.dependencies.resolveSessionSkillNamePrefix
+      )
     }
     return this.skillTools
   }

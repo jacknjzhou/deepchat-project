@@ -124,6 +124,11 @@ export interface DeepChatToolResolverDependencies {
   skillService: ToolResolverSkillPort
   registry: SessionScopeRegistry & Pick<DeepChatAgentRuntime, 'getToolRegistryRevision'>
   identity: Pick<SessionIdentityService, 'getAgentId' | 'isAcpBackedSubagentSession'>
+  /**
+   * 会话级 MCP server 白名单（数字员工绑定推导，子代理回溯父会话）。
+   * 返回 null 表示无绑定，保持 agent 级配置语义不变。
+   */
+  resolveSessionMcpAllowList?: (sessionId: string) => string[] | null
 }
 
 export interface DeepChatToolCatalogSnapshot {
@@ -139,6 +144,18 @@ export function resolveDeepChatToolProfileKind(
 
 function compareCodePoints(left: string, right: string): number {
   return left < right ? -1 : left > right ? 1 : 0
+}
+
+/**
+ * 会话级白名单与 agent 级配置求交：配置未限定时白名单即结果；两者都存在时
+ * 取交集。返回空数组意味着会话看不到任何 MCP server（零工具）。
+ */
+function intersectMcpServerIds(
+  allowList: readonly string[],
+  configured?: readonly string[] | null
+): string[] {
+  if (!Array.isArray(configured)) return [...allowList]
+  return allowList.filter((serverId) => configured.includes(serverId))
 }
 
 function createEmptyRunToolDefinitionUniverse(
@@ -1000,9 +1017,16 @@ export class DeepChatToolResolver {
         parentConfig,
         config
       )
+      // 子代理同样受员工绑定白名单约束（解析器内部回溯父会话），避免经子代理
+      // 看到父会话不可见的 MCP server。
+      const sessionMcpAllowList =
+        this.dependencies.resolveSessionMcpAllowList?.(sessionId) ?? null
       return {
         extensionPolicy: {
-          enabledMcpServerIds: authority.enabledMcpServerIds
+          enabledMcpServerIds:
+            sessionMcpAllowList === null
+              ? authority.enabledMcpServerIds
+              : intersectMcpServerIds(sessionMcpAllowList, authority.enabledMcpServerIds)
         },
         disabledAgentTools: authority.disabledAgentTools,
         subagentCapability: resolveCapability(agentType, config),
@@ -1010,12 +1034,18 @@ export class DeepChatToolResolver {
       }
     }
 
+    // 数字员工会话按绑定白名单收窄可见 MCP server；未绑定的会话保持原语义。
+    const sessionMcpAllowList = this.dependencies.resolveSessionMcpAllowList?.(sessionId) ?? null
+    const configuredMcpServerIds = config?.enabledMcpServerIds
+    const enabledMcpServerIds =
+      sessionMcpAllowList === null
+        ? configuredMcpServerIds
+        : intersectMcpServerIds(sessionMcpAllowList, configuredMcpServerIds)
     return {
-      extensionPolicy: config
-        ? {
-            enabledMcpServerIds: config.enabledMcpServerIds
-          }
-        : {},
+      extensionPolicy:
+        sessionMcpAllowList === null && !config
+          ? {}
+          : { enabledMcpServerIds },
       disabledAgentTools: persistedDisabledAgentTools,
       subagentCapability: resolveCapability(agentType, config),
       sessionKind: sessionRow?.session_kind
