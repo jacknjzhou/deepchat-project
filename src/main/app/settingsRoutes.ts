@@ -89,6 +89,9 @@ export function createAppSettingsRoutes(deps: {
     read('digitalEmployee.configHashes')
     read('digitalEmployee.remoteSessions')
     read('digitalEmployee.knowledgeSync')
+    // 功能总开关：readEntries 是显式清单而不是遍历 CONFIG_ENTRY_KEYS，新增
+    // config entry 键必须在这里补一行，否则主窗口永远读不到（读成缺省）。
+    read('digitalEmployee.featureEnabled')
     return values
   }
   const readSnapshot = (): SettingsSnapshotValues => ({
