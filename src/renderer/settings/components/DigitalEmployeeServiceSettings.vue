@@ -87,6 +87,14 @@
                 : t('digitalEmployee.service.apiKeyNotConfigured')
             }}
           </p>
+          <p
+            v-if="state?.apiKeyConfigured && state?.apiKeyUsable === false"
+            data-testid="digital-employee-api-key-undecryptable"
+            class="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-400"
+          >
+            <Icon icon="lucide:triangle-alert" class="mt-0.5 size-3.5 shrink-0" />
+            <span>{{ t('digitalEmployee.service.apiKeyUndecryptable') }}</span>
+          </p>
         </div>
 
         <div class="space-y-2">
@@ -419,7 +427,7 @@ const clearApiKey = async (): Promise<void> => {
   clearConfirmOpen.value = false
   try {
     await client.clearApiKey()
-    if (state.value) state.value = { ...state.value, apiKeyConfigured: false }
+    if (state.value) state.value = { ...state.value, apiKeyConfigured: false, apiKeyUsable: false }
     form.apiKey = ''
   } catch {
     saveError.value = true

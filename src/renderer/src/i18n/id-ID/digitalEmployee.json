@@ -31,6 +31,7 @@
     "apiKeyPlaceholder": "sd_live_...",
     "apiKeyKeepPlaceholder": "Leave blank to keep the saved key",
     "apiKeyConfigured": "An API key is saved. It is encrypted in the system credential store and never shown again.",
+    "apiKeyUndecryptable": "Kunci API yang tersimpan tidak dapat didekripsi di mesin ini; mungkin dienkripsi di lingkungan lain. Masukkan ulang kunci dan simpan.",
     "apiKeyNotConfigured": "No API key configured yet.",
     "toggleApiKeyVisibility": "Show or hide the API key",
     "externalUserId": "External User ID",

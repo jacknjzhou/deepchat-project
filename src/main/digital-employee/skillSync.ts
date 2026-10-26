@@ -48,6 +48,12 @@ export interface StaffdeckSkillSyncResult {
   ok: boolean
   installed: number
   failedSkills: string[]
+  /**
+   * slug → 失败原因（HTTP 状态码、安装器报错等）。只作诊断展示：没有它，
+   * 「装不上」与「连不上」在调用方看来是同一个 false，而两者的处置完全不同
+   * ——前者查服务端与包，后者查密钥与网络。
+   */
+  failureReasons: Record<string, string>
   reason?: 'NOT_CONFIGURED'
 }
 
@@ -73,29 +79,31 @@ const normalizeBaseUrl = (baseUrl: string): string => baseUrl.trim().replace(/\/
  * `localhost:5173`), which is unrelated to the address the client actually
  * reaches StaffDeck at. D3 hit the same thing with knowledge `bundleUrl`.
  */
-const exportUrl = (
-  connection: StaffdeckConnection,
-  employeeId: string,
-  slug: string
-): string =>
+const exportUrl = (connection: StaffdeckConnection, employeeId: string, slug: string): string =>
   `${normalizeBaseUrl(connection.baseUrl)}/api/v1/digital-employees/` +
   `${encodeURIComponent(employeeId)}:export-skill?slug=${encodeURIComponent(slug)}`
 
 export function createStaffdeckSkillSync(deps: StaffdeckSkillSyncDeps): StaffdeckSkillSync {
+  /**
+   * 下载并安装一个技能包。成功返回 null，失败返回一句话原因。
+   *
+   * 原因必须活着回到调用方：HTTP 401、空响应、安装器拒绝在布尔世界里都是
+   * false，但用户要采取的动作完全不同（换 key / 查服务端 / 清理本地目录）。
+   */
   const installOne = async (
     connection: StaffdeckConnection,
     employeeId: string,
     skill: DistributedSkill
-  ): Promise<boolean> => {
+  ): Promise<string | null> => {
     let zipPath: string | null = null
     try {
       const response = await deps.fetchImpl(exportUrl(connection, employeeId, skill.slug), {
         headers: { Authorization: `Bearer ${connection.apiKey}`, Accept: 'application/zip' }
       })
-      if (!response.ok) return false
+      if (!response.ok) return `HTTP ${response.status}`
 
       const bytes = new Uint8Array(await response.arrayBuffer())
-      if (bytes.byteLength === 0) return false
+      if (bytes.byteLength === 0) return 'empty response body'
 
       zipPath = await deps.writeTempFile(bytes)
       const targetName = employeeSkillName(employeeId, skill.slug)
@@ -104,11 +112,11 @@ export function createStaffdeckSkillSync(deps: StaffdeckSkillSyncDeps): Staffdec
         overwrite: true,
         targetName
       })
-      return result.success
-    } catch {
-      // Network failure, corrupt archive, install rejection — all the same to
-      // the caller: this skill is not updated this round.
-      return false
+      return result.success ? null : `installer: ${result.error ?? 'unknown error'}`
+    } catch (error) {
+      // Network failure, corrupt archive, install rejection — the round still
+      // degrades the same way, but the message survives for the toast and log.
+      return `error: ${error instanceof Error ? error.message : String(error)}`
     } finally {
       if (zipPath) {
         try {
@@ -124,17 +132,24 @@ export function createStaffdeckSkillSync(deps: StaffdeckSkillSyncDeps): Staffdec
     async syncEmployee({ employeeId, skills }) {
       const connection = deps.getConnection()
       if (!connection) {
-        return { ok: false, installed: 0, failedSkills: [], reason: 'NOT_CONFIGURED' }
+        return {
+          ok: false,
+          installed: 0,
+          failedSkills: [],
+          failureReasons: {},
+          reason: 'NOT_CONFIGURED'
+        }
       }
       if (skills.length === 0) {
         // Nothing distributed: clear the baseline so a future re-publish is seen as new.
         deps.stateStore.set(employeeId, undefined)
-        return { ok: true, installed: 0, failedSkills: [] }
+        return { ok: true, installed: 0, failedSkills: [], failureReasons: {} }
       }
 
       const baseline = deps.stateStore.get(employeeId) ?? {}
       const nextBaseline: Record<string, string> = {}
       const failedSkills: string[] = []
+      const failureReasons: Record<string, string> = {}
       let installed = 0
 
       for (const skill of skills) {
@@ -145,20 +160,24 @@ export function createStaffdeckSkillSync(deps: StaffdeckSkillSyncDeps): Staffdec
           continue
         }
 
-        const ok = await installOne(connection, employeeId, skill)
-        if (ok) {
+        const failure = await installOne(connection, employeeId, skill)
+        if (failure === null) {
           // Only successful installs become the baseline; a failure must be
           // retried rather than remembered as done.
           nextBaseline[skill.slug] = skill.id
           installed += 1
         } else {
           failedSkills.push(skill.slug)
+          failureReasons[skill.slug] = failure
+          console.warn(
+            `[digitalEmployee] skill install failed: ${employeeId}/${skill.slug} — ${failure}`
+          )
         }
       }
 
       deps.stateStore.set(employeeId, nextBaseline)
 
-      return { ok: failedSkills.length === 0, installed, failedSkills }
+      return { ok: failedSkills.length === 0, installed, failedSkills, failureReasons }
     }
   }
 }

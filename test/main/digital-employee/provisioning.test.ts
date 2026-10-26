@@ -18,9 +18,7 @@ import type { StaffdeckSkillSyncResult } from '../../../src/main/digital-employe
 
 const EMPLOYEE = 'agent_f2828efc2a2a476d'
 
-const employee = (
-  overrides: Partial<DigitalEmployee> = {}
-): DigitalEmployee => ({
+const employee = (overrides: Partial<DigitalEmployee> = {}): DigitalEmployee => ({
   id: EMPLOYEE,
   name: '财务',
   role: '财务',
@@ -80,7 +78,14 @@ function createHarness(
       syncEmployee: async (input) => {
         synced.push({ employeeId: input.employeeId, slugs: input.skills.map((s) => s.slug) })
         if (options.skillError) throw options.skillError
-        return options.skillResult ?? { ok: true, installed: input.skills.length, failedSkills: [] }
+        return (
+          options.skillResult ?? {
+            ok: true,
+            installed: input.skills.length,
+            failedSkills: [],
+            failureReasons: {}
+          }
+        )
       }
     }
   }
@@ -88,7 +93,9 @@ function createHarness(
   return { deps, registered, unregistered, synced }
 }
 
-const target = (overrides: Partial<EmployeeProvisioningTarget> = {}): EmployeeProvisioningTarget => ({
+const target = (
+  overrides: Partial<EmployeeProvisioningTarget> = {}
+): EmployeeProvisioningTarget => ({
   id: EMPLOYEE,
   executionMode: 'local',
   tools: ['staffdeck_expense_submit'],
@@ -305,7 +312,9 @@ describe('provisionById', () => {
       downloadUrl: 'https://sd/x'
     } as unknown as DigitalEmployee['skills'][number]
     const harness = createHarness({
-      employees: [employee({ skills: [legacy, { id: 'sk_1', name: 'ok', slug: 'ok', downloadUrl: 'x' }] })]
+      employees: [
+        employee({ skills: [legacy, { id: 'sk_1', name: 'ok', slug: 'ok', downloadUrl: 'x' }] })
+      ]
     })
     const provisioner = createEmployeeProvisioner(harness.deps)
 

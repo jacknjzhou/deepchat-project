@@ -48,6 +48,12 @@ export const DigitalEmployeeSettingsStateSchema = z.object({
   baseUrl: z.string(),
   externalUserId: z.string(),
   apiKeyConfigured: z.boolean(),
+  /**
+   * 已保存的密钥能否在本机解密。`apiKeyConfigured` 为 true 而它为 false 时，
+   * 密文多半来自别的加密环境（跨系统拷贝的配置），在本机永远解不开——
+   * 连接会一直静默降级到 mock，只有这里能把「为什么」告诉用户。
+   */
+  apiKeyUsable: z.boolean(),
   /** 本地执行的对话是否回流归档。缺省视为开启，见 `backflowEnabled` 键的说明。 */
   backflowEnabled: z.boolean(),
   /**

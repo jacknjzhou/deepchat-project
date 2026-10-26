@@ -9,6 +9,7 @@ const baseState = {
   baseUrl: '',
   externalUserId: 'user-1',
   apiKeyConfigured: true,
+  apiKeyUsable: true,
   // 考这两个字段来自 main 的生效值。baseState 少给一个，`applyState` 就会把它写成
   // undefined，而 `syncIntervalError` 把 undefined 判成非法 → save 被校验拦下来，
   // 测试只看到「save 没被调用」这种离现场很远的症状。
@@ -24,10 +25,12 @@ let clientMock: {
   backflowQueueStatus: ReturnType<typeof vi.fn>
 }
 
-async function setup(overrides: { backflowQueueStatus?: unknown } = {}) {
+async function setup(
+  overrides: { backflowQueueStatus?: unknown; state?: Partial<typeof baseState> } = {}
+) {
   vi.resetModules()
   clientMock = {
-    get: vi.fn(async () => ({ ...baseState })),
+    get: vi.fn(async () => ({ ...baseState, ...overrides.state })),
     save: vi.fn(async (draft: Record<string, unknown>) => ({
       ...baseState,
       enabled: draft.enabled as boolean,
@@ -250,6 +253,15 @@ describe('DigitalEmployeeServiceSettings', () => {
     expect(clientMock.clearApiKey).toHaveBeenCalledTimes(1)
     expect(wrapper.get('[data-testid="digital-employee-api-key-state"]').text()).toContain(
       'digitalEmployee.service.apiKeyNotConfigured'
+    )
+  })
+
+  it('warns when the stored api key cannot be decrypted on this machine', async () => {
+    // 密文来自其他加密环境时连接会一直静默降级到 mock，警告必须替用户说破。
+    const wrapper = await setup({ state: { apiKeyUsable: false } })
+
+    expect(wrapper.get('[data-testid="digital-employee-api-key-undecryptable"]').text()).toContain(
+      'digitalEmployee.service.apiKeyUndecryptable'
     )
   })
 

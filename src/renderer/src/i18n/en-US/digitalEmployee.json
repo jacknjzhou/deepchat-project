@@ -30,6 +30,7 @@
     "apiKeyPlaceholder": "sd_live_...",
     "apiKeyKeepPlaceholder": "Leave blank to keep the saved key",
     "apiKeyConfigured": "An API key is saved. It is encrypted in the system credential store and never shown again.",
+    "apiKeyUndecryptable": "The saved API key cannot be decrypted on this machine. It may have been encrypted in a different environment. Re-enter the key and save.",
     "apiKeyNotConfigured": "No API key configured yet.",
     "toggleApiKeyVisibility": "Show or hide the API key",
     "externalUserId": "External User ID",
@@ -125,6 +126,7 @@
   "provision": {
     "degradedTitle": "Some capabilities are not ready",
     "degradedTools": "The cloud tools did not register, so this employee cannot use them in this session. The conversation itself is unaffected.",
-    "degradedSkills": "{count} skill(s) failed to install and will not apply this session. The conversation itself is unaffected."
+    "degradedSkills": "{count} skill(s) failed to install and will not apply this session. The conversation itself is unaffected.",
+    "degradedSkillReasons": "Failure reasons: {reasons}"
   }
 }

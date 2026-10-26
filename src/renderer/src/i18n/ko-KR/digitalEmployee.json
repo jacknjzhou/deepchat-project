@@ -31,6 +31,7 @@
     "apiKeyPlaceholder": "sd_live_...",
     "apiKeyKeepPlaceholder": "Leave blank to keep the saved key",
     "apiKeyConfigured": "An API key is saved. It is encrypted in the system credential store and never shown again.",
+    "apiKeyUndecryptable": "저장된 API 키를 이 머신에서 복호화할 수 없습니다. 다른 환경에서 암호화되었을 수 있습니다. 키를 다시 입력하고 저장하세요.",
     "apiKeyNotConfigured": "No API key configured yet.",
     "toggleApiKeyVisibility": "Show or hide the API key",
     "externalUserId": "External User ID",

@@ -64,19 +64,26 @@ export function normalizeDigitalEmployeeBaseUrl(raw: string): string {
 const readState = (
   deps: DigitalEmployeeSettingsDeps,
   externalUserId: string
-): DigitalEmployeeSettingsState => ({
-  enabled: deps.settings.get<boolean>(digitalEmployeeSettingsKeys.enabled) === true,
-  baseUrl: deps.settings.get<string>(digitalEmployeeSettingsKeys.baseUrl) ?? '',
-  externalUserId,
-  apiKeyConfigured: Boolean(deps.secretStore.getWrapped(digitalEmployeeSettingsKeys.apiKey)),
-  // `!== false` 与上报侧同一口径：未设置过必须读成「开启」，否则用户一进设置页
-  // 看到的默认状态就和实际行为不一致。
-  backflowEnabled:
-    deps.settings.get<boolean>(digitalEmployeeSettingsKeys.backflowEnabled) !== false,
-  // 回传生效值：调度器在缺省/非法时按默认值跑，这里必须说同一个数，否则
-  // 设置页会显示成「未设置」，而后台其实一直在同步。
-  syncIntervalSeconds: readIntervalSeconds(deps)
-})
+): DigitalEmployeeSettingsState => {
+  const wrappedKey = deps.secretStore.getWrapped(digitalEmployeeSettingsKeys.apiKey)
+  return {
+    enabled: deps.settings.get<boolean>(digitalEmployeeSettingsKeys.enabled) === true,
+    baseUrl: deps.settings.get<string>(digitalEmployeeSettingsKeys.baseUrl) ?? '',
+    externalUserId,
+    apiKeyConfigured: Boolean(wrappedKey),
+    // 解不开 ≠ 没配置：wrapped 存在但解密失败（跨加密环境拷来的配置）时，
+    // 连接层拿到的是空 key，界面必须把它和「尚未配置」区分开。
+    apiKeyUsable:
+      Boolean(wrappedKey) && deps.secretStore.get(digitalEmployeeSettingsKeys.apiKey) !== '',
+    // `!== false` 与上报侧同一口径：未设置过必须读成「开启」，否则用户一进设置页
+    // 看到的默认状态就和实际行为不一致。
+    backflowEnabled:
+      deps.settings.get<boolean>(digitalEmployeeSettingsKeys.backflowEnabled) !== false,
+    // 回传生效值：调度器在缺省/非法时按默认值跑，这里必须说同一个数，否则
+    // 设置页会显示成「未设置」，而后台其实一直在同步。
+    syncIntervalSeconds: readIntervalSeconds(deps)
+  }
+}
 
 /**
  * 知识同步间隔的生效值。

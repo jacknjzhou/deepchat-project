@@ -24,18 +24,19 @@ type State = {
   downloads: string[]
 }
 
-function createHarness(options: {
-  connection?: { baseUrl: string; apiKey: string } | null
-  responses?: Record<string, { ok: boolean; status?: number; bytes?: Uint8Array }>
-  installResult?: { success: boolean; error?: string }
-  initialInstalled?: Record<string, string>
-} = {}) {
+function createHarness(
+  options: {
+    connection?: { baseUrl: string; apiKey: string } | null
+    responses?: Record<string, { ok: boolean; status?: number; bytes?: Uint8Array }>
+    installResult?: { success: boolean; error?: string }
+    initialInstalled?: Record<string, string>
+  } = {}
+) {
   const state: State = { installed: { ...(options.initialInstalled ?? {}) }, downloads: [] }
   const baseUrl = options.connection?.baseUrl ?? 'http://staffdeck.test'
 
   const deps: StaffdeckSkillSyncDeps = {
-    getConnection: () =>
-      options.connection === null ? null : { baseUrl, apiKey: 'sd_live_abc' },
+    getConnection: () => (options.connection === null ? null : { baseUrl, apiKey: 'sd_live_abc' }),
     fetchImpl: (async (input: string | URL | Request) => {
       const url = String(input)
       state.downloads.push(url)
@@ -89,7 +90,7 @@ describe('syncEmployee', () => {
       skills: []
     })
 
-    expect(result).toEqual({ ok: true, installed: 0, failedSkills: [] })
+    expect(result).toEqual({ ok: true, installed: 0, failedSkills: [], failureReasons: {} })
     expect(harness.state.downloads).toEqual([])
   })
 
@@ -187,6 +188,8 @@ describe('syncEmployee', () => {
     expect(result.ok).toBe(false)
     expect(result.installed).toBe(1)
     expect(result.failedSkills).toEqual(['alpha'])
+    // 失败原因必须可诊断：服务端 404 与网络故障的处置完全不同。
+    expect(result.failureReasons).toEqual({ alpha: 'HTTP 404' })
   })
 
   it('remembers a successful install as the baseline', async () => {
@@ -226,6 +229,7 @@ describe('syncEmployee', () => {
 
     expect(result.ok).toBe(false)
     expect(result.failedSkills).toEqual(['alpha'])
+    expect(result.failureReasons).toEqual({ alpha: 'installer: Skill "x" already exists' })
   })
 
   it('tolerates a corrupt archive handed to the installer', async () => {
@@ -250,7 +254,13 @@ describe('syncEmployee', () => {
       skills: [skill('alpha')]
     })
 
-    expect(result).toEqual({ ok: false, installed: 0, failedSkills: [], reason: 'NOT_CONFIGURED' })
+    expect(result).toEqual({
+      ok: false,
+      installed: 0,
+      failedSkills: [],
+      failureReasons: {},
+      reason: 'NOT_CONFIGURED'
+    })
     expect(harness.state.downloads).toEqual([])
   })
 

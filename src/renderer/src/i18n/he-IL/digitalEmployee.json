@@ -31,6 +31,7 @@
     "apiKeyPlaceholder": "sd_live_...",
     "apiKeyKeepPlaceholder": "Leave blank to keep the saved key",
     "apiKeyConfigured": "An API key is saved. It is encrypted in the system credential store and never shown again.",
+    "apiKeyUndecryptable": "לא ניתן לפענח את מפתח ה-API שנשמר במחשב זה; ייתכן שהוצפן בסביבה אחרת. יש להזין את המפתח מחדש ולשמור.",
     "apiKeyNotConfigured": "No API key configured yet.",
     "toggleApiKeyVisibility": "Show or hide the API key",
     "externalUserId": "External User ID",

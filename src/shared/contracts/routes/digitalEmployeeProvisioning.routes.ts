@@ -42,6 +42,13 @@ export const digitalEmployeeProvisionRoute = defineRouteContract({
     /** 下载或安装失败的技能 slug；下轮会自动重试，UI 只做提示。 */
     failedSkills: z.array(z.string()).default([]),
     /**
+     * slug → 简短失败原因（HTTP 状态码、安装器报错等），随降级 toast 一并展示。
+     *
+     * 排障时「装不上」和「连不上」的处置完全不同（查服务端 vs 换密钥），
+     * 只报个数的 toast 会让人把密钥损坏当成服务端故障去查。
+     */
+    failureReasons: z.record(z.string(), z.string()).default({}),
+    /**
      * 技能在本地装成的名字（带员工前缀），会话的 `activeSkills` 要用这些。
      *
      * 不是 payload 里的 slug：安装时名字被加了作用域前缀，用 slug 去激活
@@ -53,6 +60,4 @@ export const digitalEmployeeProvisionRoute = defineRouteContract({
   })
 })
 
-export type DigitalEmployeeProvisionResult = z.infer<
-  typeof digitalEmployeeProvisionRoute.output
->
+export type DigitalEmployeeProvisionResult = z.infer<typeof digitalEmployeeProvisionRoute.output>

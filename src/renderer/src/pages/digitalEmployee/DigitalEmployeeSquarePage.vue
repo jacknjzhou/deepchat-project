@@ -370,13 +370,20 @@ const reportDegradedProvisioning = (
   const toolsUnavailable = !provisioned.toolsReady
   if (!toolsUnavailable && missingSkills === 0) return
 
+  // 失败原因随 toast 透出：HTTP 401 和安装器拒绝的处置完全不同（换 key vs
+  // 查服务端），只报个数等于让用户继续猜。
+  const reasons = Object.entries(provisioned.failureReasons)
+    .map(([slug, reason]) => `${slug}: ${reason}`)
+    .join(', ')
+  const skillsDescription = reasons
+    ? `${t('digitalEmployee.provision.degradedSkills', { count: missingSkills })} ${t('digitalEmployee.provision.degradedSkillReasons', { reasons })}`
+    : t('digitalEmployee.provision.degradedSkills', { count: missingSkills })
+
   notifyRenderer({
     kind: 'warning',
     code: 'digitalEmployee.provision.degraded',
     title: t('digitalEmployee.provision.degradedTitle'),
-    description: toolsUnavailable
-      ? t('digitalEmployee.provision.degradedTools')
-      : t('digitalEmployee.provision.degradedSkills', { count: missingSkills })
+    description: toolsUnavailable ? t('digitalEmployee.provision.degradedTools') : skillsDescription
   })
 }
 

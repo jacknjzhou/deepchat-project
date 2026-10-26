@@ -85,7 +85,8 @@ const dcBadgeStub = defineComponent({
 const dcEmptyStub = defineComponent({
   name: 'DcEmptyStub',
   props: ['icon', 'title', 'description'],
-  template: '<div><span class="dc-empty-title">{{ title }}</span><span class="dc-empty-description">{{ description }}</span><slot /></div>'
+  template:
+    '<div><span class="dc-empty-title">{{ title }}</span><span class="dc-empty-description">{{ description }}</span><slot /></div>'
 })
 
 async function setup() {
@@ -93,7 +94,14 @@ async function setup() {
   notifyRenderer.mockClear()
   stubStore.employees = [
     makeEmployee(),
-    makeEmployee({ id: 'emp-2', name: '数据分析师', role: '分析师', capabilities: ['数据分析'], sops: [], knowledgeBaseIds: [] }),
+    makeEmployee({
+      id: 'emp-2',
+      name: '数据分析师',
+      role: '分析师',
+      capabilities: ['数据分析'],
+      sops: [],
+      knowledgeBaseIds: []
+    }),
     makeEmployee({ id: 'emp-3', name: '代码助手', role: '程序员', enabled: false })
   ]
   stubStore.favorites = ['emp-1']
@@ -140,10 +148,19 @@ async function setup() {
         DcBadge: dcBadgeStub,
         DcEmpty: dcEmptyStub,
         Dialog: defineComponent({ name: 'DialogStub', template: '<div><slot /></div>' }),
-        DialogContent: defineComponent({ name: 'DialogContentStub', template: '<div><slot /></div>' }),
-        DialogHeader: defineComponent({ name: 'DialogHeaderStub', template: '<div><slot /></div>' }),
+        DialogContent: defineComponent({
+          name: 'DialogContentStub',
+          template: '<div><slot /></div>'
+        }),
+        DialogHeader: defineComponent({
+          name: 'DialogHeaderStub',
+          template: '<div><slot /></div>'
+        }),
         DialogTitle: defineComponent({ name: 'DialogTitleStub', template: '<div><slot /></div>' }),
-        DialogDescription: defineComponent({ name: 'DialogDescriptionStub', template: '<div><slot /></div>' })
+        DialogDescription: defineComponent({
+          name: 'DialogDescriptionStub',
+          template: '<div><slot /></div>'
+        })
       }
     }
   })
@@ -333,6 +350,7 @@ describe('DigitalEmployeeSquarePage', () => {
       toolsReady: false,
       installedSkills: 1,
       failedSkills: [],
+      failureReasons: {},
       skillNames: ['de-emp-1-writing'],
       failures: ['mcp']
     })
@@ -361,6 +379,7 @@ describe('DigitalEmployeeSquarePage', () => {
       toolsReady: true,
       installedSkills: 1,
       failedSkills: ['broken-pkg'],
+      failureReasons: { 'broken-pkg': 'HTTP 404' },
       skillNames: ['de-emp-1-writing'],
       failures: ['skills']
     })
@@ -372,6 +391,12 @@ describe('DigitalEmployeeSquarePage', () => {
       expect.objectContaining({
         kind: 'warning',
         description: expect.stringContaining('degradedSkills')
+      })
+    )
+    // 原因必须随 toast 透出：HTTP 404 和安装器拒绝的处置完全不同。
+    expect(notifyRenderer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        description: expect.stringContaining('broken-pkg: HTTP 404')
       })
     )
   })
@@ -387,6 +412,7 @@ describe('DigitalEmployeeSquarePage', () => {
       toolsReady: false,
       installedSkills: 0,
       failedSkills: [],
+      failureReasons: {},
       skillNames: [],
       failures: []
     })
@@ -413,13 +439,17 @@ describe('DigitalEmployeeSquarePage', () => {
     expect(pushMock).toHaveBeenCalledWith({ name: 'chat' })
   })
 
-  it('start failure keeps dialog open, shows error, and disables button while busy', async () => {    const { wrapper } = await setup()
+  it('start failure keeps dialog open, shows error, and disables button while busy', async () => {
+    const { wrapper } = await setup()
     await wrapper.get('[data-testid="digital-employee-card-emp-1"]').trigger('click')
     await flushPromises()
     // 受控 promise：模拟 startConversation 长时间挂起后失败
     let rejectFn!: (error: Error) => void
     stubStore.startConversation.mockImplementation(
-      () => new Promise((_resolve, reject) => { rejectFn = reject })
+      () =>
+        new Promise((_resolve, reject) => {
+          rejectFn = reject
+        })
     )
     const startButton = wrapper.get('[data-testid="digital-employee-start-button"]')
     await startButton.trigger('click')
@@ -436,7 +466,9 @@ describe('DigitalEmployeeSquarePage', () => {
     expect(wrapper.find('[data-testid="digital-employee-detail-dialog"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="digital-employee-start-error"]').exists()).toBe(true)
     expect(wrapper.text()).toContain('digitalEmployee.startConversationFailed')
-    expect(wrapper.get('[data-testid="digital-employee-start-button"]').attributes('disabled')).toBeUndefined()
+    expect(
+      wrapper.get('[data-testid="digital-employee-start-button"]').attributes('disabled')
+    ).toBeUndefined()
     expect(pushMock).not.toHaveBeenCalled()
     // 错误恢复后可再次点击
     stubStore.startConversation.mockResolvedValue('session-1')

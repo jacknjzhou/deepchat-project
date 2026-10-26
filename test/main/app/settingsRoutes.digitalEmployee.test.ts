@@ -164,12 +164,27 @@ describe('digitalEmployeeSettings routes', () => {
       baseUrl: '',
       externalUserId: 'user-1',
       apiKeyConfigured: true,
+      apiKeyUsable: true,
       backflowEnabled: true,
       // 未设置过时回传生效值而不是 null：后台按 3600 在跑，界面必须说同一个数。
       syncIntervalSeconds: 3600
     })
     expect(JSON.stringify(result)).not.toContain('sd_live_secret')
     expect(JSON.stringify(result)).not.toContain('wrapped:')
+  })
+
+  it('flags a wrapped key that cannot be decrypted on this machine', async () => {
+    // 跨加密环境拷来的配置在本机永远解不开，连接层拿到空 key 会静默降级到
+    // mock。设置页必须把「已配置但不可用」和「尚未配置」区分开，用户才有得修。
+    const broken = createHarness({
+      initialWrappedKey: 'wrapped:sd_live_secret',
+      plaintextKey: ''
+    })
+
+    const result = (await broken.handlers.get()) as Record<string, unknown>
+
+    expect(result).toMatchObject({ apiKeyConfigured: true, apiKeyUsable: false })
+    expect(JSON.stringify(result)).not.toContain('sd_live_secret')
   })
 
   it('generates and persists an external user id only once', async () => {
