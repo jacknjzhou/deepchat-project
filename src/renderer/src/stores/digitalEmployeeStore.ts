@@ -4,6 +4,7 @@ import { createConfigClient } from '../../api/ConfigClient'
 import { createDigitalEmployeeClient } from '../../api/DigitalEmployeeClient'
 import { createDigitalEmployeeSettingsClient } from '../../api/DigitalEmployeeSettingsClient'
 import { createKnowledgeClient } from '../../api/KnowledgeClient'
+import { createSkillClient } from '../../api/SkillClient'
 import { useSessionStore } from './ui/session'
 import type {
   BackflowEventInput,
@@ -14,6 +15,7 @@ import type {
 import type { DigitalEmployeeProvisionResult } from '@shared/contracts/routes'
 import type { KnowledgePackageStatus } from '@shared/contracts/routes'
 import type { QueryResult } from '@shared/types/knowledge'
+import type { SkillMetadata } from '@shared/types/skill'
 
 export interface DigitalEmployeeConversationOptions {
   openingQuestion?: string
@@ -110,6 +112,7 @@ export const useDigitalEmployeeStore = defineStore('digitalEmployee', () => {
   const configClient = createConfigClient()
   const knowledgeClient = createKnowledgeClient()
   const settingsClient = createDigitalEmployeeSettingsClient()
+  const skillClient = createSkillClient()
   const sessionStore = useSessionStore()
 
   const employees = ref<DigitalEmployee[]>([])
@@ -324,6 +327,20 @@ export const useDigitalEmployeeStore = defineStore('digitalEmployee', () => {
   async function listKnowledgePackages(employeeId: string): Promise<KnowledgePackageStatus[]> {
     try {
       return (await client.knowledgeStatus(employeeId)).packages
+    } catch {
+      return []
+    }
+  }
+
+  /**
+   * 详情视图用：读本地技能目录元数据（含 SKILL.md 描述）。数字员工的技能
+   * 全部装在内置 `deepchat` Agent scope 下（见主进程 skillSync 的
+   * SKILL_AGENT_ID），按本地安装名（员工前缀）匹配。失败返回空数组：描述
+   * 是展示性信息，缺失时详情退化为只显示名称与 id。
+   */
+  async function listLocalSkillMetadata(): Promise<SkillMetadata[]> {
+    try {
+      return await skillClient.getMetadataList(DIGITAL_EMPLOYEE_AGENT_ID)
     } catch {
       return []
     }
@@ -591,6 +608,7 @@ export const useDigitalEmployeeStore = defineStore('digitalEmployee', () => {
     employeeForSession,
     loadKnowledgeStatus,
     listKnowledgePackages,
+    listLocalSkillMetadata,
     provisionEmployee,
     reportBackflow,
     loadRemoteBinding,

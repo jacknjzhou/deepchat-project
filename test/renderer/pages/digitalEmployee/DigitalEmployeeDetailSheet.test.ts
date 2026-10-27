@@ -41,6 +41,7 @@ const makeProvisionResult = (
 
 const stubStore = reactive({
   listKnowledgePackages: vi.fn(async () => []),
+  listLocalSkillMetadata: vi.fn(async () => []),
   provisionEmployee: vi.fn(async () => null)
 })
 
@@ -53,6 +54,7 @@ async function setup(options: {
 }) {
   vi.resetModules()
   stubStore.listKnowledgePackages.mockClear()
+  stubStore.listLocalSkillMetadata.mockClear()
   stubStore.provisionEmployee.mockClear()
   vi.doMock('@/stores/digitalEmployeeStore', () => ({
     useDigitalEmployeeStore: () => stubStore
@@ -89,6 +91,7 @@ async function setup(options: {
 describe('DigitalEmployeeDetailSheet', () => {
   beforeEach(() => {
     stubStore.listKnowledgePackages.mockResolvedValue([])
+    stubStore.listLocalSkillMetadata.mockResolvedValue([])
   })
 
   it('renders all four sections for a fully configured employee', async () => {
@@ -185,6 +188,43 @@ describe('DigitalEmployeeDetailSheet', () => {
     })
     expect(wrapper.find('[data-testid="detail-failed-skills"]').text()).toContain('skill-broken')
     expect(wrapper.find('[data-testid="detail-failed-skills"]').text()).toContain('HTTP 401')
+  })
+
+  it('shows the local skill description for installed skills', async () => {
+    stubStore.listLocalSkillMetadata.mockResolvedValue([
+      {
+        name: 'emp-1:skill-write',
+        description: '撰写公众号文章的完整流程',
+        path: 'C:/skills/emp-1:skill-write/SKILL.md',
+        skillRoot: 'C:/skills/emp-1:skill-write'
+      }
+    ])
+    const { wrapper } = await setup({
+      employee: makeEmployee({
+        skills: [{ id: 'skill-write', name: '写作技能', downloadUrl: 'https://x/skill' }]
+      }),
+      provisionResult: makeProvisionResult({ skillNames: ['emp-1:skill-write'] })
+    })
+    expect(stubStore.listLocalSkillMetadata).toHaveBeenCalled()
+    expect(wrapper.text()).toContain('撰写公众号文章的完整流程')
+  })
+
+  it('omits skill descriptions when the skill is not installed locally', async () => {
+    stubStore.listLocalSkillMetadata.mockResolvedValue([
+      {
+        name: 'emp-1:other',
+        description: '别的技能的描述',
+        path: 'C:/skills/emp-1:other/SKILL.md',
+        skillRoot: 'C:/skills/emp-1:other'
+      }
+    ])
+    const { wrapper } = await setup({
+      employee: makeEmployee({
+        skills: [{ id: 'skill-write', name: '写作技能', downloadUrl: 'https://x/skill' }]
+      }),
+      provisionResult: makeProvisionResult({ skillNames: ['emp-1:skill-write'] })
+    })
+    expect(wrapper.text()).not.toContain('别的技能的描述')
   })
 
   it('is read-only: no inputs and provisioning is never triggered', async () => {

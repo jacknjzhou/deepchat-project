@@ -138,13 +138,20 @@
           </p>
           <ul v-else class="space-y-1.5">
             <li
-              v-for="skill in employee.skills ?? []"
+              v-for="(skill, index) in employee.skills ?? []"
               :key="`detail-${skill.id}`"
               class="rounded-lg border border-border/60 bg-muted/20 px-3 py-2"
             >
               <p class="truncate text-xs font-medium">{{ skill.name }}</p>
               <p class="mt-0.5 truncate font-mono text-[10px] text-muted-foreground">
                 {{ skill.id }}
+              </p>
+              <p
+                v-if="descriptionForSkill(index)"
+                class="mt-1 text-xs leading-relaxed text-muted-foreground"
+                :data-testid="`detail-skill-description-${skill.id}`"
+              >
+                {{ descriptionForSkill(index) }}
               </p>
             </li>
             <li
@@ -265,9 +272,10 @@ const { t } = useI18n()
 const store = useDigitalEmployeeStore()
 
 const knowledgePackages = ref<KnowledgePackageStatus[]>([])
+const skillDescriptions = ref<Map<string, string>>(new Map())
 
 /**
- * 只读视图：打开时按需拉一次知识包状态，员工切换时重拉。
+ * 只读视图：打开时按需拉一次知识包状态与本地技能元数据，员工切换时重拉。
  * 结果回来时若员工已切换则直接丢弃，避免串显上一家的数据。
  * 绝不触发 provision——那是有副作用的准备动作，只读详情不代用户执行。
  */
@@ -278,11 +286,14 @@ watch(
     // 未绑定知识库就不发状态请求：请求必空，只会把空态渲染成「获取失败」。
     if (props.employee.knowledgeBaseIds.length === 0) {
       knowledgePackages.value = []
-      return
+    } else {
+      const packages = await store.listKnowledgePackages(id)
+      if (props.employee.id !== id) return
+      knowledgePackages.value = packages
     }
-    const packages = await store.listKnowledgePackages(id)
+    const skills = await store.listLocalSkillMetadata()
     if (props.employee.id !== id) return
-    knowledgePackages.value = packages
+    skillDescriptions.value = new Map(skills.map((skill) => [skill.name, skill.description]))
   },
   { immediate: true }
 )
@@ -293,6 +304,17 @@ const skillDetailIds = computed(
 const skillIdsWithoutDetail = computed(() =>
   (props.employee?.skillIds ?? []).filter((id) => !skillDetailIds.value.has(id))
 )
+
+/**
+ * 服务端技能明细行 ↔ 本地安装名按位置配对：provision 的 skillNames 与服务端
+ * skills 同源同序（都是 resolved.skills 逐项派生），不需要在渲染侧重现
+ * 员工前缀命名规则。未安装/位置对不上时返回空，行内退化为不显示描述。
+ */
+const descriptionForSkill = (index: number): string => {
+  const localName = props.provisionResult?.skillNames[index]
+  if (!localName) return ''
+  return skillDescriptions.value.get(localName) ?? ''
+}
 
 // remote 员工本来就不在本地准备，「未初始化」提示只对本地员工有意义。
 const showNotProvisioned = computed(

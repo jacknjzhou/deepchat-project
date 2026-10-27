@@ -46,6 +46,7 @@ const stubStore = reactive({
   // 本地执行前的准备：默认成功但不产生技能名，页面据此退回 payload 的 skillIds。
   provisionEmployee: vi.fn(async () => null),
   listKnowledgePackages: vi.fn(async () => []),
+  listLocalSkillMetadata: vi.fn(async () => []),
   startConversation: vi.fn(async () => '')
 })
 
