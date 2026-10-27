@@ -1567,6 +1567,9 @@ export class TurnCoordinator {
       const recoveredMessageSkillNames = materializedSkillContexts
         .filter(({ scope }) => scope === 'message')
         .map(({ context }) => context.skillName)
+      const legacyMessageSkillNames = recoveredSkillBatch.foundSkillManifest
+        ? []
+        : resolveAssistantTurnMessageSkillNames(this.ports.messageStore, sessionId, messageId)
       const {
         useContextBudget,
         runtimeContextLimitTokens,
@@ -1596,30 +1599,44 @@ export class TurnCoordinator {
         providerModelFacts,
         runtimeActivatedSkillNames: recoveredSkillBatch.foundSkillManifest
           ? recoveredMessageSkillNames
-          : undefined,
+          : legacyMessageSkillNames,
         sessionActiveSkillNamesOverride: recoveredSkillBatch.foundSkillManifest
           ? recoveredSessionSkillNames
           : undefined
       })
+      let recoveredSkillBodies: SkillProjectionBodies
       if (!recoveredSkillBatch.foundSkillManifest) {
-        const legacyMessageSkillNames = resolveAssistantTurnMessageSkillNames(
-          this.ports.messageStore,
-          sessionId,
-          messageId
+        // Legacy fallback: this paused run predates Tape-backed Skill context recovery, so
+        // there is no manifest to restore. Instead of refusing to resume, re-materialize
+        // the recorded names against the CURRENT skill definitions — the same pipeline a
+        // fresh execution uses (prepareFresh + preview). Bodies may differ from what the
+        // paused run originally saw, which is exactly what the previous hard-failure
+        // guidance ("start a new execution") implied, minus losing the conversation.
+        recoveredSkillBodies = await this.runPreStreamStep(
+          { sessionId, messageId, step: 'skill-context-prepare', signal: preStreamAbortSignal },
+          async () => {
+            const prepared = await awaitWithAbort(
+              this.ports.skillContextMaterializer.prepareFresh({
+                sessionId,
+                agentId: activeAgentId,
+                messageSkillNames: legacyMessageSkillNames,
+                sessionSkillNames: sessionActiveSkillNames
+              }),
+              preStreamAbortSignal
+            )
+            return this.ports.skillContextMaterializer.preview(prepared)
+          }
         )
-        if (sessionActiveSkillNames.length > 0 || legacyMessageSkillNames.length > 0) {
-          throw new Error(
-            'This paused Skill-bearing turn predates Tape-backed Skill context recovery and cannot be resumed safely. Start a new execution to use the current Skill version.'
-          )
+      } else {
+        if (
+          !haveSameNames(sessionActiveSkillNames, recoveredSessionSkillNames) ||
+          !haveSameNames(messageActiveSkillNames, recoveredMessageSkillNames)
+        ) {
+          throw new Error('Recovered Skill context is no longer valid for this Session and Agent.')
         }
-      } else if (
-        !haveSameNames(sessionActiveSkillNames, recoveredSessionSkillNames) ||
-        !haveSameNames(messageActiveSkillNames, recoveredMessageSkillNames)
-      ) {
-        throw new Error('Recovered Skill context is no longer valid for this Session and Agent.')
+        recoveredSkillBodies =
+          this.ports.skillContextMaterializer.projectBodies(materializedSkillContexts)
       }
-      const recoveredSkillBodies =
-        this.ports.skillContextMaterializer.projectBodies(materializedSkillContexts)
       const unguardedBasePromptAssembly = await this.assembleBasePrompt({
         sessionId,
         messageId,

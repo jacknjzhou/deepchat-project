@@ -14657,6 +14657,36 @@ describe('DeepChatAgentHarness', () => {
       expect(skillService.loadSkillContent).not.toHaveBeenCalled()
     })
 
+    it('resumes a legacy Skill-bearing paused turn with current skill bodies', async () => {
+      // 该暂停轮无 runId（Tape manifest 机制之前创建），session 仍挂着激活技能：
+      // 旧行为是硬失败（predates Tape-backed recovery），新行为是按当前技能
+      // 定义重新物化后继续恢复。
+      const skillService = getSkillServiceMock()
+      skillService.getMetadataList.mockResolvedValue([
+        { name: 'runtime-skill', description: 'Runtime skill' }
+      ])
+      skillService.getActiveSkills.mockResolvedValue(['runtime-skill'])
+      skillService.loadSkillContent.mockResolvedValue({ content: 'LEGACY_FALLBACK_SKILL_BODY' })
+      let streamParams: any
+      ;(processStream as ReturnType<typeof vi.fn>).mockImplementationOnce(async (params: any) => {
+        streamParams = params
+        return { status: 'completed' }
+      })
+      await agent.initSession('s1', { providerId: 'openai', modelId: 'gpt-4' })
+      installPendingQuestion()
+
+      await expect(answerPendingQuestion()).resolves.toEqual({ resumed: true })
+
+      const providerText = streamParams.run.messages
+        .map((message: { content?: unknown }) => String(message.content ?? ''))
+        .join('\n')
+      expect(providerText).toContain('LEGACY_FALLBACK_SKILL_BODY')
+      expect(skillService.resolveFreshEffectiveSkillContents).toHaveBeenCalledWith(
+        'deepchat',
+        expect.arrayContaining(['runtime-skill'])
+      )
+    })
+
     it('handles question_option and resumes assistant message', async () => {
       const prepareForResumeTurn = vi.spyOn(CompactionService.prototype, 'prepareForResumeTurn')
       await agent.initSession('s1', { providerId: 'openai', modelId: 'gpt-4' })
