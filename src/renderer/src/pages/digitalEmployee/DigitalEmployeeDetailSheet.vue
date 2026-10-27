@@ -3,19 +3,23 @@
     <SheetContent
       v-if="employee && open"
       side="right"
-      class="w-[440px] overflow-y-auto sm:max-w-[440px]"
+      class="w-[440px] gap-0 sm:max-w-[440px]"
       data-testid="digital-employee-detail-sheet"
     >
-      <SheetHeader>
-        <SheetTitle>{{ employee.name }} · {{ employee.role }}</SheetTitle>
-        <SheetDescription>{{ employee.description }}</SheetDescription>
+      <SheetHeader class="border-b pr-12">
+        <SheetTitle class="text-base leading-snug">
+          {{ employee.name }} · {{ employee.role }}
+        </SheetTitle>
+        <SheetDescription class="text-xs leading-relaxed">
+          {{ employee.description }}
+        </SheetDescription>
       </SheetHeader>
-      <div class="space-y-5 text-sm">
+      <div class="flex-1 space-y-6 overflow-y-auto px-5 py-5 pb-8">
         <!-- 概要：执行模式 + 能力标签 + 未初始化提示 -->
-        <section data-testid="detail-overview" class="space-y-2">
+        <section data-testid="detail-overview" class="space-y-2.5">
           <div class="flex flex-wrap items-center gap-1.5">
             <span
-              class="rounded px-1.5 py-0.5 text-[10px] font-medium"
+              class="rounded-md px-2 py-0.5 text-[11px] font-medium"
               :class="
                 employee.executionMode === 'remote'
                   ? 'bg-emerald-500/10 text-emerald-600'
@@ -30,13 +34,13 @@
             <span
               v-for="capability in employee.capabilities"
               :key="capability"
-              class="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground"
+              class="rounded-md border border-border/60 bg-muted/30 px-2 py-0.5 text-[11px] text-muted-foreground"
               >{{ capability }}</span
             >
           </div>
           <p
             v-if="showNotProvisioned"
-            class="text-xs text-muted-foreground"
+            class="rounded-md bg-muted/40 px-2.5 py-2 text-xs leading-relaxed text-muted-foreground"
             data-testid="detail-not-provisioned"
           >
             {{ t('digitalEmployee.detail.notProvisioned') }}
@@ -45,7 +49,7 @@
 
         <!-- SOP：全文折叠列表（不受执行链路 600 字截断限制，那是提示词注入的事） -->
         <section data-testid="detail-sops" class="space-y-2">
-          <h3 class="text-xs font-semibold text-muted-foreground">
+          <h3 class="text-[11px] font-semibold tracking-wide text-muted-foreground">
             {{ t('digitalEmployee.sectionSops') }}
           </h3>
           <p v-if="employee.sops.length === 0" class="text-xs text-muted-foreground">
@@ -54,11 +58,19 @@
           <details
             v-for="sop in employee.sops"
             :key="sop.title"
-            class="rounded-md border border-border/60 p-2"
+            class="group rounded-lg border border-border/60 bg-muted/20 open:bg-transparent"
           >
-            <summary class="cursor-pointer text-xs font-medium">{{ sop.title }}</summary>
+            <summary
+              class="flex cursor-pointer list-none items-center gap-1.5 px-3 py-2.5 text-xs font-medium select-none [&::-webkit-details-marker]:hidden"
+            >
+              <Icon
+                icon="lucide:chevron-right"
+                class="size-3.5 shrink-0 text-muted-foreground transition-transform group-open:rotate-90"
+              />
+              <span class="truncate">{{ sop.title }}</span>
+            </summary>
             <p
-              class="mt-1 whitespace-pre-wrap text-xs text-muted-foreground"
+              class="border-t border-border/40 px-3 py-2.5 text-xs leading-relaxed whitespace-pre-wrap text-muted-foreground"
               :data-testid="`detail-sop-content-${sop.title}`"
             >
               {{ sop.content }}
@@ -68,7 +80,7 @@
 
         <!-- 知识库：包级状态卡 -->
         <section data-testid="detail-knowledge" class="space-y-2">
-          <h3 class="text-xs font-semibold text-muted-foreground">
+          <h3 class="text-[11px] font-semibold tracking-wide text-muted-foreground">
             {{ t('digitalEmployee.sectionKnowledge') }}
           </h3>
           <p v-if="employee.knowledgeBaseIds.length === 0" class="text-xs text-muted-foreground">
@@ -76,7 +88,7 @@
           </p>
           <p
             v-else-if="knowledgePackages.length === 0"
-            class="text-xs text-muted-foreground"
+            class="rounded-md bg-muted/40 px-2.5 py-2 text-xs text-muted-foreground"
             data-testid="detail-knowledge-unavailable"
           >
             {{ t('digitalEmployee.detail.knowledgeUnavailable') }}
@@ -85,7 +97,7 @@
             <div
               v-for="pkg in knowledgePackages"
               :key="pkg.knowledgeBaseId"
-              class="rounded-md border border-border/60 p-2 text-xs"
+              class="rounded-lg border border-border/60 bg-muted/20 px-3 py-2.5 text-xs"
               :data-testid="`detail-knowledge-${pkg.knowledgeBaseId}`"
             >
               <div class="flex items-center justify-between gap-2">
@@ -118,26 +130,34 @@
 
         <!-- 技能：服务端定义（有明细展示名称，无明细回退 id）+ 本地安装状态 -->
         <section data-testid="detail-skills" class="space-y-2">
-          <h3 class="text-xs font-semibold text-muted-foreground">
+          <h3 class="text-[11px] font-semibold tracking-wide text-muted-foreground">
             {{ t('digitalEmployee.sectionSkills') }}
           </h3>
           <p v-if="employee.skillIds.length === 0" class="text-xs text-muted-foreground">
             {{ t('digitalEmployee.detail.emptySkills') }}
           </p>
-          <ul v-else class="space-y-1 text-xs">
+          <ul v-else class="space-y-1.5">
             <li
               v-for="skill in employee.skills ?? []"
               :key="`detail-${skill.id}`"
-              class="flex items-center justify-between gap-2"
+              class="rounded-lg border border-border/60 bg-muted/20 px-3 py-2"
             >
-              <span class="truncate">{{ skill.name }}</span>
-              <span class="shrink-0 text-muted-foreground">{{ skill.id }}</span>
+              <p class="truncate text-xs font-medium">{{ skill.name }}</p>
+              <p class="mt-0.5 truncate font-mono text-[10px] text-muted-foreground">
+                {{ skill.id }}
+              </p>
             </li>
-            <li v-for="id in skillIdsWithoutDetail" :key="id" class="truncate">{{ id }}</li>
+            <li
+              v-for="id in skillIdsWithoutDetail"
+              :key="id"
+              class="rounded-lg border border-border/60 bg-muted/20 px-3 py-2"
+            >
+              <p class="truncate font-mono text-[11px] text-muted-foreground">{{ id }}</p>
+            </li>
           </ul>
           <p
             v-if="provisionResult?.skillNames.length"
-            class="text-xs text-emerald-600"
+            class="rounded-md bg-emerald-500/10 px-2.5 py-1.5 text-xs text-emerald-600"
             data-testid="detail-installed-skills"
           >
             {{
@@ -159,21 +179,33 @@
 
         <!-- 工具：名单 + provision 就绪状态 -->
         <section data-testid="detail-tools" class="space-y-2">
-          <h3 class="text-xs font-semibold text-muted-foreground">
+          <h3 class="text-[11px] font-semibold tracking-wide text-muted-foreground">
             {{ t('digitalEmployee.sectionTools') }}
           </h3>
           <p v-if="employee.tools.length === 0" class="text-xs text-muted-foreground">
             {{ t('digitalEmployee.detail.emptyTools') }}
           </p>
-          <ul v-else class="space-y-1 text-xs">
-            <li v-for="tool in employee.tools" :key="tool" class="truncate">{{ tool }}</li>
-          </ul>
+          <div v-else class="flex flex-wrap gap-1.5">
+            <span
+              v-for="tool in employee.tools"
+              :key="tool"
+              class="max-w-full truncate rounded-md border border-border/60 bg-muted/20 px-2 py-1 font-mono text-[11px] text-muted-foreground"
+              >{{ tool }}</span
+            >
+          </div>
           <div
             v-if="provisionResult"
-            class="flex flex-wrap gap-3 text-xs"
+            class="flex flex-wrap gap-2"
             data-testid="detail-tool-readiness"
           >
-            <span :class="provisionResult.toolsReady ? 'text-emerald-600' : 'text-destructive'">
+            <span
+              class="rounded-md px-2 py-0.5 text-[11px] font-medium"
+              :class="
+                provisionResult.toolsReady
+                  ? 'bg-emerald-500/10 text-emerald-600'
+                  : 'bg-destructive/10 text-destructive'
+              "
+            >
               {{
                 t(
                   provisionResult.toolsReady
@@ -184,7 +216,12 @@
             </span>
             <span
               v-if="employee.knowledgeBaseIds.length > 0"
-              :class="provisionResult.knowledgeToolReady ? 'text-emerald-600' : 'text-destructive'"
+              class="rounded-md px-2 py-0.5 text-[11px] font-medium"
+              :class="
+                provisionResult.knowledgeToolReady
+                  ? 'bg-emerald-500/10 text-emerald-600'
+                  : 'bg-destructive/10 text-destructive'
+              "
             >
               {{
                 t(
@@ -204,6 +241,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { Icon } from '@iconify/vue'
 import {
   Sheet,
   SheetContent,
