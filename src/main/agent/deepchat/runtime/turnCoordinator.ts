@@ -1609,9 +1609,12 @@ export class TurnCoordinator {
         // Legacy fallback: this paused run predates Tape-backed Skill context recovery, so
         // there is no manifest to restore. Instead of refusing to resume, re-materialize
         // the recorded names against the CURRENT skill definitions — the same pipeline a
-        // fresh execution uses (prepareFresh + preview). Bodies may differ from what the
-        // paused run originally saw, which is exactly what the previous hard-failure
-        // guidance ("start a new execution") implied, minus losing the conversation.
+        // fresh execution uses (prepareFresh + preview). The names recorded on the user
+        // message are the raw ones, so use the catalog-validated list (invalid names are
+        // dropped silently) — identical degradation semantics to a fresh execution. Bodies
+        // may differ from what the paused run originally saw, which is exactly what the
+        // previous hard-failure guidance ("start a new execution") implied, minus losing
+        // the conversation.
         recoveredSkillBodies = await this.runPreStreamStep(
           { sessionId, messageId, step: 'skill-context-prepare', signal: preStreamAbortSignal },
           async () => {
@@ -1619,7 +1622,7 @@ export class TurnCoordinator {
               this.ports.skillContextMaterializer.prepareFresh({
                 sessionId,
                 agentId: activeAgentId,
-                messageSkillNames: legacyMessageSkillNames,
+                messageSkillNames: messageActiveSkillNames,
                 sessionSkillNames: sessionActiveSkillNames
               }),
               preStreamAbortSignal

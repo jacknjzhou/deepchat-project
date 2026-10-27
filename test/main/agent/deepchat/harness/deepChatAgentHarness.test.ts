@@ -14687,6 +14687,52 @@ describe('DeepChatAgentHarness', () => {
       )
     })
 
+    it('drops stale message Skill names when resuming a legacy paused turn', async () => {
+      // 消息里记录的技能名可能已从目录消失（旧命名规则装过、技能被删）：
+      // 恢复必须成功，且失效名经目录校验静默滤掉——与新消息路径同一降级语义，
+      // 而不是让 prepareFresh 对缺失名硬失败。
+      const skillService = getSkillServiceMock()
+      skillService.getMetadataList.mockResolvedValue([
+        { name: 'runtime-skill', description: 'Runtime skill' }
+      ])
+      skillService.validateSkillNames.mockImplementation(
+        async (_agentId: string, skills: string[]) =>
+          skills.filter((name) => name === 'runtime-skill')
+      )
+      skillService.getActiveSkills.mockResolvedValue([])
+      skillService.loadSkillContent.mockResolvedValue({ content: 'FILTERED_LEGACY_SKILL_BODY' })
+      let streamParams: any
+      ;(processStream as ReturnType<typeof vi.fn>).mockImplementationOnce(async (params: any) => {
+        streamParams = params
+        return { status: 'completed' }
+      })
+      await agent.initSession('s1', { providerId: 'openai', modelId: 'gpt-4' })
+      installPendingQuestion()
+      const triggeringUserRow = makeDeepchatUserRow(1, 'resume query', 'resume-user')
+      triggeringUserRow.content = JSON.stringify({
+        text: 'resume query',
+        files: [],
+        links: [],
+        search: false,
+        think: false,
+        activeSkills: ['de-agent_9d3d1fdf171049ed-document-generation-for-proofs', 'runtime-skill']
+      })
+      sqlitePresenter.deepchatMessagesTable.getLastUserMessageBeforeOrAtOrderSeq.mockReturnValue(
+        triggeringUserRow
+      )
+
+      await expect(answerPendingQuestion()).resolves.toEqual({ resumed: true })
+
+      // 失效名被滤掉，只剩目录中可解析的名字进入重新物化。
+      expect(skillService.resolveFreshEffectiveSkillContents).toHaveBeenCalledWith('deepchat', [
+        'runtime-skill'
+      ])
+      const providerText = streamParams.run.messages
+        .map((message: { content?: unknown }) => String(message.content ?? ''))
+        .join('\n')
+      expect(providerText).toContain('FILTERED_LEGACY_SKILL_BODY')
+    })
+
     it('handles question_option and resumes assistant message', async () => {
       const prepareForResumeTurn = vi.spyOn(CompactionService.prototype, 'prepareForResumeTurn')
       await agent.initSession('s1', { providerId: 'openai', modelId: 'gpt-4' })
