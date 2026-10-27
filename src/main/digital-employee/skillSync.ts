@@ -37,6 +37,8 @@ export interface StaffdeckSkillSyncDeps {
       zipPath: string,
       options?: { overwrite?: boolean; targetName?: string }
     ) => Promise<{ success: boolean; error?: string }>
+    /** Names the Agent's catalog currently resolves (discovered + assigned). */
+    listVisibleSkillNames: (agentId: string) => Promise<string[]>
   }
   /** Records the `skills[].id` last installed for each slug, so unchanged skills are not re-fetched. */
   stateStore: {
@@ -208,10 +210,43 @@ export function createStaffdeckSkillSync(deps: StaffdeckSkillSyncDeps): Staffdec
       const failureReasons: Record<string, string> = {}
       let installed = 0
 
+      /**
+       * 目录可见性探测，一轮内只取一次。baseline 命中仍要求预期（带前缀）名字
+       * 在目录里可解析：旧构建可能装过无前缀目录，而记账的 id 永不变化，没有
+       * 这层检查该缺口永远不会自愈。缓存不跨轮——自愈安装会让名字变可见，读到
+       * 安装前的旧结果会导致每轮重复重装。探测失败降级为「信任 baseline」
+       * （返回 null）：可见性只是记账之上的校验，它自身的故障不能变成一轮
+       * 重装风暴。
+       */
+      let visibleNamesPromise: Promise<Set<string> | null> | undefined
+      const isInstalledVisible = async (slug: string): Promise<boolean> => {
+        if (visibleNamesPromise === undefined) {
+          visibleNamesPromise = deps.skills
+            .listVisibleSkillNames(SKILL_AGENT_ID)
+            .then((names) => new Set(names))
+            .catch((error) => {
+              console.warn(
+                `[digitalEmployee] skill visibility probe failed, trusting baseline — ${
+                  error instanceof Error ? error.message : String(error)
+                }`
+              )
+              return null
+            })
+        }
+        const visibleNames = await visibleNamesPromise
+        return visibleNames === null || visibleNames.has(employeeSkillName(employeeId, slug))
+      }
+
       for (const skill of skills) {
         // The server mints a new id whenever a skill is saved, so it doubles as
-        // a content version without hashing the package ourselves.
-        if (baseline[skill.slug] === skill.id) {
+        // a content version without hashing the package ourselves. A baseline
+        // hit still requires the expected (prefixed) name to be visible: an
+        // older build may have installed under a different naming rule, and
+        // since the recorded id never changes the gap would otherwise persist
+        // forever instead of healing on the next round.
+        const baselineHit =
+          baseline[skill.slug] === skill.id && (await isInstalledVisible(skill.slug))
+        if (baselineHit) {
           nextBaseline[skill.slug] = skill.id
           continue
         }

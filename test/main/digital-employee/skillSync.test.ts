@@ -63,7 +63,13 @@ function createHarness(
         const entry = state.downloads.length > 0 ? state.downloads.length : 0
         state.installed[`${agentId}:${installOptions?.targetName ?? 'unnamed'}`] = String(entry)
         return options.installResult ?? { success: true }
-      }
+      },
+      // 可见性从安装记录推导：装过的（agentId:名字）即可解析。真实实现里
+      // getMetadataList 返回的是目录中 assigned 且已发现的技能。
+      listVisibleSkillNames: async (agentId) =>
+        Object.keys(state.installed)
+          .filter((key) => key.startsWith(`${agentId}:`))
+          .map((key) => key.slice(agentId.length + 1))
     },
     stateStore: {
       get: (employeeId) => {
@@ -361,5 +367,58 @@ describe('syncEmployee', () => {
 
     // 已合规的包不做任何重打包：bytes 与下载内容逐字节一致。
     expect(harness.state.lastBytes).toEqual(withFrontmatter)
+  })
+
+  it('reinstalls a baseline hit whose expected name is not visible', async () => {
+    // 真实故障形态：旧构建在当前命名规则之前装过技能，磁盘上只有无前缀目录，
+    // 但记账 id 永不变化——不校验可见性的话缺口永远不会自愈。
+    const harness = createHarness({
+      responses: { 'slug=alpha': { ok: true } },
+      initialInstalled: { [`__baseline__${EMPLOYEE}`]: JSON.stringify({ alpha: 'sk_alpha' }) }
+    })
+
+    const result = await createStaffdeckSkillSync(harness.deps).syncEmployee({
+      employeeId: EMPLOYEE,
+      skills: [skill('alpha')]
+    })
+
+    expect(result.ok).toBe(true)
+    expect(result.installed).toBe(1)
+    expect(harness.state.downloads).toHaveLength(1)
+  })
+
+  it('skips again once the healed install is visible', async () => {
+    // 自愈一轮后下一轮必须回到「记账命中且可见 → 跳过」，否则每轮都会重装。
+    const harness = createHarness({
+      responses: { 'slug=alpha': { ok: true } },
+      initialInstalled: { [`__baseline__${EMPLOYEE}`]: JSON.stringify({ alpha: 'sk_alpha' }) }
+    })
+    const sync = createStaffdeckSkillSync(harness.deps)
+    const input = { employeeId: EMPLOYEE, skills: [skill('alpha')] }
+
+    await sync.syncEmployee(input)
+    const downloadsAfterHeal = harness.state.downloads.length
+    await sync.syncEmployee(input)
+
+    expect(downloadsAfterHeal).toBe(1)
+    expect(harness.state.downloads).toHaveLength(downloadsAfterHeal)
+  })
+
+  it('trusts the baseline when the visibility probe fails', async () => {
+    // 探测自身故障不能变成重装风暴：降级为按记账跳过。
+    const harness = createHarness({
+      initialInstalled: { [`__baseline__${EMPLOYEE}`]: JSON.stringify({ alpha: 'sk_alpha' }) }
+    })
+    harness.deps.skills.listVisibleSkillNames = async () => {
+      throw new Error('probe down')
+    }
+
+    const result = await createStaffdeckSkillSync(harness.deps).syncEmployee({
+      employeeId: EMPLOYEE,
+      skills: [skill('alpha')]
+    })
+
+    expect(result).toEqual({ ok: true, installed: 0, failedSkills: [], failureReasons: {} })
+    expect(harness.state.downloads).toEqual([])
   })
 })

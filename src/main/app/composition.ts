@@ -3556,7 +3556,10 @@ export async function createMainProcessControl(dependencies: {
       },
       skills: {
         installFromZipForAgent: (agentId, zipPath, options) =>
-          skillService.installFromZipForAgent(agentId, zipPath, options)
+          skillService.installFromZipForAgent(agentId, zipPath, options),
+        // 供记账命中后的可见性探测：名字解析不到就触发重装自愈。
+        listVisibleSkillNames: async (agentId) =>
+          (await skillService.getMetadataList(agentId)).map((metadata) => metadata.name)
       },
       stateStore: skillSyncStateStore
     })
