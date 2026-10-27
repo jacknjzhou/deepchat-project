@@ -314,6 +314,7 @@ describe('DigitalEmployeeSquarePage', () => {
         employeeId: 'emp-1',
         skipped: null,
         toolsReady: true,
+        toolsReason: null,
         knowledgeToolReady: true,
         installedSkills: 1,
         failedSkills: [],
@@ -346,6 +347,7 @@ describe('DigitalEmployeeSquarePage', () => {
       employeeId: 'emp-1',
       skipped: null,
       toolsReady: true,
+      toolsReason: null,
       knowledgeToolReady: true,
       installedSkills: 1,
       failedSkills: [],
@@ -379,6 +381,7 @@ describe('DigitalEmployeeSquarePage', () => {
       employeeId: 'emp-1',
       skipped: null,
       toolsReady: true,
+      toolsReason: null,
       knowledgeToolReady: true,
       installedSkills: 2,
       failedSkills: ['de-emp-1-broken'],
@@ -416,6 +419,7 @@ describe('DigitalEmployeeSquarePage', () => {
       employeeId: 'emp-1',
       skipped: null,
       toolsReady: true,
+      toolsReason: null,
       knowledgeToolReady: true,
       installedSkills: 1,
       failedSkills: [],
@@ -440,6 +444,7 @@ describe('DigitalEmployeeSquarePage', () => {
       employeeId: 'emp-1',
       skipped: null,
       toolsReady: false,
+      toolsReason: 'REGISTER_FAILED',
       knowledgeToolReady: true,
       installedSkills: 1,
       failedSkills: [],
@@ -461,6 +466,97 @@ describe('DigitalEmployeeSquarePage', () => {
     expect(pushMock).toHaveBeenCalledWith({ name: 'chat' })
   })
 
+  it('stays silent when the employee has no cloud tools at all', async () => {
+    // NO_TOOLS = 员工本来就没有 staffdeck 工具，没有东西可降级——
+    // 按「云端工具没有注册成功」告警是误报。
+    const { wrapper } = await setup()
+    await wrapper.get('[data-testid="digital-employee-card-emp-1"]').trigger('click')
+    await flushPromises()
+    await wrapper.get('[data-testid="digital-employee-start-emp-1"]').trigger('click')
+    await flushPromises()
+
+    stubStore.provisionEmployee.mockResolvedValue({
+      employeeId: 'emp-1',
+      skipped: null,
+      toolsReady: false,
+      toolsReason: 'NO_TOOLS',
+      knowledgeToolReady: true,
+      installedSkills: 1,
+      failedSkills: [],
+      failureReasons: {},
+      skillNames: ['de-emp-1-writing'],
+      failures: []
+    })
+
+    await wrapper.get('[data-testid="digital-employee-start-button"]').trigger('click')
+    await flushPromises()
+
+    expect(notifyRenderer).not.toHaveBeenCalled()
+    expect(pushMock).toHaveBeenCalledWith({ name: 'chat' })
+  })
+
+  it('points at the settings page when StaffDeck is not configured', async () => {
+    const { wrapper } = await setup()
+    await wrapper.get('[data-testid="digital-employee-card-emp-1"]').trigger('click')
+    await flushPromises()
+    await wrapper.get('[data-testid="digital-employee-start-emp-1"]').trigger('click')
+    await flushPromises()
+
+    stubStore.provisionEmployee.mockResolvedValue({
+      employeeId: 'emp-1',
+      skipped: null,
+      toolsReady: false,
+      toolsReason: 'NOT_CONFIGURED',
+      knowledgeToolReady: true,
+      installedSkills: 1,
+      failedSkills: [],
+      failureReasons: {},
+      skillNames: ['de-emp-1-writing'],
+      failures: []
+    })
+
+    await wrapper.get('[data-testid="digital-employee-start-button"]').trigger('click')
+    await flushPromises()
+
+    expect(notifyRenderer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: 'warning',
+        description: 'digitalEmployee.provision.degradedToolsNotConfigured'
+      })
+    )
+  })
+
+  it('tells users to check the service when the StaffDeck server is unreachable', async () => {
+    const { wrapper } = await setup()
+    await wrapper.get('[data-testid="digital-employee-card-emp-1"]').trigger('click')
+    await flushPromises()
+    await wrapper.get('[data-testid="digital-employee-start-emp-1"]').trigger('click')
+    await flushPromises()
+
+    stubStore.provisionEmployee.mockResolvedValue({
+      employeeId: 'emp-1',
+      skipped: null,
+      toolsReady: false,
+      toolsReason: 'START_FAILED',
+      knowledgeToolReady: true,
+      installedSkills: 1,
+      failedSkills: [],
+      failureReasons: {},
+      skillNames: ['de-emp-1-writing'],
+      failures: []
+    })
+
+    await wrapper.get('[data-testid="digital-employee-start-button"]').trigger('click')
+    await flushPromises()
+
+    expect(notifyRenderer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: 'warning',
+        description: 'digitalEmployee.provision.degradedToolsStartFailed'
+      })
+    )
+  })
+
   it('warns with the count when some skills failed to install', async () => {
     const { wrapper } = await setup()
     await wrapper.get('[data-testid="digital-employee-card-emp-1"]').trigger('click')
@@ -472,6 +568,7 @@ describe('DigitalEmployeeSquarePage', () => {
       employeeId: 'emp-1',
       skipped: null,
       toolsReady: true,
+      toolsReason: null,
       knowledgeToolReady: true,
       installedSkills: 1,
       failedSkills: ['broken-pkg'],
@@ -508,6 +605,7 @@ describe('DigitalEmployeeSquarePage', () => {
       employeeId: 'emp-1',
       skipped: null,
       toolsReady: true,
+      toolsReason: null,
       knowledgeToolReady: false,
       installedSkills: 1,
       failedSkills: [],
@@ -539,6 +637,7 @@ describe('DigitalEmployeeSquarePage', () => {
       employeeId: 'emp-2',
       skipped: null,
       toolsReady: true,
+      toolsReason: null,
       knowledgeToolReady: false,
       installedSkills: 0,
       failedSkills: [],
@@ -565,6 +664,7 @@ describe('DigitalEmployeeSquarePage', () => {
       employeeId: 'emp-1',
       skipped: 'NOT_LOCAL',
       toolsReady: false,
+      toolsReason: null,
       installedSkills: 0,
       failedSkills: [],
       failureReasons: {},

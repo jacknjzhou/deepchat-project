@@ -390,7 +390,12 @@ const reportDegradedProvisioning = (
   if (provisioned.skipped !== null) return
 
   const missingSkills = provisioned.failedSkills.length
-  const toolsUnavailable = !provisioned.toolsReady
+  // 员工本来就没有云端工具（NO_TOOLS）谈不上「没注册成功」：没有东西可降级，
+  // 弹警告反而是误报。真正要提示的是配置缺失（去设置）与服务不可达（查网络）。
+  const toolsUnavailable = !provisioned.toolsReady && provisioned.toolsReason !== 'NO_TOOLS'
+  let toolsMessageKey = 'degradedTools'
+  if (provisioned.toolsReason === 'NOT_CONFIGURED') toolsMessageKey = 'degradedToolsNotConfigured'
+  else if (provisioned.toolsReason === 'START_FAILED') toolsMessageKey = 'degradedToolsStartFailed'
   // 没配知识库的员工本来就没有检索工具（注册器按常态清理，不算失败），
   // 只有「配了库但工具没起来」才是降级。
   const knowledgeUnavailable = hasKnowledgeBases && !provisioned.knowledgeToolReady
@@ -406,7 +411,7 @@ const reportDegradedProvisioning = (
     : t('digitalEmployee.provision.degradedSkills', { count: missingSkills })
 
   const messages: string[] = []
-  if (toolsUnavailable) messages.push(t('digitalEmployee.provision.degradedTools'))
+  if (toolsUnavailable) messages.push(t(`digitalEmployee.provision.${toolsMessageKey}`))
   if (knowledgeUnavailable) {
     messages.push(t('digitalEmployee.provision.knowledgeToolUnavailable'))
   }

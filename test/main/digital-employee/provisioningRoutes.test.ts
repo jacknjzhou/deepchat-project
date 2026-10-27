@@ -65,6 +65,7 @@ describe('digitalEmployeeProvision route', () => {
       employeeId: 'emp-1',
       skipped: null,
       toolsReady: true,
+      toolsReason: null,
       knowledgeToolReady: true,
       installedSkills: 2,
       failedSkills: [],
@@ -82,6 +83,20 @@ describe('digitalEmployeeProvision route', () => {
 
     // 注册了但起不来，工具一个都用不了：说成「就绪」会让 P1-9 的提示失真。
     expect(result.toolsReady).toBe(false)
+    // 原因必须透传：START_FAILED（查地址/网络）和 NOT_CONFIGURED（去设置）
+    // 的处置完全不同，坍缩成布尔就只能在 toast 里猜。
+    expect(result.toolsReason).toBe('START_FAILED')
+  })
+
+  it('surfaces NOT_CONFIGURED so the toast can point at the settings page', async () => {
+    const harness = createHarness({
+      result: outcome({ mcp: { registered: false, started: false, reason: 'NOT_CONFIGURED' } })
+    })
+
+    const result = await call(harness)
+
+    expect(result.toolsReady).toBe(false)
+    expect(result.toolsReason).toBe('NOT_CONFIGURED')
   })
 
   it('reports knowledgeToolReady false when the local search server did not start', async () => {

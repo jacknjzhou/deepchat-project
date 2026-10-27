@@ -142,6 +142,8 @@
   "provision": {
     "degradedTitle": "部分能力未能就绪",
     "degradedTools": "云端工具没有注册成功，这个员工的工具本轮不可用。对话本身不受影响。",
+    "degradedToolsNotConfigured": "还没有配置 StaffDeck 连接，云端工具无法注册。请到 设置 → 数字员工服务 填写服务地址、API Key 与外部用户 ID。",
+    "degradedToolsStartFailed": "StaffDeck 云端工具服务连接失败，这个员工的工具本轮不可用。请检查服务地址与网络。",
     "knowledgeToolUnavailable": "本地知识检索没有启动，这个员工本轮无法主动查询自己的知识库。对话本身不受影响。",
     "degradedSkills": "有 {count} 个技能没有安装成功，本轮不会生效。对话本身不受影响。",
     "degradedSkillReasons": "失败原因：{reasons}",

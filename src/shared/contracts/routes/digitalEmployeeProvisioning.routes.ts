@@ -28,6 +28,19 @@ export const PROVISIONING_CHAINS = ['mcp', 'skills', 'knowledgeTool'] as const
 export const ProvisioningChainSchema = z.enum(PROVISIONING_CHAINS)
 export type ProvisioningChainValue = z.infer<typeof ProvisioningChainSchema>
 
+/**
+ * 云端工具注册失败的具体原因。`NOT_CONFIGURED` 指向设置缺失（去配置），
+ * `START_FAILED` 指向服务不可达（查地址/网络）——两者的处置完全不同，
+ * 所以随 provision 输出透传，供降级提示给出可操作文案。
+ */
+export const StaffdeckMcpRegisterReasonSchema = z.enum([
+  'NOT_CONFIGURED',
+  'NO_TOOLS',
+  'START_FAILED',
+  'REGISTER_FAILED'
+])
+export type StaffdeckMcpRegisterReasonValue = z.infer<typeof StaffdeckMcpRegisterReasonSchema>
+
 export const digitalEmployeeProvisionRoute = defineRouteContract({
   name: 'digitalEmployee.provision',
   input: z.object({ employeeId: z.string().min(1).max(64) }).strict(),
@@ -37,6 +50,11 @@ export const digitalEmployeeProvisionRoute = defineRouteContract({
     skipped: ProvisioningSkipReasonSchema.nullable().default(null),
     /** 远端 MCP server 是否已注册并可连接。 */
     toolsReady: z.boolean().default(false),
+    /**
+     * 云端工具未就绪时的具体原因；就绪或整轮跳过时为 `null`。
+     * `NO_TOOLS` 表示员工本就没有云端工具——那不是降级，UI 不该告警。
+     */
+    toolsReason: StaffdeckMcpRegisterReasonSchema.nullable().default(null),
     /** 本地知识检索工具（会话内可主动查知识库）是否已注册并启动。 */
     knowledgeToolReady: z.boolean().default(false),
     /** 本轮新装/更新的技能数。 */

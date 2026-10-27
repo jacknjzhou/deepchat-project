@@ -52,6 +52,7 @@ export function createDigitalEmployeeProvisioningRoutes(
           employeeId: outcome.employeeId,
           skipped: outcome.skipped,
           toolsReady: outcome.mcp?.registered === true && outcome.mcp.started === true,
+          toolsReason: outcome.mcp?.reason ?? null,
           knowledgeToolReady:
             outcome.knowledgeTool?.registered === true && outcome.knowledgeTool.started === true,
           installedSkills: outcome.skills?.installed ?? 0,

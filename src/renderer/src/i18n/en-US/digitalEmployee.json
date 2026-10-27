@@ -142,6 +142,8 @@
   "provision": {
     "degradedTitle": "Some capabilities are not ready",
     "degradedTools": "The cloud tools did not register, so this employee cannot use them in this session. The conversation itself is unaffected.",
+    "degradedToolsNotConfigured": "The StaffDeck connection is not configured, so the cloud tools cannot register. Set the service URL, API key, and external user ID in Settings → Digital Employee Service first.",
+    "degradedToolsStartFailed": "Failed to reach the StaffDeck cloud tool service, so this employee cannot use its tools this round. Check the service URL and network.",
     "knowledgeToolUnavailable": "The local knowledge search did not start, so this employee cannot query its knowledge base this session. The conversation itself is unaffected.",
     "degradedSkills": "{count} skill(s) failed to install and will not apply this session. The conversation itself is unaffected.",
     "degradedSkillReasons": "Failure reasons: {reasons}",

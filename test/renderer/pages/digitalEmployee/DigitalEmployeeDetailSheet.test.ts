@@ -30,6 +30,7 @@ const makeProvisionResult = (
   employeeId: 'emp-1',
   skipped: null,
   toolsReady: true,
+  toolsReason: null,
   knowledgeToolReady: true,
   installedSkills: 1,
   failedSkills: [],
