@@ -316,6 +316,19 @@ export const useDigitalEmployeeStore = defineStore('digitalEmployee', () => {
     }
   }
 
+  /**
+   * 详情视图用：读员工全部知识包状态（loadKnowledgeStatus 只挑「最需要处理
+   * 的一条」，详情页要的是全量清单）。失败返回空数组：知识状态是展示性的
+   * 信息，不该打断详情查看。
+   */
+  async function listKnowledgePackages(employeeId: string): Promise<KnowledgePackageStatus[]> {
+    try {
+      return (await client.knowledgeStatus(employeeId)).packages
+    } catch {
+      return []
+    }
+  }
+
   async function loadInitialData(): Promise<void> {
     await Promise.all([fetchEmployees(), loadPersistedState()])
   }
@@ -577,6 +590,7 @@ export const useDigitalEmployeeStore = defineStore('digitalEmployee', () => {
     bindSession,
     employeeForSession,
     loadKnowledgeStatus,
+    listKnowledgePackages,
     provisionEmployee,
     reportBackflow,
     loadRemoteBinding,
