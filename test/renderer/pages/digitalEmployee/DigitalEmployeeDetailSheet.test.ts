@@ -64,9 +64,7 @@ async function setup(options: {
     })
   }))
   const DigitalEmployeeDetailSheet = (
-    await import(
-      '../../../../src/renderer/src/pages/digitalEmployee/DigitalEmployeeDetailSheet.vue'
-    )
+    await import('../../../../src/renderer/src/pages/digitalEmployee/DigitalEmployeeDetailSheet.vue')
   ).default
   const wrapper = mount(DigitalEmployeeDetailSheet, {
     props: {

@@ -97,7 +97,9 @@
                 >
                   {{
                     pkg.stale
-                      ? t('digitalEmployee.detail.knowledgeStale', { reason: pkg.staleReason ?? '-' })
+                      ? t('digitalEmployee.detail.knowledgeStale', {
+                          reason: pkg.staleReason ?? '-'
+                        })
                       : t('digitalEmployee.detail.knowledgeFresh')
                   }}
                 </span>
