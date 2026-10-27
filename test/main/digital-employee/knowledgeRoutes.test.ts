@@ -171,28 +171,18 @@ describe('digitalEmployee.knowledgeLocalBase', () => {
     return handler({ employeeId }) as Promise<{ knowledgeBaseId: string | null }>
   }
 
-  it('returns the id recorded by the last sync', async () => {
+  it('prefers the currently derived id over a legacy recorded one', async () => {
     const store = createStore()
     store.setEmployee('agent_1', {
-      localKnowledgeBaseId: 'de-agent_1',
-      packages: {
-        'kb-1': {
-          configVersion: 'kv1:digest',
-          configHash: 'sha256:aaa',
-          etag: null,
-          stale: false,
-          staleReason: null,
-          lastSyncAt: '2026-10-23T00:00:00.000Z',
-          concepts: {}
-        }
-      }
+      // 旧派生规则可能把多个员工并进同一个库 id；记录一旦过时，按记录寻址
+      // 等于把撞车的混库继续交出去。派生是确定性的，必须以当前规则为准。
+      localKnowledgeBaseId: 'de-agent_1-legacy',
+      packages: {}
     })
     const routes = createDigitalEmployeeKnowledgeRoutes({ stateStore: store })
 
     const output = await localBaseOf(routes, 'agent_1')
 
-    // 必须与原同步写入的 id 完全一致：它是 `KnowledgeSettings` 里的配置 id，
-    // 差一个字符 similarityQuery 就抛 `Knowledge config not found`。
     expect(output).toEqual({ knowledgeBaseId: 'de-agent_1' })
     expect(digitalEmployeeKnowledgeLocalBaseRoute.output.safeParse(output).success).toBe(true)
   })

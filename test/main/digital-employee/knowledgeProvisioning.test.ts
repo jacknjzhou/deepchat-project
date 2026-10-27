@@ -49,11 +49,17 @@ describe('deriveLocalKnowledgeBaseId', () => {
     expect(deriveLocalKnowledgeBaseId('emp-1')).toBe(deriveLocalKnowledgeBaseId('emp-1'))
   })
 
+  it('keeps plain ASCII ids unchanged so existing stores are not migrated', () => {
+    expect(deriveLocalKnowledgeBaseId('emp-1')).toBe('de-emp-1')
+    expect(deriveLocalKnowledgeBaseId('finance')).toBe('de-finance')
+  })
+
   it('keeps only path-safe characters', () => {
     // id 会被当作向量库目录名（knowledge/index.ts:304 的 path.join），
     // 冒号、斜杠、点在任何平台上都可能出问题。
     const id = deriveLocalKnowledgeBaseId('emp/1:weird name')
     expect(id).toMatch(/^de-[a-z0-9_-]+$/)
+    expect(id.length).toBeLessThanOrEqual(64)
   })
 
   it('stays short enough to be a directory name', () => {
@@ -65,6 +71,24 @@ describe('deriveLocalKnowledgeBaseId', () => {
     const a = deriveLocalKnowledgeBaseId(`${'a'.repeat(200)}-alpha`)
     const b = deriveLocalKnowledgeBaseId(`${'a'.repeat(200)}-beta`)
     expect(a).not.toBe(b)
+  })
+
+  it('does not collide when lossy normalization collapses distinct ids', () => {
+    // `a:b` 与 `a/b` 归一化后都是 `de-a`：不补 hash 就会共用一个向量库，
+    // 互相召回对方的知识与 SOP。
+    expect(deriveLocalKnowledgeBaseId('a:b')).not.toBe(deriveLocalKnowledgeBaseId('a/b'))
+  })
+
+  it('does not collapse non-ascii ids into one shared base', () => {
+    // 全非 ASCII 的 id 塌成空 slug：不补 hash 时所有这类员工共用 `de-employee`。
+    const a = deriveLocalKnowledgeBaseId('销售一部')
+    const b = deriveLocalKnowledgeBaseId('客服一部')
+    expect(a).toMatch(/^de-employee-[0-9a-f]{8}$/)
+    expect(a).not.toBe(b)
+  })
+
+  it('keeps uppercase-only ids distinct from their lowercase form', () => {
+    expect(deriveLocalKnowledgeBaseId('EMP-1')).not.toBe(deriveLocalKnowledgeBaseId('emp-1'))
   })
 })
 

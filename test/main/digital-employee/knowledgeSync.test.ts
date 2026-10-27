@@ -149,6 +149,43 @@ describe('knowledgeSync', () => {
     await rm(cacheDir, { recursive: true, force: true })
   })
 
+  it('rebuilds bookkeeping when the recorded base no longer matches the derived id', async () => {
+    const harness = await createHarness(cacheDir)
+    harness.store.setEmployee(EMPLOYEE_ID, {
+      // 旧派生规则的记录：id 对不上当前派生值，记账里的 fileId 也不属于
+      // 新库。不重置的话 hash 一致的概念会被当成已同步而漏灌新库。
+      localKnowledgeBaseId: 'de-agent_1-legacy',
+      packages: {
+        'kb-1': {
+          configVersion: 'kv1:digest',
+          configHash: 'sha256:aaa',
+          etag: null,
+          stale: false,
+          staleReason: null,
+          lastSyncAt: '2026-10-23T00:00:00.000Z',
+          concepts: { 'c-1': { hash: 'sha256:same', fileId: 'file-old' } }
+        }
+      },
+      sops: { 'sops/old.md': { hash: 'sha256:same-sop', fileId: 'file-old-sop' } }
+    })
+    harness.setPackages([
+      makePackage({
+        concepts: [{ conceptId: 'c-1', type: 'text', title: '制度', hash: 'sha256:same', size: 10 }]
+      })
+    ])
+    harness.bodies.set('c-1', '正文')
+
+    // SOP 的 hash 也与记账一致：重置前增量比对会认为什么都没变。
+    const result = await runSync(harness, ['kb-1'], [{ title: 'old', content: '正文' }])
+
+    expect(result.ok).toBe(true)
+    expect(harness.downloads).toContain('c-1')
+    expect(harness.calls.add.some((filePath) => filePath.includes('c-1'))).toBe(true)
+    expect(harness.calls.add.some((filePath) => filePath.includes('sops'))).toBe(true)
+    const state = harness.store.getEmployee(EMPLOYEE_ID)
+    expect(state?.localKnowledgeBaseId).toBe(LOCAL_KB_ID)
+  })
+
   it('does nothing at all when the manifest is empty', async () => {
     const harness = await createHarness(cacheDir)
     harness.setPackages([])

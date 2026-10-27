@@ -46,6 +46,11 @@ export type ProvisioningResult =
  * 必须稳定：重建会换掉向量库目录，旧目录变孤儿，且要重跑一次全量索引。
  * 只保留 `[a-z0-9_-]`：这个 id 会被 `path.join` 成目录名，冒号在 Windows
  * 非法，斜杠会跨目录，点会与 `.wal` 之类的后缀混淆。
+ *
+ * 归一化是多对一（小写化、非法字符折叠、连续折叠都在丢信息），两个不同
+ * 员工可能塌成同一个 slug——共用一个向量库就是互相召回对方的知识与 SOP。
+ * 因此凡是有损重写（slug ≠ 原文）或超长截断，都补 8 位原文 hash 保证唯一；
+ * 纯 ASCII 安全 id 保持原样不加 hash，存量库不迁移。
  */
 export function deriveLocalKnowledgeBaseId(employeeId: string): string {
   const slug = employeeId
@@ -54,13 +59,12 @@ export function deriveLocalKnowledgeBaseId(employeeId: string): string {
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '')
 
-  const raw = `${LOCAL_ID_PREFIX}${slug || 'employee'}`
-  if (raw.length <= MAX_ID_LENGTH) return raw
+  const base = `${LOCAL_ID_PREFIX}${slug || 'employee'}`
+  const lossy = slug !== employeeId
+  if (!lossy && base.length <= MAX_ID_LENGTH) return base
 
-  // 截断会让前缀相同的两个员工撞成同一个 id（覆盖彼此的向量库），
-  // 所以补 8 位原文 hash 保证唯一。
-  const suffix = createHash('sha256').update(employeeId).digest('hex').slice(0, 8)
-  return `${raw.slice(0, MAX_ID_LENGTH - suffix.length - 1)}-${suffix}`
+  const suffix = createHash('sha256').update(employeeId, 'utf8').digest('hex').slice(0, 8)
+  return `${base.slice(0, MAX_ID_LENGTH - suffix.length - 1)}-${suffix}`
 }
 
 interface EmbeddingChoice {

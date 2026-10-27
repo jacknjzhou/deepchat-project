@@ -4,6 +4,7 @@ import path from 'node:path'
 import type { KnowledgeFileResult } from '../../../src/shared/types/knowledge'
 import type { ConceptEntry, KnowledgeManifest, KnowledgePackage } from './knowledgeClient'
 import { StaffdeckProblemError } from './remoteClient'
+import { deriveLocalKnowledgeBaseId } from './knowledgeProvisioning'
 import type { KnowledgeStaleReason } from './knowledgeSyncState'
 import type { KnowledgeSyncStateStore } from './knowledgeSyncState'
 import type { ProvisioningResult } from './knowledgeProvisioning'
@@ -376,6 +377,19 @@ export function createKnowledgeSync(deps: KnowledgeSyncDeps): KnowledgeSync {
         })
         if (result.ok) provisioned = result
         return result
+      }
+
+      // 派生规则升级会让状态表指向旧库：记账里的 fileId 全部失效，增量比对
+      // 会把「已在旧库」的内容当成已同步而漏灌新库，reAddFile 也会拿着旧库
+      // 的 fileId 打新库而永久失败。检测到基座 id 与当前派生值不一致就整条
+      // 重置记账，本轮对新库做全量重灌；旧库留作孤儿，不再被任何入口寻址。
+      const derivedKnowledgeBaseId = deriveLocalKnowledgeBaseId(input.employeeId)
+      if (previousEmployee && previousEmployee.localKnowledgeBaseId !== derivedKnowledgeBaseId) {
+        deps.stateStore.setEmployee(input.employeeId, {
+          localKnowledgeBaseId: derivedKnowledgeBaseId,
+          packages: {},
+          sops: {}
+        })
       }
 
       const sopReason = await syncSopsIfNeeded({

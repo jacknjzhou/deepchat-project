@@ -60,10 +60,10 @@ function readStatus(
  * `similarityQuery`，`KnowledgeService.getOrCreateKnowledgeBase` 找不到配置会
  * 直接抛错，而 renderer 侧只能 catch 成空结果——表现为「永远召回不到知识」。
  *
- * 解析顺序：
- * 1. 状态表里记录的 `localKnowledgeBaseId`（同步时写入，权威来源）；
- * 2. 状态表缺失时按同一派生规则重算一次——只要配置里真有这个库就用它。
- *    覆盖「状态表被清空但向量库还在」，不必为了检索再跑一轮全量索引。
+ * 只按派生规则重算、不读状态表：派生是确定性的，状态表里的记录只服务同步
+ * 记账。派生规则升级后旧记录会指向旧库（旧规则可能把多个员工并进同一个
+ * id），按记录寻址等于把撞车的混库继续交出去；按当前规则寻址最多空手到
+ * 下一轮同步灌满新库。
  *
  * 返回 `null` 一律表示「本机没有可供检索的库」，调用方必须跳过检索而不是回退
  * 到远端 id。
@@ -72,14 +72,12 @@ function readLocalKnowledgeBaseId(
   deps: DigitalEmployeeKnowledgeRoutesDeps,
   employeeId: string
 ): { knowledgeBaseId: string | null } {
-  const recorded = deps.stateStore.getEmployee(employeeId)?.localKnowledgeBaseId
-  const candidate = recorded ?? deriveLocalKnowledgeBaseId(employeeId)
-
-  // 没有探测器时无从校验，只能按状态表返回；有就顺手排掉「已被删除的库」。
-  if (deps.hasKnowledgeBase && !deps.hasKnowledgeBase(candidate)) {
+  const knowledgeBaseId = deriveLocalKnowledgeBaseId(employeeId)
+  // 没有探测器时无从校验，只能直接返回派生值；有就顺手排掉「已被删除的库」。
+  if (deps.hasKnowledgeBase && !deps.hasKnowledgeBase(knowledgeBaseId)) {
     return { knowledgeBaseId: null }
   }
-  return { knowledgeBaseId: candidate }
+  return { knowledgeBaseId }
 }
 
 /**
