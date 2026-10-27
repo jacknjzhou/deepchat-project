@@ -116,7 +116,7 @@
           type="button"
           class="flex flex-col items-start gap-2 rounded-xl border border-border/60 bg-card/50 p-4 text-left transition-colors hover:bg-accent/40"
           :data-testid="`digital-employee-card-${employee.id}`"
-          @click="openDetail(employee)"
+          @click="openSheet(employee)"
         >
           <div class="flex w-full items-center gap-2">
             <div
@@ -164,6 +164,17 @@
                 :class="store.favorites.includes(employee.id) ? 'fill-amber-400' : ''"
               />
             </span>
+            <span
+              role="button"
+              tabindex="0"
+              class="ml-1 shrink-0 cursor-pointer rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              :data-testid="`digital-employee-start-${employee.id}`"
+              :title="t('digitalEmployee.startConversation')"
+              @click.stop="openStartDialog(employee)"
+              @keydown.enter.stop="openStartDialog(employee)"
+            >
+              <Icon icon="lucide:message-circle" class="size-4" />
+            </span>
           </div>
           <p class="line-clamp-2 text-xs text-muted-foreground">{{ employee.description }}</p>
           <div class="flex flex-wrap gap-1">
@@ -210,56 +221,6 @@
           <DialogTitle>{{ detailEmployee.name }} · {{ detailEmployee.role }}</DialogTitle>
           <DialogDescription>{{ detailEmployee.description }}</DialogDescription>
         </DialogHeader>
-        <div class="max-h-[50vh] space-y-3 overflow-y-auto text-sm">
-          <section v-if="detailEmployee.sops.length">
-            <h3 class="text-xs font-semibold text-muted-foreground">
-              {{ t('digitalEmployee.sectionSops') }}
-            </h3>
-            <ul class="mt-1 list-disc pl-4 text-xs">
-              <li v-for="sop in detailEmployee.sops" :key="sop.title">{{ sop.title }}</li>
-            </ul>
-          </section>
-          <section v-if="detailEmployee.skillIds.length">
-            <h3 class="text-xs font-semibold text-muted-foreground">
-              {{ t('digitalEmployee.sectionSkills') }}
-            </h3>
-            <p class="mt-1 text-xs">{{ detailEmployee.skillIds.join('、') }}</p>
-          </section>
-          <section v-if="detailProvisionResult" data-testid="digital-employee-provision-result">
-            <h3 class="text-xs font-semibold text-muted-foreground">
-              {{ t('digitalEmployee.provision.resultTitle') }}
-            </h3>
-            <p v-if="detailProvisionResult.skillNames.length" class="mt-1 text-xs">
-              {{
-                t('digitalEmployee.provision.installedSkills', {
-                  skills: detailProvisionResult.skillNames.join('、')
-                })
-              }}
-            </p>
-            <template v-if="detailProvisionResult.failedSkills.length">
-              <p class="mt-1 text-xs text-destructive">
-                {{ t('digitalEmployee.provision.skillInstallFailed') }}
-              </p>
-              <ul class="mt-1 list-disc pl-4 text-xs">
-                <li v-for="slug in detailProvisionResult.failedSkills" :key="slug">
-                  {{ slug }}：{{ detailProvisionResult.failureReasons[slug] ?? '' }}
-                </li>
-              </ul>
-            </template>
-          </section>
-          <section v-if="detailEmployee.tools.length">
-            <h3 class="text-xs font-semibold text-muted-foreground">
-              {{ t('digitalEmployee.sectionTools') }}
-            </h3>
-            <p class="mt-1 text-xs">{{ detailEmployee.tools.join('、') }}</p>
-          </section>
-          <section v-if="detailEmployee.knowledgeBaseIds.length">
-            <h3 class="text-xs font-semibold text-muted-foreground">
-              {{ t('digitalEmployee.sectionKnowledge') }}
-            </h3>
-            <p class="mt-1 text-xs">{{ detailEmployee.knowledgeBaseIds.join('、') }}</p>
-          </section>
-        </div>
         <div class="space-y-2">
           <p
             v-if="startError"
@@ -286,6 +247,18 @@
         </div>
       </DialogContent>
     </Dialog>
+
+    <!-- 详情 Sheet：纯只读；开始对话走卡片按钮 + 上面的瘦身 Dialog -->
+    <DigitalEmployeeDetailSheet
+      :employee="sheetEmployee"
+      :provision-result="sheetProvisionResult"
+      :open="sheetEmployee !== null"
+      @update:open="
+        (open: boolean) => {
+          if (!open) sheetEmployee = null
+        }
+      "
+    />
   </div>
 </template>
 
@@ -309,6 +282,7 @@ import {
 } from '@shadcn/components/ui/dialog'
 import { notifyRenderer } from '@renderer-notifications/rendererNotificationPort'
 import { useDigitalEmployeeStore } from '@/stores/digitalEmployeeStore'
+import DigitalEmployeeDetailSheet from './DigitalEmployeeDetailSheet.vue'
 import { useMcpStore } from '@/stores/mcp'
 import type { DigitalEmployee } from '@shared/contracts/routes'
 
@@ -329,6 +303,8 @@ const activeTab = ref<TabKey>('all')
 const searchQuery = ref('')
 const activeCapabilityFilter = ref<string | null>(null)
 const detailEmployee = ref<DigitalEmployee | null>(null)
+// 详情 Sheet 与对话弹层分离：卡片点击看详情（纯只读），卡片上的对话按钮才开对话。
+const sheetEmployee = ref<DigitalEmployee | null>(null)
 const openingQuestion = ref('')
 const startingConversation = ref(false)
 const startError = ref(false)
@@ -376,20 +352,25 @@ const squareCapabilities = computed(() => {
   return [...capabilities]
 })
 
-const openDetail = (employee: DigitalEmployee) => {
-  detailEmployee.value = employee
-  openingQuestion.value = ''
-}
-
-/** 当前详情弹层员工的最近一次准备结果；没准备过（或 remote 跳过）时为 null。 */
-const detailProvisionResult = computed(() => {
-  const id = detailEmployee.value?.id
+/** 每员工最近一次本地准备结果；remote（skipped）与未准备都归一为 null。 */
+const provisionResultFor = (id: string | null | undefined) => {
   if (!id) return null
   const result = provisionResults.value[id] ?? null
   // remote 员工本地不准备，`skipped` 不携带任何本地能力信息。
   if (!result || result.skipped !== null) return null
   return result
-})
+}
+
+const openSheet = (employee: DigitalEmployee) => {
+  sheetEmployee.value = employee
+}
+
+const openStartDialog = (employee: DigitalEmployee) => {
+  detailEmployee.value = employee
+  openingQuestion.value = ''
+}
+
+const sheetProvisionResult = computed(() => provisionResultFor(sheetEmployee.value?.id))
 
 /**
  * 把「准备工作降级了什么」告诉用户。

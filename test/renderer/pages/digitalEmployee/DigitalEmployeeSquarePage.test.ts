@@ -45,6 +45,7 @@ const stubStore = reactive({
   fetchEmployees: vi.fn(async () => {}),
   // 本地执行前的准备：默认成功但不产生技能名，页面据此退回 payload 的 skillIds。
   provisionEmployee: vi.fn(async () => null),
+  listKnowledgePackages: vi.fn(async () => []),
   startConversation: vi.fn(async () => '')
 })
 
@@ -93,6 +94,8 @@ const dcEmptyStub = defineComponent({
   template:
     '<div><span class="dc-empty-title">{{ title }}</span><span class="dc-empty-description">{{ description }}</span><slot /></div>'
 })
+
+const slotStub = defineComponent({ name: 'SlotStub', template: '<div><slot /></div>' })
 
 async function setup() {
   vi.resetModules()
@@ -165,7 +168,12 @@ async function setup() {
         DialogDescription: defineComponent({
           name: 'DialogDescriptionStub',
           template: '<div><slot /></div>'
-        })
+        }),
+        Sheet: slotStub,
+        SheetContent: slotStub,
+        SheetHeader: slotStub,
+        SheetTitle: slotStub,
+        SheetDescription: slotStub
       }
     }
   })
@@ -255,17 +263,27 @@ describe('DigitalEmployeeSquarePage', () => {
     expect(wrapper.find('[data-testid="digital-employee-detail-dialog"]').exists()).toBe(false)
   })
 
-  it('detail dialog lists the four capability sections and navigates to chat on start', async () => {
+  it('opens the read-only detail sheet from card click and starts chat from the slim dialog', async () => {
     const { wrapper } = await setup()
     await wrapper.get('[data-testid="digital-employee-card-emp-1"]').trigger('click')
     await flushPromises()
+    // 四类配置清单进 Sheet
+    const sheet = wrapper.get('[data-testid="digital-employee-detail-sheet"]')
+    expect(sheet.text()).toContain('digitalEmployee.sectionSops')
+    expect(sheet.text()).toContain('公众号写作SOP')
+    expect(sheet.text()).toContain('digitalEmployee.sectionSkills')
+    expect(sheet.text()).toContain('digitalEmployee.sectionTools')
+    expect(sheet.text()).toContain('digitalEmployee.sectionKnowledge')
+    // Sheet 纯只读：没有开场输入与开始按钮
+    expect(wrapper.find('[data-testid="digital-employee-opening-question"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="digital-employee-start-button"]').exists()).toBe(false)
+    // 卡片上的对话按钮才开瘦身 Dialog
+    await wrapper.get('[data-testid="digital-employee-start-emp-1"]').trigger('click')
+    await flushPromises()
     const dialog = wrapper.get('[data-testid="digital-employee-detail-dialog"]')
-    // 四类配置清单
-    expect(dialog.text()).toContain('digitalEmployee.sectionSops')
-    expect(dialog.text()).toContain('公众号写作SOP')
-    expect(dialog.text()).toContain('digitalEmployee.sectionSkills')
-    expect(dialog.text()).toContain('digitalEmployee.sectionTools')
-    expect(dialog.text()).toContain('digitalEmployee.sectionKnowledge')
+    expect(dialog.find('[data-testid="digital-employee-opening-question"]').exists()).toBe(true)
+    // 瘦身后 Dialog 不再重复能力罗列
+    expect(dialog.text()).not.toContain('digitalEmployee.sectionSops')
     // 点开始按钮 → 先加载 MCP 工具列表，再调用 store 并跳转 chat 路由
     await wrapper.get('[data-testid="digital-employee-start-button"]').trigger('click')
     await flushPromises()
@@ -284,6 +302,8 @@ describe('DigitalEmployeeSquarePage', () => {
   it('provisions before reading the tool list, so the allowlist sees staffdeck tools', async () => {
     const { wrapper } = await setup()
     await wrapper.get('[data-testid="digital-employee-card-emp-1"]').trigger('click')
+    await flushPromises()
+    await wrapper.get('[data-testid="digital-employee-start-emp-1"]').trigger('click')
     await flushPromises()
 
     const callOrder: string[] = []
@@ -318,6 +338,8 @@ describe('DigitalEmployeeSquarePage', () => {
     const { wrapper } = await setup()
     await wrapper.get('[data-testid="digital-employee-card-emp-1"]').trigger('click')
     await flushPromises()
+    await wrapper.get('[data-testid="digital-employee-start-emp-1"]').trigger('click')
+    await flushPromises()
 
     stubStore.provisionEmployee.mockResolvedValue({
       employeeId: 'emp-1',
@@ -340,14 +362,16 @@ describe('DigitalEmployeeSquarePage', () => {
     )
   })
 
-  it('shows the last provisioning result in the detail dialog', async () => {
+  it('shows the last provisioning result in the detail sheet', async () => {
     const { wrapper } = await setup()
-    // 没准备过的员工不显示结果区块。
+    // 没准备过的员工不显示安装状态区块。
     await wrapper.get('[data-testid="digital-employee-card-emp-2"]').trigger('click')
     await flushPromises()
-    expect(wrapper.find('[data-testid="digital-employee-provision-result"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="detail-installed-skills"]').exists()).toBe(false)
 
     await wrapper.get('[data-testid="digital-employee-card-emp-1"]').trigger('click')
+    await flushPromises()
+    await wrapper.get('[data-testid="digital-employee-start-emp-1"]').trigger('click')
     await flushPromises()
 
     stubStore.provisionEmployee.mockResolvedValue({
@@ -362,23 +386,29 @@ describe('DigitalEmployeeSquarePage', () => {
       failures: []
     })
 
+    await wrapper.get('[data-testid="digital-employee-start-emp-1"]').trigger('click')
+    await flushPromises()
     await wrapper.get('[data-testid="digital-employee-start-button"]').trigger('click')
     await flushPromises()
 
     // 弹层随跳转关闭；重新打开仍能看到最近一次准备的实际结果与失败原因。
     await wrapper.get('[data-testid="digital-employee-card-emp-1"]').trigger('click')
     await flushPromises()
-    const result = wrapper.get('[data-testid="digital-employee-provision-result"]')
-    expect(result.text()).toContain('digitalEmployee.provision.installedSkills')
-    expect(result.text()).toContain('de-emp-1-writing')
-    expect(result.text()).toContain('digitalEmployee.provision.skillInstallFailed')
-    expect(result.text()).toContain('de-emp-1-broken')
-    expect(result.text()).toContain('HTTP_401')
+    await wrapper.get('[data-testid="digital-employee-start-emp-1"]').trigger('click')
+    await flushPromises()
+    const installed = wrapper.get('[data-testid="detail-installed-skills"]')
+    expect(installed.text()).toContain('digitalEmployee.provision.installedSkills')
+    expect(installed.text()).toContain('de-emp-1-writing')
+    const failed = wrapper.get('[data-testid="detail-failed-skills"]')
+    expect(failed.text()).toContain('de-emp-1-broken')
+    expect(failed.text()).toContain('HTTP_401')
   })
 
   it('says nothing when provisioning was fully successful', async () => {
     const { wrapper } = await setup()
     await wrapper.get('[data-testid="digital-employee-card-emp-1"]').trigger('click')
+    await flushPromises()
+    await wrapper.get('[data-testid="digital-employee-start-emp-1"]').trigger('click')
     await flushPromises()
 
     stubStore.provisionEmployee.mockResolvedValue({
@@ -401,6 +431,8 @@ describe('DigitalEmployeeSquarePage', () => {
   it('warns when the cloud tools never registered', async () => {
     const { wrapper } = await setup()
     await wrapper.get('[data-testid="digital-employee-card-emp-1"]').trigger('click')
+    await flushPromises()
+    await wrapper.get('[data-testid="digital-employee-start-emp-1"]').trigger('click')
     await flushPromises()
 
     stubStore.provisionEmployee.mockResolvedValue({
@@ -431,6 +463,8 @@ describe('DigitalEmployeeSquarePage', () => {
   it('warns with the count when some skills failed to install', async () => {
     const { wrapper } = await setup()
     await wrapper.get('[data-testid="digital-employee-card-emp-1"]').trigger('click')
+    await flushPromises()
+    await wrapper.get('[data-testid="digital-employee-start-emp-1"]').trigger('click')
     await flushPromises()
 
     stubStore.provisionEmployee.mockResolvedValue({
@@ -466,6 +500,8 @@ describe('DigitalEmployeeSquarePage', () => {
     const { wrapper } = await setup()
     await wrapper.get('[data-testid="digital-employee-card-emp-1"]').trigger('click')
     await flushPromises()
+    await wrapper.get('[data-testid="digital-employee-start-emp-1"]').trigger('click')
+    await flushPromises()
 
     stubStore.provisionEmployee.mockResolvedValue({
       employeeId: 'emp-1',
@@ -495,6 +531,8 @@ describe('DigitalEmployeeSquarePage', () => {
     const { wrapper } = await setup()
     await wrapper.get('[data-testid="digital-employee-card-emp-2"]').trigger('click')
     await flushPromises()
+    await wrapper.get('[data-testid="digital-employee-start-emp-2"]').trigger('click')
+    await flushPromises()
 
     stubStore.provisionEmployee.mockResolvedValue({
       employeeId: 'emp-2',
@@ -519,6 +557,8 @@ describe('DigitalEmployeeSquarePage', () => {
     const { wrapper } = await setup()
     await wrapper.get('[data-testid="digital-employee-card-emp-1"]').trigger('click')
     await flushPromises()
+    await wrapper.get('[data-testid="digital-employee-start-emp-1"]').trigger('click')
+    await flushPromises()
 
     stubStore.provisionEmployee.mockResolvedValue({
       employeeId: 'emp-1',
@@ -542,6 +582,8 @@ describe('DigitalEmployeeSquarePage', () => {
     const { wrapper } = await setup()
     await wrapper.get('[data-testid="digital-employee-card-emp-1"]').trigger('click')
     await flushPromises()
+    await wrapper.get('[data-testid="digital-employee-start-emp-1"]').trigger('click')
+    await flushPromises()
 
     stubStore.provisionEmployee.mockRejectedValue(new Error('ipc down'))
 
@@ -556,6 +598,8 @@ describe('DigitalEmployeeSquarePage', () => {
   it('start failure keeps dialog open, shows error, and disables button while busy', async () => {
     const { wrapper } = await setup()
     await wrapper.get('[data-testid="digital-employee-card-emp-1"]').trigger('click')
+    await flushPromises()
+    await wrapper.get('[data-testid="digital-employee-start-emp-1"]').trigger('click')
     await flushPromises()
     // 受控 promise：模拟 startConversation 长时间挂起后失败
     let rejectFn!: (error: Error) => void
