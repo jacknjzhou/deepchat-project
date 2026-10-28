@@ -71,6 +71,7 @@ slug 不属于该员工时返回 404 + problem+json（实测样本；`code`/`det
 - 全空清单（`configVersion=kv1:4f53cda18c2b`，空配置的 hash）是服务端**默认状态**，不是故障——客户端按「员工未配知识」处理，不重试、不报错、不标 stale
 - 管理端 UI 没有这个开关（前端源码零引用），只能调 `PUT /api/enterprise/knowledge-bases/{kbId}?agent_id={agentId}`（admin token）把 `deepchat_sync_enabled: true` 放进请求 `metadata`。注意该端点对 metadata 是**整体替换**（仅保留 creator 键），请求必须携带现有 metadata 全量键
 - 普通员工的开关写在**该员工的分支版本**上（`?agent_id=` 路径），改整体库版本对员工分支不生效；员工可见性还要求 `AgentKnowledgeBranch` active + 资源绑定 active
+- 方向确认（2026-10-28）：`/api/enterprise/knowledge-bases` 的能力（列表、概念、统计）将由服务端封装进 `/api/v1/*` 并以 api key 鉴权，客户端**不需要也不应该**引入管理端登录；封装端点上线前，`knowledge-packages`（已含 name/version/conceptCount/hash）+ 员工列表 `knowledgeBaseIds` 足以承载同步与检索，新端点主要用于补展示信息（描述、chunk 统计）
 - 清单内每个概念带 `hash`（正文 sha256 前 16 位）与 `size`（UTF-8 字节数），客户端据 hash 做增量、跳过未变概念
 
 ## 5. 远程会话与执行（remoteClient）
