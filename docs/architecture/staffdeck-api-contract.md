@@ -38,9 +38,22 @@
 - 实现：`src/main/digital-employee/skillSync.ts`（`exportUrl`）
 - Headers：`Accept: application/zip`
 - Query：`slug` 为服务端技能标识（URL 编码）
-- 响应：zip 字节流；空响应体按失败处理
+- 响应：zip 字节流；空响应体按失败处理。实测包内仅一个 `SKILL.md`，正文以 `# 标题` 直接开头，**不带 frontmatter**——本地安装器要求 frontmatter 含非空 `name` 否则拒装，客户端先经 `ensureSkillFrontmatter` 注入最小合法 frontmatter（`name` 取清洗后的 slug，`description` 取服务端显示名）再安装
 - 本地后处理：SKILL.md 的 frontmatter `name` 会被改写为员工前缀名（`employeeSkillName`）后安装进 `deepchat` agent 技能目录
 - 注意：下载 URL 由客户端基于自己的 baseUrl 重建，不信任服务端下发的 `downloadUrl`（其 `tool_base_url` 默认指向 `localhost:5173`）
+
+slug 不属于该员工时返回 404 + problem+json（实测样本；`code`/`detail` 即 `StaffdeckProblemError` 的字段）：
+
+```jsonc
+{
+  "type": "urn:staffdeck:error:skill_not_found",
+  "title": "SKILL_NOT_FOUND",
+  "status": 404,
+  "code": "SKILL_NOT_FOUND",
+  "detail": "This skill is not distributed to the requested employee.",
+  "request_id": "req_..."
+}
+```
 
 ## 4. 知识库同步（knowledgeClient）
 
@@ -50,6 +63,15 @@
 | --- | --- |
 | `GET /api/v1/digital-employees/{employeeId}/knowledge-packages` | 知识包清单。Headers：`If-None-Match`（命中 304 返回 null 表示「没变」）；响应含 `packages[]`（`knowledgeBaseId`、`name`、`version`、`configHash`、`concepts[]`、`conceptCount`）、`configVersion`、`ETag`；无 `knowledgeBaseId` 的包被丢弃 |
 | `GET /api/v1/digital-employees/{employeeId}/knowledge-packages/{knowledgeBaseId}/concepts/{conceptId}` | 单概念 markdown 正文。Headers：`accept: text/markdown`；404 + `CONCEPT_NOT_FOUND`（或普通 404）返回 null 按正常竞态跳过，其余 404 抛错 |
+
+### 同步开关（清单为空的首要原因）
+
+清单是 opt-in 的：服务端（`backend/app/digital_employees/knowledge_sync.py`）只收录 `KnowledgeBaseVersion.metadata_json.deepchat_sync_enabled === true` 的知识库，未开启的库**根本不出现**（不泄露存在性）。据此：
+
+- 全空清单（`configVersion=kv1:4f53cda18c2b`，空配置的 hash）是服务端**默认状态**，不是故障——客户端按「员工未配知识」处理，不重试、不报错、不标 stale
+- 管理端 UI 没有这个开关（前端源码零引用），只能调 `PUT /api/enterprise/knowledge-bases/{kbId}?agent_id={agentId}`（admin token）把 `deepchat_sync_enabled: true` 放进请求 `metadata`。注意该端点对 metadata 是**整体替换**（仅保留 creator 键），请求必须携带现有 metadata 全量键
+- 普通员工的开关写在**该员工的分支版本**上（`?agent_id=` 路径），改整体库版本对员工分支不生效；员工可见性还要求 `AgentKnowledgeBranch` active + 资源绑定 active
+- 清单内每个概念带 `hash`（正文 sha256 前 16 位）与 `size`（UTF-8 字节数），客户端据 hash 做增量、跳过未变概念
 
 ## 5. 远程会话与执行（remoteClient）
 
