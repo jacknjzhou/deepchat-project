@@ -6,6 +6,7 @@ import { createDigitalEmployeeSettingsClient } from '../../api/DigitalEmployeeSe
 import { createKnowledgeClient } from '../../api/KnowledgeClient'
 import { createSkillClient } from '../../api/SkillClient'
 import { useSessionStore } from './ui/session'
+import { useMcpStore } from './mcp'
 import type {
   BackflowEventInput,
   ConfigEntryKey,
@@ -466,7 +467,12 @@ export const useDigitalEmployeeStore = defineStore('digitalEmployee', () => {
     employeeId: string
   ): Promise<DigitalEmployeeProvisionResult | null> {
     try {
-      return await client.provision(employeeId)
+      const result = await client.provision(employeeId)
+      // provision 会在主进程后台注册/清理员工 MCP server，而 MCP 中心的列表
+      // 只在自己页面内操作后才重拉——这里必须主动失效，否则注册成功也要等
+      // 重启应用才可见。注册与未注册（含清理旧注册）都会动配置，统一刷新。
+      void useMcpStore().refreshServerMutationQueries()
+      return result
     } catch (error) {
       // 准备工作失败只意味着能力少一点，不该让用户点不动开始按钮。
       console.warn('[digitalEmployee] provision failed', error)

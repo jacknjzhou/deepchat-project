@@ -1278,6 +1278,8 @@ export const useMcpStore = defineStore('mcp', () => {
 
     // 服务器管理方法
     loadConfig,
+    /** 主进程后台改过 MCP 配置（如数字员工 provision）时的统一刷新入口。 */
+    refreshServerMutationQueries,
     updateAllServerStatuses,
     updateServerStatus,
     addServer,
