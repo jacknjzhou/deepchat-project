@@ -40,7 +40,17 @@ export const KnowledgePackageStatusSchema = z.object({
   stale: z.boolean(),
   staleReason: KnowledgeStaleReasonValueSchema.nullable(),
   lastSyncAt: z.string(),
-  conceptCount: z.number().int().nonnegative()
+  conceptCount: z.number().int().nonnegative(),
+  /**
+   * 远端目录端点（`GET .../knowledge-bases`）带来的展示信息。目录端点未上线
+   * 或未拉到时缺省，UI 退回用 `knowledgeBaseId` 渲染标题——缺省是常态而非
+   * 异常，所以全部 optional 而不是 nullable。
+   */
+  name: z.string().optional(),
+  description: z.string().optional(),
+  version: z.string().optional(),
+  documentCount: z.number().int().nonnegative().optional(),
+  chunkCount: z.number().int().nonnegative().optional()
 })
 
 export const digitalEmployeeKnowledgeStatusRoute = defineRouteContract({

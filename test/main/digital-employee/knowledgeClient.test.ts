@@ -206,4 +206,99 @@ describe('StaffdeckKnowledgeClient', () => {
       (error: Error) => !error.message.includes('sd_live_topsecret')
     )
   })
+
+  it('parses the knowledge catalog with camelCase fields', async () => {
+    const fetchImpl = vi.fn(async () =>
+      jsonResponse({
+        knowledgeBases: [
+          {
+            knowledgeBaseId: 'kb_1',
+            name: 'Product Docs',
+            description: 'All product docs',
+            version: '3',
+            documentCount: 12,
+            chunkCount: 345
+          }
+        ]
+      })
+    )
+    const client = createClient(fetchImpl as unknown as typeof fetch)
+
+    const result = await client.fetchKnowledgeBases('agent_1')
+
+    expect(result).toEqual([
+      {
+        knowledgeBaseId: 'kb_1',
+        name: 'Product Docs',
+        description: 'All product docs',
+        version: '3',
+        documentCount: 12,
+        chunkCount: 345
+      }
+    ])
+    const [url, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit]
+    expect(url).toBe(`${BASE}/api/v1/digital-employees/agent_1/knowledge-bases`)
+    expect((init.headers as Record<string, string>).authorization).toBe('Bearer sd_live_test')
+  })
+
+  it('accepts snake_case catalog fields as a fallback', async () => {
+    // 封装层最终形状未定：camelCase 与管理端 snake_case 都要能解析。
+    const fetchImpl = vi.fn(async () =>
+      jsonResponse({
+        knowledgeBases: [
+          {
+            id: 'kb_2',
+            name: 'HR Rules',
+            description: '',
+            version: '1',
+            document_count: 4,
+            chunk_count: 20
+          }
+        ]
+      })
+    )
+    const client = createClient(fetchImpl as unknown as typeof fetch)
+
+    const result = await client.fetchKnowledgeBases('agent_1')
+
+    expect(result).toEqual([
+      {
+        knowledgeBaseId: 'kb_2',
+        name: 'HR Rules',
+        description: '',
+        version: '1',
+        documentCount: 4,
+        chunkCount: 20
+      }
+    ])
+  })
+
+  it('treats a catalog 404 as an empty list so sync is never blocked', async () => {
+    // 端点未上线是过渡期常态：目录只服务展示，绝不能让它挡住同步。
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ detail: 'Not Found' }), {
+          status: 404,
+          headers: { 'content-type': 'application/json' }
+        })
+    )
+    const client = createClient(fetchImpl as unknown as typeof fetch)
+
+    await expect(client.fetchKnowledgeBases('agent_1')).resolves.toEqual([])
+  })
+
+  it('raises a typed problem error when the catalog fails with non-404', async () => {
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({ code: 'NOT_AUTHENTICATED', detail: 'bad key', status: 401 }),
+          { status: 401, headers: { 'content-type': 'application/problem+json' } }
+        )
+    )
+    const client = createClient(fetchImpl as unknown as typeof fetch)
+
+    await expect(client.fetchKnowledgeBases('agent_1')).rejects.toBeInstanceOf(
+      StaffdeckProblemError
+    )
+  })
 })

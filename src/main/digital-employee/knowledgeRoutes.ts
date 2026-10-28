@@ -45,7 +45,9 @@ function readStatus(
       stale: pkg.stale,
       staleReason: normalizeStaleReason(pkg.staleReason),
       lastSyncAt: pkg.lastSyncAt,
-      conceptCount: Object.keys(pkg.concepts).length
+      conceptCount: Object.keys(pkg.concepts).length,
+      // 目录信息随包记录透出；未拉到（端点未上线）时自然缺省。
+      ...(pkg.info ?? {})
     })
   )
 

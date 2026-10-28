@@ -47,6 +47,20 @@ export interface KnowledgeManifest {
   etag: string | null
 }
 
+/**
+ * 目录端点的单条展示信息：`/api/enterprise/knowledge-bases` 能力向 `/api/v1`
+ * 的封装（2026-10-28 确认方向，端点尚未上线）。清单自带的 name/version 之外，
+ * 这里补齐描述与统计，供详情页渲染。
+ */
+export interface KnowledgeBaseInfo {
+  knowledgeBaseId: string
+  name: string
+  description: string
+  version: string
+  documentCount: number
+  chunkCount: number
+}
+
 const normalizeBaseUrl = (baseUrl: string): string => baseUrl.replace(/\/+$/, '')
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -190,5 +204,49 @@ export class StaffdeckKnowledgeClient {
 
     if (!response.ok) await this.throwForResponse(response)
     return await response.text()
+  }
+
+  /**
+   * 取员工关联的知识库目录（描述、统计等展示信息）。
+   *
+   * 与清单不同，这是**纯展示数据**，不参与同步判定：
+   * - 404 一律返回空目录——端点未上线或员工不可见时，UI 退回用清单自带的
+   *   name 渲染。绝不能因它 404 把已同步的知识标 stale，那会让目录端点的
+   *   部署节奏绑架同步可用性。
+   * - 字段同时兼容 camelCase 与管理端的 snake_case：封装层的最终形状未定，
+   *   两种命名各自有先例（/api/v1 全 camelCase，管理端全 snake_case）。
+   */
+  async fetchKnowledgeBases(employeeId: string): Promise<KnowledgeBaseInfo[]> {
+    const url =
+      `${this.base}/api/v1/digital-employees/` + `${encodeURIComponent(employeeId)}/knowledge-bases`
+    const response = await this.fetchImpl(url, {
+      method: 'GET',
+      headers: { ...this.authHeaders() },
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+    })
+
+    if (response.status === 404) return []
+    if (!response.ok) await this.throwForResponse(response)
+
+    const body: unknown = await response.json().catch(() => null)
+    if (!isRecord(body)) {
+      throw new Error('[digitalEmployee] invalid knowledge catalog payload from StaffDeck')
+    }
+
+    const rawItems = Array.isArray(body.knowledgeBases) ? body.knowledgeBases : []
+    return (
+      rawItems
+        .filter(isRecord)
+        .map((entry) => ({
+          knowledgeBaseId: readString(entry.knowledgeBaseId) || readString(entry.id),
+          name: readString(entry.name),
+          description: readString(entry.description),
+          version: readString(entry.version),
+          documentCount: readNumber(entry.documentCount ?? entry.document_count),
+          chunkCount: readNumber(entry.chunkCount ?? entry.chunk_count)
+        }))
+        // 没有 id 的条目无法与包对账，丢弃而不是留个孤儿卡片。
+        .filter((entry) => entry.knowledgeBaseId !== '')
+    )
   }
 }

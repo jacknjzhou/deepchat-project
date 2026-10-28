@@ -101,7 +101,8 @@
               :data-testid="`detail-knowledge-${pkg.knowledgeBaseId}`"
             >
               <div class="flex items-center justify-between gap-2">
-                <span class="truncate font-medium">{{ pkg.knowledgeBaseId }}</span>
+                <!-- 目录端点拉到名称就显示名称，否则退回远端 id（端点未上线是常态）。 -->
+                <span class="truncate font-medium">{{ pkg.name || pkg.knowledgeBaseId }}</span>
                 <span
                   class="shrink-0"
                   :class="pkg.stale ? 'text-amber-600' : 'text-emerald-600'"
@@ -116,6 +117,9 @@
                   }}
                 </span>
               </div>
+              <p v-if="pkg.description" class="mt-0.5 text-muted-foreground">
+                {{ pkg.description }}
+              </p>
               <p class="mt-1 text-muted-foreground">
                 {{
                   t('digitalEmployee.detail.knowledgeMeta', {

@@ -2,7 +2,10 @@ import { mkdtemp, readFile, readdir, rm, stat } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { KnowledgePackage } from '../../../src/main/digital-employee/knowledgeClient'
+import type {
+  KnowledgeBaseInfo,
+  KnowledgePackage
+} from '../../../src/main/digital-employee/knowledgeClient'
 import {
   knowledgeStaleReasons,
   createKnowledgeSyncStateStore
@@ -41,6 +44,8 @@ interface Harness {
   addFileError: string | null
   provisionResult: ProvisioningResult
   provisionCalls: number
+  /** 目录端点的返回值；null 表示端点抛错（未部署之外的故障）。 */
+  catalog: KnowledgeBaseInfo[] | null
 }
 
 const makePackage = (
@@ -84,7 +89,8 @@ async function createHarness(cacheDir: string): Promise<Harness> {
     failDownloadFor,
     addFileError: null,
     provisionResult: { ok: true, knowledgeBaseId: LOCAL_KB_ID, created: true },
-    provisionCalls: 0
+    provisionCalls: 0,
+    catalog: []
   }
 
   harness.deps = {
@@ -101,6 +107,10 @@ async function createHarness(cacheDir: string): Promise<Harness> {
         downloads.push(conceptId)
         if (failDownloadFor.has(conceptId)) throw new Error('boom')
         return bodies.get(conceptId) ?? null
+      },
+      fetchKnowledgeBases: async () => {
+        if (harness.catalog === null) throw new Error('catalog down')
+        return harness.catalog
       }
     } as unknown as KnowledgeSyncDeps['client'],
     provision: async () => {
@@ -500,6 +510,62 @@ describe('knowledgeSync', () => {
     expect(harness.downloads).toEqual([])
     expect(harness.store.getEmployee(EMPLOYEE_ID)?.packages['kb-1'].stale).toBe(true)
     expect(harness.store.getEmployee(EMPLOYEE_ID)?.packages['kb-1'].staleReason).toBe('HTTP_401')
+  })
+
+  it('persists catalog info into the package status', async () => {
+    const harness = await createHarness(cacheDir)
+    harness.bodies.set('a', '# A\n')
+    harness.catalog = [
+      {
+        knowledgeBaseId: 'kb-1',
+        name: '财务制度库',
+        description: '报销与采购制度',
+        version: '3',
+        documentCount: 12,
+        chunkCount: 345
+      }
+    ]
+    harness.setPackages([
+      makePackage({ concepts: [{ conceptId: 'a', type: 'doc', title: 'A', hash: 'h-a', size: 4 }] })
+    ])
+
+    await runSync(harness)
+
+    // 目录端点是纯展示增强：info 落盘后详情页才能显示名字而不是远端 id。
+    expect(harness.store.getEmployee(EMPLOYEE_ID)?.packages['kb-1'].info).toEqual({
+      name: '财务制度库',
+      description: '报销与采购制度',
+      version: '3',
+      documentCount: 12,
+      chunkCount: 345
+    })
+  })
+
+  it('keeps the previous catalog info when the endpoint fails', async () => {
+    const harness = await createHarness(cacheDir)
+    harness.bodies.set('a', '# A\n')
+    harness.catalog = [
+      {
+        knowledgeBaseId: 'kb-1',
+        name: '财务制度库',
+        description: '',
+        version: '1',
+        documentCount: 1,
+        chunkCount: 1
+      }
+    ]
+    harness.setPackages([
+      makePackage({ concepts: [{ conceptId: 'a', type: 'doc', title: 'A', hash: 'h-a', size: 4 }] })
+    ])
+    await runSync(harness)
+
+    harness.catalog = null
+    const result = await runSync(harness)
+
+    // 目录端点故障只损失展示字段，绝不能标 stale 或让同步轮失败。
+    expect(result.ok).toBe(true)
+    expect(harness.store.getEmployee(EMPLOYEE_ID)?.packages['kb-1'].stale).toBe(false)
+    expect(harness.store.getEmployee(EMPLOYEE_ID)?.packages['kb-1'].info?.name).toBe('财务制度库')
   })
 
   it('exposes every stale reason the UI needs to render', () => {

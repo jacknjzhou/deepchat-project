@@ -63,6 +63,7 @@ slug 不属于该员工时返回 404 + problem+json（实测样本；`code`/`det
 | --- | --- |
 | `GET /api/v1/digital-employees/{employeeId}/knowledge-packages` | 知识包清单。Headers：`If-None-Match`（命中 304 返回 null 表示「没变」）；响应含 `packages[]`（`knowledgeBaseId`、`name`、`version`、`configHash`、`concepts[]`、`conceptCount`）、`configVersion`、`ETag`；无 `knowledgeBaseId` 的包被丢弃 |
 | `GET /api/v1/digital-employees/{employeeId}/knowledge-packages/{knowledgeBaseId}/concepts/{conceptId}` | 单概念 markdown 正文。Headers：`accept: text/markdown`；404 + `CONCEPT_NOT_FOUND`（或普通 404）返回 null 按正常竞态跳过，其余 404 抛错 |
+| `GET /api/v1/digital-employees/{employeeId}/knowledge-bases` | 知识目录（**纯展示增强**，不参与同步/检索判据）。响应 `{ knowledgeBases: [{ knowledgeBaseId, name, description, version, documentCount, chunkCount }] }`，同时兼容 snake_case（`id`、`document_count`、`chunk_count`）；404（端点未上线）返回空数组，非 404 错误抛 `StaffdeckProblemError` 且被同步编排 best-effort 吞掉——只损失展示字段，绝不标 stale、绝不影响同步轮成败。信息落盘进包状态 `info` 字段，目录拉不到时沿用旧值 |
 
 ### 同步开关（清单为空的首要原因）
 

@@ -2,7 +2,12 @@ import { createHash } from 'node:crypto'
 import { mkdir, rename, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import type { KnowledgeFileResult } from '../../../src/shared/types/knowledge'
-import type { ConceptEntry, KnowledgeManifest, KnowledgePackage } from './knowledgeClient'
+import type {
+  ConceptEntry,
+  KnowledgeBaseInfo,
+  KnowledgeManifest,
+  KnowledgePackage
+} from './knowledgeClient'
 import { StaffdeckProblemError } from './remoteClient'
 import { deriveLocalKnowledgeBaseId } from './knowledgeProvisioning'
 import type { KnowledgeStaleReason } from './knowledgeSyncState'
@@ -44,6 +49,11 @@ export interface KnowledgeSyncClientPort {
     knowledgeBaseId: string,
     conceptId: string
   ): Promise<string | null>
+  /**
+   * 目录端点（展示信息）。可选：端点未部署（404 已在 client 侧降级为空）
+   * 之外，拉取抛错也只损失展示字段；测试桩可以不实现。
+   */
+  fetchKnowledgeBases?(employeeId: string): Promise<KnowledgeBaseInfo[]>
 }
 
 export interface KnowledgeSyncDeps {
@@ -176,8 +186,10 @@ export function createKnowledgeSync(deps: KnowledgeSyncDeps): KnowledgeSync {
     pkg: KnowledgePackage
     etag: string | null
     configVersion: string
+    /** 目录端点拉到的展示信息，按远端 KB id 索引；拉不到时为空表。 */
+    catalog: Map<string, KnowledgeBaseInfo>
   }): Promise<{ ok: boolean; downloaded: number; reason?: KnowledgeStaleReason }> => {
-    const { employeeId, localKnowledgeBaseId, localDir, pkg, etag, configVersion } = input
+    const { employeeId, localKnowledgeBaseId, localDir, pkg, etag, configVersion, catalog } = input
     const previous = deps.stateStore.getEmployee(employeeId)?.packages[pkg.knowledgeBaseId]
     const previousConcepts = previous?.concepts ?? {}
 
@@ -271,7 +283,9 @@ export function createKnowledgeSync(deps: KnowledgeSyncDeps): KnowledgeSync {
           stale: failed,
           staleReason: failed ? 'PARTIAL' : null,
           lastSyncAt: now(),
-          concepts: workingConcepts
+          concepts: workingConcepts,
+          // 目录没拉到时保留旧信息：清单 200 但目录 404 的过渡期，描述不该闪没。
+          info: catalog.get(pkg.knowledgeBaseId) ?? previous?.info
         }
       },
       // SOP 记账不属于任何包，包级写回必须原样带走，否则会被 zod 剥掉。
@@ -431,6 +445,20 @@ export function createKnowledgeSync(deps: KnowledgeSyncDeps): KnowledgeSync {
         return { ok: true, downloaded: 0, failedPackages: 0 }
       }
 
+      // 目录只在清单有变化的轮次拉取（304 轮沿用状态表里的旧信息）：
+      // 展示数据的更新频率没必要高过知识本身。失败只损失展示字段，
+      // 绝不能让同步轮次失败——它连 stale 标记都不配拥有。
+      const catalog = new Map<string, KnowledgeBaseInfo>()
+      if (deps.client.fetchKnowledgeBases) {
+        try {
+          for (const info of await deps.client.fetchKnowledgeBases(input.employeeId)) {
+            catalog.set(info.knowledgeBaseId, info)
+          }
+        } catch {
+          // 目录端点故障：详情页退回显示远端 id，同步照常。
+        }
+      }
+
       const pkgProvisioned = await ensureProvisioned()
       if (!pkgProvisioned.ok) {
         // 没有嵌入模型就没有索引入口，下载了也进不去索引，故直接跳过。
@@ -448,7 +476,8 @@ export function createKnowledgeSync(deps: KnowledgeSyncDeps): KnowledgeSync {
           localDir,
           pkg,
           etag: manifest.etag,
-          configVersion: manifest.configVersion
+          configVersion: manifest.configVersion,
+          catalog
         })
         downloaded += outcome.downloaded
         if (!outcome.ok) failedPackages += 1

@@ -49,7 +49,22 @@ const packageStateSchema = z.object({
   stale: z.boolean(),
   staleReason: z.string().nullable(),
   lastSyncAt: z.string(),
-  concepts: z.record(z.string(), conceptRecordSchema)
+  concepts: z.record(z.string(), conceptRecordSchema),
+  /**
+   * 远端目录端点的展示信息（名称、描述、统计）。
+   *
+   * 与同步记账分开存：目录是纯展示数据，端点未上线（404）或拉取失败时整个
+   * 字段缺省，绝不影响同步状态。旧记录没有该字段，optional 保持兼容。
+   */
+  info: z
+    .object({
+      name: z.string(),
+      description: z.string(),
+      version: z.string(),
+      documentCount: z.number().int().nonnegative(),
+      chunkCount: z.number().int().nonnegative()
+    })
+    .optional()
 })
 
 const employeeStateSchema = z.object({
