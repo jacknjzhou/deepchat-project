@@ -27,7 +27,15 @@
     "toolsReady": "工具就緒",
     "toolsNotReady": "工具不可用",
     "knowledgeToolReady": "知識檢索就緒",
-    "knowledgeToolNotReady": "知識檢索不可用"
+    "knowledgeToolNotReady": "知識檢索不可用",
+    "conceptDegree": "{degree} 條關聯",
+    "conceptLoading": "內文載入中…",
+    "conceptUnavailable": "內文暫不可用",
+    "graphTitle": "知識圖譜",
+    "graphLoading": "知識圖譜載入中…",
+    "graphUnavailable": "知識圖譜暫不可用",
+    "graphEmpty": "該知識庫暫無概念節點",
+    "graphTruncated": "概念過多，僅展示核心節點"
   },
   "openingQuestionPlaceholder": "(Optional) your first question",
   "startConversation": "Start conversation",

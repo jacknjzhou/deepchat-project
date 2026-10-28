@@ -411,6 +411,8 @@ import {
   digitalEmployeeSwitchToRemoteRoute
 } from './routes/digitalEmployeeRemote.routes'
 import {
+  digitalEmployeeKnowledgeConceptRoute,
+  digitalEmployeeKnowledgeGraphRoute,
   digitalEmployeeKnowledgeLocalBaseRoute,
   digitalEmployeeKnowledgeStatusRoute
 } from './routes/digitalEmployeeKnowledge.routes'
@@ -876,6 +878,8 @@ const DEEPCHAT_ROUTE_CATALOG_PART_1 = {
   [digitalEmployeeSwitchToRemoteRoute.name]: digitalEmployeeSwitchToRemoteRoute,
   [digitalEmployeeKnowledgeStatusRoute.name]: digitalEmployeeKnowledgeStatusRoute,
   [digitalEmployeeKnowledgeLocalBaseRoute.name]: digitalEmployeeKnowledgeLocalBaseRoute,
+  [digitalEmployeeKnowledgeGraphRoute.name]: digitalEmployeeKnowledgeGraphRoute,
+  [digitalEmployeeKnowledgeConceptRoute.name]: digitalEmployeeKnowledgeConceptRoute,
   [digitalEmployeeBackflowRoute.name]: digitalEmployeeBackflowRoute,
   [digitalEmployeeBackflowQueueStatusRoute.name]: digitalEmployeeBackflowQueueStatusRoute,
   [digitalEmployeeProvisionRoute.name]: digitalEmployeeProvisionRoute,

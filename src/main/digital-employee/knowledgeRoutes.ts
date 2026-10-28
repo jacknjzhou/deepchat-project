@@ -1,6 +1,11 @@
+import { readFile } from 'node:fs/promises'
+import path from 'node:path'
 import {
+  digitalEmployeeKnowledgeConceptRoute,
+  digitalEmployeeKnowledgeGraphRoute,
   digitalEmployeeKnowledgeLocalBaseRoute,
-  digitalEmployeeKnowledgeStatusRoute
+  digitalEmployeeKnowledgeStatusRoute,
+  type DigitalEmployeeKnowledgeGraph
 } from '@shared/contracts/routes/digitalEmployeeKnowledge.routes'
 import {
   KNOWLEDGE_STALE_REASONS,
@@ -8,7 +13,10 @@ import {
   type KnowledgeStaleReasonValue
 } from '@shared/contracts/routes/digitalEmployeeKnowledge.routes'
 import { createRouteMap, type DeepchatRouteMap } from '@/routes/routeRegistry'
+import type { StaffdeckKnowledgeClient } from './knowledgeClient'
+import { buildKnowledgeGraph } from './knowledgeGraph'
 import { deriveLocalKnowledgeBaseId } from './knowledgeProvisioning'
+import { conceptFilePath } from './knowledgeSync'
 import type { KnowledgeSyncStateStore } from './knowledgeSyncState'
 
 /**
@@ -30,6 +38,13 @@ export interface DigitalEmployeeKnowledgeRoutesDeps {
    * 省略时只信任状态表——单测不必为此拖进整个 KnowledgeSettings。
    */
   hasKnowledgeBase?: (knowledgeBaseId: string) => boolean
+  /**
+   * 现取 StaffDeck 知识客户端（连接缺失返回 null）。调用时现取而不是建路由时
+   * 取死：路由只创建一次，而连接会随配置变更整体重建。
+   */
+  readClient?: () => StaffdeckKnowledgeClient | null
+  /** 概念正文缓存根目录：`{userData}/digital-employee-knowledge`。缺省时只走远端。 */
+  cacheDir?: string
 }
 
 function readStatus(
@@ -47,7 +62,7 @@ function readStatus(
       lastSyncAt: pkg.lastSyncAt,
       conceptCount: Object.keys(pkg.concepts).length,
       // 目录信息随包记录透出；未拉到（端点未上线）时自然缺省。
-      ...(pkg.info ?? {})
+      ...pkg.info
     })
   )
 
@@ -97,6 +112,61 @@ function normalizeStaleReason(reason: string | null): KnowledgeStaleReasonValue 
   return 'UNKNOWN'
 }
 
+/**
+ * 拉取概念元数据并按管理台语义建图。
+ *
+ * 图谱是纯展示数据：端点未上线（client 返回 null）、网络失败都收敛为 `null`，
+ * 由抽屉降级为「图谱暂不可用」。这与同步的容错哲学一致——展示端点的缺席
+ * 不能变成用户可见的错误。
+ */
+async function readKnowledgeGraph(
+  deps: DigitalEmployeeKnowledgeRoutesDeps,
+  input: { employeeId: string; knowledgeBaseId: string }
+): Promise<DigitalEmployeeKnowledgeGraph | null> {
+  const client = deps.readClient?.()
+  if (!client) return null
+  try {
+    const metadata = await client.fetchConceptMetadata(input.employeeId, input.knowledgeBaseId)
+    if (!metadata) return null
+    return buildKnowledgeGraph({ version: metadata.version, concepts: metadata.concepts })
+  } catch {
+    return null
+  }
+}
+
+/**
+ * 读单个概念的 markdown 正文：本地同步缓存优先，缺失时远端按需拉。
+ *
+ * 本地读不到（未同步 / 概念被清）不抛错，走远端兜底；远端也拿不到返回 null，
+ * 由 UI 显示「内容不可用」。按需拉取只读、不进向量索引，不影响同步记账。
+ */
+async function readConceptContent(
+  deps: DigitalEmployeeKnowledgeRoutesDeps,
+  input: { employeeId: string; knowledgeBaseId: string; conceptId: string }
+): Promise<{ content: string | null }> {
+  if (deps.cacheDir) {
+    const filePath = path.join(
+      deps.cacheDir,
+      deriveLocalKnowledgeBaseId(input.employeeId),
+      conceptFilePath(input.conceptId)
+    )
+    try {
+      return { content: await readFile(filePath, 'utf8') }
+    } catch {
+      // 缓存未命中，走远端兜底。
+    }
+  }
+  const client = deps.readClient?.()
+  if (!client) return { content: null }
+  try {
+    return {
+      content: await client.fetchConcept(input.employeeId, input.knowledgeBaseId, input.conceptId)
+    }
+  } catch {
+    return { content: null }
+  }
+}
+
 export function createDigitalEmployeeKnowledgeRoutes(
   deps: DigitalEmployeeKnowledgeRoutesDeps
 ): DeepchatRouteMap {
@@ -114,6 +184,24 @@ export function createDigitalEmployeeKnowledgeRoutes(
         const input = digitalEmployeeKnowledgeLocalBaseRoute.input.parse(rawInput)
         return digitalEmployeeKnowledgeLocalBaseRoute.output.parse(
           readLocalKnowledgeBaseId(deps, input.employeeId)
+        )
+      }
+    ],
+    [
+      digitalEmployeeKnowledgeGraphRoute.name,
+      async (rawInput) => {
+        const input = digitalEmployeeKnowledgeGraphRoute.input.parse(rawInput)
+        return digitalEmployeeKnowledgeGraphRoute.output.parse(
+          await readKnowledgeGraph(deps, input)
+        )
+      }
+    ],
+    [
+      digitalEmployeeKnowledgeConceptRoute.name,
+      async (rawInput) => {
+        const input = digitalEmployeeKnowledgeConceptRoute.input.parse(rawInput)
+        return digitalEmployeeKnowledgeConceptRoute.output.parse(
+          await readConceptContent(deps, input)
         )
       }
     ]

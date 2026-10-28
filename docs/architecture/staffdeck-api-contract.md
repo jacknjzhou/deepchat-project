@@ -63,16 +63,17 @@ slug 不属于该员工时返回 404 + problem+json（实测样本；`code`/`det
 | --- | --- |
 | `GET /api/v1/digital-employees/{employeeId}/knowledge-packages` | 知识包清单。Headers：`If-None-Match`（命中 304 返回 null 表示「没变」）；响应含 `packages[]`（`knowledgeBaseId`、`name`、`version`、`configHash`、`concepts[]`、`conceptCount`）、`configVersion`、`ETag`；无 `knowledgeBaseId` 的包被丢弃 |
 | `GET /api/v1/digital-employees/{employeeId}/knowledge-packages/{knowledgeBaseId}/concepts/{conceptId}` | 单概念 markdown 正文。Headers：`accept: text/markdown`；404 + `CONCEPT_NOT_FOUND`（或普通 404）返回 null 按正常竞态跳过，其余 404 抛错 |
-| `GET /api/v1/digital-employees/{employeeId}/knowledge-bases` | 知识目录（**纯展示增强**，不参与同步/检索判据）。响应 `{ knowledgeBases: [{ knowledgeBaseId, name, description, version, documentCount, chunkCount }] }`，同时兼容 snake_case（`id`、`document_count`、`chunk_count`）；404（端点未上线）返回空数组，非 404 错误抛 `StaffdeckProblemError` 且被同步编排 best-effort 吞掉——只损失展示字段，绝不标 stale、绝不影响同步轮成败。信息落盘进包状态 `info` 字段，目录拉不到时沿用旧值 |
+| `GET /api/v1/digital-employees/{employeeId}/knowledge-bases` | 知识目录（**纯展示增强**，不参与同步/检索判据）。响应 `{ knowledgeBases: [{ knowledgeBaseId, name, description, version, documentCount, chunkCount }] }`，同时兼容 snake_case（`id`、`document_count`、`chunk_count`）。服务端已实现（StaffDeck `56f9db0`，2026-10-28），目录不受同步开关影响，与企业管理台「知识库」页同一可见性与统计口径。客户端保留 404→空数组降级（兼容旧服务端），非 404 错误抛 `StaffdeckProblemError` 且被同步编排 best-effort 吞掉——只损失展示字段，绝不标 stale、绝不影响同步轮成败。信息落盘进包状态 `info` 字段，目录拉不到时沿用旧值 |
+| `GET /api/v1/digital-employees/{employeeId}/knowledge-packages/{knowledgeBaseId}/concepts` | 概念元数据 + 链接（**纯展示**，供详情抽屉概念列表与知识图谱）。响应 `{ knowledgeBaseId, version, conceptCount, concepts: [{ conceptId, type, title, description, links[] }] }`；`links` 已剔除引用章节链接（与服务台控制台画图口径一致），正文不含在此响应中（仍走上一行 `concepts/{conceptId}` 下载）。客户端按 degree 建图并按 500 节点上限截断（`knowledgeGraph.ts`）；404/网络失败统一降级为「图谱暂不可用」，不报错、不影响同步状态。服务端已实现（StaffDeck `backend/app/public_api/knowledge_sync.py::list_concept_metadata`，2026-10-28） |
 
-### 同步开关（清单为空的首要原因）
+### 同步开关（opt-out 语义）
 
-清单是 opt-in 的：服务端（`backend/app/digital_employees/knowledge_sync.py`）只收录 `KnowledgeBaseVersion.metadata_json.deepchat_sync_enabled === true` 的知识库，未开启的库**根本不出现**（不泄露存在性）。据此：
+清单是 opt-out 的（2026-10-28 起，服务端 commit `56f9db0`）：知识库版本 metadata 的 `deepchat_sync_enabled` 缺省视为同步，仅显式 `=== false` 时该库才从 `knowledge-packages` 清单与 MCP `knowledge_search` 中排除。此前是 opt-in 且管理端 UI 无开关入口，导致全租户清单恒空——「全空清单」的根因已修复。据此：
 
-- 全空清单（`configVersion=kv1:4f53cda18c2b`，空配置的 hash）是服务端**默认状态**，不是故障——客户端按「员工未配知识」处理，不重试、不报错、不标 stale
-- 管理端 UI 没有这个开关（前端源码零引用），只能调 `PUT /api/enterprise/knowledge-bases/{kbId}?agent_id={agentId}`（admin token）把 `deepchat_sync_enabled: true` 放进请求 `metadata`。注意该端点对 metadata 是**整体替换**（仅保留 creator 键），请求必须携带现有 metadata 全量键
+- 全空清单现在意味着「该员工所有知识库都被显式排除」或「员工确实未配知识」，按「员工未配知识」处理，不重试、不报错、不标 stale
+- 如需排除某个库：调 `PUT /api/enterprise/knowledge-bases/{kbId}?agent_id={agentId}`（admin token）把 `deepchat_sync_enabled: false` 放进请求 `metadata`。注意该端点对 metadata 是**整体替换**（仅保留 creator 键），请求必须携带现有 metadata 全量键
 - 普通员工的开关写在**该员工的分支版本**上（`?agent_id=` 路径），改整体库版本对员工分支不生效；员工可见性还要求 `AgentKnowledgeBranch` active + 资源绑定 active
-- 方向确认（2026-10-28）：`/api/enterprise/knowledge-bases` 的能力（列表、概念、统计）将由服务端封装进 `/api/v1/*` 并以 api key 鉴权，客户端**不需要也不应该**引入管理端登录；封装端点上线前，`knowledge-packages`（已含 name/version/conceptCount/hash）+ 员工列表 `knowledgeBaseIds` 足以承载同步与检索，新端点主要用于补展示信息（描述、chunk 统计）
+- 方向确认（2026-10-28，已落地）：`/api/enterprise/knowledge-bases` 的目录能力已由 `GET /api/v1/digital-employees/{id}/knowledge-bases` 封装（api key 鉴权），客户端**不需要也不应该**引入管理端登录
 - 清单内每个概念带 `hash`（正文 sha256 前 16 位）与 `size`（UTF-8 字节数），客户端据 hash 做增量、跳过未变概念
 
 ## 5. 远程会话与执行（remoteClient）

@@ -128,6 +128,144 @@
                   })
                 }}
               </p>
+
+              <!-- 知识图谱与概念明细：undefined=加载中，null=不可用，空概念=空态 -->
+              <div class="mt-2.5 border-t border-border/40 pt-2.5">
+                <div class="flex items-center justify-between gap-2">
+                  <p class="text-[11px] font-medium text-muted-foreground">
+                    {{ t('digitalEmployee.detail.graphTitle') }}
+                  </p>
+                  <span
+                    v-if="graphFor(pkg.knowledgeBaseId)?.truncated"
+                    class="text-[10px] text-amber-600"
+                    data-testid="detail-graph-truncated"
+                  >
+                    {{ t('digitalEmployee.detail.graphTruncated') }}
+                  </span>
+                </div>
+                <p
+                  v-if="!knowledgeGraphs.has(pkg.knowledgeBaseId)"
+                  class="py-3 text-center text-muted-foreground"
+                  :data-testid="`detail-graph-loading-${pkg.knowledgeBaseId}`"
+                >
+                  {{ t('digitalEmployee.detail.graphLoading') }}
+                </p>
+                <p
+                  v-else-if="graphFor(pkg.knowledgeBaseId) === null"
+                  class="py-3 text-center text-muted-foreground"
+                  :data-testid="`detail-graph-unavailable-${pkg.knowledgeBaseId}`"
+                >
+                  {{ t('digitalEmployee.detail.graphUnavailable') }}
+                </p>
+                <p
+                  v-else-if="conceptsFor(pkg.knowledgeBaseId).length === 0"
+                  class="py-3 text-center text-muted-foreground"
+                  :data-testid="`detail-graph-empty-${pkg.knowledgeBaseId}`"
+                >
+                  {{ t('digitalEmployee.detail.graphEmpty') }}
+                </p>
+                <template v-else>
+                  <!-- 概念明细：按关联度排序，点击展开正文（按需拉取、缓存） -->
+                  <div
+                    class="mt-1.5 space-y-1"
+                    :data-testid="`detail-concept-list-${pkg.knowledgeBaseId}`"
+                  >
+                    <div
+                      v-for="concept in conceptsFor(pkg.knowledgeBaseId)"
+                      :key="concept.conceptId"
+                      class="rounded-md border border-border/40 bg-background/60"
+                    >
+                      <button
+                        type="button"
+                        class="flex w-full items-center gap-1.5 px-2.5 py-2 text-left select-none"
+                        :data-testid="`detail-concept-${concept.conceptId}`"
+                        @click="toggleConcept(pkg.knowledgeBaseId, concept.conceptId)"
+                      >
+                        <Icon
+                          icon="lucide:chevron-right"
+                          class="size-3.5 shrink-0 text-muted-foreground transition-transform"
+                          :class="{
+                            'rotate-90': isConceptExpanded(
+                              pkg.knowledgeBaseId,
+                              concept.conceptId
+                            )
+                          }"
+                        />
+                        <span class="truncate font-medium">{{ concept.title }}</span>
+                        <span
+                          class="ml-auto flex shrink-0 items-center gap-1.5 text-[10px] text-muted-foreground"
+                        >
+                          <span class="rounded border border-border/60 bg-muted/40 px-1.5 py-0.5">
+                            {{ concept.type }}
+                          </span>
+                          <span>
+                            {{ t('digitalEmployee.detail.conceptDegree', { degree: concept.degree }) }}
+                          </span>
+                        </span>
+                      </button>
+                      <div
+                        v-if="isConceptExpanded(pkg.knowledgeBaseId, concept.conceptId)"
+                        class="border-t border-border/40 px-2.5 py-2"
+                      >
+                        <p
+                          v-if="isConceptLoading(pkg.knowledgeBaseId, concept.conceptId)"
+                          class="text-muted-foreground"
+                          :data-testid="`detail-concept-loading-${concept.conceptId}`"
+                        >
+                          {{ t('digitalEmployee.detail.conceptLoading') }}
+                        </p>
+                        <p
+                          v-else-if="conceptContent(pkg.knowledgeBaseId, concept.conceptId) === null"
+                          class="text-muted-foreground"
+                          :data-testid="`detail-concept-unavailable-${concept.conceptId}`"
+                        >
+                          {{ t('digitalEmployee.detail.conceptUnavailable') }}
+                        </p>
+                        <pre
+                          v-else
+                          class="font-sans text-xs leading-relaxed break-words whitespace-pre-wrap text-muted-foreground"
+                          :data-testid="`detail-concept-content-${concept.conceptId}`"
+                          >{{ conceptContent(pkg.knowledgeBaseId, concept.conceptId) }}</pre
+                        >
+                      </div>
+                    </div>
+                  </div>
+                  <!-- 图谱：内环枢纽 + 外环叶子，纯几何布局，节点大小随关联度 -->
+                  <svg
+                    class="mt-2 w-full"
+                    :viewBox="`0 0 ${GRAPH_VIEW_W} ${GRAPH_VIEW_H}`"
+                    :data-testid="`detail-knowledge-graph-${pkg.knowledgeBaseId}`"
+                  >
+                    <line
+                      v-for="(edge, index) in graphLayoutFor(pkg.knowledgeBaseId).edges"
+                      :key="`edge-${index}`"
+                      :x1="edge.x1"
+                      :y1="edge.y1"
+                      :x2="edge.x2"
+                      :y2="edge.y2"
+                      stroke="currentColor"
+                      class="text-muted-foreground/40"
+                      stroke-width="1"
+                    />
+                    <g v-for="node in graphLayoutFor(pkg.knowledgeBaseId).nodes" :key="node.id">
+                      <circle :cx="node.x" :cy="node.y" :r="node.r" :fill="node.color" fill-opacity="0.85">
+                        <title>{{ node.title }}</title>
+                      </circle>
+                      <text
+                        v-if="node.showLabel"
+                        :x="node.x"
+                        :y="node.y - node.r - 4"
+                        text-anchor="middle"
+                        font-size="9"
+                        fill="currentColor"
+                        class="text-muted-foreground"
+                      >
+                        {{ node.label }}
+                      </text>
+                    </g>
+                  </svg>
+                </template>
+              </div>
             </div>
           </template>
         </section>
@@ -262,7 +400,12 @@ import {
 } from '@shadcn/components/ui/sheet'
 import { useDigitalEmployeeStore } from '@/stores/digitalEmployeeStore'
 import type { DigitalEmployeeProvisionResult } from '@shared/contracts/routes'
-import type { DigitalEmployee, KnowledgePackageStatus } from '@shared/contracts/routes'
+import type {
+  DigitalEmployee,
+  DigitalEmployeeKnowledgeGraph,
+  KnowledgeConceptMeta,
+  KnowledgePackageStatus
+} from '@shared/contracts/routes'
 
 const props = defineProps<{
   employee: DigitalEmployee | null
@@ -276,11 +419,17 @@ const { t } = useI18n()
 const store = useDigitalEmployeeStore()
 
 const knowledgePackages = ref<KnowledgePackageStatus[]>([])
+/** kbId → 图谱；undefined=加载中，null=整包不可用（端点未上线/网络失败）。 */
+const knowledgeGraphs = ref<Map<string, DigitalEmployeeKnowledgeGraph | null>>(new Map())
 const skillDescriptions = ref<Map<string, string>>(new Map())
+// 概念正文缓存与展开态：key = `${kbId}::${conceptId}`，null=本地+远端都拿不到
+const conceptContents = ref<Map<string, string | null>>(new Map())
+const expandedConceptKeys = ref<Set<string>>(new Set())
+const loadingConceptKeys = ref<Set<string>>(new Set())
 
 /**
- * 只读视图：打开时按需拉一次知识包状态与本地技能元数据，员工切换时重拉。
- * 结果回来时若员工已切换则直接丢弃，避免串显上一家的数据。
+ * 只读视图：打开时按需拉一次知识包状态、知识图谱与本地技能元数据，员工切换
+ * 时重拉。结果回来时若员工已切换则直接丢弃，避免串显上一家的数据。
  * 绝不触发 provision——那是有副作用的准备动作，只读详情不代用户执行。
  */
 watch(
@@ -290,10 +439,21 @@ watch(
     // 未绑定知识库就不发状态请求：请求必空，只会把空态渲染成「获取失败」。
     if (props.employee.knowledgeBaseIds.length === 0) {
       knowledgePackages.value = []
+      knowledgeGraphs.value = new Map()
+      resetConceptState()
     } else {
-      const packages = await store.listKnowledgePackages(id)
+      resetConceptState()
+      const baseIds = props.employee.knowledgeBaseIds
+      // 状态与图谱并行拉取；图谱失败收敛为 null → 卡片内显示「暂不可用」。
+      const [packages, graphs] = await Promise.all([
+        store.listKnowledgePackages(id),
+        Promise.all(baseIds.map((kbId) => store.fetchKnowledgeGraph(id, kbId)))
+      ])
       if (props.employee.id !== id) return
       knowledgePackages.value = packages
+      const graphMap = new Map<string, DigitalEmployeeKnowledgeGraph | null>()
+      baseIds.forEach((kbId, index) => graphMap.set(kbId, graphs[index]))
+      knowledgeGraphs.value = graphMap
     }
     const skills = await store.listLocalSkillMetadata()
     if (props.employee.id !== id) return
@@ -301,6 +461,179 @@ watch(
   },
   { immediate: true }
 )
+
+function resetConceptState(): void {
+  conceptContents.value = new Map()
+  expandedConceptKeys.value = new Set()
+  loadingConceptKeys.value = new Set()
+}
+
+function graphFor(knowledgeBaseId: string): DigitalEmployeeKnowledgeGraph | null | undefined {
+  return knowledgeGraphs.value.get(knowledgeBaseId)
+}
+
+/** 概念按关联度降序、同度数按标题稳定排序，枢纽概念排前面。 */
+function conceptsFor(knowledgeBaseId: string): KnowledgeConceptMeta[] {
+  const graph = knowledgeGraphs.value.get(knowledgeBaseId)
+  if (!graph) return []
+  return [...graph.concepts].sort(
+    (left, right) => right.degree - left.degree || left.title.localeCompare(right.title)
+  )
+}
+
+const conceptKey = (knowledgeBaseId: string, conceptId: string): string =>
+  `${knowledgeBaseId}::${conceptId}`
+const isConceptExpanded = (knowledgeBaseId: string, conceptId: string): boolean =>
+  expandedConceptKeys.value.has(conceptKey(knowledgeBaseId, conceptId))
+const isConceptLoading = (knowledgeBaseId: string, conceptId: string): boolean =>
+  loadingConceptKeys.value.has(conceptKey(knowledgeBaseId, conceptId))
+const conceptContent = (knowledgeBaseId: string, conceptId: string): string | null | undefined =>
+  conceptContents.value.get(conceptKey(knowledgeBaseId, conceptId))
+
+/** 展开/收起概念正文；首次展开时按需拉一次正文并缓存。 */
+async function toggleConcept(knowledgeBaseId: string, conceptId: string): Promise<void> {
+  const key = conceptKey(knowledgeBaseId, conceptId)
+  const next = new Set(expandedConceptKeys.value)
+  if (next.has(key)) {
+    next.delete(key)
+    expandedConceptKeys.value = next
+    return
+  }
+  next.add(key)
+  expandedConceptKeys.value = next
+  if (conceptContents.value.has(key) || loadingConceptKeys.value.has(key)) return
+  const employeeId = props.employee?.id
+  if (!employeeId) return
+  const loading = new Set(loadingConceptKeys.value)
+  loading.add(key)
+  loadingConceptKeys.value = loading
+  const result = await store.fetchKnowledgeConcept(employeeId, knowledgeBaseId, conceptId)
+  if (props.employee?.id !== employeeId) return
+  const contents = new Map(conceptContents.value)
+  contents.set(key, result.content)
+  conceptContents.value = contents
+  const done = new Set(loadingConceptKeys.value)
+  done.delete(key)
+  loadingConceptKeys.value = done
+}
+
+// —— 图谱紧凑布局：内环枢纽、外环叶子，纯几何、位置稳定（无力导向）。 ——
+const GRAPH_VIEW_W = 400
+const GRAPH_VIEW_H = 240
+const GRAPH_NODES_PER_RING = 26
+const NODE_PALETTE = [
+  '#0ea5e9',
+  '#8b5cf6',
+  '#f59e0b',
+  '#10b981',
+  '#ef4444',
+  '#6366f1',
+  '#ec4899',
+  '#14b8a6'
+]
+
+interface GraphLayoutNode {
+  id: string
+  title: string
+  label: string
+  x: number
+  y: number
+  r: number
+  color: string
+  showLabel: boolean
+}
+interface GraphLayout {
+  nodes: GraphLayoutNode[]
+  edges: { x1: number; y1: number; x2: number; y2: number }[]
+}
+
+const EMPTY_GRAPH_LAYOUT: GraphLayout = { nodes: [], edges: [] }
+
+function hashString(value: string): number {
+  let hash = 0
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 31 + value.charCodeAt(index)) | 0
+  }
+  return Math.abs(hash)
+}
+
+/**
+ * 内环放枢纽概念（度数 >= 3，唯一枢纽居中），叶子按每环 26 个向外铺开；
+ * 节点半径随度数增长。只依赖数据本身，每次打开位置一致。
+ */
+function buildGraphLayout(graph: NonNullable<DigitalEmployeeKnowledgeGraph>): GraphLayout {
+  const centerX = GRAPH_VIEW_W / 2
+  const centerY = GRAPH_VIEW_H / 2
+  const maxRadius = Math.min(GRAPH_VIEW_W, GRAPH_VIEW_H) / 2 - 14
+  const nodes = [...graph.concepts].sort(
+    (left, right) => right.degree - left.degree || left.conceptId.localeCompare(right.conceptId)
+  )
+  const positions = new Map<string, { x: number; y: number }>()
+  const hubs = nodes.filter((node) => node.degree >= 3)
+  const leaves = nodes.filter((node) => node.degree < 3)
+
+  const hubRing = hubs.length > 1 ? Math.min(24 + hubs.length * 2, maxRadius * 0.45) : 0
+  hubs.forEach((node, index) => {
+    if (hubs.length === 1) {
+      positions.set(node.conceptId, { x: centerX, y: centerY })
+      return
+    }
+    const angle = (index / hubs.length) * Math.PI * 2 - Math.PI / 2
+    positions.set(node.conceptId, {
+      x: centerX + hubRing * Math.cos(angle),
+      y: centerY + hubRing * Math.sin(angle)
+    })
+  })
+
+  const leafRingCount = Math.max(1, Math.ceil(leaves.length / GRAPH_NODES_PER_RING))
+  const leafStart = hubs.length > 0 ? hubRing + 30 : maxRadius * 0.45
+  const leafStep = leafRingCount > 1 ? (maxRadius - leafStart) / (leafRingCount - 1) : 0
+  for (let ring = 0; ring < leafRingCount; ring += 1) {
+    const batch = leaves.slice(ring * GRAPH_NODES_PER_RING, (ring + 1) * GRAPH_NODES_PER_RING)
+    const radius = Math.min(leafStart + ring * leafStep, maxRadius)
+    batch.forEach((node, index) => {
+      const angle = (index / batch.length) * Math.PI * 2 - Math.PI / 2
+      positions.set(node.conceptId, {
+        x: centerX + radius * Math.cos(angle),
+        y: centerY + radius * Math.sin(angle)
+      })
+    })
+  }
+
+  // 节点少时全标，多时只标枢纽，避免 440px 抽屉里标签糊成一片。
+  const labelAll = nodes.length <= 15
+  const layoutNodes: GraphLayoutNode[] = nodes.map((node) => {
+    const at = positions.get(node.conceptId) ?? { x: centerX, y: centerY }
+    return {
+      id: node.conceptId,
+      title: node.title,
+      label: node.title.length > 16 ? `${node.title.slice(0, 15)}…` : node.title,
+      x: at.x,
+      y: at.y,
+      r: 3 + Math.min(node.degree, 10) * 0.6,
+      color: NODE_PALETTE[hashString(node.type) % NODE_PALETTE.length],
+      showLabel: labelAll || node.degree >= 4
+    }
+  })
+  const layoutEdges = graph.edges.flatMap((edge) => {
+    const from = positions.get(edge.source)
+    const to = positions.get(edge.target)
+    if (!from || !to) return []
+    return [{ x1: from.x, y1: from.y, x2: to.x, y2: to.y }]
+  })
+  return { nodes: layoutNodes, edges: layoutEdges }
+}
+
+const graphLayouts = computed(() => {
+  const layouts = new Map<string, GraphLayout>()
+  for (const [kbId, graph] of knowledgeGraphs.value) {
+    if (graph && graph.concepts.length > 0) layouts.set(kbId, buildGraphLayout(graph))
+  }
+  return layouts
+})
+function graphLayoutFor(knowledgeBaseId: string): GraphLayout {
+  return graphLayouts.value.get(knowledgeBaseId) ?? EMPTY_GRAPH_LAYOUT
+}
 
 const skillDetailIds = computed(
   () => new Set((props.employee?.skills ?? []).map((skill) => skill.id))

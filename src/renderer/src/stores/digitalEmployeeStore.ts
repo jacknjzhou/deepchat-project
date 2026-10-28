@@ -14,7 +14,11 @@ import type {
   DigitalEmployeeBackflowResult
 } from '@shared/contracts/routes'
 import type { DigitalEmployeeProvisionResult } from '@shared/contracts/routes'
-import type { KnowledgePackageStatus } from '@shared/contracts/routes'
+import type {
+  DigitalEmployeeKnowledgeConcept,
+  DigitalEmployeeKnowledgeGraph,
+  KnowledgePackageStatus
+} from '@shared/contracts/routes'
 import type { QueryResult } from '@shared/types/knowledge'
 import type { SkillMetadata } from '@shared/types/skill'
 
@@ -334,6 +338,35 @@ export const useDigitalEmployeeStore = defineStore('digitalEmployee', () => {
   }
 
   /**
+   * 详情视图用：读知识图谱（概念清单 + 链接边）。`null` 表示整包不可用
+   * （端点未上线 / 网络失败），与「空图」（概念存在但无链接）区分：前者
+   * 显示「图谱暂不可用」，后者正常渲染空态。失败降级为 null，不打断详情。
+   */
+  async function fetchKnowledgeGraph(
+    employeeId: string,
+    knowledgeBaseId: string
+  ): Promise<DigitalEmployeeKnowledgeGraph | null> {
+    try {
+      return await client.knowledgeGraph({ employeeId, knowledgeBaseId })
+    } catch {
+      return null
+    }
+  }
+
+  /** 详情视图用：按需读单个概念正文。失败返回 null 内容，展示「正文不可用」。 */
+  async function fetchKnowledgeConcept(
+    employeeId: string,
+    knowledgeBaseId: string,
+    conceptId: string
+  ): Promise<DigitalEmployeeKnowledgeConcept> {
+    try {
+      return await client.knowledgeConcept({ employeeId, knowledgeBaseId, conceptId })
+    } catch {
+      return { content: null }
+    }
+  }
+
+  /**
    * 详情视图用：读本地技能目录元数据（含 SKILL.md 描述）。数字员工的技能
    * 全部装在内置 `deepchat` Agent scope 下（见主进程 skillSync 的
    * SKILL_AGENT_ID），按本地安装名（员工前缀）匹配。失败返回空数组：描述
@@ -614,6 +647,8 @@ export const useDigitalEmployeeStore = defineStore('digitalEmployee', () => {
     employeeForSession,
     loadKnowledgeStatus,
     listKnowledgePackages,
+    fetchKnowledgeGraph,
+    fetchKnowledgeConcept,
     listLocalSkillMetadata,
     provisionEmployee,
     reportBackflow,

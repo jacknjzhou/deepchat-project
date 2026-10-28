@@ -3,6 +3,8 @@ import {
   digitalEmployeeBackflowRoute,
   digitalEmployeeBindRemoteSessionRoute,
   digitalEmployeeGetRoute,
+  digitalEmployeeKnowledgeConceptRoute,
+  digitalEmployeeKnowledgeGraphRoute,
   digitalEmployeeKnowledgeLocalBaseRoute,
   digitalEmployeeKnowledgeStatusRoute,
   digitalEmployeeListRoute,
@@ -14,6 +16,8 @@ import type { DigitalEmployee, StaffdeckAwaitingInput } from '@shared/contracts/
 import type {
   BackflowEventInput,
   DigitalEmployeeBackflowResult,
+  DigitalEmployeeKnowledgeConcept,
+  DigitalEmployeeKnowledgeGraph,
   DigitalEmployeeKnowledgeLocalBase,
   DigitalEmployeeKnowledgeStatus,
   DigitalEmployeeProvisionResult,
@@ -105,6 +109,25 @@ export function createDigitalEmployeeClient(bridge: DeepchatBridge = getDeepchat
     return result as DigitalEmployeeKnowledgeLocalBase
   }
 
+  /** 知识图谱（概念 + 链接边）；`null` = 整包不可用，UI 降级为「图谱暂不可用」。 */
+  async function knowledgeGraph(input: {
+    employeeId: string
+    knowledgeBaseId: string
+  }): Promise<DigitalEmployeeKnowledgeGraph | null> {
+    const result = await bridge.invoke(digitalEmployeeKnowledgeGraphRoute.name, input)
+    return result as DigitalEmployeeKnowledgeGraph | null
+  }
+
+  /** 单个概念的 markdown 正文；`content: null` = 本地缓存和远端都拿不到。 */
+  async function knowledgeConcept(input: {
+    employeeId: string
+    knowledgeBaseId: string
+    conceptId: string
+  }): Promise<DigitalEmployeeKnowledgeConcept> {
+    const result = await bridge.invoke(digitalEmployeeKnowledgeConceptRoute.name, input)
+    return result as DigitalEmployeeKnowledgeConcept
+  }
+
   /**
    * 本地执行前的准备：注册远端工具 + 安装技能包。
    *
@@ -142,6 +165,8 @@ export function createDigitalEmployeeClient(bridge: DeepchatBridge = getDeepchat
     switchToRemote,
     knowledgeStatus,
     knowledgeLocalBase,
+    knowledgeGraph,
+    knowledgeConcept,
     provision,
     backflow,
     onRemoteRunUpdated

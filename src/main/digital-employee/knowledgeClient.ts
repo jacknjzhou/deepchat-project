@@ -61,6 +61,28 @@ export interface KnowledgeBaseInfo {
   chunkCount: number
 }
 
+/** 概念正文里的 markdown 链接（服务端已滤掉 citations 区重复）。 */
+export interface ConceptLink {
+  label: string
+  target: string
+}
+
+/** 概念元数据：不含正文，正文走 `:download` 按需拉。 */
+export interface ConceptMetadata {
+  conceptId: string
+  type: string
+  title: string
+  description: string
+  links: ConceptLink[]
+}
+
+export interface ConceptMetadataResult {
+  knowledgeBaseId: string
+  version: string
+  conceptCount: number
+  concepts: ConceptMetadata[]
+}
+
 const normalizeBaseUrl = (baseUrl: string): string => baseUrl.replace(/\/+$/, '')
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -248,5 +270,58 @@ export class StaffdeckKnowledgeClient {
         // 没有 id 的条目无法与包对账，丢弃而不是留个孤儿卡片。
         .filter((entry) => entry.knowledgeBaseId !== '')
     )
+  }
+
+  /**
+   * 取某个知识包的概念元数据（含正文链接），供本地建知识图谱。
+   *
+   * 与 fetchKnowledgeBases 同款降级语义：**纯展示数据，不参与同步判定**——
+   * 404（端点未上线 / 包被 opt-out / 员工不可见）返回 null，由上层显示
+   * 「图谱暂不可用」，绝不能把展示端点的缺席放大成同步故障。
+   */
+  async fetchConceptMetadata(
+    employeeId: string,
+    knowledgeBaseId: string
+  ): Promise<ConceptMetadataResult | null> {
+    const url =
+      `${this.base}/api/v1/digital-employees/${encodeURIComponent(employeeId)}` +
+      `/knowledge-packages/${encodeURIComponent(knowledgeBaseId)}/concepts`
+    const response = await this.fetchImpl(url, {
+      method: 'GET',
+      headers: { ...this.authHeaders() },
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+    })
+
+    if (response.status === 404) return null
+    if (!response.ok) await this.throwForResponse(response)
+
+    const body: unknown = await response.json().catch(() => null)
+    if (!isRecord(body)) {
+      throw new Error('[digitalEmployee] invalid concept metadata payload from StaffDeck')
+    }
+
+    const rawConcepts = Array.isArray(body.concepts) ? body.concepts : []
+    const concepts: ConceptMetadata[] = rawConcepts
+      .filter(isRecord)
+      .map((entry) => ({
+        conceptId: readString(entry.conceptId),
+        type: readString(entry.type),
+        title: readString(entry.title),
+        description: readString(entry.description),
+        links: (Array.isArray(entry.links) ? entry.links : [])
+          .filter(isRecord)
+          .map((link) => ({ label: readString(link.label), target: readString(link.target) }))
+          // 没有 target 的链接不构成边，解析层也救不了它，直接丢。
+          .filter((link) => link.target !== '')
+      }))
+      // 没有 id 的概念既无法建图也无法定位正文，丢弃。
+      .filter((entry) => entry.conceptId !== '')
+
+    return {
+      knowledgeBaseId: readString(body.knowledgeBaseId) || knowledgeBaseId,
+      version: readString(body.version),
+      conceptCount: readNumber(body.conceptCount) || concepts.length,
+      concepts
+    }
   }
 }

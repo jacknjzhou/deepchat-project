@@ -27,7 +27,15 @@
     "toolsReady": "Tools ready",
     "toolsNotReady": "Tools unavailable",
     "knowledgeToolReady": "Knowledge search ready",
-    "knowledgeToolNotReady": "Knowledge search unavailable"
+    "knowledgeToolNotReady": "Knowledge search unavailable",
+    "conceptDegree": "{degree} links",
+    "conceptLoading": "Loading content…",
+    "conceptUnavailable": "Content unavailable",
+    "graphTitle": "Knowledge graph",
+    "graphLoading": "Loading knowledge graph…",
+    "graphUnavailable": "Knowledge graph unavailable",
+    "graphEmpty": "No concepts in this knowledge base",
+    "graphTruncated": "Too many concepts; showing core nodes only"
   },
   "openingQuestionPlaceholder": "(Optional) your first question",
   "startConversation": "Start conversation",

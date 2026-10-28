@@ -3508,12 +3508,20 @@ export async function createMainProcessControl(dependencies: {
         set: (key: string, value: unknown) => dependencies.settingsStore.set(key, value)
       }
     })
+    // 概念正文缓存根目录：同步落盘与详情页按需读取共用（见 knowledgeRoutes）。
+    const knowledgeCacheDir = path.join(app.getPath('userData'), 'digital-employee-knowledge')
     const digitalEmployeeKnowledgeRoutes = createDigitalEmployeeKnowledgeRoutes({
       stateStore: knowledgeSyncStateStore,
       // 用户可能在主设置里删掉某个员工库：状态表还在，但向量库已不存在。
       // 交给 renderer 一个「查得到」的 id 才有意义，所以这里顺手校验一次。
       hasKnowledgeBase: (knowledgeBaseId) =>
-        knowledgeSettings.getKnowledgeConfigs().some((config) => config.id === knowledgeBaseId)
+        knowledgeSettings.getKnowledgeConfigs().some((config) => config.id === knowledgeBaseId),
+      // 展示端点（图谱 / 概念正文）调用时现取连接：路由只建一次，连接随配置重建。
+      readClient: () => {
+        const connection = readStaffdeckConnection()
+        return connection ? new StaffdeckKnowledgeClient(connection) : null
+      },
+      cacheDir: knowledgeCacheDir
     })
 
     // 员工本地执行的准备工作（D4）：远端工具注册 + 技能包安装。
@@ -3687,8 +3695,6 @@ export async function createMainProcessControl(dependencies: {
       queue: backflowQueue,
       retryWorker: backflowRetry
     })
-
-    const knowledgeCacheDir = path.join(app.getPath('userData'), 'digital-employee-knowledge')
 
     const rebuildKnowledgeSync = (): void => {
       knowledgeSyncScheduler?.stop()

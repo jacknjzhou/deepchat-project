@@ -79,6 +79,61 @@ export const digitalEmployeeKnowledgeLocalBaseRoute = defineRouteContract({
   output: z.object({ knowledgeBaseId: z.string().min(1).nullable() })
 })
 
+/**
+ * 知识图谱与概念目录：员工一个知识库内的概念清单 + 概念间链接关系。
+ *
+ * 数据来自服务端概念元数据端点（`GET .../knowledge-packages/{kb}/concepts`），
+ * main 进程按企业管理台同款语义建图：markdown 链接解析为内部边
+ * （相对路径归一化、去自环、去重、外部链接忽略），节点超上限时截断并标记。
+ *
+ * `null` 表示整包不可用（端点未上线、包不可见或网络失败）——抽屉里降级为
+ * 「图谱暂不可用」，绝不能和「空图」（概念存在但没有链接）混淆，所以是
+ * 顶层 nullable 而不是空数组。
+ *
+ * 概念正文不在这里：正文按需单独拉（`knowledgeConcept`），避免列表请求
+ * 背上全部概念内容。
+ */
+export const KnowledgeConceptMetaSchema = z.object({
+  conceptId: z.string().min(1),
+  type: z.string(),
+  title: z.string(),
+  description: z.string(),
+  degree: z.number().int().nonnegative()
+})
+
+export const digitalEmployeeKnowledgeGraphRoute = defineRouteContract({
+  name: 'digitalEmployee.knowledgeGraph',
+  input: z
+    .object({ employeeId: EntityIdSchema, knowledgeBaseId: z.string().min(1) })
+    .strict(),
+  output: z
+    .object({
+      version: z.string(),
+      truncated: z.boolean(),
+      concepts: z.array(KnowledgeConceptMetaSchema),
+      edges: z.array(
+        z.object({ source: z.string().min(1), target: z.string().min(1) })
+      )
+    })
+    .nullable()
+})
+
+/**
+ * 单个概念的 markdown 正文。本地同步缓存优先，缺失时远端按需拉取（只读、
+ * 不进向量索引）。`null` = 本地没有且远端拿不到（未同步 / 概念已删）。
+ */
+export const digitalEmployeeKnowledgeConceptRoute = defineRouteContract({
+  name: 'digitalEmployee.knowledgeConcept',
+  input: z
+    .object({
+      employeeId: EntityIdSchema,
+      knowledgeBaseId: z.string().min(1),
+      conceptId: z.string().min(1)
+    })
+    .strict(),
+  output: z.object({ content: z.string().nullable() })
+})
+
 export type KnowledgePackageStatus = z.infer<typeof KnowledgePackageStatusSchema>
 export type KnowledgeStaleReasonValue = z.infer<typeof KnowledgeStaleReasonValueSchema>
 export type DigitalEmployeeKnowledgeStatus = z.infer<
@@ -86,4 +141,11 @@ export type DigitalEmployeeKnowledgeStatus = z.infer<
 >
 export type DigitalEmployeeKnowledgeLocalBase = z.infer<
   typeof digitalEmployeeKnowledgeLocalBaseRoute.output
+>
+export type KnowledgeConceptMeta = z.infer<typeof KnowledgeConceptMetaSchema>
+export type DigitalEmployeeKnowledgeGraph = z.infer<
+  typeof digitalEmployeeKnowledgeGraphRoute.output
+>
+export type DigitalEmployeeKnowledgeConcept = z.infer<
+  typeof digitalEmployeeKnowledgeConceptRoute.output
 >
