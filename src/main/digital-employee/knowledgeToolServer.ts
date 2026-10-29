@@ -25,10 +25,22 @@ const EMPTY_NOTICE = '未找到相关知识。'
 const FAILURE_NOTICE = '知识检索失败，请稍后重试。'
 
 export interface DigitalEmployeeKnowledgeServerDeps {
+  /** 本地向量库的检索入口；实现方负责索引为空等内部异常。 */
   knowledge: Pick<KnowledgeSearchPort, 'similarityQuery'>
+  /**
+   * 该员工绑定的本地库 id（`de-{employeeId}`）。
+   * 空串表示员工没有绑定任何本地知识库，工具将直接答「未找到」。
+   */
   localKnowledgeBaseId: string
 }
 
+/**
+ * 承载 `de_knowledge_search` 工具的 in-memory MCP server。
+ *
+ * 一个员工对应一个实例，由 `mcpClient` 经 inmemory 工厂按 config `env`
+ * 里的 `localKnowledgeBaseId` 构造；生命周期（启动/停止）由
+ * `knowledgeToolRegistration.ts` 管理，本类只负责协议应答。
+ */
 export class DigitalEmployeeKnowledgeServer {
   private server: Server
   private readonly knowledge: Pick<KnowledgeSearchPort, 'similarityQuery'>
@@ -77,6 +89,8 @@ export class DigitalEmployeeKnowledgeServer {
     }
     try {
       const results = await this.knowledge.similarityQuery(this.localKnowledgeBaseId, query)
+      // 只取前 5 条并拼成编号列表；过滤掉剥离「[n] 」前缀后没有正文的空命中，
+      // 避免把索引里的空片段当作结果喂给模型。
       const lines = results
         .slice(0, 5)
         .map((result: QueryResult, index: number) =>
@@ -87,6 +101,8 @@ export class DigitalEmployeeKnowledgeServer {
         content: [{ type: 'text', text: lines.length > 0 ? lines.join('\n') : EMPTY_NOTICE }]
       }
     } catch (error) {
+      // 检索链路的任何异常（索引缺失、向量库故障）都折行进工具文本：
+      // 模型能看到失败并改用自身知识作答，会话不中断。
       return {
         content: [
           {
@@ -98,6 +114,7 @@ export class DigitalEmployeeKnowledgeServer {
     }
   }
 
+  /** 把协议处理方法挂到 MCP server 上，构造时即完成装配。 */
   private setupRequestHandlers(): void {
     this.server.setRequestHandler('tools/list', async () => this.listTools())
     this.server.setRequestHandler('tools/call', async (request) => {

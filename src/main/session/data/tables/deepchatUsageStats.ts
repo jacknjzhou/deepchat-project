@@ -2,6 +2,12 @@ import Database from 'better-sqlite3-multiple-ciphers'
 import { BaseTable } from '@/data/baseTable'
 import type { UsageStatsCategory, UsageStatsRecordInput } from '@/session/usageStats'
 
+/**
+ * token 用量统计表：一行一次用量事件（聊天消息或压缩调用），usage_id 主键
+ * （消息 id 或 compaction:<session>:<attempt>:<call>），按 usage_date（本地
+ * 日期）聚合。写入来自 transcript 实时记账与用量回填；getDashboard 各类
+ * 聚合查询（summary/日历/provider/model 分解）在读侧完成。
+ */
 export interface DeepChatUsageStatsRow {
   usage_id: string
   message_id: string | null

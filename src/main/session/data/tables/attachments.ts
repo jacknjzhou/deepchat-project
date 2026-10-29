@@ -1,6 +1,12 @@
 import { BaseTable } from '@/data/baseTable'
 import type Database from 'better-sqlite3-multiple-ciphers'
 
+/**
+ * 旧版附件元数据表：记录每条消息携带的附件（类型/文件名/存储方式/缩略图等）。
+ * 主键自增 id，attach_id 唯一，按 message_id 外键级联删除。
+ * 属于 conversations/messages 旧版消息体系；新版消息的附件走
+ * deepchat_user_message_files。仅建表，无其它读写方法。
+ */
 export class AttachmentsTable extends BaseTable {
   constructor(db: Database.Database) {
     super(db, 'attachments')

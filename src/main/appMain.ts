@@ -18,7 +18,7 @@ import { classifyMainLogError, type MainLogShutdownReason } from './logging/main
 import { elapsedMonotonicMs, readMonotonicNow } from './lib/monotonicTime'
 
 let appStarted = false
-const APP_NAME = 'DeepChat'
+const APP_NAME = 'OfficeAgent'
 
 export function startApp(): void {
   if (appStarted) {
@@ -89,7 +89,7 @@ export function startApp(): void {
       title: APP_NAME,
       message: '应用已在运行',
       detail:
-        '无法同时启动多个实例。若未看到应用窗口，请检查系统托盘；若设备上还安装了其他 DeepChat 版本（如官方版），请先退出后再启动。'
+        '无法同时启动多个实例。若未看到应用窗口，请检查系统托盘；若设备上还安装了其他 OfficeAgemt 版本,请先退出后再启动。'
     })
     app.quit()
     return

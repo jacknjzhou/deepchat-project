@@ -137,6 +137,15 @@ function summaryStatesEqual(left: SessionSummaryState, right: SessionSummaryStat
   )
 }
 
+/**
+ * 会话级设置存储（SessionSettingsStore）：provider/model/权限模式/生成参数
+ * 的持久化，外加上下文摘要（summary）状态的维护。
+ *
+ * 摘要状态有双份来源：sessions 行上的快照字段与 tape 上的重建锚点。读侧
+ * 以 tape 锚点为准（它是权威事实流），行字段只是加速读取的镜像；写侧用
+ * compareAndSetSummaryState 做乐观并发控制——期望状态不匹配（有并发压缩）
+ * 就拒绝应用。锚点与行更新同事务，崩溃后两侧不会分叉。
+ */
 export class SessionSettingsStore {
   private database: SessionDatabase
   private readonly tape: TapeAnchorReader & TapeAnchorWriter & TapeLifecycleAdmin
@@ -149,6 +158,7 @@ export class SessionSettingsStore {
     this.tape = tape
   }
 
+  /** 创建会话设置行并初始化其 tape（两者同生）。 */
   create(
     id: string,
     providerId: string,
@@ -170,6 +180,7 @@ export class SessionSettingsStore {
     return this.database.deepchatSessionsTable.get(id)
   }
 
+  /** 删除会话设置：先删 tape（外层资源），再删行。 */
   delete(id: string): void {
     this.tape.deleteSessionTape(id)
     this.database.deepchatSessionsTable.delete(id)
@@ -209,6 +220,7 @@ export class SessionSettingsStore {
     this.database.getDatabase().transaction(update)()
   }
 
+  /** 读取摘要状态：tape 锚点优先，无锚点回退行字段。 */
   getSummaryState(id: string): SessionSummaryState {
     const tapeState = summaryStateFromTapeAnchor(this.tape.getLatestReconstructionAnchor(id))
     if (tapeState) {
@@ -235,6 +247,11 @@ export class SessionSettingsStore {
     this.database.deepchatSessionsTable.updateSummaryState(id, state)
   }
 
+  /**
+   * 摘要状态的乐观写入：当前状态与期望一致才应用新状态并（可选）落 tape
+   * 锚点。要求带锚点的写入必须没有更新的锚点存在（防旧锚点回写覆盖新摘要）。
+   * 返回是否应用成功及当前实际状态，供调用方决定重试或放弃。
+   */
   compareAndSetSummaryState(
     id: string,
     expectedState: SessionSummaryState,
@@ -279,6 +296,7 @@ export class SessionSettingsStore {
     }
   }
 
+  /** 重置摘要：行字段清零 + 落 summary/reset 锚点，同一事务完成。 */
   resetSummaryState(id: string): void {
     const reset = (): void => {
       this.database.deepchatSessionsTable.resetSummaryState(id)

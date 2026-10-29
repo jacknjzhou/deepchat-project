@@ -27,9 +27,19 @@ export interface SessionTranscriptMutationDependencies {
   runInTransaction<T>(operation: () => T): T
 }
 
+/**
+ * 消息变更的编排层（transcriptMutations）：清空/重试/删除/编辑/fork 这类
+ * 「既要动存储、又要让运行时上下文失效」的操作都在这里协调。
+ *
+ * 与直接调 transcript 的区别：每次变更前先过 runtime 端口做前置校验
+ * （无活跃待发输入、取消生成），变更后主动失效运行时缓存的历史上下文
+ * （invalidateTranscriptFrom），否则模型还会看到已被删除/截断的消息。
+ * 涉及多表一致的部分包在依赖注入的事务里执行。
+ */
 export class SessionTranscriptMutations {
   constructor(private readonly dependencies: SessionTranscriptMutationDependencies) {}
 
+  /** 清空会话全部消息：先运行时准备，再事务内三连删（输入/消息/tape 状态）。 */
   async clearMessages(sessionId: string): Promise<void> {
     await this.dependencies.runtime.prepareClearMessages(sessionId)
     this.dependencies.runInTransaction(() => {
@@ -40,6 +50,13 @@ export class SessionTranscriptMutations {
     this.dependencies.runtime.finishClearMessages(sessionId)
   }
 
+  /**
+   * 重试准备阶段（只读+状态修复，不截断）：定位重试的源头用户消息，抽出发送
+   * 内容，让运行时做好准备并返回项目目录。失败的 steer 消息此时被修复成
+   * sent——它必须留在上下文历史里，否则重发后模型看不到这轮提示。
+   * 截断点（retryFromOrderSeq）与实际删除（commitRetryMessage）分离，由
+   * 运行时选择提交时机（ACP 需要提前截，本地可在历史准备时再截）。
+   */
   async prepareRetryMessage(
     sessionId: string,
     messageId: string
@@ -90,6 +107,7 @@ export class SessionTranscriptMutations {
     }
   }
 
+  /** 重试的截断提交：从事故删 + 运行时历史同步失效，二者一体执行。 */
   commitRetryMessage(sessionId: string, orderSeq: number): void {
     this.dependencies.runInTransaction(() => {
       this.dependencies.transcript.deleteFromOrderSeq(sessionId, orderSeq)
@@ -97,6 +115,7 @@ export class SessionTranscriptMutations {
     this.dependencies.runtime.invalidateTranscriptFrom(sessionId, orderSeq)
   }
 
+  /** 删除消息：从该消息起整段截断（后续回复随之失效），先取消生成。 */
   async deleteMessage(sessionId: string, messageId: string): Promise<void> {
     this.dependencies.runtime.assertNoActivePendingInputs(sessionId)
     const target = this.requireMessage(sessionId, messageId)
@@ -107,6 +126,7 @@ export class SessionTranscriptMutations {
     this.dependencies.runtime.finishTranscriptTruncate(sessionId)
   }
 
+  /** 编辑用户消息文本：只改 text，保留文件等其它字段（buildEditedUserContent）。 */
   async editUserMessage(
     sessionId: string,
     messageId: string,
@@ -131,6 +151,7 @@ export class SessionTranscriptMutations {
     return updated
   }
 
+  /** fork 的消息复制阶段：复制到目标消息为止的已发送消息，然后重置 fork 运行时。 */
   async forkSessionFromMessage(
     sourceSessionId: string,
     targetSessionId: string,

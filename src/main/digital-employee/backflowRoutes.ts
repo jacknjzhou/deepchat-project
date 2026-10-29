@@ -31,12 +31,22 @@ export interface DigitalEmployeeBackflowRoutesDeps {
   log?: (message: string, error?: unknown) => void
 }
 
+/**
+ * 组装回流上报与队列状态两条路由。
+ * 上报路由的主逻辑在 `flush`：直发 → 失败部分入队 → 踢补发。
+ */
 export function createDigitalEmployeeBackflowRoutes(deps: DigitalEmployeeBackflowRoutesDeps) {
   const now = deps.now ?? Date.now
   const log = deps.log ?? ((message: string) => console.warn(message))
 
+  /** 队列未提供时按 0 处理，让无队列的测试环境拿到合法的 pending 值。 */
   const pendingCount = (): number => deps.queue?.stats(now()).pending ?? 0
 
+  /**
+   * 上报主流程。返回值语义：
+   * - 直发成功或失败事件已全部落队：`ok: true`（renderer 游标可前进）；
+   * - 入队失败或不可重试的失败：`ok: false`，事件由 renderer 保留待重报。
+   */
   const flush = async (raw: unknown): Promise<DigitalEmployeeBackflowResult> => {
     const input = digitalEmployeeBackflowRoute.input.parse(raw)
     const result = await deps.backflow.flush({
@@ -98,6 +108,7 @@ export function createDigitalEmployeeBackflowRoutes(deps: DigitalEmployeeBackflo
     [digitalEmployeeBackflowRoute.name, flush],
     [
       digitalEmployeeBackflowQueueStatusRoute.name,
+      // 队列观测路由：无队列时返回全空形状，前端无需区分两种部署形态。
       async () => {
         const stats = deps.queue?.stats(now()) ?? {
           pending: 0,

@@ -1,6 +1,15 @@
 import Database from 'better-sqlite3-multiple-ciphers'
 import { BaseTable } from '@/data/baseTable'
 
+/**
+ * deepchat 消息主表：一行一条用户/assistant 消息，id 主键，(session_id,
+ * order_seq) 建立会话内顺序索引。content 存 JSON（user 为内容对象、
+ * assistant 为 blocks 数组的序列化），metadata 存扩展元数据（输入回执、
+ * 用量、压缩信息等），status 标记 pending/sent/error 生命周期。
+ * 被 transcript 全面读写；usage 回填与用量候选查询也走这里的专用查询。
+ * 结构化明细拆在 deepchat_user_messages / _files / _links /
+ * deepchat_assistant_blocks 四张辅表。
+ */
 export interface DeepChatMessageRow {
   id: string
   session_id: string

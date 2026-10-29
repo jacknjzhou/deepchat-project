@@ -1,6 +1,10 @@
 import Database from 'better-sqlite3-multiple-ciphers'
 import { BaseTable } from '@/data/baseTable'
 
+/**
+ * 用户消息文本辅表：把用户消息的正文与搜索/思考开关拆出主表单独存，
+ * message_id 主键对应 deepchat_messages.id。transcript 写入、读取时物化。
+ */
 export interface DeepChatUserMessageRow {
   message_id: string
   text: string

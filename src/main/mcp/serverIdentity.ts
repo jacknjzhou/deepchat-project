@@ -1,3 +1,16 @@
+/**
+ * MCP server 的稳定身份与变更检测。
+ *
+ * 一个 server 的身份由三部分构成：serverId（持久 UUID，跨重命名稳定）、
+ * configGeneration（连接语义相关的配置每次实质变更后自增）与 bindingHash
+ * （绑定面——传输类型/端点/命令/授权配置——的指纹）。
+ *
+ * 变更语义：generationMaterial 覆盖的任何字段（含 bindingMaterial）变化
+ * 即视为「身份携带变更」，调用方应据此作废凭据、撤销授权并重置代际；
+ * 纯展示性字段（名称、图标、描述）不影响身份。所有哈希输入先做键排序
+ * 与 URL 规范化（去 hash/凭据），保证等价配置得到相同指纹。
+ */
+
 import type { MCPServerConfig, McpAuthorizationConfig, McpServerIdentity } from '@shared/types/mcp'
 import { createHash, randomUUID } from 'node:crypto'
 
@@ -81,6 +94,7 @@ const normalizeAuthorization = (
   }
 }
 
+/** 只保留合法 mode 的授权配置，URL 与 scope 做规范化（去重排序）。 */
 export const sanitizeMcpAuthorizationConfig = normalizeAuthorization
 
 const bindingMaterial = (config: Partial<MCPServerConfig>): Record<string, unknown> => ({
@@ -98,11 +112,13 @@ const generationMaterial = (config: Partial<MCPServerConfig>): Record<string, un
   inheritEnv: config.inheritEnv
 })
 
+/** 计算绑定面指纹：凭据/OAuth 状态以该哈希为 stale 判定依据。 */
 export const computeMcpBindingHash = (config: Partial<MCPServerConfig>): string =>
   createHash('sha256')
     .update(canonicalJson(bindingMaterial(config)))
     .digest('hex')
 
+/** 判断一次配置更新是否携带身份语义（是则需要代际自增 + 凭据作废）。 */
 export const hasMcpIdentityBearingChange = (
   current: Partial<MCPServerConfig>,
   next: Partial<MCPServerConfig>
@@ -120,6 +136,11 @@ const normalizeServerId = (value: unknown): string | undefined => {
     : undefined
 }
 
+/**
+ * 归并出一份配置的最终身份：serverId 沿用既有合法值（否则生成新 UUID）；
+ * 身份携带变更时 generation 在旧值基础上自增；bindingHash 始终基于当前
+ * 配置重算。previous 缺失（首次入库）时不变更代际。
+ */
 export const normalizeMcpServerIdentity = (
   config: Partial<MCPServerConfig>,
   previous?: Partial<MCPServerConfig>

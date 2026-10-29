@@ -37,6 +37,14 @@ import type {
   ResolveTapeInspectorEvidenceEntriesOutput
 } from '@shared/types/tape-inspector'
 
+/**
+ * data 层的端口契约：声明会话数据面（状态/消息/待发输入/tape/设置）对外
+ * 暴露的能力接口。上层模块（session/*）依赖这里的窄接口而非具体实现类，
+ * 使 transcript/pendingInputStore/settings 等实现可以独立替换或打桩。
+ * 方法签名刻意允许可选 Promise（同步实现直接返回值也可满足），便于测试。
+ */
+
+/** 会话运行状态端口：初始化/销毁/状态与配置读写。 */
 export interface SessionStatePort {
   initSession(
     sessionId: string,

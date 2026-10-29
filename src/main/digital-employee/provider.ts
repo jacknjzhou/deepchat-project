@@ -19,9 +19,14 @@ export interface DigitalEmployeeProvider {
   readonly degraded?: boolean
   /** 本次列表数据实际来源；Resilient 在降级后报告 fallback 的来源。 */
   readonly source?: 'http' | 'mock'
+  /**
+   * 拉取完整员工名单。
+   * 失败时抛错而非返回空数组——空名单会被上层当成「员工全被删了」。
+   */
   list(): Promise<DigitalEmployee[]>
 }
 
+/** 降级数据源：服务端未配置或不可达时，返回内置演示名单。 */
 export class MockDigitalEmployeeProvider implements DigitalEmployeeProvider {
   readonly source = 'mock' as const
 
@@ -44,6 +49,10 @@ export interface HttpProviderConfig {
 
 const normalizeBaseUrl = (baseUrl: string): string => baseUrl.replace(/\/+$/, '')
 
+/**
+ * 直连 StaffDeck 列表端点的 provider。
+ * 带 ETag 做条件请求：服务端未变化时走 304，复用上次缓存，省带宽也省解析。
+ */
 export class HttpDigitalEmployeeProvider implements DigitalEmployeeProvider {
   readonly source = 'http' as const
 
@@ -68,6 +77,8 @@ export class HttpDigitalEmployeeProvider implements DigitalEmployeeProvider {
     const response = await this.fetchImpl(url, { headers })
 
     if (response.status === 304) {
+      // 304 但手里没有缓存（如进程刚启动就命中旧 ETag）只能报错：
+      // 静默返回空列表的代价是页面「全空」，排查成本远高于一次显式失败。
       if (this.cache.length > 0) {
         return this.cache
       }
@@ -100,6 +111,11 @@ export class HttpDigitalEmployeeProvider implements DigitalEmployeeProvider {
   }
 }
 
+/**
+ * 主备组合的 provider：主源（http）失败即降级到备源（mock），并在
+ * `degraded`/`source` 上如实报告当前来源，供列表路由标注降级状态。
+ * 主源恢复后下一次 list() 会自动退出降级。
+ */
 export class ResilientDigitalEmployeeProvider implements DigitalEmployeeProvider {
   private isDegraded = false
 

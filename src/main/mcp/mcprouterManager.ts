@@ -1,3 +1,13 @@
+/**
+ * McpRouter 市场的远端客户端：分页浏览 server 目录、按 key 拉取详情、
+ * 把市场 server 一键安装为本地 HTTP（Streamable）MCP server。
+ *
+ * listServers 匿名可调；getServer/installServer 需要 API key（Bearer）。
+ * 安装生成的配置固定 enabled=false，由用户确认后再启用；Authorization
+ * 头随安装写入，后续换 key 由 McpService 的 synchronizeMcpRouterServersAuth
+ * 统一同步——本类不管理 key 的生命周期。
+ */
+
 import type { MCPServerConfig } from '@shared/types/mcp'
 import type { McpSettings } from './settings'
 
@@ -90,6 +100,11 @@ export class McpRouterManager {
 
   /**
    * Install a server from McpRouter to local MCP config as HTTP (Streamable) server
+   */
+  /**
+   * 拉取详情并写成本地 server。图标随机取一枚 emoji 仅为占位展示；
+   * 源信息（source/sourceId=serverKey）用于 isServerInstalled 判重，
+   * 防止同一市场 server 被重复安装成不同名称。
    */
   async installServer(serverKey: string): Promise<boolean> {
     const detail = await this.getServer(serverKey)

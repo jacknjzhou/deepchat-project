@@ -58,6 +58,20 @@ import type { DeepChatMessageRow } from '../session/data/tables/deepchatMessages
 import type { DeepChatMessageSearchResultRow } from '../session/data/tables/deepchatMessageSearchResults'
 import type { DeepChatMessageTraceRow } from '../session/data/tables/deepchatMessageTraces'
 
+/**
+ * session 模块的端口契约（ports & contracts）：定义各职责类之间通信的接口，
+ * 让 ChatService / SessionTurn / SessionLifecycle / SessionAssignment /
+ * SessionQuery / SessionDeletion 互相只依赖这里声明的窄端口，而不是彼此的
+ * 具体类型。
+ *
+ * 命名规律：`Session<职责><角色>Port`——如 SessionTurnStorePort 是 turn 层
+ * 视角需要的存储子集，SessionAssignmentRuntimePort 是 assignment 层需要的
+ * 运行时子集。多数端口是对 data/contracts 或 agent/manager 大接口的 Pick
+ * 收窄，保证每个模块只看得到它用到的能力，也让测试替身更容易构造。
+ * 本文件只含类型，无运行时逻辑。
+ */
+
+/** 一次权限请求的描述：读/写/命令等类型，命令请求附带风险信息供 UI 展示。 */
 export type SessionPermissionRequest = {
   permissionType: 'read' | 'write' | 'all' | 'command'
   serverName?: string
@@ -76,6 +90,10 @@ export type SessionPermissionRequest = {
   requestId?: string
 }
 
+/**
+ * 权限授予结果：命令授权携带签名与一次性 grant id（可撤销），普通授权
+ * 可携带租约（lease，支持 finalize/revoke 生命周期管理）。
+ */
 export type SessionPermissionGrant =
   | Readonly<{
       kind: 'command'
@@ -91,6 +109,7 @@ export type SessionPermissionGrant =
       }>
     }>
 
+/** 会话权限端口：批准/拒绝/清空/克隆（克隆供 self-target 子代理继承）。 */
 export interface SessionPermissionPort {
   clearSessionPermissions(sessionId: string): void
   cloneSessionPermissions?(sourceSessionId: string, targetSessionId: string): void
@@ -195,6 +214,8 @@ export interface SessionProjectionAgentConfigPort {
   ): Promise<{ providerId?: string | null; modelId?: string | null } | null>
 }
 
+/** 投影层事件原因：created/updated/deleted 为单会话变更，list-refreshed
+ * 表示列表整体失效，activated/deactivated 为窗口切换活跃会话。 */
 export type SessionProjectionEventReason =
   | 'created'
   | 'updated'
@@ -271,6 +292,10 @@ interface SessionTurnRuntimeBase {
   snapshot(): Promise<DeepChatSessionState | null>
 }
 
+/**
+ * turn 层眼中的会话运行时：deepchat 分支携带压缩/占用/队列恢复等本地能力，
+ * acp 分支只有基座能力——能力差异在类型层面强制区分，调用方必须收窄判断。
+ */
 export type SessionTurnRuntimeSession =
   | (SessionTurnRuntimeBase & {
       readonly kind: 'deepchat'
@@ -608,10 +633,12 @@ export interface SessionLifecyclePort {
   deleteSession(sessionId: string): Promise<void>
 }
 
+/** ACP 草稿会话的建立结果：ready 可直接用；auth_required 附认证挑战由 UI 引导。 */
 export type EnsureAcpDraftResult =
   | { status: 'ready'; session: SessionWithState }
   | { status: 'auth_required'; session: SessionWithState; challenge: AcpAuthChallenge }
 
+/** assignment 层的完整能力面：批量迁移/删除、单会话配置、ACP 会话控制。 */
 export interface SessionAgentAssignmentPort {
   linkSubagentTape(input: SubagentTapeLinkInput): Promise<SubagentTapeLinkReceipt>
   getAgentTransferImpact(agentId: string): Promise<AgentTransferImpact>

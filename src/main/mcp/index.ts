@@ -1,3 +1,16 @@
+/**
+ * MCP 服务主入口（McpService）。
+ *
+ * 职责：作为 MCP 子系统的门面，串联三类角色 ——
+ * - ServerManager：负责单个 server 的进程/连接生命周期与启动结果；
+ * - ToolManager：维护工具注册表（含 staffdeck/ 前缀重命名）并代理调用；
+ * - McpOAuthManager：server 凭据与 OAuth 状态。
+ *
+ * 对外实现 McpServicePort，被 IPC 层与 agent 运行时消费。插件拥有的
+ * MCP server（ownerPluginId / source === 'plugin'）走 PluginRuntimeSupervisor
+ * 的专属通道，普通 MCP 设置接口对它们一律拒绝，避免两条所有权路径互相覆盖。
+ */
+
 import type { ProviderSettingsPort } from '@/provider/settings'
 import logger from '@shared/logger'
 import { performance } from 'node:perf_hooks'
@@ -60,6 +73,11 @@ import { hasMcpIdentityBearingChange } from './serverIdentity'
 import type { CacheImageOptions } from '@/platform/imageCache'
 import { awaitWithAbort } from '@/lib/awaitWithAbort'
 
+/**
+ * 一次工具调用/枚举的可见范围约束。`enabledTools` 按工具名、
+ * `enabledServerIds` 按 server 名做白名单过滤；两者都不传表示不限制。
+ * agentId / conversationId 仅作标识透传，不参与过滤。
+ */
 type McpToolAccessContext = {
   enabledTools?: string[]
   enabledServerIds?: string[]
@@ -67,8 +85,11 @@ type McpToolAccessContext = {
   conversationId?: string
 }
 
+/** 关停单个 stdio server 的最长等待，超时后强制终止进程树。 */
 const MCP_SHUTDOWN_SERVER_TIMEOUT_MS = 10_000
+/** 应用关停时并发停止 server 的数量；过高会让日志与进程回收互相踩踏。 */
 const MCP_SHUTDOWN_CONCURRENCY = 4
+/** sampling/elicitation 待决请求上限，防止恶意 server 把主进程内存打爆。 */
 const MCP_MAX_PENDING_INTERACTIONS = 64
 
 const normalizeStringList = (items?: string[]): string[] | undefined => {
@@ -133,6 +154,11 @@ export class McpService implements McpServicePort {
     })
   }
 
+  /**
+   * 后台启动一个 server，不等待连接：连接成功（含软超时后台连上）时记
+   * 日志并发 started 事件，失败只记错误。初始化阶段的所有启动都走这里，
+   * 保证启动失败不会阻塞主流程。
+   */
   private startServerInBackground(
     serverName: string,
     successMessage: string,
@@ -297,6 +323,10 @@ export class McpService implements McpServicePort {
     this.mcpAppSandboxRegistry?.revokeByServer(serverId)
   }
 
+  /**
+   * 注册表变化（配置增删改、插件注册等）后的统一失效入口：
+   * 工具注册表缓存作废 + 通知 renderer 刷新。所有状态写入路径都应汇到这里。
+   */
   private handleRegistryChanged(): void {
     this.toolManager.invalidateRegistry()
     this.onRegistryChanged()
@@ -326,6 +356,13 @@ export class McpService implements McpServicePort {
     return !context.enabledServerIds || context.enabledServerIds.includes(serverName)
   }
 
+  /**
+   * 应用启动时的初始化编排，只执行一次：
+   * 1. 读取配置；2. 探测 npm registry（隐私模式下跳过网络探测）；
+   * 3. 后台启动内置 custom-prompts server 与所有已启用的普通 server
+   *    （不等待连接完成，避免拖慢启动）；4. 延迟刷新 registry 并补启漏掉的 server。
+   * 即使中途抛错也会把 isInitialized 置真，防止系统卡死在未初始化状态。
+   */
   async initialize() {
     if (this.isInitialized) {
       return
@@ -406,6 +443,10 @@ export class McpService implements McpServicePort {
     }
   }
 
+  /**
+   * 关停全部 MCP 客户端。用 shutdownPromise 保证幂等：并发调用共享同一次
+   * 关停过程，完成后清空句柄，允许极端情况下的再次关停。
+   */
   async shutdown(): Promise<void> {
     if (this.shutdownPromise) {
       return this.shutdownPromise
@@ -419,6 +460,11 @@ export class McpService implements McpServicePort {
     }
   }
 
+  /**
+   * 关停的实际执行体：先拒绝还在等待的 sampling/elicitation 请求（server
+   * 已不可用，继续等待只会挂死调用方），再停插件运行时，最后以有限并发
+   * （MCP_SHUTDOWN_CONCURRENCY）停掉其余活跃客户端。
+   */
   private async shutdownRunningClients(): Promise<void> {
     for (const requestId of this.pendingSamplingRequests.keys()) {
       await this.cancelSamplingRequest(requestId, 'MCP service is shutting down')
@@ -473,6 +519,12 @@ export class McpService implements McpServicePort {
     await this.stopServerDuringShutdown(client, true)
   }
 
+/**
+ * 应用关停时的停止路径：与用户手动 stopServer 不同，这里必须保证最终退出，
+ * 因此超时后强制终止 stdio 进程树而不是无限等待。
+ * `failOnIncompleteStop` 仅用于插件运行时 server：插件回收失败要向上抛错，
+ * 普通 server 停不掉则只记日志、继续关停其余 server。
+ */
   private async stopServerDuringShutdown(
     client: RuntimeMcpClient,
     failOnIncompleteStop = false
@@ -526,6 +578,13 @@ export class McpService implements McpServicePort {
     }
   }
 
+  /**
+   * OAuth 完成或凭据更新后重启 server，使新凭据立即生效。
+   * 插件运行时管理的 server 走 supervisor 重启；配置里标记为插件所有但
+   * 插件已注册的（isPluginOwnedServerName 为 true 但 ownsServer 为 false，
+   * 即插件已禁用）拒绝重启，未启用的 server 也不启动。
+   * 失败只记日志——认证回调不应因重启失败而对用户报错。
+   */
   private async restartServerAfterAuthentication(serverName: string): Promise<void> {
     try {
       if (await this.pluginRuntimeSupervisor.restartIfRunning(serverName, 'authentication')) {
@@ -616,6 +675,13 @@ export class McpService implements McpServicePort {
     return [...installedIds]
   }
 
+  /**
+   * 用户更新 router API key 后，把所有 mcprouter 来源 server 的 Authorization
+   * 头同步为 `Bearer <newKey>`。旧 key 失效意味着凭据作废：先撤销关联的
+   * MCP App 授权，再一次性写回 key 与 server 列表（两值必须原子写入，
+   * 否则可能出现「新 key 配旧头」的中间态），最后清空这些 server 的 OAuth 凭据。
+   * 无实际变化时直接返回，避免无谓的写入与重连。
+   */
   private async synchronizeMcpRouterServersAuth(normalizedApiKey: string): Promise<void> {
     const currentApiKey = this.mcpSettings.getRouterApiKey()
     const servers = await this.mcpSettings.getMcpServers()
@@ -677,6 +743,10 @@ export class McpService implements McpServicePort {
     logger.info(`Synchronized Authorization for ${updatedServerCount} mcprouter servers`)
   }
 
+  /**
+   * 初始化完成 5 秒后后台复测 npm registry 速度并择优切换。
+   * 延迟是为了避开启动高峰；隐私模式下两次都检查，防止延迟窗口内开关被打开。
+   */
   private scheduleBackgroundRegistryUpdate(): void {
     if (this.isPrivacyModeEnabled()) {
       return
@@ -706,6 +776,11 @@ export class McpService implements McpServicePort {
   }
 
   // Get all MCP servers
+  /**
+   * 枚举当前运行中的客户端及其工具/提示/资源，供 MCP 中心页展示。
+   * MCP 总开关关闭时仅保留插件可用的 server；prompts/resources 逐一拉取，
+   * 单个 server 失败不影响其余条目（该 server 只是缺 prompts/resources）。
+   */
   async getMcpClients(): Promise<McpClient[]> {
     const enabled = await this.mcpSettings.getMcpEnabled()
     const clients = (await this.toolManager.getRunningClients()).filter(
@@ -772,6 +847,11 @@ export class McpService implements McpServicePort {
     return this.mcpSettings.getEnabledMcpServers()
   }
 
+  /**
+   * 启停单个 server 的设置入口。插件所有的 server 归插件管理，这里直接
+   * 抛错而非静默忽略——用户界面不应出现对这些 server 的无效操作。
+   * 禁用时先撤销该 server 名下的 MCP App 授权，防止停用后 App 仍可调用。
+   */
   async setMcpServerEnabled(serverName: string, enabled: boolean): Promise<void> {
     const servers = await this.mcpSettings.getMcpServers()
     const serverConfig = servers[serverName]
@@ -806,6 +886,11 @@ export class McpService implements McpServicePort {
   }
 
   // Add MCP server
+  /**
+   * 新增 server。通过 addMcpServerTail 把所有写入串成队列：并发 add 时
+   * 逐个读-判重-写，否则两个同名请求可能同时通过判重造成双写。
+   * 已存在时返回 { status: 'duplicate' } 而不抛错，由调用方决定提示方式。
+   */
   async addMcpServer(serverName: string, config: MCPServerConfig): Promise<McpAddServerResult> {
     const result = this.addMcpServerTail.then(() => this.addMcpServerOnce(serverName, config))
     this.addMcpServerTail = result.then(
@@ -831,6 +916,12 @@ export class McpService implements McpServicePort {
   }
 
   // Update MCP server configuration
+  /**
+   * 更新配置。若变更携带身份语义（serverIdentity 判定）或被禁用，先撤销
+   * MCP App 授权；configGeneration 变化说明连接参数实质改变，凭据一并作废。
+   * 正在运行的 server 停止后立即重启以套用新配置；重启失败时补发
+   * SERVER_STOPPED 事件，让 UI 状态与真实运行状态保持一致。
+   */
   async updateMcpServer(serverName: string, config: Partial<MCPServerConfig>): Promise<void> {
     const servers = await this.mcpSettings.getMcpServers()
     if (
@@ -875,6 +966,10 @@ export class McpService implements McpServicePort {
   }
 
   // Remove MCP server
+  /**
+   * 删除 server：撤销 App 授权 → 若在运行先停止 → 清 OAuth 凭据 → 从
+   * 设置中移除。顺序保证不留孤儿进程与孤儿凭据。
+   */
   async removeMcpServer(serverName: string): Promise<void> {
     const currentServers = await this.mcpSettings.getMcpServers()
     if (
@@ -899,6 +994,11 @@ export class McpService implements McpServicePort {
     await this.mcpSettings.removeMcpServer(serverName)
   }
 
+  /**
+   * 补启「配置为启用但尚未运行」的普通 server。典型时机是工具链 PATH
+   * 刷新后（如用户刚安装 node/uv，之前因缺运行环境启动失败）。
+   * 已在启动/运行中、插件所有的 server 一律跳过。
+   */
   async retryUnstartedEnabledServers(): Promise<void> {
     if (!this.isInitialized) return
     const [servers, enabledServers, mcpEnabled] = await Promise.all([
@@ -933,6 +1033,10 @@ export class McpService implements McpServicePort {
     return Promise.resolve(this.serverManager.isServerActive(serverName))
   }
 
+  /**
+   * 通用的启动入口，插件所有的 server 被拒绝（应由插件运行时启动）。
+   * 实际工作交给 startServerDirect。
+   */
   async startServer(serverName: string): Promise<void> {
     if (this.pluginRuntimeSupervisor.ownsServer(serverName)) {
       throw new Error(
@@ -947,6 +1051,13 @@ export class McpService implements McpServicePort {
     await this.startServerDirect(serverName)
   }
 
+  /**
+   * 启动的内部实现，供插件运行时等可信调用方复用。
+   * waitForConnection=false 时采用后台连接语义：软超时后先返回、连接成功
+   * 再发 started 事件（onBackgroundConnected）；waitForConnection=true 时
+   * 阻塞到连接结果，进程中途退出则抛错——调用方（如 McpAppHost）需要
+   * 确定性结论而非「可能稍后就好」。
+   */
   private async startServerDirect(
     serverName: string,
     configOverride?: Partial<MCPServerConfig>,
@@ -968,6 +1079,9 @@ export class McpService implements McpServicePort {
     }
   }
 
+  /**
+   * 通用停止入口，插件所有的 server 拒绝（与 startServer 对称）。
+   */
   async stopServer(serverName: string): Promise<void> {
     if (this.pluginRuntimeSupervisor.ownsServer(serverName)) {
       throw new Error(
@@ -1108,6 +1222,10 @@ export class McpService implements McpServicePort {
     return Promise.resolve(this.mcpOAuthManager.logoutEnterpriseProfile(profileId))
   }
 
+  /**
+   * 按 serverId（稳定标识）反查 server 配置。凭据/诊断类接口都以 serverId
+   * 为参数，因为 serverName 可能被用户重命名。找不到抛错。
+   */
   private async requireServerById(
     serverId: string
   ): Promise<{ name: string; config: MCPServerConfig }> {
@@ -1119,6 +1237,11 @@ export class McpService implements McpServicePort {
     return { name: match[0], config: match[1] }
   }
 
+  /**
+   * 校验凭据绑定是否仍然指向当前配置：configGeneration / bindingHash /
+   * endpoint 等任一不匹配即判定 stale 并抛错。防止把凭据写到已被用户
+   * 改过 baseUrl 或重新生成过身份的 server 上。
+   */
   private async requireCurrentCredentialBinding(
     binding: McpCredentialBinding
   ): Promise<{ name: string; config: MCPServerConfig }> {
@@ -1137,6 +1260,11 @@ export class McpService implements McpServicePort {
     return match
   }
 
+  /**
+   * 汇总 server 诊断信息。运行中的 client 直接给出实时诊断；未运行时
+   * 依据 lastError 构造降级视图（error/stopped），扩展列表来自静态配置
+   * 推断——此路径拿不到运行时数据，调用方需理解其近似性。
+   */
   async getServerDiagnostics(serverId: string): Promise<McpServerDiagnostics> {
     const { name: serverName, config } = await this.requireServerById(serverId)
     const auth = this.mcpOAuthManager.getStatus(serverName, config)
@@ -1186,6 +1314,10 @@ export class McpService implements McpServicePort {
     }
   }
 
+  /**
+   * 列出全部工具定义（按 access context 过滤）。MCP 总开关关闭时，仅插件
+   * 可用的 server 的工具保留，其余一律剔除。
+   */
   async getAllToolDefinitions(
     enabledMcpTools?: string[] | McpToolAccessContext
   ): Promise<MCPToolDefinition[]> {
@@ -1200,6 +1332,11 @@ export class McpService implements McpServicePort {
     })
   }
 
+  /**
+   * 输出「期望可用的 server 集合 + 当前缓存快照」，供上层做工具一致性
+   * 比对（缓存里缺了哪个期望中的 server，说明其发现失败或尚未完成）。
+   * 期望集合排除插件所有的 server——它们由 supervisor 侧负责。
+   */
   async snapshotCachedToolDefinitions(
     enabledMcpTools?: string[] | McpToolAccessContext
   ): Promise<import('@shared/types/mcp').McpToolDefinitionsSnapshot> {
@@ -1306,6 +1443,14 @@ export class McpService implements McpServicePort {
     return resourcesList
   }
 
+  /**
+   * 工具调用的统一入口：委托 ToolManager 派发，之后处理三件事——
+   * 1. dispatch 未提交且 signal 已中止则抛 AbortError（提交后的中止不影响
+   *    已执行的结果）；2. 图片内容经缓存转存，生成预览并替换原文（stdio/
+   *    inmemory/插件 server 允许访问私网图片地址）；3. 把结构化内容折叠为
+   *    模型可读的纯文本，错误结果加 `Error:` 前缀。
+   * 返回值同时携带格式化文本（喂给模型）与 rawData（UI 展示用）。
+   */
   async callTool(
     request: MCPToolCall,
     options?: {
@@ -1428,6 +1573,11 @@ export class McpService implements McpServicePort {
     return await this.toolManager.checkPluginRuntimePermissions(serverName)
   }
 
+  /**
+   * 处理 server 发起的 sampling 请求：登记后通过事件发布给 renderer，
+   * 返回的 Promise 挂起等待用户/策略决策（submitSamplingDecision resolve，
+   * cancelSamplingRequest reject）。等待期间连接层可以安全地不响应。
+   */
   async handleSamplingRequest(request: McpSamplingRequestPayload): Promise<McpSamplingDecision> {
     if (!request || !request.requestId) {
       throw new Error('Invalid sampling request: missing requestId')
@@ -1552,6 +1702,11 @@ export class McpService implements McpServicePort {
     })
   }
 
+  /**
+   * sampling / elicitation 待决请求的公共护栏：requestId 不可重复登记，
+   * 且总量不得超过 MCP_MAX_PENDING_INTERACTIONS，防止 server 无限发起
+   * 交互请求耗尽主进程资源。
+   */
   private assertInteractionCapacity(requestId: string, kind: 'sampling' | 'elicitation'): void {
     if (
       this.pendingSamplingRequests.has(requestId) ||
@@ -1573,6 +1728,16 @@ export class McpService implements McpServicePort {
   }
 
   // Set MCP enabled status
+  /**
+   * MCP 总开关。开启时逐个启动所有已启用的普通 server；关闭时停止全部
+   * 非 server（插件所有的无论开关如何都保持其所有权路径处理）。
+   * 单个 server 启停失败不中断整体流程，只记日志。
+   */
+  /**
+   * MCP 总开关。开启时逐个启动所有已启用的普通 server；关闭时停止全部
+   * 非插件所有的 server（插件 server 仍走其所有权路径处理）。
+   * 单个 server 启停失败不中断整体流程，只记日志。
+   */
   async setMcpEnabled(enabled: boolean): Promise<void> {
     await this.mcpSettings.setMcpEnabled(enabled)
 

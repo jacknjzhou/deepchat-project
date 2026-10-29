@@ -22,6 +22,7 @@ export interface DigitalEmployeeSettingsDeps {
     /** 回滚时删除「保存前并不存在」的键；未提供则回滚为 undefined。 */
     delete?(key: string): void
   }
+  /** API key 的加解密与存取；明文只在 main 进程内解出，从不回传 renderer。 */
   secretStore: {
     isAvailable(): boolean
     get(key: string): string
@@ -182,6 +183,10 @@ const restoreSnapshot = (deps: DigitalEmployeeSettingsDeps, snapshot: SettingsSn
   }
 }
 
+/**
+ * 组装设置页五条路由：读状态、保存、总开关、测试连接、清除密钥。
+ * 保存是唯一的多键写入点，靠快照回滚保证原子性（见 save 路由内注释）。
+ */
 export function createDigitalEmployeeSettingsRoutes(
   deps: DigitalEmployeeSettingsDeps
 ): DeepchatRouteMap {

@@ -1,3 +1,10 @@
+/**
+ * MCP 工具结果的持久化投影：把一次工具调用结果压缩成可安全落盘的
+ * PersistedMcpToolResult（限深、限键、限字节），同时提取 MCP App UI
+ * 所需的描述符。server 侧不可信数据经深拷贝与截断标记后才能进入
+ * 会话持久化存储。
+ */
+
 import type {
   MCPContentItem,
   MCPServerConfig,
@@ -95,6 +102,11 @@ const readUiMeta = (tool: Tool): Record<string, unknown> | undefined => {
     : undefined
 }
 
+/**
+ * 读取工具 _meta.ui 中声明的 UI 资源 URI。兼容新旧两种位置（嵌套
+ * ui.resourceUri 与旧的 ui/resourceUri 键），且要求协议为 ui:、无内嵌
+ * 凭据——不合法一律视为无 UI。
+ */
 export const getToolUiResourceUri = (tool: Tool): string | undefined => {
   const uiMeta = readUiMeta(tool)
   const hasNestedUri = Boolean(
@@ -123,6 +135,10 @@ export const getToolUiResourceUri = (tool: Tool): string | undefined => {
   return resourceUri
 }
 
+/**
+ * 工具的可见面：'model' 表示进入模型工具列表，'app' 表示可被 MCP App
+ * 调用。server 未声明或声明无效时默认两面可见（宽松兜底）。
+ */
 export const getToolVisibility = (tool: Tool): Array<'model' | 'app'> => {
   const raw = readUiMeta(tool)?.visibility
   if (!Array.isArray(raw)) {
@@ -155,6 +171,12 @@ const createMcpAppDescriptor = (
   }
 }
 
+/**
+ * 构建持久化结果。序列化体积超限时的降级顺序：先剔除二进制内容
+ * （图片/音频/blob，置 binaryContentOmitted），再依次丢弃 structuredContent、
+ * meta、content，每步之间复测体积。截断情况汇总进 truncated 字段，
+ * 保证持久化结果永不超限，同时如实告知下游缺了什么。
+ */
 export const createPersistedMcpToolResult = (input: {
   tool: Tool
   config: MCPServerConfig

@@ -1,6 +1,10 @@
 import Database from 'better-sqlite3-multiple-ciphers'
 import { BaseTable } from '@/data/baseTable'
 
+/**
+ * 会话禁用 Agent 工具清单表：每会话被显式关闭的工具名（含顺序）。
+ * 主键 (session_id, ordinal)；assignment 层写入，运行时过滤工具面时读取。
+ */
 export interface NewSessionDisabledAgentToolRow {
   session_id: string
   ordinal: number

@@ -9,8 +9,10 @@ import type {
 import { SessionPendingInputStore } from './pendingInputStore'
 import type { SessionTranscript } from './transcript'
 
+/** 每会话排队输入的上限；防止用户无限堆积导致轮次启动后连跑过长。 */
 const MAX_ACTIVE_PENDING_INPUTS = 5
 
+/** 重启恢复的结论：哪些会话的队列变了、哪些排队输入被暂扣（不自动续跑）。 */
 export interface PendingInputRestartRecovery {
   affectedSessionIds: Set<string>
   heldQueueInputIds: Set<string>
@@ -28,6 +30,21 @@ function toUserMessageContent(input: SendMessageInput): UserMessageContent {
   }
 }
 
+/**
+ * 会话待发输入的门面层（pendingInputs）：在底层存储（pendingInputStore）与
+ * 消息持久化（transcript）之间协调「排队」与「steering」两类输入的完整生命周期。
+ *
+ * 两种模式语义不同：
+ * - queue：排队等下一轮执行的输入，可编辑/排序/删除，被消费（consume）即结束；
+ * - steer：对运行中轮次的插话，接受时就落成 pending 用户消息（会话事实），
+ *   不可编辑删除，只能被认领（claim，同时创建 assistant 占位消息并标记
+ *   已读）→ 消费（consume，落成 sent）或失败（fail → error）。
+ *
+ * 跨 store 与 transcript 的状态迁移全部包在事务里；每个变更后广播
+ * pendingInputsChanged，涉及消息落库的再广播 messagesChanged。
+ * recoverInputsAfterRestart 是启动恢复入口：按各输入的物化程度决定消费、
+ * 暂扣、转排队或标记失败，绝不无声丢弃用户输入。
+ */
 export class SessionPendingInputs {
   constructor(
     private readonly store: SessionPendingInputStore,
@@ -42,6 +59,7 @@ export class SessionPendingInputs {
     return this.store.listPendingInputs(sessionId)
   }
 
+  /** 读取某条输入；存在但归属别的会话直接报错（防止跨会话操作）。 */
   getInput(sessionId: string, itemId: string): PendingSessionInputRecord | null {
     const record = this.store.getInput(itemId)
     if (!record) {
@@ -53,6 +71,11 @@ export class SessionPendingInputs {
     return record
   }
 
+  /**
+   * 为已认领（claimed）的排队输入落一条用户消息并与输入绑定。
+   * 这是排队输入「转正」进入会话历史的时刻；已绑定过消息的输入不允许
+   * 再建，避免重试路径重复落消息。
+   */
   createClaimedQueueUserMessage(
     sessionId: string,
     itemId: string,
@@ -82,6 +105,7 @@ export class SessionPendingInputs {
     })
   }
 
+  /** 排队一条新输入；超出上限直接拒绝，落库后广播。 */
   queuePendingInput(
     sessionId: string,
     input: SendMessageInput,
@@ -99,6 +123,12 @@ export class SessionPendingInputs {
     return record
   }
 
+  /**
+   * 接受一条 steer 插话：事务内落 pending 用户消息（带 steer 回执元数据）
+   * 并登记/合并到 steer 输入。mergeItemId 表示把内容并入一条已有的未读
+   * steer 输入（用户连续插话时合并展示）。preStreamAnchorMessageId 存在
+   * 与否本身有意义（undefined = 不关心），故用 hasOwnProperty 判断。
+   */
   acceptSteerMessage(
     sessionId: string,
     input: SendMessageInput,
@@ -159,6 +189,7 @@ export class SessionPendingInputs {
     return accepted
   }
 
+  /** 把排队输入升级为 steer：排队内容转成 pending 用户消息并改挂 steer 模式。 */
   promoteQueuedInputToSteerMessage(
     sessionId: string,
     itemId: string,
@@ -217,6 +248,7 @@ export class SessionPendingInputs {
     return accepted
   }
 
+  /** 编辑排队输入（steer 输入已落会话事实，不可编辑）。 */
   updateQueuedInput(
     sessionId: string,
     itemId: string,
@@ -265,6 +297,7 @@ export class SessionPendingInputs {
     return this.store.hasClaimedInput(sessionId)
   }
 
+  /** 认领排队输入：轮次即将消费它；认领后其它消费者不能再取。 */
   claimQueuedInput(sessionId: string, itemId: string): PendingSessionInputRecord {
     this.assertQueueInput(sessionId, itemId)
     const record = this.store.claimQueueInput(itemId)
@@ -272,6 +305,10 @@ export class SessionPendingInputs {
     return record
   }
 
+  /**
+   * 认领 steer 输入：创建 assistant 占位消息、标记 linked 用户消息已读，
+   * 三步一个事务。认领后输入进入「已读待消费」，运行时开始吸收其内容。
+   */
   claimSteerInput(sessionId: string, itemId: string): PendingSessionInputRecord {
     this.assertSteerInput(sessionId, itemId)
     let changedMessages: ChatMessageRecord[] = []
@@ -304,6 +341,7 @@ export class SessionPendingInputs {
     return record
   }
 
+  /** 释放认领的排队输入回到 pending（消费方中途放弃时用）。 */
   releaseClaimedQueueInput(sessionId: string, itemId: string): PendingSessionInputRecord {
     this.assertQueueInputForSession(sessionId, itemId)
     const record = this.store.releaseClaimedQueueInput(itemId)
@@ -311,6 +349,7 @@ export class SessionPendingInputs {
     return record
   }
 
+  /** 释放为 retry_required 状态：明确标记需要用户手动重试，不自动续跑。 */
   releaseClaimedQueueInputForRetry(sessionId: string, itemId: string): PendingSessionInputRecord {
     this.assertQueueInputForSession(sessionId, itemId)
     const record = this.store.releaseClaimedQueueInputForRetry(itemId)
@@ -318,6 +357,7 @@ export class SessionPendingInputs {
     return record
   }
 
+  /** 用户确认后重试一条 retry_required 的排队输入。 */
   retryReleasedQueueInput(sessionId: string, itemId: string): PendingSessionInputRecord {
     const record = this.store.runInTransaction(() => {
       this.assertQueueInputForSession(sessionId, itemId)
@@ -327,6 +367,7 @@ export class SessionPendingInputs {
     return record
   }
 
+  /** 通用释放：已落用户消息或已有 assistant 消息的 steer 不可释放（消息已是事实）。 */
   releaseClaimedInput(sessionId: string, itemId: string): PendingSessionInputRecord {
     this.assertInputOwnedBySession(sessionId, itemId)
     const claimed = this.store.getInput(itemId)
@@ -341,6 +382,7 @@ export class SessionPendingInputs {
     return record
   }
 
+  /** 把认领中的输入标记为 blocked（附件准备未通过，等用户决定）。 */
   blockClaimedInput(
     sessionId: string,
     itemId: string,
@@ -352,6 +394,7 @@ export class SessionPendingInputs {
     return record
   }
 
+  /** 解除 blocked：用户选择原样重试。 */
   retryBlockedInput(sessionId: string, itemId: string): PendingSessionInputRecord {
     this.assertInputOwnedBySession(sessionId, itemId)
     const record = this.store.retryBlockedInput(itemId)
@@ -359,6 +402,7 @@ export class SessionPendingInputs {
     return record
   }
 
+  /** 解除 blocked：用户选择降级（去掉图片内容）后放行。 */
   degradeBlockedInput(sessionId: string, itemId: string): PendingSessionInputRecord {
     this.assertInputOwnedBySession(sessionId, itemId)
     const record = this.store.degradeBlockedInput(itemId)
@@ -366,6 +410,7 @@ export class SessionPendingInputs {
     return record
   }
 
+  /** 消费排队输入：轮次已正式接手，队列项随之终结。 */
   consumeQueuedInput(sessionId: string, itemId: string): void {
     this.store.runInTransaction(() => {
       this.assertQueueInputForSession(sessionId, itemId)
@@ -374,6 +419,7 @@ export class SessionPendingInputs {
     this.emitUpdated(sessionId)
   }
 
+  /** 消费 steer 输入：linked 用户消息落成 sent（会话事实固定），队列项终结。 */
   consumeSteerInput(sessionId: string, itemId: string): void {
     this.assertSteerInputForSession(sessionId, itemId)
     let changedMessages: ChatMessageRecord[] = []
@@ -389,6 +435,15 @@ export class SessionPendingInputs {
     this.events.publishMessagesChanged(sessionId, changedMessages)
   }
 
+  /**
+   * 启动恢复：上次退出时所有未终结的输入逐条对账（事务内）。
+   * - 排队已认领：若用户消息已落库则视为已被消费；否则释放回 pending 暂扣，
+   *   等运行时决定是否续跑（不自动执行，避免重启后突然发言）。
+   * - steer 已认领且有消息：settle 成 sent（内容已被上一轮吸收）。
+   * - steer 已认领但无消息：补落用户消息后统一标 error——插话对象已消失。
+   * - steer blocked：转回排队（steering 时机已过）。
+   * 返回受影响的会话与被暂扣的输入 id，供运行时做续跑提示。
+   */
   recoverInputsAfterRestart(): PendingInputRestartRecovery {
     const affectedSessionIds = new Set<string>()
     const heldQueueInputIds = new Set<string>()
@@ -475,6 +530,7 @@ export class SessionPendingInputs {
     return this.store.countActiveQueue(sessionId) >= MAX_ACTIVE_PENDING_INPUTS
   }
 
+  /** 会话级清空（删除会话时调用）。 */
   deleteBySession(sessionId: string): void {
     this.store.deleteBySession(sessionId)
     this.emitUpdated(sessionId)
@@ -486,6 +542,11 @@ export class SessionPendingInputs {
     }
   }
 
+  /**
+   * 确定 steer 发送前的「源头用户消息」：优先用已认领排队输入的 linked
+   * 消息（没有就补落一条），否则用锚点消息。找不到任何边界时报错——
+   * 没有源头就无法保证 steer 内容在历史中的位置正确。
+   */
   private materializePreStreamSource(
     sessionId: string,
     anchorMessageId: string | null

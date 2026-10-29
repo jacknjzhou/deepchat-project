@@ -40,8 +40,10 @@ import {
   normalizePdfEmbeddedTextCoverage
 } from '@shared/utils/attachmentRepresentation'
 
+/** 附件进全文检索索引的最大字符数；超长附件保留头尾并标注截断。 */
 const MAX_SEARCHABLE_ATTACHMENT_CHARACTERS = 32_000
 const SEARCH_ATTACHMENT_TRUNCATION_MARKER = '[Attachment search text truncated]'
+/** 压缩导致消息整体后移时，tape 事实按批补发，避免单事务一次性物化过大。 */
 const COMPACTION_SHIFT_MATERIALIZATION_BATCH_SIZE = 500
 const MAX_COMPACTION_ATTEMPT_ID_CHARACTERS = 128
 
@@ -85,6 +87,8 @@ function shouldConvertPendingBlockToError(
   return status === 'pending' || status === 'loading'
 }
 
+/** 把一条 assistant 消息的 blocks 收敛为终态：遗留 pending/loading 一律转 error，
+ * 并在末尾补上错误块（已存在相同错误块则不重复），供启动恢复时使用。 */
 export function buildTerminalErrorBlocks(
   blocks: AssistantMessageBlock[],
   errorMessage: string
@@ -134,6 +138,8 @@ function normalizePersistedActionType(
   return undefined
 }
 
+/** 从消息 JSON 里抽出可检索的纯文本：user 取 text+附件文本，block 数组取
+ * content/text/error 字段；解析失败按原始字符串处理。供全文索引使用。 */
 function extractSearchableMessageContent(rawContent: string): string {
   try {
     const parsed = JSON.parse(rawContent) as
@@ -178,6 +184,7 @@ function extractSearchableMessageContent(rawContent: string): string {
   return rawContent.trim()
 }
 
+/** 拼接附件的可检索文本；超限时头尾各留一半并保证不切断 UTF-16 代理对。 */
 function buildSearchableAttachmentText(files: unknown): string {
   if (!Array.isArray(files)) return ''
   const text = files
@@ -208,6 +215,24 @@ function isLowSurrogate(code: number): boolean {
   return code >= 0xdc00 && code <= 0xdfff
 }
 
+/**
+ * 会话消息的持久化层（transcript）：直接读写 SQLite，是 session 模块中唯一
+ * 触碰消息存储的地方。
+ *
+ * 消息一主多辅：deepchatMessages 表存主记录（role/status/content JSON），
+ * 结构化明细拆在辅表——用户消息拆 text/files/links 三张表，assistant 消息
+ * 按 block 拆表。读路径把主行与辅表重新物化成完整记录（materializeContent），
+ * 批量读取时用 loadStructuredMaps 一次批量取辅表避免逐行查询。
+ *
+ * 三条伴生写入贯穿全部变更：
+ * 1. 全文检索文档（search documents）——消息定稿/变更时同步 upsert；
+ * 2. 用量统计（usage stats）——从 assistant 消息的 metadata 提取；
+ * 3. tape 事实（appendMessageRecord/Replacement/Retraction）——把每次变更
+ *    追加成可回放的执行事实流，删除用 retraction 而非抹除。
+ *
+ * 多表一致的操作全部包在数据库事务里（runInDatabaseTransaction），保证
+ * 崩溃后不会出现主记录在、辅表缺失的中间态。
+ */
 export class SessionTranscript {
   private database: SessionDatabase
   private readonly tapeFacts: TapeMessageFactWriter
@@ -234,6 +259,7 @@ export class SessionTranscript {
     return this.database.getDatabase().transaction(operation)() as T
   }
 
+  /** 新建用户消息：写主记录 + 结构化辅表 + 检索文档 + tape 事实。 */
   createUserMessage(
     sessionId: string,
     orderSeq: number,
@@ -260,6 +286,7 @@ export class SessionTranscript {
     return id
   }
 
+  /** 新建 assistant 占位消息：空 blocks、pending 状态，流式过程中逐步填充。 */
   createAssistantMessage(sessionId: string, orderSeq: number): string {
     const id = nanoid()
     this.database.deepchatMessagesTable.insert({
@@ -273,6 +300,7 @@ export class SessionTranscript {
     return id
   }
 
+  /** 创建压缩标记消息（事务内）。 */
   private insertCompactionMessageRecord(
     sessionId: string,
     orderSeq: number,
@@ -301,6 +329,7 @@ export class SessionTranscript {
     return id
   }
 
+  /** 在指定序号插入压缩标记消息，标记压缩流程的开始/完成。 */
   createCompactionMessage(
     sessionId: string,
     orderSeq: number,
@@ -313,6 +342,11 @@ export class SessionTranscript {
     )
   }
 
+  /**
+   * 在指定序号插入压缩标记消息，可选地把该序号起的所有已有消息整体后移
+   * 一位（压缩摘要要占据历史中的固定位置时用）。位移与插入必须同事务：
+   * 中间态会让序号出现重复。
+   */
   createCompactionMessageAtOrderSeq(
     sessionId: string,
     orderSeq: number,
@@ -341,6 +375,8 @@ export class SessionTranscript {
     return messageId
   }
 
+  /** 位移过的消息逐条补发 tape 事实（reason=compaction_order_shifted），
+   * 分批物化控制单次内存占用；任何一条没找到即整体失败。 */
   private appendCompactionOrderShiftFacts(sessionId: string, messageIds: string[]): void {
     if (messageIds.length === 0) return
 
@@ -368,6 +404,7 @@ export class SessionTranscript {
     }
   }
 
+  /** 流式过程中覆写 assistant blocks；消息保持 pending 直到 finalize。 */
   updateAssistantContent(
     messageId: string,
     blocks: AssistantMessageBlock[],
@@ -457,6 +494,7 @@ export class SessionTranscript {
     return messageIds.map((messageId) => this.requireMessage(messageId))
   }
 
+  /** 轮次完成：blocks 定稿、状态转 sent，同步检索文档/用量/tape 事实。 */
   finalizeAssistantMessage(
     messageId: string,
     blocks: AssistantMessageBlock[],
@@ -474,6 +512,7 @@ export class SessionTranscript {
     this.appendLiveTapeFacts(messageId)
   }
 
+  /** 压缩标记消息就地推进状态（compacting → compacted），事务内同步 tape。 */
   updateCompactionMessage(
     messageId: string,
     status: 'compacting' | 'compacted',
@@ -498,6 +537,7 @@ export class SessionTranscript {
     })
   }
 
+  /** 记录压缩本身消耗的模型调用（token 统计），并同步进用量表。 */
   recordCompactionModelCall(input: TapeCompactionModelCallInput): void {
     this.runInDatabaseTransaction(() => {
       const receipt = this.compactionUsage.appendCompactionModelCall(input)
@@ -511,6 +551,7 @@ export class SessionTranscript {
     })
   }
 
+  /** 把 assistant 消息标记为失败；有无 metadata 走两条分支（有则同时记账）。 */
   setMessageError(messageId: string, blocks: AssistantMessageBlock[], metadata?: string): void {
     this.database.deepchatAssistantBlocksTable.replaceForMessage(messageId, blocks)
     const serializedBlocks = JSON.stringify(blocks)
@@ -549,6 +590,8 @@ export class SessionTranscript {
     return this.database.deepchatMessagesTable.hasBySession(sessionId)
   }
 
+  /** 消息分页：limit+1 探测 hasMore；游标取本页最旧一条（倒序存储）。
+   * 同时标记每条消息是否有嵌套执行审计，供 UI 展示入口。 */
   listMessagesPage(
     sessionId: string,
     options?: {
@@ -630,6 +673,8 @@ export class SessionTranscript {
     return this.toRecord(row)
   }
 
+  /** 更新任意消息的原始 content JSON：user 同步辅表与检索文档，assistant
+   * 重建 blocks 表；已定稿的消息再补一条 tape 替换事实。 */
   updateMessageContent(messageId: string, content: string): void {
     this.database.deepchatMessagesTable.updateContent(messageId, content)
     const row = this.database.deepchatMessagesTable.get(messageId)
@@ -673,10 +718,12 @@ export class SessionTranscript {
     }
   }
 
+  /** 下一个可用序号 = 当前最大序号 + 1；序号在会话内单调递增。 */
   getNextOrderSeq(sessionId: string): number {
     return this.database.deepchatMessagesTable.getMaxOrderSeq(sessionId) + 1
   }
 
+  /** 删除会话的全部消息及所有伴生表数据（会话级清空）。 */
   deleteBySession(sessionId: string): void {
     this.database.deepchatSearchDocumentsTable.deleteBySession(sessionId)
     this.database.deepchatAssistantBlocksTable.deleteBySession(sessionId)
@@ -688,6 +735,7 @@ export class SessionTranscript {
     this.database.deepchatMessagesTable.deleteBySession(sessionId)
   }
 
+  /** 删除单条消息：事务内先记 tape 撤销事实，再清主表与全部辅表。 */
   deleteMessage(messageId: string): void {
     this.deleteMessageWithReason(messageId, 'message_deleted')
   }
@@ -709,6 +757,7 @@ export class SessionTranscript {
     })
   }
 
+  /** 删除某序号起的全部消息（重试截断用），同样先补 tape 撤销事实。 */
   deleteFromOrderSeq(sessionId: string, fromOrderSeq: number): void {
     this.runInDatabaseTransaction(() => {
       const records = this.getMessages(sessionId).filter(
@@ -731,6 +780,7 @@ export class SessionTranscript {
     })
   }
 
+  /** 落库一条联网搜索结果（挂在某条消息下），payload 补齐 searchId。 */
   addSearchResult(row: {
     sessionId: string
     messageId: string
@@ -759,6 +809,7 @@ export class SessionTranscript {
     })
   }
 
+  /** 读取某条消息的搜索结果；带 searchId 时精确匹配，匹配不到回退旧格式。 */
   getSearchResults(messageId: string, searchId?: string): SearchResult[] {
     const rows = this.database.deepchatMessageSearchResultsTable.listByMessageId(messageId)
     const parsed: SearchResult[] = []
@@ -791,6 +842,7 @@ export class SessionTranscript {
     return parsed
   }
 
+  /** 记录一次模型请求的完整 trace（endpoint/headers/body，供审计检查器）。 */
   insertMessageTrace(row: {
     id: string
     messageId: string
@@ -836,6 +888,11 @@ export class SessionTranscript {
     return this.database.deepchatMessageTracesTable.maxRequestSeqByMessageId(messageId)
   }
 
+  /**
+   * 把源会话中已定稿（sent）的消息复制到新会话，作为 fork 的历史部分。
+   * 压缩标记消息不复制（它们只对原会话的压缩状态有意义）；复制的消息
+   * 重新编号从 1 开始，辅表/检索文档一并重建。返回复制条数。
+   */
   cloneSentMessagesToSession(
     sourceSessionId: string,
     targetSessionId: string,
@@ -886,6 +943,12 @@ export class SessionTranscript {
     return sourceRecords.length
   }
 
+  /**
+   * 启动恢复：把上次退出时遗留的 pending 消息收敛为 error 终态。
+   * 例外（shouldKeepPending）：steer 输入和等待用户操作的权限询问/提问
+   * 卡片保持 pending——它们本来就是在等用户，不是中断残留。
+   * forceRecoverMessagesBySession 指定无视例外强制恢复的消息。
+   */
   recoverPendingMessages(options?: {
     forceRecoverMessagesBySession?: ReadonlyMap<string, ReadonlySet<string>>
   }): number {
@@ -918,6 +981,11 @@ export class SessionTranscript {
     return recoveredCount
   }
 
+  /**
+   * 对账压缩标记消息（启动恢复的一部分）：按 metadata 里的 attemptId 找
+   * tape 重建锚点——有锚点说明压缩已完成，补写成 compacted；找不到锚点
+   * 说明压缩没做完，删除标记并记入 retracted。逐条容错，失败计数不中断。
+   */
   reconcileCompactionMessages(): { compacted: number; retracted: number; failed: number } {
     if (!this.compactionAnchors) return { compacted: 0, retracted: 0, failed: 0 }
 
@@ -966,6 +1034,7 @@ export class SessionTranscript {
     return { compacted, retracted, failed }
   }
 
+  /** 数据修复入口：为旧库记录补建结构化辅表与检索文档（幂等）。 */
   backfillMessageRow(row: DeepChatMessageRow): void {
     if (row.role === 'user') {
       const content = this.parseUserContent(row.content)
@@ -990,6 +1059,7 @@ export class SessionTranscript {
     }
   }
 
+  /** 恢复时判定该 pending 消息是否应保留：steer 输入、待用户操作的动作卡。 */
   private shouldKeepPending(row: DeepChatMessageRow): boolean {
     if (row.role === 'user') {
       return parseMessageMetadata(row.metadata).inputReceipt?.mode === 'steer'
@@ -1005,6 +1075,7 @@ export class SessionTranscript {
     )
   }
 
+  /** 把消息的最新状态追加为 tape 事实（新建或定稿时调用）。 */
   private appendLiveTapeFacts(messageId: string): void {
     const record = this.getMessage(messageId)
     if (!record) {
@@ -1017,6 +1088,7 @@ export class SessionTranscript {
     return this.toRecords([row])[0]!
   }
 
+  /** 行 → 记录；批量读取时先取全部辅表再逐行物化，避免 N+1 查询。 */
   private toRecords(rows: DeepChatMessageRow[]): ChatMessageRecord[] {
     if (rows.length === 0) {
       return []
@@ -1038,6 +1110,11 @@ export class SessionTranscript {
     }))
   }
 
+  /**
+   * 物化消息 content：主行的 JSON 只是权威源的一部分，user 消息要并回
+   * text/files/links 辅表，assistant 消息以 blocks 表为准（主行为空时回退）。
+   * 批量路径传入预取的 maps，单条路径自行查询。
+   */
   private materializeContent(row: DeepChatMessageRow, maps?: StructuredMessageMaps): string {
     if (row.role === 'user') {
       const userRow =
@@ -1086,6 +1163,7 @@ export class SessionTranscript {
     }
   }
 
+  /** 解析用户消息 content JSON，字段逐一兜底为合法默认值。 */
   private parseUserContent(rawContent: string): UserMessageContent | null {
     try {
       const parsed = JSON.parse(rawContent) as Partial<UserMessageContent>
@@ -1124,6 +1202,7 @@ export class SessionTranscript {
     )
   }
 
+  /** 生成压缩标记消息的可见文案块（进行中/已完成两种）。 */
   private buildCompactionBlocks(status: 'compacting' | 'compacted'): AssistantMessageBlock[] {
     return [
       {
@@ -1153,6 +1232,7 @@ export class SessionTranscript {
     }
   }
 
+  /** 把用户消息内容拆写进三张辅表（text/files/links），附件元数据打包进 JSON。 */
   private persistUserContent(messageId: string, content: UserMessageContent): void {
     this.database.deepchatUserMessagesTable.upsert({
       messageId,
@@ -1269,6 +1349,7 @@ export class SessionTranscript {
     }
   }
 
+  /** 批量预取一批消息的全部辅表行并按消息 id 分组（读路径去 N+1 的关键）。 */
   private loadStructuredMaps(messageIds: string[]): StructuredMessageMaps {
     const userRows = this.database.deepchatUserMessagesTable.listByMessageIds(messageIds)
     const fileRows = this.database.deepchatUserMessageFilesTable.listByMessageIds(messageIds)
@@ -1311,6 +1392,7 @@ export class SessionTranscript {
     )
   }
 
+  /** upsert 消息的检索文档；标题取所属会话标题，内容经 searchable 抽取。 */
   private upsertMessageSearchDocument(
     sessionId: string,
     messageId: string,
@@ -1343,6 +1425,8 @@ export class SessionTranscript {
     }
   }
 
+  /** 从 assistant 消息 metadata 提取 token 用量写进统计表；压缩消息与
+   * 无法确定 provider/model 的消息跳过，解析失败只记错误不影响主流程。 */
   private persistUsageStats(
     messageId: string,
     metadataRaw: string,

@@ -1,3 +1,14 @@
+/**
+ * MCP 设置的两张持久化表：mcp_servers（每 server 一行，config 以 JSON
+ * 存储，sort_order 维持用户排序）与 mcp_settings（通用键值，如 router
+ * API key）。
+ *
+ * 写入一致性：整表替换（replaceMcpServers）与「写 key + 替换 server 表」
+ * （setRouterApiKeyAndServers）都在事务内完成——后者保证换 key 与
+ * Authorization 头同步不会出现半写入状态。JSON 解析失败按 fallback
+ * 处理而不是抛错，避免单条坏数据拖垮整个设置读取。
+ */
+
 import Database from 'better-sqlite3-multiple-ciphers'
 import { BaseTable } from '@/data/baseTable'
 import type { MCPServerConfig } from '@shared/types/mcp'

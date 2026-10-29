@@ -29,6 +29,13 @@ type StartServerOptions = {
 
 const STOP_DRAIN_MS = 250
 
+/**
+ * server 实例的编排层：维护「名称 → McpClient」注册表，并串行化每个
+ * server 的启停（starting/stopping 去重 + startEpoch 代际号防过期启动）。
+ * 职责包括：npm/uv 镜像测速与缓存、启动结果的同步/后台（软超时）两条
+ * 收尾路径、连接失败的通知与 OAuth 处理。
+ * 不理解工具语义；工具注册表在 ToolManager，配置持久化在 McpSettings。
+ */
 export class ServerManager {
   private clients: Map<string, McpClient> = new Map()
   private readonly starting = new Map<string, Promise<McpConnectResult>>()
@@ -84,6 +91,10 @@ export class ServerManager {
     this.serverLastErrors.delete(serverName)
   }
 
+  /**
+   * 从持久化缓存恢复生效的 npm registry（自定义 > 缓存），并按镜像联动
+   * uv/pip 源。构造与用户改设置时调用，保证后续启动的子进程拿到正确源。
+   */
   loadRegistryFromCache(): void {
     const effectiveRegistry = this.mcpSettings.getEffectiveNpmRegistry()
     if (effectiveRegistry) {
@@ -102,6 +113,11 @@ export class ServerManager {
   }
 
   // Test npm registry speed and return best choice
+  /**
+   * 选出最优 npm registry：自定义 registry 优先，其次有效缓存；
+   * 都没有时对候选镜像并发测速（带代理与 10s 超时），取延迟最低者并
+   * 写回缓存。全部失败时退回第一个候选，保证始终有可用源。
+   */
   async testNpmRegistrySpeed(useCache: boolean = true): Promise<string> {
     const customRegistry = this.mcpSettings.getCustomNpmRegistry()
     if (customRegistry) {
@@ -255,6 +271,14 @@ export class ServerManager {
     return Array.from(this.clients.values()).filter((client) => client.isActive())
   }
 
+  /**
+   * 启动指定 server，去重与代际控制的核心入口：
+   * - 先等已进行中的 stop 完成（避免停止中又启动的竞态）；
+   * - 已有同配置的启动任务则直接共享其结果（configOverride 的启动不共享，
+   *   因为它针对的是一次性覆盖配置）；
+   * - waitForConnection 且共享到 soft-timeout-released 时，再等一次确定性
+   *   连接，满足调用方「必须知道结果」的预期。
+   */
   async startServer(name: string, options: StartServerOptions = {}): Promise<McpConnectResult> {
     const pendingStop = this.stopping.get(name)
     if (pendingStop) await pendingStop
@@ -288,10 +312,24 @@ export class ServerManager {
     }
   }
 
+  /**
+   * 代际号不匹配即视为过期启动：stop 已在此期间发生，启动结果作废，
+   * 客户端按 stopped 处理（必要的话顺手 disconnect 清理）。防止「停止-
+   * 启动」交叠时旧启动任务把刚停止的 server 又拉起来。
+   */
   private isStaleStart(name: string, epoch: number): boolean {
     return (this.startEpoch.get(name) ?? 0) !== epoch
   }
 
+  /**
+   * 启动的实际执行体（无去重，由 startServer 保证）：
+   * 1. 已在运行 → 记恢复通知后直接返回 connected；
+   * 2. 已有活跃但未连上的 client 且无配置覆盖 → 复用该 client 继续握手；
+   * 3. 否则读持久化配置（合并 configOverride），断开旧 client 后新建。
+   * 失败路径：记录 lastError、交给 OAuth 管理器判定是否为认证问题
+   * （认证问题走引导流程不发通知），非认证失败且非插件 server 才发
+   * 连接失败语义通知。finally 中统一刷新注册表。
+   */
   private async connectServer(
     name: string,
     options: StartServerOptions,
@@ -411,6 +449,12 @@ export class ServerManager {
     }
   }
 
+  /**
+   * 软超时放行后的后台收尾：监听未完成的握手，最终连上则清错误、发恢复
+   * 通知并回调 onBackgroundConnected（补发 started 事件）；最终失败且该
+   * client 仍是当前实例时，走与同步失败相同的错误处置。client 已被替换
+   * 则静默丢弃——新旧实例不能互相代答。
+   */
   private handleStartupConnectResult(
     name: string,
     client: McpClient,
@@ -470,6 +514,10 @@ export class ServerManager {
     })
   }
 
+  /**
+   * 停止指定 server（去重：并发调用共享同一次停止）。实际逻辑见
+   * stopServerOnce。
+   */
   async stopServer(name: string): Promise<void> {
     const existing = this.stopping.get(name)
     if (existing) return existing
@@ -485,6 +533,14 @@ export class ServerManager {
     }
   }
 
+  /**
+   * 停止的实际执行体：
+   * 1. 递增 startEpoch，令正在进行的启动全部作废；
+   * 2. disconnect 现有 client 并从注册表移除；
+   * 3. 对进行中的启动任务短暂等待（STOP_DRAIN_MS），让它在 epoch 失效后
+   *    自行退出并清理自己创建的 client；
+   * 4. 若期间又冒出新 client（启动竞态残留），一并断开。
+   */
   private async stopServerOnce(name: string): Promise<void> {
     this.startEpoch.set(name, (this.startEpoch.get(name) ?? 0) + 1)
     const live = this.clients.get(name)

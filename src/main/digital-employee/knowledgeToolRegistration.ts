@@ -16,34 +16,54 @@ import { isEmployeeKnowledgeServerName, knowledgeServerNameForEmployee } from '.
  */
 
 export interface KnowledgeToolRegistrarDeps {
+  /** MCP 配置存储：注册即写入一条 inmemory 类型的 server 记录。 */
   mcpSettings: {
     getMcpServers: () => Promise<Record<string, MCPServerConfig>>
     addMcpServer: (name: string, config: MCPServerConfig) => Promise<boolean>
     updateMcpServer: (name: string, patch: Partial<MCPServerConfig>) => Promise<void>
     removeMcpServer: (name: string) => Promise<void>
   }
+  /** server 生命周期管理：写入配置后需显式启动，检索工具才出现在模型列表里。 */
   serverManager: {
     startServer: (name: string) => Promise<unknown>
     stopServer: (name: string) => Promise<void>
   }
 }
 
+/**
+ * 未注册成功时的归类。区分这三个值的用处：
+ * NO_KNOWLEDGE 是常态（没配知识库），不应触发用户可见的错误提示；
+ * 后两者才是真故障，需要走 provision 的失败链路记录。
+ */
 export type KnowledgeToolRegisterReason = 'NO_KNOWLEDGE' | 'REGISTER_FAILED' | 'START_FAILED'
 
 export interface KnowledgeToolRegisterResult {
+  /** 配置层面是否已写入（NO_KNOWLEDGE 与 REGISTER_FAILED 时为 false）。 */
   registered: boolean
+  /** server 是否实际启动。注册成功但启动失败时为 registered=true、started=false。 */
   started: boolean
   reason?: KnowledgeToolRegisterReason
 }
 
 export interface KnowledgeToolRegistrar {
+  /**
+   * 为员工注册（或对齐）本地知识检索工具。
+   * 幂等：重复调用只在目标不一致时才改写配置，避免触发全量 MCP 重连。
+   */
   registerForEmployee(input: {
     employeeId: string
+    /** 员工绑定的知识库 id 列表；全部为空时视为「无知识库」并拆除旧注册。 */
     knowledgeBaseIds: readonly string[]
   }): Promise<KnowledgeToolRegisterResult>
+  /** 拆除该员工的知识检索 server；本就不存在时静默返回。 */
   unregister(employeeId: string): Promise<void>
 }
 
+/**
+ * 构造该员工知识 server 的 MCP 配置。
+ * 本地库 id 通过 `env` 传递——`mcpClient` 会把它原样转给 inmemory 工厂，
+ * 用于构造 `DigitalEmployeeKnowledgeServer` 实例。
+ */
 const buildConfig = (employeeId: string): MCPServerConfig => ({
   command: '',
   args: [],
@@ -77,6 +97,7 @@ export function createKnowledgeToolRegistrar(
   const unregister = async (employeeId: string): Promise<void> => {
     const name = knowledgeServerNameForEmployee(employeeId)
     const servers = await deps.mcpSettings.getMcpServers()
+    // 配置里没有则什么都不动，避免对不存在的 server 发停启指令。
     if (!servers[name]) return
     await stopQuietly(name)
     await deps.mcpSettings.removeMcpServer(name)
@@ -87,6 +108,7 @@ export function createKnowledgeToolRegistrar(
       const name = knowledgeServerNameForEmployee(employeeId)
 
       if (!knowledgeBaseIds.some((id) => id !== '')) {
+        // 没绑知识库是常态：先清掉旧注册，模型才不会对着已下线的知识发起查询。
         await unregister(employeeId)
         return { registered: false, started: false, reason: 'NO_KNOWLEDGE' }
       }
@@ -96,6 +118,8 @@ export function createKnowledgeToolRegistrar(
       const current = servers[name]
 
       try {
+        // 三分支保证幂等：新建、目标漂移时改写、其余情况零写入——
+        // 无谓的配置重写会触发全量 MCP 重连。
         if (!current) {
           await deps.mcpSettings.addMcpServer(name, next)
         } else if (!sameTarget(current, next)) {

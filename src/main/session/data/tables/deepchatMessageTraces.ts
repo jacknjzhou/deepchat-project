@@ -7,6 +7,13 @@ import type {
   TapeInspectorTraceMetadataPageInput
 } from '@/tape/ports/application'
 
+/**
+ * 模型请求 trace 表：每行记录一次发往 provider 的完整请求（endpoint/headers/
+ * body，可能截断），供审计检查器（tape inspector）与用量分页查询。
+ * id 主键，(session_id, message_id) 关联消息；request_seq/物理重试序号
+ * 用于排序与游标分页。insert 由 transcript 完成，检查器只读。
+ */
+
 export const TRACE_EVIDENCE_APPEND_INDEX_SCHEMA_VERSION = 68
 
 const appendRowIdHighWatermarks = new WeakMap<Database.Database, number>()

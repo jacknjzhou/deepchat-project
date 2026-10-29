@@ -15,6 +15,7 @@ import { normalizeAttachmentResolvedRepresentation } from '@shared/utils/attachm
 
 type InlineItem = NonNullable<SendMessageInput['inlineItems']>[number]
 
+/** 合并多条 steer 输入时，后段 inline 引用（@提及等）要按文本拼接点平移。 */
 function shiftInlineItems(
   inlineItems: SendMessageInput['inlineItems'],
   offset: number
@@ -29,6 +30,18 @@ function shiftInlineItems(
   }))
 }
 
+/**
+ * 待发输入的底层存储（pendingInputStore）：直接读写 deepchatPendingInputs 表，
+ * 只做行级状态迁移与编解码，不做跨模块协调（那是 pendingInputs 门面的职责）。
+ *
+ * 表中一行是一条输入：mode 区分 queue/steer，state 是生命周期
+ * （pending → claimed → consumed；queue 可进入 blocked），payload_json 存
+ * 原始发送内容，message_ids_json 记录落库关联的用户消息。
+ * 两个编码细节值得注意：
+ * - retry_required 不是独立 state，而是 blocked + retry_required_at 的组合，
+ *   读侧经 getRowState 还原，写侧落库时映射回 blocked；
+ * - payload 读取走 zod 校验，坏数据降级为纯文本而不是让整条队列不可用。
+ */
 export class SessionPendingInputStore {
   private readonly database: SessionDatabase
 
@@ -40,6 +53,7 @@ export class SessionPendingInputStore {
     return this.database.getDatabase().transaction(operation)() as T
   }
 
+  /** 列出会话的待发输入；已认领（claimed）的不对 UI 展示——它们已在生成中。 */
   listPendingInputs(sessionId: string): PendingSessionInputRecord[] {
     return this.database.deepchatPendingInputsTable
       .listActiveBySession(sessionId)
@@ -47,6 +61,7 @@ export class SessionPendingInputStore {
       .map((row) => this.toRecord(row))
   }
 
+  /** 全库扫描活跃输入（重启恢复用）；所属会话已被删除的行跳过。 */
   listActiveInputs(): PendingSessionInputRecord[] {
     return this.database.deepchatPendingInputsTable
       .listActive()
@@ -69,6 +84,10 @@ export class SessionPendingInputStore {
     return row ? this.toRecord(row) : null
   }
 
+  /**
+   * 取会话当前唯一的已认领输入。一个会话同一时刻只应有一个认领项——
+   * 出现多个说明状态机被破坏，直接报错暴露而不是静默取第一条。
+   */
   getClaimedInput(sessionId: string): PendingSessionInputRecord | null {
     const rows = this.database.deepchatPendingInputsTable
       .listActiveBySession(sessionId)
@@ -83,6 +102,7 @@ export class SessionPendingInputStore {
     return this.createQueueInputWithState(sessionId, input, 'pending')
   }
 
+  /** 新建排队输入；retry_required 状态在行上落成 blocked + 时间戳组合。 */
   createQueueInputWithState(
     sessionId: string,
     input: SendMessageInput,
@@ -110,6 +130,7 @@ export class SessionPendingInputStore {
     return this.toRecord(row)
   }
 
+  /** 新建 steer 输入；创建时就绑定其已落库的用户消息 id。 */
   createSteerInput(
     sessionId: string,
     input: SendMessageInput,
@@ -133,6 +154,10 @@ export class SessionPendingInputStore {
     return this.toRecord(row)
   }
 
+  /**
+   * 把新插话并入一条未读 steer 输入：文本按空行拼接、文件/技能去重合并、
+   * inline 引用按拼接点平移，并把新用户消息追加进关联列表。
+   */
   appendSteerInput(
     itemId: string,
     input: SendMessageInput,
@@ -205,6 +230,7 @@ export class SessionPendingInputStore {
     return this.toRecord(this.requireRow(itemId, row.session_id))
   }
 
+  /** 编辑排队输入：blocked/retry_required 的编辑视为用户修正，一并清回 pending。 */
   updateQueueInput(itemId: string, input: SendMessageInput): PendingSessionInputRecord {
     const row = this.requireRow(itemId)
     if (row.mode !== 'queue') {
@@ -228,6 +254,7 @@ export class SessionPendingInputStore {
     return this.toRecord(this.requireRow(itemId, row.session_id))
   }
 
+  /** 队列重排：只在等待中的输入里移动，重排后全量重写 queue_order。 */
   moveQueueInput(sessionId: string, itemId: string, toIndex: number): PendingSessionInputRecord[] {
     const queueRows = this.getWaitingQueueRows(sessionId)
     const fromIndex = queueRows.findIndex((row) => row.id === itemId)
@@ -250,6 +277,7 @@ export class SessionPendingInputStore {
     return this.listPendingInputs(sessionId)
   }
 
+  /** queue ↔ steer 双向转换；转换后都要重排队列补上空出的序号。 */
   convertQueueInputToSteer(itemId: string): PendingSessionInputRecord {
     const row = this.requireRow(itemId)
     if (row.mode !== 'queue') {
@@ -388,6 +416,7 @@ export class SessionPendingInputStore {
     return this.toRecord(this.requireRow(itemId, row.session_id))
   }
 
+  /** queue 输入被消费 = 直接删行（没有保留价值）；steer 消费则保留 consumed 痕迹。 */
   consumeQueueInput(itemId: string): void {
     this.deleteInput(itemId)
   }
@@ -503,6 +532,10 @@ export class SessionPendingInputStore {
     this.resequenceQueueRows(sessionId, this.getWaitingQueueRows(sessionId))
   }
 
+  /**
+   * 重排等待中的队列行：非等待行（认领中等）占住原位，等待行按新顺序
+   * 依次填入剩余位置，最终所有行拿到 1..n 的连续序号。
+   */
   private resequenceQueueRows(sessionId: string, waitingRows: DeepChatPendingInputRow[]): void {
     let waitingIndex = 0
     const orderedRows = this.getQueueRows(sessionId)
@@ -516,6 +549,7 @@ export class SessionPendingInputStore {
     })
   }
 
+  /** 认领排队输入的公共实现：state 回落为 pending 或 retry_required 两种之一。 */
   private releaseClaimedQueueInputTo(
     itemId: string,
     state: 'pending' | 'retry_required'
@@ -582,6 +616,7 @@ export class SessionPendingInputStore {
     return row.state === 'pending' || row.state === 'blocked' || row.state === 'retry_required'
   }
 
+  /** payload 解码：JSON 损坏或 schema 不符都降级为纯文本输入，只记错误。 */
   private decodePayload(row: DeepChatPendingInputRow): SendMessageInput {
     let parsed: unknown
     try {

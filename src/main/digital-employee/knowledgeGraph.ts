@@ -8,10 +8,16 @@ import type { ConceptMetadata } from './knowledgeClient'
  * citations 对账）；超上限时按度数截断并回传 `truncated` 标记，管理台只在展示层截。
  */
 
+/** 图谱节点数上限：超出时按度数截断，避免大数据集把渲染层拖垮。 */
 export const KNOWLEDGE_GRAPH_NODE_LIMIT = 500
 
+// 命中即视为外部链接（http:、mailto: 等），不参与概念间建边。
 const EXTERNAL_SCHEME = /^[a-z][a-z\d+.-]*:/i
 
+/**
+ * 链接解析结果：internal 携带定位到的概念 id（可能指向不存在的概念，
+ * 由建图方用概念表过滤）；external 无 conceptId。
+ */
 export type ResolvedKnowledgeLink =
   | { kind: 'internal'; conceptId: string }
   | { kind: 'external'; conceptId?: undefined }
@@ -54,6 +60,7 @@ export function resolveKnowledgeLink(sourceConceptId: string, rawTarget: string)
   return { kind: 'internal', conceptId: parts.join('/') }
 }
 
+/** 图谱节点的展示信息；degree 由建图结果回填（截断前口径）。 */
 export interface KnowledgeGraphConcept {
   conceptId: string
   type: string
@@ -62,6 +69,7 @@ export interface KnowledgeGraphConcept {
   degree: number
 }
 
+/** 有向边：source 概念的正文链接到 target 概念。 */
 export interface KnowledgeGraphEdge {
   source: string
   target: string
@@ -75,6 +83,13 @@ export interface KnowledgeGraphResult {
   edges: KnowledgeGraphEdge[]
 }
 
+/**
+ * 由概念元数据构建知识图谱。
+ *
+ * 流程：先全量解析链接生成去重后的边集（此阶段不看上限），再在超限时按
+ * 度数截断节点并只保留两端都幸存的边。返回的 degree 是截断后口径，与
+ * 渲染出的节点集合一致。
+ */
 export function buildKnowledgeGraph(input: {
   version: string
   concepts: ConceptMetadata[]

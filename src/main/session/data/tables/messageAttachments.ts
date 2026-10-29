@@ -2,6 +2,11 @@ import { Database } from 'better-sqlite3-multiple-ciphers'
 import { BaseTable } from '@/data/baseTable'
 import { nanoid } from 'nanoid'
 
+/**
+ * 旧版消息附件内容表：直接存附件正文（type + content 文本），按 message_id
+ * （messages.msg_id）外键级联删除。与 attachments 元数据表不同，这里存的是
+ * 内容本身。新版体系不再使用。
+ */
 export class MessageAttachmentsTable extends BaseTable {
   constructor(db: Database) {
     super(db, 'message_attachments')

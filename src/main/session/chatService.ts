@@ -14,6 +14,7 @@ const CHAT_SEND_TIMEOUT_MS = 30 * 60 * 1_000
 const CHAT_STOP_TIMEOUT_MS = 5_000
 const CHAT_INTERACTION_TIMEOUT_MS = CHAT_SEND_TIMEOUT_MS
 
+/** 把调用方的取消信号转发到内部 controller；返回解绑函数供 finally 清理。 */
 function relayAbort(source: AbortSignal | undefined, target: AbortController): () => void {
   if (!source) return () => {}
   const abortTarget = () => target.abort()
@@ -82,11 +83,17 @@ export interface ChatServiceRemoteTurnPort {
 }
 
 /**
- * Route-layer chat operations. Generation concurrency is owned by the agent runtime
- * (queue / pending / active generation), not by this service's AbortController map.
- * Controllers here only support route-level abort for the in-flight accept path.
+ * 会话聊天路由层（ChatService）：把渲染层的聊天动作（发送/steer/停止/工具
+ * 交互）转交给 turn 层，并在外面套上超时与取消。
+ *
+ * 与各模块的关系：真正执行走 turn 端口（SessionTurn）；会话/消息查询走
+ * projection 端口（SessionQuery）；远端（StaffDeck 托管）会话经 remoteTurn
+ * 端口分流，不进本地 runtime。生成并发本身由 agent runtime 的队列/挂起
+ * 机制管理，这里的 AbortController 只负责「接受阶段」的路由级取消——超时
+ * 或上层信号触发时中断在途的接受过程，并尽力撤销已开始的生成。
  */
 export class ChatService {
+  /** 每会话一组在途 accept 的 controller；停止时统一 abort。 */
   private readonly acceptControllers = new Map<string, Set<AbortController>>()
 
   constructor(
@@ -100,6 +107,10 @@ export class ChatService {
     }
   ) {}
 
+  /**
+   * 发送消息。带会话查找与发送两段超时；超时即 abort 在途 accept 并尽力
+   * 取消生成。accepted 反映消息是否被接受（附件需用户处理时为 false）。
+   */
   async sendMessage(
     sessionId: string,
     content: string | SendMessageInput,
@@ -150,6 +161,7 @@ export class ChatService {
           : {})
       }
     } catch (error) {
+      // 发送超时说明运行时可能已卡住：abort 本路 accept，并尽力停掉生成。
       if (error instanceof Error && error.name === 'TimeoutError') {
         controller.abort()
         await this.bestEffortCancel(sessionId, 'send timeout')
@@ -157,6 +169,7 @@ export class ChatService {
       throw error
     } finally {
       removeParentAbortListener()
+      // 从在途集合移除自身；集合空了就删键，避免 Map 随会话无限增长。
       const activeControllers = this.acceptControllers.get(sessionId)
       activeControllers?.delete(controller)
       if (activeControllers?.size === 0) {
@@ -165,6 +178,10 @@ export class ChatService {
     }
   }
 
+  /**
+   * 向运行中的轮次插话（steer）。返回区分「已接受（附落库的用户消息）」与
+   * 「未接受（附件需处理）」两种结果；接受却没落库视为内部错误。
+   */
   async steerActiveTurn(
     sessionId: string,
     content: string | SendMessageInput,
@@ -243,6 +260,11 @@ export class ChatService {
     }
   }
 
+  /**
+   * 停止生成。可按 sessionId 停，也可只给 requestId（先反查消息归属的
+   * 会话）。停止时同时清掉该会话的临时权限授权并取消生成；两者独立
+   * allSettled，任一失败不影响另一个。stopped 表示取消是否成功。
+   */
   async stopStream(input: {
     sessionId?: string
     requestId?: string
@@ -262,6 +284,7 @@ export class ChatService {
       return { stopped: false }
     }
 
+    // 先中断所有在途 accept，再做停止清理。
     const controllers = this.acceptControllers.get(targetSessionId)
     if (controllers) {
       for (const controller of controllers) {
@@ -307,6 +330,7 @@ export class ChatService {
     return { stopped: !cancelFailed }
   }
 
+  /** 应答工具交互（如权限批准/拒绝）；超时上限与发送一致（交互可能挂很久）。 */
   async respondToolInteraction(input: ChatRespondToolInteractionInput): Promise<{
     accepted: true
     resumed?: boolean
@@ -330,6 +354,7 @@ export class ChatService {
     }
   }
 
+  /** 关闭一个工具交互卡片。 */
   async dismissToolInteraction(input: {
     sessionId: string
     messageId: string
@@ -348,6 +373,10 @@ export class ChatService {
     return { dismissed }
   }
 
+  /**
+   * 超时后的尽力撤销：清临时权限 + 取消生成并行执行，任何失败只告警不抛——
+   * 调用点本身已在处理超时错误，撤销失败没有更好的处置。
+   */
   private async bestEffortCancel(sessionId: string, reason: string): Promise<void> {
     let cleanupResults: PromiseSettledResult<void>[]
     try {

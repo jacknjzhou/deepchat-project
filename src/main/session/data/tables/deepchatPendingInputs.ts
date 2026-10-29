@@ -2,6 +2,14 @@ import Database from 'better-sqlite3-multiple-ciphers'
 import { BaseTable } from '@/data/baseTable'
 import type { PendingSessionInputState } from '@shared/types/agent-interface'
 
+/**
+ * 待发输入表（deepchat_pending_inputs）：排队（queue）与插话（steer）输入
+ * 的持久化，id 主键。payload_json 存原始发送内容，message_ids_json 记录
+ * 关联的已落库消息，state 走 pending → claimed → consumed 生命周期
+ * （blocked 表示附件受阻，retry_required_at 组合表示需手动重试）。
+ * 由 pendingInputStore 独占读写；重启恢复扫描全表活跃行。
+ */
+
 export const PENDING_INPUT_RETRY_SCHEMA_VERSION = 67
 
 export interface DeepChatPendingInputRow {

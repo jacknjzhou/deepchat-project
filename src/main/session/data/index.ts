@@ -15,6 +15,7 @@ import type {
 import { SessionTranscript } from './transcript'
 import { SessionDatabase } from './database'
 
+/** 从既有连接创建数据层（常规入口）。 */
 export function createSessionData(
   connection: DatabaseConnectionProvider,
   getTapeMutationProjection: (() => TapeMutationProjection) | undefined,
@@ -24,11 +25,20 @@ export function createSessionData(
   return createSessionDataFromDatabase(database, events)
 }
 
+/**
+ * 会话数据层的组装入口：把 database/transcript/pendingInputs/settings/tape
+ * 按依赖关系拼装成一个 SessionData 聚合对象。tape 端口在此做了薄适配——
+ * 首次访问时惰性补建该会话的 tape（ensureTape），而 inspector 只读接口
+ * 刻意不做 bootstrap（见内联注释）。
+ */
+
+/** 数据层对外的事件回调：待发输入与消息集合变更时通知上层广播。 */
 export type SessionDataEvents = {
   publishPendingInputsChanged(sessionId: string): void
   publishMessagesChanged(sessionId: string, messages: ChatMessageRecord[]): void
 }
 
+/** 供已持有 database 的调用方复用（测试/拆分场景）。 */
 export function createSessionDataFromDatabase(
   database: SessionDatabase,
   events: SessionDataEvents

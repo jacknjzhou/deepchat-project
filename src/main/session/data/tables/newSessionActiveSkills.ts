@@ -1,6 +1,10 @@
 import Database from 'better-sqlite3-multiple-ciphers'
 import { BaseTable } from '@/data/baseTable'
 
+/**
+ * 会话激活技能清单表：每个会话启用的技能名（保持用户设定的顺序）。
+ * 主键 (session_id, ordinal)；由 skill 设置流程写入，运行时组装工具面时读取。
+ */
 export interface NewSessionActiveSkillRow {
   session_id: string
   ordinal: number

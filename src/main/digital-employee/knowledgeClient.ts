@@ -17,12 +17,14 @@ import { StaffdeckProblemError } from './remoteClient'
 
 const REQUEST_TIMEOUT_MS = 10_000
 
+/** 客户端三要素，与 remoteClient 同一套凭证体系；externalUserId 只进 body。 */
 export interface KnowledgeClientConfig {
   baseUrl: string
   apiKey: string
   externalUserId: string
 }
 
+/** 清单里单概念的指纹：hash 是增量同步的判据，size 供下载预算估算。 */
 export interface ConceptEntry {
   conceptId: string
   type: string
@@ -31,6 +33,7 @@ export interface ConceptEntry {
   size: number
 }
 
+/** 单个知识包：概念列表与 hash 用于本地判断「哪些概念需要重新下载」。 */
 export interface KnowledgePackage {
   knowledgeBaseId: string
   name: string
@@ -76,6 +79,7 @@ export interface ConceptMetadata {
   links: ConceptLink[]
 }
 
+/** 概念元数据的包级结果；version 供缓存与图谱版本标注使用。 */
 export interface ConceptMetadataResult {
   knowledgeBaseId: string
   version: string
@@ -103,6 +107,12 @@ export function encodeConceptPath(conceptId: string): string {
   return conceptId.split('/').map(encodeURIComponent).join('/') + ':download'
 }
 
+/**
+ * StaffDeck 知识同步端点的 HTTP 客户端。
+ *
+ * 只负责取数与形状归一（宽松解析、逐字段兜底），增量判定与落库在
+ * `knowledgeSyncScheduler` / `knowledgeProvisioning` 侧完成。
+ */
 export class StaffdeckKnowledgeClient {
   constructor(
     private readonly config: KnowledgeClientConfig,

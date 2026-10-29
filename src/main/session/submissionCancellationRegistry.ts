@@ -12,6 +12,11 @@ const MAX_ACTIVE_SUBMISSIONS_PER_OWNER = 32
 export class SubmissionCancellationRegistry {
   private readonly controllersByOwner = new Map<number, Map<string, AbortController>>()
 
+  /**
+   * 登记一次提交并返回其取消信号。同 id 重复登记、或该渲染进程在途提交
+   * 达到上限（防失控）都直接报错。unregister 幂等且校验 controller 身份，
+   * 防止迟到的一次解绑误删同 id 的新登记。
+   */
   register(webContentsId: number, submissionId: string): SubmissionCancellationRegistration {
     const ownerControllers = this.controllersByOwner.get(webContentsId) ?? new Map()
     if (ownerControllers.has(submissionId)) {
@@ -36,6 +41,7 @@ export class SubmissionCancellationRegistry {
     }
   }
 
+  /** 取消指定提交；id 不存在（已结束或不属于该渲染进程）返回 false。 */
   cancel(webContentsId: number, submissionId: string): boolean {
     const controller = this.controllersByOwner.get(webContentsId)?.get(submissionId)
     if (!controller) return false

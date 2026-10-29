@@ -1,3 +1,18 @@
+/**
+ * MCP 子系统的 IPC 路由表：把 @shared/contracts 中声明的 mcp* 路由逐个
+ * 绑定到 McpService / McpAppHost 的对应方法。
+ *
+ * 安全边界在路由层集中执行：
+ * - 凭据与 OAuth 类路由只允许设置窗口调用（assertSettingsWindow），
+ *   防止会话窗口里的 MCP App 篡改凭据；
+ * - sampling/elicitation 决策与全部 mcpApps* 路由只允许会话窗口调用
+ *   （appContext），并要求入参体积限界（assertAppRouteInput）——这些
+ *   路由的调用方是运行不受信 App 的窗口；
+ * - server 增删改等管理操作按动作写入设置活动日志，供控制中心回溯。
+ * 每个 handler 都以 input/output schema 解析包裹，未通过校验的调用
+ * 在路由层即被拒绝，不会触达服务实现。
+ */
+
 import type { McpAppHostPort, McpServicePort } from '@shared/types/mcp'
 import {
   configGetMcpServersRoute,
@@ -72,12 +87,19 @@ import {
 } from '@/routes/routeRegistry'
 import { assertBoundedMcpJson } from './schemaValidation'
 
+/** MCP App 路由的入参体积上限：App 运行在不受信窗口，入参必须先限界。 */
 const MCP_APP_ROUTE_INPUT_MAX_BYTES = 3 * 1024 * 1024
 
 const assertAppRouteInput = (rawInput: unknown): void => {
   assertBoundedMcpJson(rawInput, 'MCP App route input', MCP_APP_ROUTE_INPUT_MAX_BYTES)
 }
 
+/**
+ * 构建全部 MCP 路由。路由按语义分组：只读查询（无窗口限制）、server
+ * 管理与凭据操作（限设置窗口）、sampling/elicitation 交互（限会话窗口）、
+ * MCP Apps 宿主接口（限会话窗口 + 入参限界）、npm registry 维护与
+ * McpRouter 市场集成。
+ */
 export function createMcpRoutes(deps: {
   mcpService: McpServicePort
   mcpAppHost: McpAppHostPort

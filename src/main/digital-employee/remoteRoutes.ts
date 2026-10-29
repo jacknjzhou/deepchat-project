@@ -18,8 +18,11 @@ import type { RemoteSessionRegistry } from './remoteSessionRegistry'
  */
 
 export interface DigitalEmployeeRemoteRoutesDeps {
+  /** StaffDeck 会话创建入口；bind 与 switch 都经它拿到远端会话 id。 */
   client: Pick<StaffdeckRemoteClient, 'createSession'>
+  /** 本地会话 → 远端会话的持久绑定表。 */
   registry: RemoteSessionRegistry
+  /** 首轮执行器：bind 的开场提问与 switch 的上下文摘要都由它发起。 */
   runner: Pick<StaffdeckRemoteRunner, 'run'>
   /**
    * 追问明细的共享暂存。
@@ -35,6 +38,10 @@ export interface DigitalEmployeeRemoteRoutesDeps {
 /** 首轮轮次键固定，保证 bind 重试不会在服务端产生第二个 run。 */
 const OPENING_TURN_KEY = 'opening'
 
+/**
+ * 组装远端执行三条路由：绑定会话（含开场提问）、查询远端状态、hybrid 切换。
+ * 所有写入都经 registry 与 outcomes，路由本身不持有任何可变状态。
+ */
 export function createDigitalEmployeeRemoteRoutes(
   deps: DigitalEmployeeRemoteRoutesDeps
 ): DeepchatRouteMap {
@@ -42,6 +49,7 @@ export function createDigitalEmployeeRemoteRoutes(
     deps.outcomes.remember(sessionId, outcome.awaitingInput)
   }
 
+  /** 幂等绑定：已有绑定直接复用远端会话 id，避免重复 createSession 产生孤儿会话。 */
   const bind = async (sessionId: string, employeeId: string): Promise<string> => {
     const existing = deps.registry.get(sessionId)
     if (existing) return existing.remoteSessionId
@@ -67,6 +75,8 @@ export function createDigitalEmployeeRemoteRoutes(
   return createRouteMap([
     [
       digitalEmployeeBindRemoteSessionRoute.name,
+      // 绑定成功后若带开场提问，立刻发起首轮 run 并记录追问明细；
+      // 无开场提问则只建绑定，runId 置 null。
       async (rawInput) => {
         const input = digitalEmployeeBindRemoteSessionRoute.input.parse(rawInput)
 
@@ -95,6 +105,7 @@ export function createDigitalEmployeeRemoteRoutes(
     ],
     [
       digitalEmployeeRemoteStatusRoute.name,
+      // renderer 轮询入口：未绑定返回全空形状而非 404，让前端能统一渲染。
       async (rawInput) => {
         const input = digitalEmployeeRemoteStatusRoute.input.parse(rawInput)
         const binding = deps.registry.get(input.sessionId)
@@ -120,6 +131,8 @@ export function createDigitalEmployeeRemoteRoutes(
     ],
     [
       digitalEmployeeSwitchToRemoteRoute.name,
+      // hybrid 切换：建远端会话、写 hybrid 绑定，再把本地上下文摘要作为
+      // 首轮输入喂给远端，让服务端从摘要续聊。
       async (rawInput) => {
         const input = digitalEmployeeSwitchToRemoteRoute.input.parse(rawInput)
         const existing = deps.registry.get(input.sessionId)

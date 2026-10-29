@@ -1,3 +1,17 @@
+/**
+ * MCP 协议数据的限界校验与深度克隆。
+ *
+ * server 是不可信来源，本模块是所有协议入参（工具列表、工具结果、
+ * elicitation 内容、请求体等）进入主进程内存前的统一闸门：以「边遍历
+ * 边克隆」的方式同时完成四件事——深度/节点数/键数/字节上限校验、循环
+ * 引用与非 JSON 值拒绝、undefined 字段剔除、产出无原型链的纯净副本。
+ * 校验失败抛错，调用方按需降级（丢弃该工具/该 schema）。
+ *
+ * JSON Schema 还额外做语义校验：仅接受已知方言、$ref 必须是文档内引用、
+ * 组合分支数量受限——防化解式 schema 造成的解析爆炸。legacy 策略下
+ * 语义校验关闭，仅保留结构限界。
+ */
+
 import type { Tool } from '@shared/types/mcp'
 
 const MAX_SCHEMA_BYTES = 1024 * 1024
@@ -282,6 +296,11 @@ function validateSchemaTree(schema: Record<string, unknown>, label: string): voi
   visit(schema, '#')
 }
 
+/**
+ * 对外限界校验入口：仅校验不返回副本（内部仍走克隆实现以保证遍历路径
+ * 一致）。independentArrayItemsAtPath 指定的数组路径下每项独立计入
+ * 节点预算——用于工具列表这类长数组，避免单数组撑爆总预算。
+ */
 export function assertBoundedMcpJson(
   value: unknown,
   label: string,
@@ -334,6 +353,13 @@ function cloneMetadata(
   }) as Record<string, unknown>
 }
 
+/**
+ * 校验并克隆 server 报告的工具定义。inputSchema 必须合法，否则整体抛错
+ * （该工具被上游丢弃）；outputSchema 非法时降级为丢弃 schema 并保留工具
+ * 本体——输出 schema 只影响结果编译，不应让可用工具消失。strict 策略
+ * 才做 schema 语义校验，legacy 时代仅做限界。所有字符串/元数据字段同样
+ * 限界克隆。
+ */
 export function validateAndCloneMcpTool(
   tool: Tool,
   serverName: string,

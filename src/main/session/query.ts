@@ -78,6 +78,7 @@ export interface SessionQueryDependencies {
   ui: SessionProjectionUiPort
 }
 
+/** 嵌套执行审计不可用/损坏时的兜底响应：结构合法，但 operations 为空。 */
 function unavailableNestedExecutionAudit(
   state: Exclude<DeepChatNestedExecutionAuditState, 'available'>
 ): DeepChatNestedExecutionAudit {
@@ -103,9 +104,25 @@ function normalizeInspectorEvidenceLimit(limit: number | undefined): number {
   return Math.min(Math.max(Math.floor(limit), 1), 200)
 }
 
+/** 会话查询与轻量写操作模块，是渲染层读取会话数据的统一读端口。
+ *
+ * 三类职责：
+ * 1. 会话列表/详情——listSessions 与 materialize 系列会把存储记录与运行时
+ *    快照合并成完整状态；轻量列表（listLightweight）只读已水合的运行时，
+ *    Agent 不可用时列表仍可用，分页供大数据量下渐进加载。
+ * 2. 消息与执行痕迹——消息分页、tape 信息/检索/上下文、审计检查器（inspector）
+ *    证据分页、请求 trace、搜索结果读取；按消息聚合的接口先反查消息归属
+ *    会话再委托 tape 端口。
+ * 3. 轻量写与通知——改名/置顶、变更广播（notify）、异步标题生成（生成中
+ *    轮询首轮消息，完成后覆写占位标题）。
+ *
+ * 读失败一律降级：单会话不可用就从列表跳过，子功能失败返回空值，绝不
+ * 让一个坏会话拖垮整个列表接口。
+ */
 export class SessionQuery implements SessionProjectionReadPort, SessionProjectionMutationPort {
   constructor(private readonly dependencies: SessionQueryDependencies) {}
 
+  /** 全量列表：逐条合并运行时快照；个别会话物化失败只跳过并告警。 */
   async listSessions(filters?: SessionListFilters): Promise<SessionWithState[]> {
     const records = this.dependencies.sessions.list(filters)
     const enriched: SessionWithState[] = []
@@ -118,6 +135,10 @@ export class SessionQuery implements SessionProjectionReadPort, SessionProjectio
     return enriched
   }
 
+  /**
+   * 轻量分页列表：不触碰未水合的运行时，侧栏场景用。prioritizeSessionId
+   * 把指定会话提到最前——用户刚操作过的会话即使不在本页也应可见。
+   */
   async listLightweight(
     options?: SessionLightweightOptions
   ): Promise<SessionLightweightListResult> {
@@ -133,6 +154,8 @@ export class SessionQuery implements SessionProjectionReadPort, SessionProjectio
     const prioritizeSessionId = options?.prioritizeSessionId?.trim()
 
     if (prioritizeSessionId) {
+      // 被置顶的会话单独取出后插到页首，但仍要过一遍过滤条件，避免混入
+      // 用户当前筛选视图之外的条目。
       const prioritizedRecord = this.dependencies.sessions.get(prioritizeSessionId)
       if (prioritizedRecord && this.matchesLightweightFilter(prioritizedRecord, options)) {
         items.unshift(await this.mapSessionRecordToListItem(prioritizedRecord))
@@ -159,16 +182,19 @@ export class SessionQuery implements SessionProjectionReadPort, SessionProjectio
     )
   }
 
+  /** 单条读取；record 不存在返回 null，物化失败返回 null（见 tryMaterializeRecord）。 */
   async getSession(sessionId: string): Promise<SessionWithState | null> {
     return await this.materialize(sessionId)
   }
 
+  /** 存储记录 + 运行时快照 → 完整会话状态（status/provider/model 回填）。 */
   async materialize(sessionId: string): Promise<SessionWithState | null> {
     const record = this.dependencies.sessions.get(sessionId)
     if (!record) return null
     return await this.tryMaterializeRecord(record)
   }
 
+  /** 与 materialize 相同，但调用方断言会话必须存在且可读（如写后回读）。 */
   async materializeRequired(sessionId: string): Promise<SessionWithState> {
     const record = this.dependencies.sessions.get(sessionId)
     if (!record) throw new Error(`Session not found: ${sessionId}`)
@@ -180,6 +206,7 @@ export class SessionQuery implements SessionProjectionReadPort, SessionProjectio
     return await this.dependencies.transcript.getMessages(sessionId)
   }
 
+  /** 消息分页：transcript 端口取原始页后再做客户端投影（脱敏/裁剪）。 */
   async listMessagesPage(
     sessionId: string,
     options?: { limit?: number; cursor?: MessagePageCursor | null }
@@ -233,6 +260,11 @@ export class SessionQuery implements SessionProjectionReadPort, SessionProjectio
     return await this.dependencies.tape.getTapeInspectorRecordDetail(input)
   }
 
+  /**
+   * 导出供人工排查的「支持轨迹」包：事实数据 + 最近一段证据。
+   * 证据按时间正序放回（查询是 older 模式倒序取的），truncated 各项如实
+   * 标注，让接收方知道包不完整。
+   */
   async exportTapeInspectorSupportTrace(
     input: ExportTapeInspectorSupportTraceInput
   ): Promise<ExportTapeInspectorSupportTraceOutput> {
@@ -351,6 +383,12 @@ export class SessionQuery implements SessionProjectionReadPort, SessionProjectio
     }
   }
 
+  /**
+   * 读取某条消息附带的搜索结果（联网搜索工具的产物）。
+   * 行内容是 JSON，解析失败的行跳过。带 searchId 过滤时优先精确匹配；
+   * 匹配不到则回退到旧数据（无 searchId 的行）——历史消息入库时还没有
+   * 这个字段，不能因此显示为空。
+   */
   async getSearchResults(messageId: string, searchId?: string): Promise<SearchResult[]> {
     const normalizedMessageId = messageId?.trim()
     if (!normalizedMessageId) return []
@@ -398,6 +436,10 @@ export class SessionQuery implements SessionProjectionReadPort, SessionProjectio
     }))
   }
 
+  /**
+   * 检查器证据分页。older/newer 两种游标方向：older 供向前翻历史（只有
+   * 这个方向产生 nextCursor），newer 供实时追加查看。
+   */
   async listTapeInspectorEvidence(
     input: ListTapeInspectorEvidenceInput
   ): Promise<ListTapeInspectorEvidenceOutput> {
@@ -479,6 +521,7 @@ export class SessionQuery implements SessionProjectionReadPort, SessionProjectio
     return session
   }
 
+  /** 广播会话变更事件并刷新相关 UI。activated/deactivated 不触发侧栏刷新。 */
   notify(options: SessionProjectionUpdate = {}): void {
     const sessionIds = Array.from(
       new Set(options.sessionIds?.map((sessionId) => sessionId.trim()).filter(Boolean) ?? [])
@@ -496,6 +539,7 @@ export class SessionQuery implements SessionProjectionReadPort, SessionProjectio
     }
   }
 
+  /** 触发异步标题生成，不等待结果；失败只告警，占位标题保持不变。 */
   scheduleTitleGeneration(input: TitleGenerationInput): void {
     void this.generateSessionTitle(input)
   }
@@ -506,6 +550,7 @@ export class SessionQuery implements SessionProjectionReadPort, SessionProjectio
     return session
   }
 
+  /** 合并存储记录与运行时快照；list 模式用轻量快照减少列表场景的开销。 */
   private async materializeRecord(
     record: SessionRecord,
     mode: 'full' | 'list' = 'full'
@@ -522,6 +567,7 @@ export class SessionQuery implements SessionProjectionReadPort, SessionProjectio
     }
   }
 
+  /** materializeRecord 的容错版：单个会话不可用不拖垮列表，跳过并告警。 */
   private async tryMaterializeRecord(
     record: SessionRecord,
     mode: 'full' | 'list' = 'full'
@@ -537,6 +583,10 @@ export class SessionQuery implements SessionProjectionReadPort, SessionProjectio
     }
   }
 
+  /**
+   * 列表项映射：只读「已水合」的快照。未水合说明该 Agent 侧没有活跃
+   * 状态，按 idle 呈现即可，绝不为列表去触发完整加载。
+   */
   private async mapSessionRecordToListItem(record: SessionRecord): Promise<SessionListItem> {
     let status: SessionListItem['status'] = 'idle'
     try {
@@ -550,6 +600,7 @@ export class SessionQuery implements SessionProjectionReadPort, SessionProjectio
     }
   }
 
+  /** 按 updatedAt 倒序（新在前），同刻用 id 比较保证顺序稳定可复现。 */
   private dedupeAndSortSessionListItems(items: SessionListItem[]): SessionListItem[] {
     const sessionMap = new Map<string, SessionListItem>()
     for (const item of items) sessionMap.set(item.id, item)
@@ -568,6 +619,11 @@ export class SessionQuery implements SessionProjectionReadPort, SessionProjectio
     return options?.includeSubagents === true || record.sessionKind !== 'subagent'
   }
 
+  /**
+   * 异步生成会话标题：等首轮消息就绪 → 选定生成用模型 → 生成 → 覆写。
+   * 多处防御性检查（会话仍在、标题未被用户改过）避免覆盖用户的手动命名；
+   * 首选模型失败时回退到会话自身的 provider/model 再试一次。
+   */
   private async generateSessionTitle(input: TitleGenerationInput): Promise<void> {
     const { sessionId, initialTitle, fallbackProviderId, fallbackModelId } = input
     try {
@@ -591,6 +647,8 @@ export class SessionQuery implements SessionProjectionReadPort, SessionProjectio
           assistantSelection.modelId
         )
       } catch (error) {
+        // 仅当助手模型与会话自身的模型不同才值得回退重试：同模型再试
+        // 大概率同样失败，直接把错误交给外层告警。
         const shouldFallback =
           assistantSelection.providerId !== fallbackProviderId ||
           assistantSelection.modelId !== fallbackModelId
@@ -605,6 +663,7 @@ export class SessionQuery implements SessionProjectionReadPort, SessionProjectio
       const normalized = this.normalizeGeneratedTitle(generatedTitle)
       if (!normalized || normalized === initialTitle) return
 
+      // 写入前再查一次：等待/生成期间用户可能已改名或删除会话。
       const latest = this.dependencies.sessions.get(sessionId)
       if (!latest || latest.title !== initialTitle) return
 
@@ -615,6 +674,7 @@ export class SessionQuery implements SessionProjectionReadPort, SessionProjectio
     }
   }
 
+  /** 标题模型选择：Office Agent 用其配置的助手模型，否则退回会话自身配置。 */
   private async resolveAssistantModelSelection(
     agentId: string,
     fallbackProviderId: string,
@@ -630,6 +690,10 @@ export class SessionQuery implements SessionProjectionReadPort, SessionProjectio
     return { providerId: fallbackProviderId, modelId: fallbackModelId }
   }
 
+  /**
+   * 等待首轮产生可用的标题素材（最多 30 秒）。轮询与 waitForFirstTurnReady
+   * 结合：首轮进行中没有素材可提，出错直接放弃，超时返回 null 表示放弃。
+   */
   private async waitForSessionTitleMessages(
     sessionId: string
   ): Promise<Array<{ role: 'system' | 'user' | 'assistant'; content: string }> | null> {
@@ -667,6 +731,7 @@ export class SessionQuery implements SessionProjectionReadPort, SessionProjectio
     return null
   }
 
+  /** 从记录中抽出用于起标题的前 6 条 user/assistant 纯文本消息。 */
   private buildTitleMessages(
     records: ChatMessageRecord[]
   ): Array<{ role: 'system' | 'user' | 'assistant'; content: string }> {
@@ -711,6 +776,7 @@ export class SessionQuery implements SessionProjectionReadPort, SessionProjectio
     }
   }
 
+  /** 去掉思考块/引号包裹、截断到 80 字；清洗后为空则放弃本次标题。 */
   private normalizeGeneratedTitle(rawTitle: string): string {
     if (!rawTitle) return ''
     let cleaned = rawTitle.replace(/<think>.*?<\/think>/gs, '').trim()

@@ -3,6 +3,11 @@ import { BaseTable } from '@/data/baseTable'
 import type { SQLITE_MESSAGE } from '@shared/types/session'
 import { nanoid } from 'nanoid'
 
+/**
+ * 旧版消息表（messages）：conversations 体系的消息主记录，msg_id 唯一、
+ * conversation_id 外键级联删除，order_seq 决定会话内顺序。
+ * 新版消息走 deepchat_messages；本表仅保留兼容读路径。
+ */
 export class MessagesTable extends BaseTable {
   constructor(db: Database) {
     super(db, 'messages')

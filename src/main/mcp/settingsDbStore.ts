@@ -1,3 +1,11 @@
+/**
+ * MCP 设置的 SQLite 存储适配器：实现 StoreLike 接口，把键值读写桥接到
+ * McpSettingsTable。'mcpServers' 是特殊键——不存于通用键值表，而是映射
+ * 到专用的 mcp_servers 表（按行存储每个 server 配置）；其余键走
+ * mcp_settings 键值表。上层 McpSettings 通过该适配器即可透明切换
+ * 文件存储与数据库存储两种后端。
+ */
+
 import type { MCPServerConfig } from '@shared/types/mcp'
 import type { McpSettingsTable } from './data/settingsTable'
 import type { StoreLike } from '@/config/storeLike'

@@ -31,6 +31,13 @@ import { DeepChatSessionMetadataTable } from './tables/deepchatSessionMetadata'
 import { NewSessionActiveSkillsTable } from './tables/newSessionActiveSkills'
 import { NewSessionDisabledAgentToolsTable } from './tables/newSessionDisabledAgentTools'
 
+/**
+ * 会话数据库门面（SessionDatabase）：集中持有 SQLite 连接，并以惰性 getter
+ * 暴露全部表/存储对象。表对象是无状态的（每次构造仅包一层连接），getter
+ * 直接 new 不会带来开销，也让事务外的连接切换天然生效。
+ * 按命名分两族：new* / conversations* 是会话列表层；deepchat* 是消息、
+ * 检索、待发输入、用量与 tape 相关的会话数据面。
+ */
 export class SessionDatabase {
   constructor(
     private readonly connection: DatabaseConnectionProvider,

@@ -1,6 +1,11 @@
 import Database from 'better-sqlite3-multiple-ciphers'
 import { BaseTable } from '@/data/baseTable'
 
+/**
+ * 用户消息附件辅表：每行一个附件（路径、名称、MIME、大小），扩展信息
+ * （缩略图/token/表示偏好等）打包在 metadata_json。主键 (message_id,
+ * ordinal)，随消息删除而清理。transcript 读写。
+ */
 export interface DeepChatUserMessageFileRow {
   message_id: string
   ordinal: number

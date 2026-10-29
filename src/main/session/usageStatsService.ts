@@ -29,7 +29,18 @@ import {
   resolveUsageProviderId
 } from './usageStats'
 
+/**
+ * 用量统计服务（UsageStatsService）：用量仪表盘的数据来源。
+ *
+ * 两个入口：
+ * - getDashboard：直接聚合用量表（summary/日历/provider/model 分解），并叠加
+ *   RTK 运行时数据；用量表是 transcript 写入 + 回填共同维护的。
+ * - startBackfill：一次性把历史消息与压缩调用补写进用量表。带持久化状态机
+ *   （idle/running/completed/failed），running 且未陈旧则不重复启动；进行中
+ *   周期性让出事件循环并刷新进度，避免启动阶段阻塞主进程。
+ */
 export class UsageStatsService {
+  /** 进行中的回填 promise；并发调用共享同一次回填。 */
   private backfillPromise: Promise<void> | null = null
 
   constructor(
@@ -248,6 +259,7 @@ export class UsageStatsService {
     }
   }
 
+  /** 分页读 assistant 用量候选；老版本表无分页查询时降级为内存分页。 */
   private listAssistantUsageCandidatePage(
     cursor: { createdAt: number; id: string } | null,
     limit: number
@@ -275,6 +287,10 @@ export class UsageStatsService {
       .slice(0, limit)
   }
 
+  /**
+   * 回填状态读取：持久化的 running 若已陈旧（进程中断）就地改判为 failed
+   * 并写回，否则本次启动永远不会开始新一轮回填。
+   */
   private getBackfillStatus(): UsageStatsBackfillStatus {
     const normalized = this.normalizeBackfillStatus(
       this.settings.get<UsageStatsBackfillStatus>(DASHBOARD_STATS_BACKFILL_KEY)

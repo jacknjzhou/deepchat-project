@@ -12,8 +12,10 @@ import type { StaffdeckAwaitingInput } from '@shared/contracts/routes'
  * 不新建数据库表。
  */
 
+/** 绑定表在 settings（config entry）里的存储键，进程重启后由此恢复。 */
 export const DIGITAL_EMPLOYEE_REMOTE_SESSIONS_KEY = 'digitalEmployee.remoteSessions'
 
+/** 单条绑定的持久化形状；runId 与 lastEventId 由 runner 在每轮事件后回写。 */
 const remoteSessionBindingSchema = z.object({
   remoteSessionId: z.string().min(1),
   employeeId: z.string().min(1),
@@ -26,6 +28,7 @@ const remoteSessionBindingSchema = z.object({
 
 export type RemoteSessionBinding = z.infer<typeof remoteSessionBindingSchema>
 
+/** listAll 的返回形状：把 Map 键（本地会话 id）摊平进对象，便于整表遍历。 */
 export interface RemoteSessionRegistryEntry extends RemoteSessionBinding {
   sessionId: string
 }
@@ -33,22 +36,34 @@ export interface RemoteSessionRegistryEntry extends RemoteSessionBinding {
 const remoteSessionsStoreSchema = z.record(z.string(), z.unknown())
 
 export interface RemoteSessionRegistryDeps {
+  /** config entry 的读写门面；绑定表整体作为一个 key 下的 JSON 存储。 */
   settings: {
     get<TValue = unknown>(key: string): TValue | undefined
     set(key: string, value: unknown): void
   }
+  /** 存储键，测试可注入隔离键名；缺省用 DIGITAL_EMPLOYEE_REMOTE_SESSIONS_KEY。 */
   key?: string
 }
 
+/**
+ * 绑定表的进程内访问接口。
+ * 所有方法都是同步的：实现按「读全表 → 内存操作 → 写回全表」的粒度工作。
+ */
 export interface RemoteSessionRegistry {
+  /** 未绑定的会话返回 null（区别于抛错——未绑定是分流判断的常态输入）。 */
   get(sessionId: string): RemoteSessionBinding | null
   has(sessionId: string): boolean
   set(sessionId: string, binding: RemoteSessionBinding): void
+  /** 对不存在的会话调用是无操作，不会凭空创建记录。 */
   update(sessionId: string, patch: Partial<RemoteSessionBinding>): void
   delete(sessionId: string): void
   listAll(): RemoteSessionRegistryEntry[]
 }
 
+/**
+ * 构造基于 settings 的绑定表实现。
+ * 写入前经 zod 归一化（补默认值），保证落盘形状始终合法。
+ */
 export function createRemoteSessionRegistry(
   deps: RemoteSessionRegistryDeps
 ): RemoteSessionRegistry {

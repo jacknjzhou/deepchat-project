@@ -9,6 +9,13 @@ const normalizeStringList = (values: string[]): string[] =>
     a.localeCompare(b)
   )
 
+/**
+ * 用户消息内容的双向转换工具：历史消息的 content JSON ↔ 可重发的发送输入。
+ * 编辑消息（editUserMessage）只允许改 text，文件/链接等字段必须原样保留；
+ * 重试（retry）则要从 content 反抽出完整的 SendMessageInput。
+ */
+
+/** 从用户消息 content 中抽取可重发的发送输入；解析失败按纯文本兜底。 */
 export function extractUserMessageInput(content: string): SendMessageInput {
   const fallback: SendMessageInput = { text: '', files: [] }
 
@@ -43,6 +50,7 @@ export function extractUserMessageInput(content: string): SendMessageInput {
   }
 }
 
+/** 发送输入的规范化：字段逐一兜底，attachmentFallbackPolicy 只认两个合法值。 */
 export function normalizeUserMessageInput(input: string | SendMessageInput): SendMessageInput {
   if (typeof input === 'string') return { text: input, files: [] }
   if (!input || typeof input !== 'object') return { text: '', files: [] }
@@ -66,6 +74,11 @@ export function normalizeUserMessageInput(input: string | SendMessageInput): Sen
   }
 }
 
+/**
+ * 生成编辑后的用户消息 content：只替换 text 字段（兼容旧版 content 数组
+ * 结构，替换首个 text 块），其余字段原样保留；inlineItems 与编辑语义
+ * 冲突（偏移会失效），一并清除。解析失败退回最小合法结构。
+ */
 export function buildEditedUserContent(rawContent: string, text: string): string {
   const fallback: UserMessageContent = {
     text,

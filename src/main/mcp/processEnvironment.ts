@@ -1,3 +1,12 @@
+/**
+ * stdio 子进程的最小化环境变量构造。
+ *
+ * inheritEnv === 'minimal' 时使用：只透传运行 OS 必需的键（PATH、临时
+ * 目录、Windows 系统目录、Linux 桌面会话相关等），其余一律丢弃——
+ * 避免把主进程的代理/凭据类环境变量泄漏给不可信的 MCP server 子进程。
+ * 平台差异集中在三个白名单集合；LC_* 区域变量始终放行。
+ */
+
 const COMMON_ENVIRONMENT_KEYS = new Set([
   'PATH',
   'HOME',
@@ -53,6 +62,7 @@ const isMinimalEnvironmentKeyAllowed = (key: string, platform: NodeJS.Platform):
   )
 }
 
+/** 从 source 中筛出白名单内的键值对，构成子进程环境。 */
 export const createMinimalProcessEnvironment = (
   source: NodeJS.ProcessEnv,
   platform: NodeJS.Platform

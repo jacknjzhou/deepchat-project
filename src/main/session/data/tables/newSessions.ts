@@ -7,6 +7,15 @@ import {
 import { normalizeToolModeOverride, type ToolModeOverride } from '@shared/toolMode'
 import { BaseTable } from '@/data/baseTable'
 
+/**
+ * 会话主表（new_sessions）：session 模块的会话注册中心，一行一个会话
+ * （regular 或 subagent）。键为字符串 id；存归属 agent、标题、项目目录、
+ * 草稿/置顶、编排策略、工具模式、父子关系（parent_session_id）等。
+ * 几乎被所有会话模块读写：lifecycle 创建/删除、assignment 改归属、query
+ * 列表分页（revision 列做乐观并发）、历史搜索做标题 LIKE 兜底。
+ * 技能与禁用工具清单拆在 new_session_active_skills / new_session_disabled_agent_tools。
+ */
+
 const ADD_REVISION_COLUMN_SQL =
   'ALTER TABLE new_sessions ADD COLUMN revision INTEGER NOT NULL DEFAULT 0;'
 export const SESSION_ORCHESTRATION_POLICY_SCHEMA_VERSION = 59

@@ -45,6 +45,7 @@ const buildSnippet = (content: string, query: string, maxLength = 120): string =
   return snippet
 }
 
+/** 从消息 JSON 中抽出参与匹配/摘要的纯文本（兼容 user 与 block 两种结构）。 */
 const extractMessageContent = (rawContent: string): string => {
   try {
     const parsed = JSON.parse(rawContent) as
@@ -69,6 +70,7 @@ const extractMessageContent = (rawContent: string): string => {
   return rawContent
 }
 
+/** SQL 回退路径的简单相关性打分：标题/内容命中位置越靠前分越高。 */
 const scoreSession = (row: SearchableSessionRow, query: string): number => {
   const title = row.title.toLowerCase()
   if (title.startsWith(query)) return 400
@@ -86,6 +88,17 @@ const scoreMessage = (row: SearchableMessageRow, query: string): number => {
   return 0
 }
 
+/**
+ * 会话历史搜索（SessionHistorySearch）：在全部 regular 会话范围内检索标题
+ * 与消息内容，返回会话/消息两类命中。
+ *
+ * 三级策略：
+ * 1. FTS 全文索引（transcript 维护的检索文档）——首选，快且带排序；
+ * 2. 索引表 LIKE 查询——FTS 无结果时的兜底（如分词不匹配的场景）；
+ * 3. 直接对 new_sessions / deepchat_messages 表做 LIKE 全表扫描——前两级
+ *    都为空才走，用简单打分排序。三级都只返回 regular 会话，子代理会话
+ *    不出现在全局搜索里。
+ */
 export class SessionHistorySearch {
   constructor(
     private readonly database: Pick<
@@ -112,6 +125,8 @@ export class SessionHistorySearch {
         ? ftsRows
         : this.database.deepchatSearchDocumentsTable.searchLike(normalizedQuery, documentLimit)
 
+    // 索引候选按 FTS rank 升序（越小越相关），同分再按更新时间倒序；
+    // 去重防止同一消息经多条文档重复出现。
     if (candidateRows.length > 0) {
       const hits = candidateRows
         .map((row) => {

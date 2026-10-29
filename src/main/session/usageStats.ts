@@ -8,7 +8,24 @@ import type { TapeCompactionModelCallEvent } from '@/tape/domain/compactionUsage
 
 import { providerDbLoader } from '@/provider/providerDbLoader'
 
+/**
+ * 用量统计工具集（usageStats）：纯函数层，负责把消息 metadata 里的 token
+ * 用量规整成可入库/可聚合的形态。
+ *
+ * 三个关注点：
+ * 1. 记录构建——buildUsageStatsRecord（聊天消息）与 buildCompactionUsageStatsRecord
+ *    （压缩调用）产出用量表行；无 token 数或 provider/model 无法确定的聊天
+ *    消息返回 null 跳过，绝不编造数据。
+ * 2. 数值规整——normalizeUsageCounts 把缓存 token 裁剪到不超出输入总数，
+ *   保证聚合时 cached + 非缓存 ≤ input 的守恒关系。
+ * 3. 展示聚合——按本地日期分桶生成一年热力图日历，level 用四分位切档，
+ *   让「多/少」相对于用户自己的用量分布而不是绝对值。
+ * 另含回填状态（backfill status）的读取/规整/陈旧判定。
+ */
+
+/** 回填状态在 settings 里的存储键；V2 表示结构经历过一次不兼容演进。 */
 export const DASHBOARD_STATS_BACKFILL_KEY = 'dashboardStatsBackfillV2'
+/** running 状态超过该时长视为上次进程中断留下的悬挂状态，允许重新启动。 */
 export const DASHBOARD_BACKFILL_STALE_MS = 10 * 60 * 1000
 
 export type UsageStatsSource = 'backfill' | 'live'
@@ -114,6 +131,7 @@ export function isUsageBackfillRunningStale(
   return status.status === 'running' && now - status.updatedAt > DASHBOARD_BACKFILL_STALE_MS
 }
 
+/** 解析消息 metadata JSON；损坏/非对象一律当作空对象，不阻断统计流程。 */
 export function parseMessageMetadata(raw: string | MessageMetadata): MessageMetadata {
   if (typeof raw !== 'string') {
     return raw ?? {}
@@ -135,6 +153,11 @@ export function hasUsageNumbers(metadata: MessageMetadata): boolean {
   )
 }
 
+/**
+ * 规整 token 计数：负数/非数归零；total 缺省时用 input+output 补；
+ * 缓存 token 被钳制在 input 之内（缓存写再钳在剩余输入内），保证
+ * cached + cacheWrite ≤ input，聚合图表不会出现矛盾的 stacked 值。
+ */
 export function normalizeUsageCounts(metadata: MessageMetadata): {
   inputTokens: number
   outputTokens: number
@@ -161,6 +184,7 @@ export function normalizeUsageCounts(metadata: MessageMetadata): {
   }
 }
 
+/** 用量归到消息创建日的本地日期；跨天边界以用户本地时区为准。 */
 export function getLocalDateKey(timestamp: number): string {
   const date = new Date(timestamp)
   const year = date.getFullYear()
@@ -169,6 +193,7 @@ export function getLocalDateKey(timestamp: number): string {
   return `${year}-${month}-${day}`
 }
 
+/** 从消息 metadata（其次回退会话行）确定统计归属的 provider。 */
 export function resolveUsageProviderId(
   metadata: MessageMetadata,
   fallbackProviderId?: string | null
@@ -176,6 +201,7 @@ export function resolveUsageProviderId(
   return normalizeTextId(metadata.provider) ?? normalizeTextId(fallbackProviderId) ?? null
 }
 
+/** 同 resolveUsageProviderId，对 model 做同样处理。 */
 export function resolveUsageModelId(
   metadata: MessageMetadata,
   fallbackModelId?: string | null
@@ -183,6 +209,7 @@ export function resolveUsageModelId(
   return normalizeTextId(metadata.model) ?? normalizeTextId(fallbackModelId) ?? null
 }
 
+/** 由聊天消息 metadata 构建用量行；无 token 数或缺 provider/model 返回 null。 */
 export function buildUsageStatsRecord(params: {
   messageId: string
   sessionId: string
@@ -227,6 +254,7 @@ export function buildUsageStatsRecord(params: {
   }
 }
 
+/** 由压缩模型调用事件构建用量行；usageId 含 attempt+call 维度保证幂等。 */
 export function buildCompactionUsageStatsRecord(params: {
   sessionId: string
   event: TapeCompactionModelCallEvent
@@ -255,6 +283,7 @@ export function buildCompactionUsageStatsRecord(params: {
   }
 }
 
+/** provider 展示名：优先用户配置目录，回退内置 provider 库，再回退原始 id。 */
 export function getProviderLabel(
   providerCatalog: Pick<ProviderSettingsPort, 'getProviders' | 'getProviderById'>,
   providerId: string
@@ -271,12 +300,14 @@ export function getProviderLabel(
   return dbProvider?.display_name || dbProvider?.name || providerId
 }
 
+/** model 展示名：查不到时用 aihibmix 目录再试一次（多渠道共享模型名）。 */
 export function getModelLabel(providerId: string, modelId: string): string {
   const model =
     providerDbLoader.getModel(providerId, modelId) ?? providerDbLoader.getModel('aihubmix', modelId)
   return model?.display_name || model?.name || modelId
 }
 
+/** 生成近 N 天（默认一年）的用量日历：空天补零，level 按非零日四分位切档。 */
 export function buildUsageDashboardCalendar(
   buckets: UsageCalendarBucket[],
   totalDays = 365

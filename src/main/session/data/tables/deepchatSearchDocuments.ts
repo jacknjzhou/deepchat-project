@@ -1,6 +1,12 @@
 import Database from 'better-sqlite3-multiple-ciphers'
 import { BaseTable } from '@/data/baseTable'
 
+/**
+ * 全文检索文档表（deepchat_search_documents + FTS5 影子表 + 同步触发器）：
+ * 会话历史搜索的索引层。document_key 唯一（session:<id> 或 message:<id>），
+ * content 由 transcript 在消息定稿/变更时同步 upsert；查询走 FTS 匹配，
+ * 失败降级为 LIKE。transcript 写、sessionHistorySearch 读。
+ */
 export interface DeepChatSearchDocumentRow {
   rowid: number
   document_key: string

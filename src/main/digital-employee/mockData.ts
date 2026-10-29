@@ -1,5 +1,23 @@
 import type { DigitalEmployee } from '@shared/contracts/routes'
 
+/**
+ * 数字员工模块的内置演示名单（mock provider 的数据源）。
+ *
+ * 当 StaffDeck 服务端未配置或不可达时，provider 层会降级到这份名单，保证
+ * 「数字员工」页面在无后端环境下依旧可浏览、可对话。所有 id（finance、sales
+ * 等）都是虚构的：provisioning 层据此把 mock 来源判定为 DEGRADED，跳过工具
+ * 与技能的本地安装，避免对虚构 id 发出注定 404 的请求。
+ *
+ * 数据形状必须与 `@shared/contracts/routes` 的 `DigitalEmployee` 契约一致，
+ * 因此这里不手写完整对象，而是由 `makeEmployee` 统一补齐默认字段。
+ */
+
+/**
+ * 以必填的展示信息为核，补齐一份契约完整的 DigitalEmployee。
+ *
+ * 默认值刻意取「空但合法」：无头像、无能力标签、本地执行、空工具与知识库。
+ * systemPrompt 由角色与姓名拼出最小可用的人设，调用方可用同名覆盖字段定制。
+ */
 const makeEmployee = (
   overrides: Pick<DigitalEmployee, 'id' | 'name' | 'role' | 'description'> &
     Partial<DigitalEmployee>
@@ -18,6 +36,13 @@ const makeEmployee = (
   ...overrides
 })
 
+/**
+ * 内置演示员工名单，覆盖财务、销售、项目、人事等常见职能。
+ *
+ * 每个条目都带各自的角色设定、SOP 与能力标签，用于在降级模式下完整展示
+ * 数字员工的形态；条目间字段差异（如财务配了工具与技能）也便于前端验证
+ * 不同配置下的渲染逻辑。
+ */
 export const MOCK_DIGITAL_EMPLOYEES: DigitalEmployee[] = [
   makeEmployee({
     id: 'finance',

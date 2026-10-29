@@ -1,3 +1,18 @@
+/**
+ * 会话/聊天的 IPC 路由注册表。
+ *
+ * 渲染层经由 @shared/contracts 里的 sessions* 与 chat* 路由契约调用主进程，
+ * 这两类路由全部集中在本文件。每个条目只做「解析入参 → 调服务 → 投影出参」
+ * 的薄转发，业务逻辑下沉到 SessionService/ChatService 与各端口实现。
+ *
+ * 边界约定：
+ * - 每个路由的入参/出参都过一遍 zod 契约 parse，跨进程边界的字段形状由
+ *   契约文件单点定义，输出经投影后不会泄露内部未知字段。
+ * - 需要调用方身份（激活/停用会话、订阅 Tape 推送、聊天发送）的路由才显式
+ *   调 requireRendererCaller 取 webContentsId，其余路由不关心调用方。
+ * - 路由失败即向渲染层抛错，这里不做降级或重试；取消语义见
+ *   withSubmissionCancellation 与 chatCancelSubmission 路由。
+ */
 import {
   chatCancelSubmissionRoute,
   chatDismissToolInteractionRoute,
@@ -98,6 +113,12 @@ import type { SessionTranslation } from './sessionTranslation'
 import type { AgentSettingsPort } from '@/agent/settings'
 import { SubmissionCancellationRegistry } from './submissionCancellationRegistry'
 
+/**
+ * 路由层的投影端口聚合：SessionService 与 ChatService 各自的查询需求，
+ * 加上 SessionQuery 中属于只读检索/轻量写的能力（轻量列表、搜索结果、
+ * Tape 上下文与 Inspector、消息 traces、重命名与置顶）。路由处理函数只
+ * 依赖这个聚合类型，避免直接耦合具体存储实现。
+ */
 export type SessionRouteProjectionPort = SessionServiceProjectionPort &
   ChatServiceProjectionPort &
   Pick<
@@ -119,6 +140,11 @@ export type SessionRouteProjectionPort = SessionServiceProjectionPort &
     | 'toggleSessionPinned'
   >
 
+/**
+ * 构建会话/聊天路由表。依赖全部以端口（Pick 出的最小接口）注入，便于按
+ * 进程装配与替换实现；remoteTurn 缺省时远端分流不启用，聊天链路保持
+ * 纯本地行为。
+ */
 export function createSessionRoutes(deps: {
   lifecycle: SessionLifecyclePort
   projection: SessionRouteProjectionPort
@@ -140,6 +166,7 @@ export function createSessionRoutes(deps: {
    */
   remoteTurn?: ChatServiceRemoteTurnPort
 }): DeepchatRouteMap {
+  // 按「窗口 + submissionId」登记在途提交，供 chatCancelSubmission 路由触发取消。
   const submissionCancellations = new SubmissionCancellationRegistry()
   const sessionService = new SessionService({
     lifecycle: deps.lifecycle,
@@ -155,6 +182,11 @@ export function createSessionRoutes(deps: {
     ...(deps.remoteTurn ? { remoteTurn: deps.remoteTurn } : {})
   })
 
+  /**
+   * 在任务执行期间登记一个可取消的提交：带 submissionId 的请求会拿到
+   * AbortSignal 传给服务层，finally 保证注销，避免窗口关闭后残留条目。
+   * 未携带 submissionId 的请求（如恢复会话）直接执行，不参与取消。
+   */
   async function withSubmissionCancellation<T>(
     webContentsId: number,
     submissionId: string | undefined,
@@ -170,6 +202,11 @@ export function createSessionRoutes(deps: {
   }
 
   return createRouteMap([
+    // ---- 会话创建 / 恢复 / 列表 / 激活 ----
+    // 创建是唯一在创建阶段就走取消登记的会话路由：渲染层创建时即可带
+    // submissionId，用户能在初始化完成前撤销。返回值里 initialTurn 单独
+    // 拆出，仅在实际产生了首轮时才回传，避免输出契约里出现 null 字段。
+    // 激活/停用/取当前会话依赖调用方窗口，故需要 requireRendererCaller。
     [
       sessionsCreateRoute.name,
       async (rawInput, context) => {
@@ -272,6 +309,10 @@ export function createSessionRoutes(deps: {
         )
       }
     ],
+    // ---- 待发送队列管理 ----
+    // 队列条目的入队/改写/排序/删除，以及「转 steer、重试、解除阻塞」
+    // 都直接落在 turn 端口；列表接口并行取条目与「是否可恢复」标记，
+    // 一次往返返回渲染层需要的全部状态。
     [
       sessionsListPendingInputsRoute.name,
       async (rawInput) => {
@@ -370,6 +411,10 @@ export function createSessionRoutes(deps: {
         })
       }
     ],
+    // ---- 消息级操作（重试 / 删除 / 编辑 / 分叉）----
+    // 重试允许调用方指定附件降级策略；当附件准备结果为
+    // needs_user_action 时不算接受成功，retried 据此为 false，渲染层
+    // 借此区分「已重试」与「等待用户补附件」两种结果。
     [
       sessionsRetryMessageRoute.name,
       async (rawInput) => {
@@ -419,6 +464,11 @@ export function createSessionRoutes(deps: {
         })
       }
     ],
+    // ---- 历史搜索与 Tape 上下文 / Inspector ----
+    // Tape 侧的检索与导出都委托 projection 只读端口。Inspector 的
+    // 订阅/退订把调用方 webContentsId 一并交给 watcher，保证推送只发给
+    // 发起订阅的窗口。消息 traces 是聚合接口：一次取回 traces、视图
+    // manifest 与嵌套执行审计三份材料，省去渲染层多次往返。
     [
       sessionsSearchHistoryRoute.name,
       async (rawInput) => {
@@ -544,6 +594,10 @@ export function createSessionRoutes(deps: {
         })
       }
     ],
+    // ---- 独立辅助能力（翻译 / 可用代理 / 用量看板 / RTK 重试）----
+    // 不属于会话生命周期的横向能力：代理目录由 agentSettings 驱动的
+    // 目录模块提供（而非 assignment 端口）；RTK 重试触发底层 runtime
+    // 自查，成功与否由其内部记录，路由只确认触发。
     [
       sessionsTranslateTextRoute.name,
       async (rawInput) => {
@@ -579,6 +633,7 @@ export function createSessionRoutes(deps: {
         return sessionsRetryRtkHealthCheckRoute.output.parse({ retried: true })
       }
     ],
+    // ---- 会话元信息（重命名 / 置顶）----
     [
       sessionsRenameRoute.name,
       async (rawInput) => {
@@ -597,6 +652,9 @@ export function createSessionRoutes(deps: {
         })
       }
     ],
+    // ---- 上下文管理 ----
+    // 清空消息、压缩（compaction）与上下文占用查询都走 turn 端口；
+    // 压缩快照单独暴露，供渲染层做恢复与展示，不与触发压缩的路由耦合。
     [
       sessionsClearMessagesRoute.name,
       async (rawInput) => {
@@ -630,6 +688,7 @@ export function createSessionRoutes(deps: {
         )
       }
     ],
+    // ---- 导出 / 删除 ----
     [
       sessionsExportRoute.name,
       async (rawInput) => {
@@ -647,6 +706,9 @@ export function createSessionRoutes(deps: {
         return sessionsDeleteRoute.output.parse({ deleted: true })
       }
     ],
+    // ---- 代理（agent）与会话的归属管理 ----
+    // 迁移影响预查询、按代理批量搬移/删除名下会话、单会话转交，均落在
+    // assignment 端口；影响预查询让渲染层在删/移代理前先展示代价。
     [
       sessionsGetAgentTransferImpactRoute.name,
       async (rawInput) => {
@@ -683,6 +745,10 @@ export function createSessionRoutes(deps: {
         })
       }
     ],
+    // ---- ACP 会话命令与配置项 / 会话级执行设置 ----
+    // ACP 命令列表与配置开关，以及权限模式、模型、工具模式、工作目录、
+    // 生成参数、禁用工具等会话级设置，全部经由 assignment 端口读写；
+    // 这些设置只影响后续轮次的执行环境，不改变既有消息。
     [
       sessionsGetAcpSessionCommandsRoute.name,
       async (rawInput) => {

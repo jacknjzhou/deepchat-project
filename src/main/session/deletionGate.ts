@@ -3,9 +3,22 @@ export interface SessionDeletionGatePort {
   runWithSessionDeletion<T>(sessionId: string, deletion: () => Promise<T>): Promise<T>
 }
 
+/**
+ * 会话删除门（SessionDeletionGate）：用「操作计数 + 删除标记」保证删除与
+ * 其它会话操作互斥。规则：
+ * - runWithSessionOperation：普通操作入口。会话正在删除则直接拒绝；否则
+ *   计数 +1 进入，结束时 -1，归零时唤醒等待的删除方。
+ * - runWithSessionDeletion：删除入口。先挂上删除标记（此后新操作一律被拒），
+ *   再等待在途操作排空（最多 30 秒，超时报错而不是带着活动操作硬删）。
+ * 这与 assignment 的操作门不同：那边是同一会话写操作的排队串行化，这里是
+ * 「删除 vs 一切」的读多写少互斥，允许多个普通操作并发共存。
+ */
+
+/** 删除前等待在途操作排空的上限；超时说明有操作卡死，宁可不删也不硬删。 */
 export const SESSION_OPERATION_DRAIN_TIMEOUT_MS = 30_000
 
 export class SessionDeletionGate implements SessionDeletionGatePort {
+  /** 每会话在途普通操作计数。 */
   private readonly activeOperations = new Map<string, number>()
   private readonly deletingSessionIds = new Set<string>()
   private readonly drainWaiters = new Map<string, Set<() => void>>()
@@ -69,6 +82,7 @@ export class SessionDeletionGate implements SessionDeletionGatePort {
     for (const resolve of waiters ?? []) resolve()
   }
 
+  /** 删除前等待在途操作归零；带超时的 waiter 注册/唤醒。 */
   private async waitForSessionOperations(sessionId: string): Promise<void> {
     if ((this.activeOperations.get(sessionId) ?? 0) === 0) return
     await new Promise<void>((resolve, reject) => {

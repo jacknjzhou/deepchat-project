@@ -35,6 +35,7 @@ const CONTENT_BLOCK_ID = 'content-0'
 /** 续传最多重试次数（`runs:stream` 不可重放，只能换 events 端点） */
 const MAX_RESUME_ATTEMPTS = 3
 
+/** 一轮远端 run 的终局：completed/awaiting_input 视为成功，failed/cancelled 各有收尾路径。 */
 export type RemoteRunPhase = 'completed' | 'awaiting_input' | 'failed' | 'cancelled'
 
 export interface RemoteRunInput {
@@ -71,6 +72,7 @@ export interface StaffdeckRemoteRunnerTranscript {
   updateMessageStatus(messageId: string, status: 'pending' | 'sent' | 'error'): void
 }
 
+/** 绑定表最小接口：run 过程中读绑定、回写 runId/lastEventId、失败时解除绑定。 */
 export interface StaffdeckRemoteRunnerRegistry {
   get(sessionId: string): RemoteSessionBinding | null
   set(sessionId: string, binding: RemoteSessionBinding): void
@@ -80,6 +82,7 @@ export interface StaffdeckRemoteRunnerRegistry {
   listAll(): unknown[]
 }
 
+/** StaffDeck 远端 HTTP 客户端的最小面：建会话、流式 run、续传、取结果、取消。 */
 export interface StaffdeckRemoteRunnerClient {
   readonly currentRunId: string | null
   createSession(input: {
@@ -97,6 +100,7 @@ export interface StaffdeckRemoteRunnerClient {
   cancelRun(runId: string): Promise<void>
 }
 
+/** runner 的全部外部依赖；now/sleep 与两个间隔可注入，供测试压缩节流与退避。 */
 export interface StaffdeckRemoteRunnerDeps {
   client: StaffdeckRemoteRunnerClient
   registry: StaffdeckRemoteRunnerRegistry
@@ -156,6 +160,11 @@ export class StaffdeckRemoteRunner {
     return this.deps.registry.has(sessionId)
   }
 
+  /**
+   * 执行一轮远端对话。先占会话级互斥锁并落一条 pending 助手消息，再交给
+   * `execute`；无论成功失败都保证消息离开 pending、互斥锁释放。
+   * 返回 outcome 而不抛错：调用方（路由/ChatService）按 phase 分支即可。
+   */
   async run(input: RemoteRunInput): Promise<RemoteRunOutcome> {
     const { sessionId, employeeId } = input
 
@@ -195,6 +204,11 @@ export class StaffdeckRemoteRunner {
     }
   }
 
+  /**
+   * run 的主体：附件规划 → 流式执行 → 断线续传 → 终态补查 result。
+   * 四条出口：流正常结束（成功/等待追问/取消）、run.failed 帧、续传成功、
+   * 续传失败按传输错误收尾。
+   */
   private async execute(
     input: RemoteRunInput,
     binding: RemoteSessionBinding,
@@ -412,6 +426,10 @@ export class StaffdeckRemoteRunner {
     }
   }
 
+  /**
+   * 构造本轮的节流刷新器：renderer 快照按 120ms、落库按 600ms 各自限频，
+   * 避免 delta 高频帧把 IPC 与 SQLite 打满。finish 不节流——终稿必须立即可见。
+   */
   private createFlusher(state: StreamState): {
     schedule(text: string): void
     finish(text: string, status: 'success' | 'error'): void
@@ -461,6 +479,10 @@ export class StaffdeckRemoteRunner {
     return { schedule, finish }
   }
 
+  /**
+   * 失败的统一收尾：保留已累积正文并标记 error、回写续传游标、判断是否
+   * 降级本地、广播失败事件。重复调用安全（finished 幂等）。
+   */
   private failRun(
     state: StreamState,
     employeeId: string,
@@ -523,6 +545,7 @@ export class StaffdeckRemoteRunner {
     return true
   }
 
+  /** 相位事件的唯一出口：renderer 据此渲染状态条、追问提示与被丢弃附件。 */
   private emitPhase(
     sessionId: string,
     employeeId: string,

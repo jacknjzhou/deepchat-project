@@ -1,3 +1,17 @@
+/**
+ * 单个 MCP server 的运行时客户端（McpClient）。
+ *
+ * 一个实例对应一个 server 配置，负责：按配置选择传输层（stdio / SSE /
+ * StreamableHTTP / inmemory）建立连接；承载 sampling / elicitation 等反向
+ * 请求的本地处置；对外提供工具、提示、资源的读取接口。
+ *
+ * 连接语义是本模块的核心：启动采用「软超时」——超过
+ * MCP_STARTUP_SOFT_TIMEOUT_MS 后调用方先拿到 soft-timeout-released 返回值、
+ * 状态记为 timeout→retrying，但底层连接仍在后台继续（可能最终连上）；
+ * 而 MCP_CONNECT_HARD_TIMEOUT_MS 是真正的硬上限，超时判死并清理资源。
+ * 上层（ServerManager/McpService）据此决定「稍后可用」与「启动失败」两种呈现。
+ */
+
 import type { ProviderSettingsPort } from '@/provider/settings'
 import logger from '@shared/logger'
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio'
@@ -75,6 +89,11 @@ import {
   MCP_CLIENT_CREDENTIALS_DRAFT_REVISION
 } from './mcpOAuthManager'
 
+/*
+ * 连接与反向请求的资源上限。server 是不可信外部进程，所有入参（sampling
+ * 消息、图片 base64、elicitation 表单、自定义头等）都必须先过尺寸/格式
+ * 校验再进入主进程内存，防止恶意 server 撑爆或注入非法头。
+ */
 const ALLOWED_SAMPLING_IMAGE_MIME_TYPES = new Set([
   'image/png',
   'image/jpeg',
@@ -153,8 +172,16 @@ const normalizeRemoteMcpUrl = (raw: unknown): URL => {
   return url
 }
 
+/**
+ * connect() 的三种结局：
+ * - connected：握手完成，可用；
+ * - soft-timeout-released：软超时（MCP_STARTUP_SOFT_TIMEOUT_MS）后先行放行，
+ *   底层连接仍在后台重试，最终可能 connected（此后事件流会补发状态）；
+ * - stopped：启动过程被显式停止。
+ */
 export type McpConnectResult = 'connected' | 'soft-timeout-released' | 'stopped'
 
+/** 软超时：只放行等待方，不终止连接，后台继续重试。 */
 class McpStartupSoftTimeoutError extends Error {
   constructor(serverName: string) {
     super(`Connection to MCP server ${serverName} reached startup soft timeout`)
@@ -162,6 +189,7 @@ class McpStartupSoftTimeoutError extends Error {
   }
 }
 
+/** 硬超时：连接彻底判死，资源被清理，向上抛出启动失败。 */
 class McpConnectionHardTimeoutError extends Error {
   constructor(serverName: string) {
     super(`Connection to MCP server ${serverName} timed out`)
@@ -188,6 +216,10 @@ interface ServerStatusChangedOptions {
   message?: string
 }
 
+/**
+ * server → 主进程的反向能力注入点：sampling/elicitation 决策来自用户
+ * （经 McpService 转发到 renderer），sampling 的实际推理走内置补全运行时。
+ */
 export type McpClientRuntime = {
   sampling: Pick<McpServicePort, 'handleSamplingRequest' | 'cancelSamplingRequest'>
   elicitation: Pick<McpServicePort, 'handleElicitationRequest' | 'cancelElicitationRequest'>
@@ -223,9 +255,15 @@ function isUnsupportedCapabilityError(error: unknown): boolean {
 }
 
 // MCP client class
+// 工具函数：判断错误是否为中止类（AbortError / axios 的 CanceledError）。
 const isAbortError = (error: unknown): boolean =>
   error instanceof Error && (error.name === 'AbortError' || error.name === 'CanceledError')
 
+/**
+ * 包装一次能力探测请求：server 未声明该能力（-32601 MethodNotFound 等典型
+ * 表现）时返回兜底值而不是抛错——旧 server 不支持 prompts/resources 是常态，
+ * 不应让上层枚举流程失败。
+ */
 const withUnsupportedCapabilityFallback = async <T>(
   request: () => Promise<T>,
   fallback: T,
@@ -246,6 +284,12 @@ const withUnsupportedCapabilityFallback = async <T>(
   }
 }
 
+/**
+ * 单 server 客户端。生命周期状态机经 lifecycleStatus 表达
+ * （stopped/connecting/timeout/retrying/connected/failed…），每次迁移都会
+ * 同步作废上层注册表（onRegistryChanged）并发布状态事件给 renderer。
+ * connect 使用 connectPromise 去重：并发调用共享同一次握手。
+ */
 export class McpClient {
   private client: Client | null = null
   private transport: Transport | null = null
@@ -291,6 +335,11 @@ export class McpClient {
     this.toolchainService = ToolchainService.getInstance()
   }
 
+  /**
+   * 统一的状态迁移出口：更新 lifecycleStatus 并广播 mcp.server.status.changed。
+   * 注意此处在状态变化时同步触发 onRegistryChanged，让工具注册表立即失效，
+   * 保证下一次枚举看到的是新状态。
+   */
   private emitServerStatusChanged(
     lifecycleStatus: McpServerLifecycleStatus,
     options: ServerStatusChangedOptions = {}
@@ -360,6 +409,17 @@ export class McpClient {
   }
 
   // Connect to MCP server
+  /**
+   * 建立连接的对外入口。
+   *
+   * - 已连接：直接返回 connected；
+   * - 已有进行中的握手：waitForConnection=true 时等它完成，否则同样走
+   *   软超时竞速；
+   * - 新握手：发布 connecting 状态后交给 performConnect。
+   *
+   * waitForConnection=false（默认）时返回值按软超时语义解释——调用方拿
+   * 到 soft-timeout-released 后不应清理客户端，连接可能在后台完成。
+   */
   async connect(options: McpConnectOptions = {}): Promise<McpConnectResult> {
     if (this.isConnected && this.client) {
       console.info(`MCP server ${this.serverName} is already running`)
@@ -398,6 +458,10 @@ export class McpClient {
     return this.waitForConnectSoftTimeout(connectPromise, attempt, options.phase)
   }
 
+  /**
+   * 请求前确保连接就绪：未连接则同步触发一次完整握手（等待其结束）。
+   * 这是 listTools/callTool 等惰性连接的实现基础；握手后仍未连接则抛错。
+   */
   private async ensureConnectedForRequest(signal?: AbortSignal): Promise<void> {
     if (!this.isConnected) {
       await awaitWithAbort(this.connect({ phase: 'manual', waitForConnection: true }), signal)
@@ -409,6 +473,12 @@ export class McpClient {
     }
   }
 
+  /**
+   * 软超时竞速：把握手与 MCP_STARTUP_SOFT_TIMEOUT_MS 定时器对跑。
+   * 超时先到 → 依次发布 timeout、retrying 状态后返回 soft-timeout-released
+   * （握手继续在后台跑）；若期间连接被主动停止则改抛取消错误；
+   * 握手先到 → 返回 connected。其他异常原样上抛。
+   */
   private async waitForConnectSoftTimeout(
     connectPromise: Promise<void>,
     attempt: number,
@@ -455,6 +525,13 @@ export class McpClient {
     }
   }
 
+  /**
+   * 握手的实际执行体：构建传输层 → 创建 Client 并协商能力 → 等待连接
+   * （受 MCP_CONNECT_HARD_TIMEOUT_MS 硬超时约束）→ 记录协议时代探测结果。
+   * stdio 传输的子进程环境变量按命令类型分级处理：minimal 只给最小集合；
+   * node/uv 工具链命令走白名单（PATH 与 npm/uv 配置）；其余命令继承完整
+   * 系统环境再补工具链 PATH。任何一步失败都会清理资源并把状态置为 failed。
+   */
   private async performConnect(attempt: number, phase: McpServerStatusPhase): Promise<void> {
     const transportType = this.serverConfig.type
     const useModernNegotiation =
@@ -794,6 +871,10 @@ export class McpClient {
   }
 
   // 断开与 MCP 服务器的连接
+  /**
+   * 主动断开：置 connectAborted 让后台握手中途退出，随后清理资源。
+   * 与 disconnectForShutdown 不同的是这里总会发布 stopped 状态。
+   */
   async disconnect(): Promise<void> {
     if (!this.client && !this.transport && !this.connectPromise) {
       return
@@ -812,6 +893,12 @@ export class McpClient {
   }
 
   // 清理资源
+  /**
+   * 释放连接相关资源：定时器、事件回调、transport。关闭前先记下 stdio
+   * 子进程 pid（stdioPidForShutdown），保证即使 transport.close() 失败，
+   * 后续 forceTerminateStdioProcessTree 仍可兜底杀进程树。
+   * emitStopped=false 用于握手失败路径——失败状态由调用方另行发布。
+   */
   private async cleanupResources(options: { emitStopped?: boolean } = {}): Promise<void> {
     // 清除超时定时器
     if (this.connectionTimeout) {
@@ -852,6 +939,10 @@ export class McpClient {
     return transport.pid ?? undefined
   }
 
+  /**
+   * 关停超时时的兜底：按 pid 强杀 stdio 进程树。正常 close 流程走
+   * closeTransport，只有 shutdown 超时路径才会调用这里。
+   */
   async forceTerminateStdioProcessTree(reason: string): Promise<boolean> {
     const pid = this.getStdioPid() ?? this.stdioPidForShutdown
     if (!pid) {
@@ -871,6 +962,10 @@ export class McpClient {
     }
   }
 
+  /**
+   * 关闭 transport 并强制回收 stdio 子进程树（close 后 2s 宽限）。
+   * transport.close() 抛错也不跳过进程回收，防止孤儿进程常驻。
+   */
   private async closeTransport(transport: Transport): Promise<void> {
     const pid = this.getStdioPid(transport)
 
@@ -890,6 +985,11 @@ export class McpClient {
     }
   }
 
+  /**
+   * server 通知 tools/prompts/resources 列表变化（listChanged 能力）。
+   * 工具列表变化必须立刻作废上层注册表；prompts/resources 无独立注册表，
+   * 刷新失败只记警告。
+   */
   private handleListChanged(kind: 'tools' | 'prompts' | 'resources', error: Error | null): void {
     if (error) {
       console.warn(`[MCP] Failed to refresh ${kind} after list change:`, error)
@@ -900,6 +1000,12 @@ export class McpClient {
     }
   }
 
+  /**
+   * 处理 server 的 sampling/createMessage 反向请求：校验并整理上下文后
+   * 交给 runtime.sampling 挂起等用户决策；拒绝（approved=false）以协议
+   * 错误回给 server，批准则用所选模型执行补全并把结果返回。server 侧
+   * 请求取消时同步取消待决的用户决策，避免留下永远等待的交互。
+   */
   private async handleSamplingCreateMessage(
     request: CreateMessageRequest,
     ctx: ClientContext
@@ -986,6 +1092,12 @@ export class McpClient {
     }
   }
 
+  /**
+   * 处理 server 的 elicitation/create 反向请求（表单或 URL 两种模式）。
+   * 入参先按上限校验（消息/URL 字节数、表单字段数），请求转发给用户决策；
+   * accept 的表单内容回填前需通过 requestedSchema 校验并做尺寸限界。
+   * 取消语义与 sampling 相同：server 侧中止会级联取消用户侧等待。
+   */
   private async handleElicitationCreate(
     request: ElicitRequest,
     ctx: ClientContext
@@ -1108,6 +1220,12 @@ export class McpClient {
     return randomUUID()
   }
 
+  /**
+   * 把 server 的 sampling 参数整理为两类输出：payload（展示给用户的
+   * 审批卡片）与 chatMessages（批准后直接喂给补全运行时）。全程按上限
+   * 校验：系统提示/单条文本字节、消息条数、图片 MIME 与 base64 合法性、
+   * 整体体积；音频与其他内容类型直接拒绝。
+   */
   private prepareSamplingContext(
     requestId: string,
     params: CreateMessageRequest['params']
@@ -1233,6 +1351,10 @@ export class McpClient {
     return { payload, chatMessages }
   }
 
+  /**
+   * 校验 server 传来的采样图片 base64：解码-重编码往返比对，拒绝非法
+   * 字符、错误填充与超限体积，防止畸形数据进入渲染与模型通道。
+   */
   private sanitizeSamplingImageData(rawData: unknown): string {
     if (typeof rawData !== 'string') {
       throw new ProtocolError(
@@ -1423,6 +1545,12 @@ export class McpClient {
     this.emitServerStatusChanged('stopped', { reason: statusReason })
   }
 
+  /**
+   * 调用工具。惰性连接后派发请求，返回前对结果做尺寸限界校验
+   * （MCP_TOOL_RESULT_MAX_BYTES）。legacy 协议时代下丢弃 outputSchema
+   * 声明：旧 server 不按 schema 编译输出，传给它只会引起兼容问题。
+   * 中止信号在调用前后各检查一次，已提交的请求其结果仍然有效。
+   */
   async callTool(
     toolName: string,
     args: Record<string, unknown>,
@@ -1475,6 +1603,11 @@ export class McpClient {
     return capabilities !== undefined && capabilities[capability] === undefined
   }
 
+  /**
+   * 工具 outputSchema 的编译策略：legacy 协议时代、非 inmemory、非插件
+   * server 时用 legacy（不编译输出 schema），其余用 strict。旧 server 的
+   * schema 实现质量参差，按 strict 处理会把可用工具误判为坏定义。
+   */
   private getToolSchemaPolicy(): 'strict' | 'legacy' {
     const isPluginOwned =
       Boolean(this.serverConfig.ownerPluginId) || this.serverConfig.source === 'plugin'
@@ -1485,6 +1618,11 @@ export class McpClient {
       : 'strict'
   }
 
+  /**
+   * 列出工具（一次性全量）。未声明 tools 能力的 server 直接返回空数组；
+   * 结果经协议层限界与逐项 schema 校验/克隆后才对外暴露。不支持该方法的
+   * 旧 server 降级为空列表而非报错。
+   */
   async listTools(options?: { signal?: AbortSignal }): Promise<Tool[]> {
     options?.signal?.throwIfAborted()
 
@@ -1526,6 +1664,10 @@ export class McpClient {
     }
   }
 
+  /**
+   * 按 cursor 分页拉取工具列表，供注册表分页发现使用。
+   * 语义与 listTools 一致（能力探测、限界、逐项校验），但不做全量聚合。
+   */
   async listToolsPage(cursor?: string, signal?: AbortSignal): Promise<ListToolsResult> {
     signal?.throwIfAborted()
     await this.ensureConnectedForRequest(signal)
@@ -1596,6 +1738,10 @@ export class McpClient {
     }
   }
 
+  /**
+   * 按游标分页拉取 prompts/resources 的方法与 listPrompts 同构：
+   * 能力未声明返回空结果，能力探测失败降级为空，不做 schema 深度改写。
+   */
   async listPromptsPage(cursor?: string, signal?: AbortSignal): Promise<ListPromptsResult> {
     signal?.throwIfAborted()
     await this.ensureConnectedForRequest(signal)
@@ -1768,6 +1914,10 @@ export class McpClient {
     }
   }
 
+  /**
+   * 把握手失败归因为诊断可展示的类别：认证类（401/403）、服务端错误
+   * （5xx）、超时、其余传输层错误。供协议时代探测（probe）结果记录使用。
+   */
   private classifyProbeFailure(error: unknown): McpProbeReasonCode {
     const status = (error as { status?: unknown; httpStatus?: unknown } | undefined)?.status
     const httpStatus =
@@ -1802,6 +1952,11 @@ export class McpClient {
     )
   }
 
+  /**
+   * 汇总当前连接的运行时诊断：协议时代与版本、server 实现信息、能力
+   * 声明、扩展、订阅状态、认证状态与连接状态映射。仅在有活跃 client 时
+   * 才有完整数据，调用方需在 client 存在的前提下获取。
+   */
   getDiagnostics(auth: McpServerAuthStatus): McpServerDiagnostics {
     const client = this.client
     const capabilities = client?.getServerCapabilities()
@@ -1874,6 +2029,10 @@ export class McpClient {
   }
 }
 
+/**
+ * 判断 stdio 命令是否属于内置工具链（node/npm/uv 等）。
+ * Windows 上需去掉可执行扩展名再比较。环境变量白名单策略依赖此判定。
+ */
 const TOOLCHAIN_STDIO_COMMANDS = new Set(['node', 'npm', 'npx', 'corepack', 'uv', 'uvx'])
 
 function isToolchainStdioCommand(command: string, platform: NodeJS.Platform): boolean {

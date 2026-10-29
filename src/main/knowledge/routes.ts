@@ -19,14 +19,26 @@ import {
 } from '@shared/contracts/routes'
 import { createRouteMap, type DeepchatRouteMap } from '@/routes/routeRegistry'
 
+/**
+ * 知识库模块的 IPC 路由注册：把渲染端的调用映射到 KnowledgeService 与
+ * KnowledgeSettings。每个路由先用共享契约里的 zod schema 校验入参再
+ * 调用，出参同样过 schema——错误在边界处暴露，不让非法数据进入主进程。
+ *
+ * 配置读写路由走 settings（持久化 + applyConfigChange 驱动服务同步）；
+ * 文件与检索路由直接转发 service。recordActivity 把配置变更写入控制
+ * 中心的操作记录。
+ */
 export function createKnowledgeRoutes(deps: {
   service: KnowledgeServicePort
   settings: KnowledgeSettings
+  /** 配置落盘后驱动 KnowledgeService 按差异增删改实例。 */
   applyConfigChange(): Promise<void>
+  /** 向控制中心记录一次设置变更，仅供展示。 */
   recordActivity(input: SettingsActivityInput): void
 }): DeepchatRouteMap {
   const { service } = deps
   return createRouteMap([
+    // 读取当前知识库配置列表（设置页回显用），直接从 settings 取。
     [
       configGetKnowledgeConfigsRoute.name,
       async (rawInput) => {
@@ -36,6 +48,8 @@ export function createKnowledgeRoutes(deps: {
         })
       }
     ],
+    // 整体覆写知识库配置：先落盘，再由 applyConfigChange 把差异同步到
+    // 运行中的服务实例，最后记入控制中心操作记录。
     [
       configSetKnowledgeConfigsRoute.name,
       async (rawInput) => {
@@ -56,6 +70,7 @@ export function createKnowledgeRoutes(deps: {
         })
       }
     ],
+    // 环境能力探测：当前平台/架构是否支持内置知识库（决定 UI 是否展示入口）。
     [
       knowledgeIsSupportedRoute.name,
       async (rawInput) => {
@@ -63,6 +78,8 @@ export function createKnowledgeRoutes(deps: {
         return knowledgeIsSupportedRoute.output.parse({ supported: await service.isSupported() })
       }
     ],
+    // 文本分块能力元信息：支持的语言列表与各语言的分隔符，
+    // 供前端在知识库设置里做分块参数选择。
     [
       knowledgeGetSupportedLanguagesRoute.name,
       async (rawInput) => {
@@ -90,6 +107,7 @@ export function createKnowledgeRoutes(deps: {
         })
       }
     ],
+    // 文件管理路由：列表、入库前校验、添加/删除/重灌。
     [
       knowledgeListFilesRoute.name,
       async (rawInput) => {
@@ -99,6 +117,7 @@ export function createKnowledgeRoutes(deps: {
         })
       }
     ],
+    // 检索与任务控制路由：相似度查询、暂停/恢复库内全部处理任务。
     [
       knowledgeSimilarityQueryRoute.name,
       async (rawInput) => {

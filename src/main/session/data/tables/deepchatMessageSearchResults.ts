@@ -2,6 +2,11 @@ import Database from 'better-sqlite3-multiple-ciphers'
 import { nanoid } from 'nanoid'
 import { BaseTable } from '@/data/baseTable'
 
+/**
+ * 联网搜索结果表：挂在某条消息下的搜索命中（标题/URL/摘要的 JSON）。
+ * id 主键，dedupe_key 唯一约束防重复入库，search_id 区分同一消息内的
+ * 多次搜索。transcript 写入，query 读回显。
+ */
 export interface DeepChatMessageSearchResultRow {
   id: string
   session_id: string

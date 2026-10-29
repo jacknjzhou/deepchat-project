@@ -51,12 +51,14 @@ export class StaffdeckProblemError extends Error {
   }
 }
 
+/** 客户端三要素：地址、凭证与执行期用户身份（后者只进 body，见文件头说明）。 */
 export interface StaffdeckRemoteClientConfig {
   baseUrl: string
   apiKey: string
   externalUserId: string
 }
 
+/** 建会话入参；employeeId 即 StaffDeck 的 agent id，externalSessionId 用于服务端幂等对账。 */
 export interface CreateSessionInput {
   employeeId: string
   externalSessionId: string
@@ -78,6 +80,15 @@ export interface StreamRunOutcome {
   runId: string
 }
 
+/** 流式 run 的返回：runId 来自响应头，供后续续传、补查与取消使用。 */
+export interface StreamRunOutcome {
+  runId: string
+}
+
+/**
+ * 帧回调。event 为按契约解析好的结构化事件；解析失败（未知形状）时为 null，
+ * 调用方仍可读原始 frame 兜底——回调不应因单帧解析失败而中断流。
+ */
 export type StaffdeckFrameHandler = (
   frame: StaffdeckSseFrame,
   event: StaffdeckRunEvent | null
@@ -124,6 +135,11 @@ export class StaffdeckRemoteClient {
     throw new StaffdeckProblemError(response.status, code, detail)
   }
 
+  /**
+   * 创建远端会话。服务端按 external_session_id 幂等：同一本地会话重复创建
+   * 返回同一条远端会话，因此调用方无需先查绑定。
+   * 失败抛 StaffdeckProblemError；响应缺 id 视为协议错误。
+   */
   async createSession(input: CreateSessionInput): Promise<{ id: string }> {
     const url = `${this.base}/api/v1/agents/${encodeURIComponent(input.employeeId)}/sessions`
     const response = await this.fetchImpl(url, {
@@ -218,6 +234,11 @@ export class StaffdeckRemoteClient {
     await this.consumeStream(response, input.runId, onFrame)
   }
 
+  /**
+   * 补查 run 终态结果（awaiting_input 与 reply 只在这里有）。
+   * run 尚未收敛时抛 `RUN_NOT_SUCCEEDED` 的 StaffdeckProblemError，
+   * 由 runner 决定降级还是重试。
+   */
   async getResult(runId: string): Promise<StaffdeckRunResult> {
     const url = `${this.base}/api/v1/runs/${encodeURIComponent(runId)}/result`
     const response = await this.fetchImpl(url, {
@@ -234,6 +255,7 @@ export class StaffdeckRemoteClient {
     )
   }
 
+  /** 取消 run；404 视为已结束，幂等成功。 */
   async cancelRun(runId: string): Promise<void> {
     const url = `${this.base}/api/v1/runs/${encodeURIComponent(runId)}:cancel`
     const response = await this.fetchImpl(url, {
@@ -291,6 +313,7 @@ export class StaffdeckRemoteClient {
     }
   }
 
+  /** 单帧处理：过滤未知事件、尽力解析 JSON 与契约，再透传给回调并报告是否终止帧。 */
   private handleFrame(
     frame: StaffdeckSseFrame,
     onFrame: StaffdeckFrameHandler

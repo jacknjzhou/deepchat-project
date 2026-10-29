@@ -41,6 +41,12 @@ function getJsonField<T>(val: string | null | undefined, fallback: T): T {
   }
 }
 
+/**
+ * 旧版会话表（conversations）：早期聊天界面的会话记录与生成设置（provider/
+ * model/temperature/搜索/技能等全在一行）。conv_id 字符串主键；新版会话
+ * 体系迁移到 new_sessions + deepchat_sessions。仅保留读路径（列表/单查），
+ * 供历史数据兼容展示。
+ */
 export class ConversationsTable extends BaseTable {
   constructor(db: Database.Database) {
     super(db, 'conversations')

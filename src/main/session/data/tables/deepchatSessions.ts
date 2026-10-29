@@ -72,6 +72,13 @@ function decodePersistedPermissionMode(mode: string | null | undefined): Permiss
   return mode === 'default' || mode === 'auto_approve' || mode === 'full_access' ? mode : 'default'
 }
 
+/**
+ * deepchat 会话配置表（deepchat_sessions）：每个 Office Agent 会话一行的
+ * 运行配置——provider/model、权限模式、生成参数（温度/思考预算/推理档位/
+ * 图像视频选项）、上下文摘要快照（summary_* 字段）。
+ * 主键为会话 id，与 new_sessions 一一对应（前者是注册信息，这里是运行配置）。
+ * settings 存储层与 usageStats 回填读写。
+ */
 export class DeepChatSessionsTable extends BaseTable {
   constructor(db: Database.Database) {
     super(db, 'deepchat_sessions')

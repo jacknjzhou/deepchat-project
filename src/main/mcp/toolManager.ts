@@ -1,3 +1,16 @@
+/**
+ * MCP 工具注册表与调用代理（ToolManager）。
+ *
+ * 职责：从所有运行中的 server（及插件提供的工具目录）发现工具，构建
+ * 「模型可见工具名 → 实际调用目标」的映射并缓存；按访问上下文过滤工具；
+ * 代理工具调用——包括参数校验、目标一致性核验、插件策略检查与派发。
+ *
+ * 工具名规则：同名工具冲突时，冲突双方都被重命名为 `${serverName}_${tool}`，
+ * 描述加 server 前缀；调用时始终用 server 侧的原始名。工具名最终必须匹配
+ * /^[a-zA-Z0-9_-]+$/，否则该工具被丢弃。注册表缓存是整体失效式的：任何
+ * server 状态变化都会 invalidateRegistry，下次枚举全量重建。
+ */
+
 import logger from '@shared/logger'
 import {
   TOOL_EXECUTION,
@@ -55,6 +68,11 @@ const deepFreeze = <T>(value: T, seen = new Set<object>()): T => {
   return Object.freeze(value)
 }
 
+/*
+ * 各环节的资源上限：参数展开体积、缓存快照的条数/字节/节点数、缓存图片
+ * 引用数量等。工具入参来自模型且可能包含指向本地缓存的 imgcache:// 引用，
+ * 展开后体积可能暴涨，必须限界后再交给 server。
+ */
 const PLUGIN_RUNTIME_DIAGNOSTIC_TIMEOUT_MS = 30_000
 const TOOL_CATALOG_VALIDATION_TIMEOUT_MS = 30_000
 const MAX_SCHEMA_DIFFERENCE_PATH_LENGTH = 512
@@ -87,6 +105,11 @@ const formatSchemaDifference = (difference: JsonValueDifference): string => {
   return `${JSON.stringify(path)} (${SCHEMA_DIFFERENCE_REASONS[difference.kind]})`
 }
 
+/**
+ * 工具可见范围的过滤上下文（与 McpService 侧的同名结构对应）。
+ * includeRegularServers=false 表示只看插件工具；expectedServerNames 用于
+ * 快照比对时声明「应当成功」的 server 集合。
+ */
 type McpToolAccessContext = {
   enabledTools?: string[]
   enabledServerIds?: string[]
@@ -128,6 +151,10 @@ type CachedImageResolutionContext = {
   expandedBytes: number
 }
 
+/**
+ * 插件运行时的所有权接口：由 PluginRuntimeSupervisor 提供实现。
+ * 没有插件体系时用 NO_PLUGIN_OWNERSHIP 兜底，保证 ToolManager 可独立工作。
+ */
 type PluginMcpOwnershipPort = {
   ownsServer(serverName: string): boolean
   isServerAvailable(serverName: string): boolean
@@ -148,6 +175,7 @@ const NO_PLUGIN_OWNERSHIP: PluginMcpOwnershipPort = {
   }
 }
 
+/** 一个工具来源：live server 客户端，或插件注册的静态工具目录。 */
 type ToolSource = {
   serverName: string
   displayName: string
@@ -157,6 +185,10 @@ type ToolSource = {
   catalogBacked: boolean
 }
 
+/**
+ * 最终工具名 → 调用目标的映射项。originalName 保留 server 侧原始名
+ * （冲突重命名后两者不同），catalogTool 是插件目录提供的打包定义。
+ */
 type ToolTarget = {
   serverName: string
   originalName: string
@@ -194,6 +226,11 @@ const normalizeToolAccessContext = (
   }
 }
 
+/**
+ * 对缓存快照做结构与体积限界校验（遍历式）：条数、单条/总体字节、节点数、
+ * 深度、循环引用、代理对象、非纯 JSON 值都拒绝。快照会被深拷贝并冻结后
+ * 跨进程暴露，这里保证其可安全序列化且不会撑爆内存。
+ */
 function assertBoundedCachedToolSnapshot(definitions: readonly MCPToolDefinition[]): void {
   if (definitions.length > MAX_CACHED_TOOL_SNAPSHOT_DEFINITIONS) {
     throw new Error('Cached Tool definition snapshot exceeds its definition limit.')
@@ -322,6 +359,12 @@ function assertBoundedCachedToolSnapshotSources(serverNames: readonly string[]):
   }
 }
 
+/**
+ * 工具注册表。核心状态是三类缓存：工具定义列表、成功/失败的 server 集合
+ * （用于快照完整性判定）与工具名→目标映射。缓存为 null 表示需要重建；
+ * 重建由 activeToolDefinitionsRefresh 去重，并发调用共享同一次全量枚举，
+ * 枚举期间注册表失效（generation 变化）则丢弃结果重来。
+ */
 export class ToolManager {
   private readonly agentSettings: Pick<AgentSettingsPort, 'getAcpAgents' | 'getAgentMcpSelections'>
   private readonly mcpSettings: McpSettings
@@ -349,6 +392,11 @@ export class ToolManager {
     this.serverManager = serverManager
   }
 
+  /**
+   * 整体作废注册表缓存：generation 自增会让进行中的枚举结果被丢弃，
+   * 同时放行所有等待该轮枚举的调用方（settle），让它们进入下一轮重建。
+   * server 启停、配置变化、插件注册变化都应触发这里。
+   */
   public invalidateRegistry(): void {
     console.info('MCP client list updated, clearing tool definitions cache and target map.')
     this.toolDefinitionsCacheGeneration += 1
@@ -361,6 +409,11 @@ export class ToolManager {
     this.catalogValidationPromises = new WeakMap()
   }
 
+  /**
+   * 输出当前缓存的工具快照（同步、不触发重建）：深拷贝冻结后附带完整性
+   * 信息——期望存在但既不在成功也不在失败集合里的 server 视为失败
+   * （说明尚未发现完成）。未初始化时返回 uninitialized 状态。
+   */
   public snapshotCachedToolDefinitions(
     access?: string[] | McpToolAccessContext
   ): McpToolDefinitionsSnapshot {
@@ -459,6 +512,17 @@ export class ToolManager {
   }
 
   // Get all tool definitions
+  /**
+   * 获取全部工具定义（带缓存与并发去重）。
+   *
+   * 流程：命中缓存直接按上下文过滤返回；否则进入一轮全量重建——
+   * 1. loadToolSources 收集各 server 与插件目录的工具；
+   * 2. 按工具名扫冲突，冲突者双方记入重命名集合；
+   * 3. 生成最终定义（重命名、参数缺省描述、执行策略固定为 write——
+   *    server 自报的 execution 注解不可信）并填充目标映射；
+   * 4. 若期间注册表失效（generation 变化）则丢弃重来，否则写入缓存。
+   * 并发调用共享同一轮重建；signal 中止会让等待方立即抛出。
+   */
   public async getAllToolDefinitions(
     access?: string[] | McpToolAccessContext,
     options?: { signal?: AbortSignal }
@@ -633,6 +697,14 @@ export class ToolManager {
     }
   }
 
+  /**
+   * 从两类来源收集工具：
+   * - live clients：逐个 listTools，成功则清 lastError 并解除 toolListFailed
+   *   通知；失败则记入 failedServerNames（单 server 失败不拖垮整体）。
+   *   不可用的插件 server 与已被目录覆盖的 server 跳过，避免重复。
+   * - 插件工具目录：直接采用插件注册的静态 catalog（catalogBacked=true），
+   *   调用前会用 verifyCatalogTool 与 live server 核对一致性。
+   */
   private async loadToolSources(
     clients: McpClient[],
     signal?: AbortSignal
@@ -721,6 +793,10 @@ export class ToolManager {
     })
   }
 
+  /**
+   * 派发前的访问控制判定：按 finalName 与原始名双重匹配 enabledTools，
+   * server 维度交由 isServerAllowedByContext。
+   */
   private filterToolDefinitionsByContext(
     toolDefinitions: MCPToolDefinition[],
     context: McpToolAccessContext
@@ -760,6 +836,11 @@ export class ToolManager {
     return !context.enabledServerIds || context.enabledServerIds.includes(serverName)
   }
 
+  /**
+   * 核对「授权时看到的工具目标」与「当前实际目标」是否一致：工具名、
+   * server、原始名、serverId/configGeneration/bindingHash 任一变化都返回
+   * 差异描述（null 表示一致）。用于会话授权后工具环境被用户改动的防护。
+   */
   private describeExpectedTargetMismatch(
     finalName: string,
     target: ToolTarget | undefined,
@@ -820,6 +901,16 @@ export class ToolManager {
     }
   }
 
+  /**
+   * 工具调用的完整流水线。派发前依次过闸：
+   * 目标映射存在 → expectedTarget 一致性 → ACP agent 的 MCP 白名单 →
+   * server 配置存在且绑定一致 → server 级访问控制 → 插件工具策略 →
+   * 参数解析与展开（imgcache 引用解析、CUA 参数规范化）→ 最终一致性复核
+   * （配置可能在准备参数期间被改）。
+   * 全部通过后 commitDispatch 标记派发边界，再以原始工具名调用目标 client。
+   * 派发失败不抛错而返回 isError 响应对象（除非 throwPreDispatchErrors）；
+   * signal 中止在派发提交后不再作废已执行的结果。
+   */
   async callTool(
     toolCall: MCPToolCall,
     access?: Pick<McpToolAccessContext, 'agentId' | 'enabledServerIds'> & {
@@ -1197,6 +1288,10 @@ export class ToolManager {
     }
   }
 
+  /**
+   * 解析调用目标对应的 client：插件 server 先确保运行时已拉起；目录型
+   * 工具（catalogBacked）还需先通过打包定义与 live 定义的一致性核验。
+   */
   private async resolveToolClient(target: ToolTarget, signal?: AbortSignal): Promise<McpClient> {
     let client = target.client
     if (this.pluginOwnership.ownsServer(target.serverName)) {
@@ -1222,6 +1317,12 @@ export class ToolManager {
     return client
   }
 
+  /**
+   * 核验目录型工具：按 client 去重共享一次 live listTools（30s 超时），
+   * 工具缺失或 inputSchema 与打包目录不一致即抛 definition_changed——
+   * 插件目录声明与 server 实际行为必须一致才允许执行，防止打包定义
+   * 掩盖 server 侧的参数漂移。
+   */
   private async verifyCatalogTool(
     client: McpClient,
     catalogTool: Tool,
@@ -1405,6 +1506,10 @@ export class ToolManager {
     }
   }
 
+  /**
+   * 把 client 返回的原始结果整理为 MCPToolResponse：字符串原样、数组逐项
+   * 归一为内容项（未知对象 JSON 化为文本），并透传 _meta 与 structuredContent。
+   */
   private formatToolResponse(toolCallId: string, result: ToolCallResult): MCPToolResponse {
     let formattedContent: string | MCPContentItem[] = ''
     if (typeof result.content === 'string') {
@@ -1476,6 +1581,12 @@ export class ToolManager {
     }
   }
 
+  /**
+   * 派发前的参数准备：先把参数里的 imgcache:// 引用解析为实际 dataUrl
+   * （引用数与展开体积受限），再对 CUA（computer-use）工具做平台化
+   * 规范化与快照目标校验。失败返回 ok:false 而非抛错，由调用方转成
+   * invalid_request 响应。
+   */
   private async prepareToolArguments(
     client: McpClient,
     toolName: string,
@@ -1520,6 +1631,10 @@ export class ToolManager {
     return await this.prepareCuaWindowsLaunchArgs(client, normalizedArgs, signal)
   }
 
+  /**
+   * 递归解析参数中的 imgcache:// 引用为缓存 dataUrl。同一引用只解析一次
+   * （context.dataUrls 去重），引用数量与总体积超限即抛错。
+   */
   private async resolveCachedImageArguments(
     value: unknown,
     signal: AbortSignal | undefined,
@@ -1567,6 +1682,12 @@ export class ToolManager {
     return value
   }
 
+  /**
+   * Windows 上 launch_app 目标的兼容处理：macOS 风格的 bundle_id 若形如
+   * 路径则改写为 path 参数；既非路径也无其他可启动目标时，先调 list_apps
+   * 预检目标是否存在于 Windows 应用列表，防止把 bundle id 直接交给
+   * Windows 侧导致启动失败。
+   */
   private async prepareCuaWindowsLaunchArgs(
     client: McpClient,
     args: Record<string, unknown>,

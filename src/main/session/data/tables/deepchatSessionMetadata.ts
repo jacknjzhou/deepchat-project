@@ -2,6 +2,10 @@ import Database from 'better-sqlite3-multiple-ciphers'
 import type { SessionMetadata } from '@shared/types/agent-interface'
 import { BaseTable } from '@/data/baseTable'
 
+/**
+ * 会话元数据表：创建会话的来源（source，如脚本/集成入口）与随附的
+ * 自由元数据 JSON。session_id 主键（一会话一行）；lifecycle 建会话时写入。
+ */
 export interface DeepChatSessionMetadataRow {
   session_id: string
   source: string

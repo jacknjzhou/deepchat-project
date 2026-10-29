@@ -8,6 +8,10 @@
  * 必须跳过，否则上层会把注释当 JSON 解析而抛错。
  */
 
+/**
+ * 单个 SSE 帧的解析结果。id/event 缺省表示该帧未携带对应字段；
+ * data 为帧内所有 data 行以 `\n` 拼接（多行 data 是合法的）。
+ */
 export interface StaffdeckSseFrame {
   id?: string
   event?: string
@@ -32,6 +36,7 @@ function stripSingleLeadingSpace(value: string): string {
   return value.startsWith(' ') ? value.slice(1) : value
 }
 
+/** 解析单个原始帧文本；不含任何 data/id/event 字段时返回 null（如纯注释块）。 */
 function parseFrame(raw: string): StaffdeckSseFrame | null {
   const lines = raw.split('\n')
   let id: string | undefined
@@ -79,6 +84,10 @@ function parseFrame(raw: string): StaffdeckSseFrame | null {
   return frame
 }
 
+/**
+ * 创建有状态的分帧器：跨 push 调用维护半帧缓冲，网络分包不影响帧完整性。
+ * 典型时序：循环 push → 收集帧 → 流结束后 flush 收尾。
+ */
 export function createSseParser(): StaffdeckSseParser {
   let buffer = ''
 

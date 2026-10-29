@@ -1,6 +1,10 @@
 import Database from 'better-sqlite3-multiple-ciphers'
 import { BaseTable } from '@/data/baseTable'
 
+/**
+ * 用户消息链接辅表：消息携带的 URL 清单，主键 (message_id, ordinal)。
+ * transcript 写入、读取时物化回 UserMessageContent.links。
+ */
 export interface DeepChatUserMessageLinkRow {
   message_id: string
   ordinal: number

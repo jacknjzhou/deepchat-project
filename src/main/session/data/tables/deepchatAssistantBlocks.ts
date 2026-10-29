@@ -4,6 +4,12 @@ import { BaseTable } from '@/data/baseTable'
 import type { AssistantMessageBlock } from '@shared/types/agent-interface'
 import type { McpAppDescriptor } from '@shared/types/mcp'
 
+/**
+ * assistant 消息 blocks 辅表：把一条 assistant 消息的内容块（文本/工具调用/
+ * 图片/推理/动作卡）按 block_index 逐行存储，工具调用字段与推理起止时间
+ * 拆成独立列便于查询，其余进 extra_json。主键 (message_id, block_index)。
+ * transcript 在流式过程中整批 replace，读取时重建 blocks 数组。
+ */
 export interface DeepChatAssistantBlockRow {
   message_id: string
   block_index: number

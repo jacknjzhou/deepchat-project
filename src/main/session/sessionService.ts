@@ -44,6 +44,16 @@ export interface SessionServiceDesktopPort {
   getActive(webContentsId: number): Promise<SessionWithState | null>
 }
 
+/**
+ * 会话路由服务（SessionService）：渲染层会话路由的最外层薄封装。职责仅两件：
+ * 给每个操作套 scheduler 超时，并把调用转发给对应模块（lifecycle 建会话、
+ * projection 读数据、desktop 窗口绑定）。
+ *
+ * 例外是 createSession 不套超时：超时只是「不再等结果」，不会取消底层操作，
+ * 建会话这种写持久态的操作一旦晚到的重复执行就会产生重复会话；取消应由
+ * 调用方 signal 驱动。restoreSession 的会话读取带一次重试，容忍启动初期
+ * 运行时尚未就绪的瞬时失败。
+ */
 export class SessionService {
   constructor(
     private readonly deps: {
@@ -66,6 +76,7 @@ export class SessionService {
       : await this.deps.lifecycle.createSession(input, context.webContentsId)
   }
 
+  /** 恢复会话视图：会话 + 首页消息一次拿齐；会话不存在返回空页而不是报错。 */
   async restoreSession(
     sessionId: string,
     limit?: number
