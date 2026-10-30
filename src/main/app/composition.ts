@@ -1,3 +1,21 @@
+/**
+ * 组合根（Composition Root）——主进程唯一的服务装配点。
+ *
+ * mainProcess.startMainProcess 完成数据库初始化与配置迁移后调用
+ * createMainProcessControl()：本文件按依赖顺序实例化全部主进程服务
+ * （窗口/事件 → 会话数据与仓库 → 设置群 → Agent/ACP 运行时 → MCP →
+ * 知识库 → 数字员工 → 文档/识别 → 调度），随后定义启动步骤
+ * （initializeSkills/initializeMcp/…）、IPC 路由注册（registerRoutes）、
+ * 应用监听与后台任务（scheduleBackgroundWork），最终组装
+ * MainProcessControl 交给 appMain 驱动生命周期。
+ *
+ * 约定：
+ * - 依赖一律通过构造参数显式注入，禁止在服务内部反向 import 组合根。
+ * - 装配段严格按「被依赖者先建」排序；跨段引用统一用 createLivePort()
+ *   延迟解引用，避免装配顺序耦合。
+ * - 启动组件失败通过 reportMainStartupComponentFailure 上报且不中断
+ *   整体启动（数据库与窗口除外，属启动致命项）。
+ */
 import logger from '@shared/logger'
 import {
   mainLogger,
@@ -392,9 +410,15 @@ import {
   systemNotificationClock
 } from '@shared/notifications'
 
+/** 数据库维护期间仍需可用的存储能力合集（同步导入 + 安全迁移共用一套路由闸门）。 */
 type ApplicationDatabaseMaintenancePort = SyncImportDatabasePort &
   DatabaseSecurityMigrationDatabasePort
 
+/**
+ * 主进程对外的生命周期控制句柄：appMain 持有它驱动 deep link、聚焦、
+ * 权限缓存清理与两条退出路径（用户 quit 走 confirmShutdown + stop；
+ * 启动失败清理走 stopForCleanup）。
+ */
 export interface MainProcessControl {
   focusPrimaryWindow(): void
   handleDeepLink(url: string): Promise<void>
@@ -406,6 +430,7 @@ export interface MainProcessControl {
   stopForCleanup(): Promise<void>
 }
 
+/** 把轮次停止原因归一为遥测日志可分类的错误对象。 */
 function classifyRunError(stopReason: MainLogRunStopReason): SafeLogError {
   switch (stopReason) {
     case 'journal_error':
@@ -425,6 +450,7 @@ function classifyRunError(stopReason: MainLogRunStopReason): SafeLogError {
   }
 }
 
+/** 把轮次日志（RunJournal）观测写入主日志流，供启动/运行遥测消费。 */
 function emitRunJournalObservation(observation: RunJournalObservation): void {
   if (observation.type === 'started') {
     if (observation.runKind === 'loop') {
@@ -501,6 +527,7 @@ function emitRunJournalObservation(observation: RunJournalObservation): void {
   })
 }
 
+/** 把实时委托（live delegation）生命周期事件转发为遥测日志。 */
 function emitLiveDelegationObservation(observation: LiveDelegationLifecycleObservation): void {
   switch (observation.type) {
     case 'turn_queued':
@@ -569,6 +596,10 @@ function emitLiveDelegationObservation(observation: LiveDelegationLifecycleObser
   }
 }
 
+/**
+ * 延迟解引用端口：装配期尚不存在的服务先用「取值函数」占位，首次方法
+ * 调用时才解析到真实实例。用于打破装配顺序与依赖顺序的循环。
+ */
 function createLivePort<T extends object>(resolve: () => T): T {
   return new Proxy({} as T, {
     get(_target, property) {
@@ -579,6 +610,7 @@ function createLivePort<T extends object>(resolve: () => T): T {
   })
 }
 
+/** 读取企业托管端点（地址/可达性）快照，供登录态与托管配置展示。 */
 function managedEndpointInfo(): ManagedEndpointInfo {
   return resolveManagedEndpointInfo(
     process.env.DEEPCHAT_MANAGED_CONFIG_URL,
@@ -587,6 +619,7 @@ function managedEndpointInfo(): ManagedEndpointInfo {
   )
 }
 
+/** 把设备服务返回的原始信息归一为托管配置所需的设备描述（失败降级为空身份）。 */
 function toManagedDeviceInfo(
   info: Awaited<ReturnType<DeviceService['getDeviceInfo']>>
 ): ManagedDeviceInfo {
@@ -603,6 +636,7 @@ function toManagedDeviceInfo(
  * 启动同步与手动刷新都必须现场解析：复用启动期的结果会把陈旧（甚至空）身份带给服务端，
  * 一旦被判为 absent/denied 就会清空托管缓存。
  */
+/** 解析本机设备信息；失败时以空身份继续（托管功能退化为未注册设备）。 */
 async function resolveManagedDevice(deviceService: DeviceService): Promise<ManagedDeviceInfo> {
   try {
     return toManagedDeviceInfo(await deviceService.getDeviceInfo())
@@ -616,11 +650,13 @@ async function resolveManagedDevice(deviceService: DeviceService): Promise<Manag
 let managedRefreshInFlight: Promise<ManagedConfigStatus> | null = null
 
 /** 允许的供应商类型 = 内置服务商注册表的 apiType 集合 */
+/** 枚举已注册的 provider 类型清单（用于托管配置过滤与校验）。 */
 function getKnownProviderTypes(): string[] {
   return DEFAULT_PROVIDERS.map((provider) => provider.apiType)
 }
 
 /** apiType → 内置 provider id，用于托管实例的 baseProviderId 归属 */
+/** apiType → 内置 provider id 的映射，供托管配置反查内置实现。 */
 function getBuiltinIdByApiType(): Record<string, string> {
   return Object.fromEntries(DEFAULT_PROVIDERS.map((provider) => [provider.apiType, provider.id]))
 }
@@ -649,6 +685,8 @@ export async function createMainProcessControl(dependencies: {
   const databaseSecurityService = dependencies.databaseSecurityService
   const startupWorkloadCoordinator = dependencies.startupWorkloadCoordinator
   const mainDatabase = dependencies.database
+  // ── 进程基础设施：文件监视、窗口/托盘/快捷键 presenter、事件总线、
+  //    CLI 本地控制服务与系统通知路由。此后各段按依赖顺序装配。 ──
   const fileWatcherService = new FileWatcherService()
   let windowPresenter: IWindowPresenter
   let providerSettings: ProviderSettings
@@ -727,6 +765,8 @@ export async function createMainProcessControl(dependencies: {
   let cliMutationGuard: CliMutationGuard
   let cliRequestPolicy: CliRequestPolicy
   let cliRunService: CliRunService
+  // 进程生命周期状态位：装配完成标记、数据库维护态、应用运行态，
+  // 以及插件/技能/技能扫描三类「只跑一次」的初始化 promise。
   let hasInitialized = false
   let databaseMaintenanceState: 'running' | 'maintenance' | 'failed' = 'running'
   let appLifecycleState: 'starting' | 'running' | 'stopping' | 'stopped' = 'starting'
@@ -920,6 +960,8 @@ export async function createMainProcessControl(dependencies: {
     dependencies.previousAppVersion
   )
 
+  // ── 会话数据层：Agent 记忆表、会话库（transcript/pendingInputs/settings
+  //    三件套）、Tape 检查器推送与程序化工具父注册表。 ──
   const memoryDatabase = new MemoryDatabase(mainDatabase)
   const sessionData = createSessionData(
     mainDatabase,
@@ -1028,6 +1070,8 @@ export async function createMainProcessControl(dependencies: {
     taskContractService,
     taskEvaluationService
   )
+  // ── 业务数据库与仓库：项目/调度/文档（含预置模板种子）/简历筛选/
+  // 应用库，Agent 仓库与生命周期/删除闸门，应用会话服务与用量统计。 ──
   const sessionRuntimeEvents = new SessionRuntimeEvents()
   const projectDatabase = new ProjectDatabase(mainDatabase)
   const agentDatabase = dependencies.agentDatabase
@@ -1114,6 +1158,8 @@ export async function createMainProcessControl(dependencies: {
     dependencies.settingsStore,
     sessionData.tapeStore
   )
+  // ── 设置服务群：围绕 settingsStore 的各领域设置门面（桌面外观/字体/
+  // 技能/ACP 跟踪与会话持久化/Agent 设置等），保存后经事件广播到渲染层。 ──
   const desktopSettings = new DesktopSettings(
     dependencies.settingsStore,
     {
@@ -1190,6 +1236,8 @@ export async function createMainProcessControl(dependencies: {
     skillSettings,
     agentLifecycle
   )
+  // ── ACP 运行时与凭据：runtime 生命周期归属、OAuth 鉴权、默认值、
+  // 命令行 shell 偏好与 Agent CLI 命令访问控制。 ──
   const acpRuntimeOwner = createAcpRuntimeOwner({
     providerConfig: providerSettings,
     agentSettings,
@@ -1469,6 +1517,8 @@ export async function createMainProcessControl(dependencies: {
     publishDeepchatEvent
   )
   notificationService = new NotificationService(desktopSettings, publishDeepchatEvent)
+  // ── 系统入口与内置服务：托盘、Agent 预览协调器、计算机使用预览，
+  // 内置知识库（DuckDB+VSS，存于 app_db）与 MCP 服务。 ──
   trayPresenter = new TrayPresenter(desktopSettings, windowPresenter)
   dialogService = new DialogService(publishDeepchatEvent)
   agentPreviewCoordinator = new AgentPreviewCoordinator()
@@ -1624,6 +1674,7 @@ export async function createMainProcessControl(dependencies: {
     log: logger
   })
 
+  // ── Agent 调用准入：并发/频率闸门，后续工具依赖与委托链路共用。 ──
   const agentInvocationAdmission = new AgentInvocationAdmission(undefined, undefined, {
     observationsEnabled: () => mainLogger.isOutputEnabled(),
     observe: (observation) => {
@@ -2092,6 +2143,8 @@ export async function createMainProcessControl(dependencies: {
     settingsPermissionService,
     toolPermissionBroker
   })
+  // ── Agent 记忆层：按 Agent 选择性开启，向量库与知识库物理隔离；
+  // 启动时先隔离恢复损坏的向量库目录。 ──
   // Initialize agent memory layer (opt-in per agent; vectors stored separately from knowledge base)
   const memoryDbDir = path.join(dbDir, 'AgentMemory')
   MemoryVectorStore.recoverQuarantinedStores(memoryDbDir)
@@ -2202,6 +2255,8 @@ export async function createMainProcessControl(dependencies: {
     resolveSessionMcpAllowList: resolveDigitalEmployeeMcpAllowListForSession,
     resolveSessionSkillNamePrefix: resolveDigitalEmployeeSkillPrefixForSession
   })
+  // ── 会话转写变更与 Agent 运行时：transcript/pendingInputs 的成对变更
+  // 入口、deepChat harness、ACP runtime 与 AgentManager。 ──
   const sessionTranscriptMutations = new SessionTranscriptMutations({
     transcript: sessionData.transcript,
     settings: sessionData.settings,
@@ -2643,6 +2698,7 @@ export async function createMainProcessControl(dependencies: {
       showNotification: (options) => notificationService.showNotification(options)
     }
   })
+  // ── 定时调度：cron 驱动的会话任务，支持本地启动与远程（StaffDeck）投递。 ──
   cronJobs = new SchedulerService({
     database: schedulerDatabase,
     agentSettings,
@@ -2657,11 +2713,14 @@ export async function createMainProcessControl(dependencies: {
 
   desktopSettings.initializeTheme()
 
+  // ── 启动步骤与生命周期函数：托盘初始化、启动任务登记、init 启动序列
+  // （技能 → 插件 → MCP → 远程控制 → 供应商预热），以及 destroy 拆卸。 ──
   function setupTray() {
     console.info('setupTray', !!trayPresenter)
     trayPresenter.init()
   }
 
+  /** 登记启动期后台任务：由 StartupWorkloadCoordinator 统一限流与上报。 */
   function scheduleMainStartupTask(
     startupRunId: string,
     task: Omit<Parameters<StartupWorkloadCoordinator['scheduleTask']>[0], 'runId'>,
@@ -2682,6 +2741,12 @@ export async function createMainProcessControl(dependencies: {
     })
   }
 
+  /**
+   * 装配完成后的启动收尾：注册路由与监听、跑 ACP 迁移与内置 MCP 兼容
+   * 迁移、初始化技能（迁移必须先完成，否则手动 Agent scope 会读到空
+   * 激活集）、创建首窗、启动托盘/快捷键/cron/CLI 等常驻组件，最后转入
+   * running 态并排空后台任务。
+   */
   function init(mainRunId: string) {
     if (hasInitialized) {
       console.info('[Startup][Main] Main startup skipped because startup already ran')
@@ -2941,6 +3006,7 @@ export async function createMainProcessControl(dependencies: {
     )
   }
 
+  /** 分步拆卸全部运行中服务；单步失败记数并继续，避免卡死退出流程。 */
   async function destroy(): Promise<void> {
     await runDestroyStep('agentCliTokenAuthority.clear', () => agentCliTokenAuthority.clear())
     await runDestroyStep('cliServer.stop', () => cliServer.stop())
@@ -3057,6 +3123,7 @@ export async function createMainProcessControl(dependencies: {
     await runDestroyStep('trayPresenter.destroy', () => trayPresenter.destroy())
   }
 
+  /** destroy 的单步包装：失败只记数上报，不让单步异常中断其余拆卸。 */
   async function runDestroyStep(stepName: string, step: () => void | Promise<void>): Promise<void> {
     const startedAt = readMonotonicNow()
     logger.info(`[Main] destroy.${stepName} begin`)
@@ -3080,6 +3147,8 @@ export async function createMainProcessControl(dependencies: {
     }
   }
 
+  // ── IPC 路由注册：provider/会话与聊天/文档/知识库/数字员工/识别/
+  // 简历筛选等全部路由集中在此，经统一 dispatcher 做权限与窗口校验。 ──
   async function registerRoutes(): Promise<void> {
     const providerQueryScheduler = createNodeScheduler()
     // 企业托管配置：启动时按登录用户名拉取并固化（失败保留缓存）
@@ -4263,6 +4332,7 @@ export async function createMainProcessControl(dependencies: {
     registerDeepchatRoutes(ipcMain, routeDispatcher)
   }
 
+  // ── 应用级事件监听：窗口创建时的快捷键优化、电源/语言等全局事件。 ──
   function setupApplicationListeners(): void {
     app.on('browser-window-created', (_, window) => {
       optimizer.watchWindowShortcuts(window)
@@ -4338,6 +4408,8 @@ export async function createMainProcessControl(dependencies: {
     }
   }
 
+  // ── 启动后台任务：旧数据导入、工具链 GC 等低优先级工作，按启动
+  // 负载协调器排队执行，不阻塞首窗。 ──
   function scheduleBackgroundWork(startupRunId: string): void {
     scheduleMainStartupTask(
       startupRunId,
@@ -4443,6 +4515,8 @@ export async function createMainProcessControl(dependencies: {
     )
   }
 
+  // ── 关停协调与控制句柄：coordinator 保证拆卸一次性执行并产出
+  // claim 供 quit/更新安装复用；control 是交给 appMain 的最终句柄。 ──
   const shutdownCoordinator = new MainShutdownCoordinator(
     async () => {
       shutdownStepFailures = 0
@@ -4484,14 +4558,17 @@ export async function createMainProcessControl(dependencies: {
     }
   )
 
+  /** 正常退出路径：交给关停协调器做一次性拆卸并返回关停权 claim。 */
   function stop(reason: MainLogShutdownReason): Promise<MainShutdownActionClaim | undefined> {
     return shutdownCoordinator.request(reason)
   }
 
+  /** 启动失败等场景的清理路径：拆卸但不产出 claim（进程本就要退出）。 */
   function stopForCleanup(): Promise<void> {
     return shutdownCoordinator.cleanup()
   }
 
+  /** 数据库维护（备份/迁移）期间的路由闸门：白名单外的调用直接拒绝。 */
   function assertRouteAllowedDuringDatabaseMaintenance(routeName: string): void {
     if (appLifecycleState === 'stopping' || appLifecycleState === 'stopped') {
       throw new Error(`App lifecycle is ${appLifecycleState}`)
@@ -4667,6 +4744,7 @@ export async function createMainProcessControl(dependencies: {
     return true
   }
 
+  // 对外生命周期句柄：聚焦/深链/权限缓存清理/关停确认与两条停止路径。
   const control: MainProcessControl = {
     focusPrimaryWindow: () => {
       const targetWindow = windowPresenter.getAllWindows()[0]

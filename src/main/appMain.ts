@@ -1,3 +1,20 @@
+/**
+ * 应用启动编排层。
+ *
+ * 职责边界（自上而下）：
+ * - index.ts 只调用本文件的 startApp()；本文件负责 app ready 之前的进程级
+ *   准备（自定义 scheme 注册、命令行开关、单实例锁）与 ready 之后的
+ *   deep link 分发、更新安装路径、quit/shutdown 状态机。
+ * - 真正的服务装配在其下游：startMainProcess()（mainProcess.ts）完成
+ *   数据库初始化与迁移后，由 composition.createMainProcessControl 组装
+ *   全部主进程服务并返回 MainProcessControl。
+ *
+ * 退出模型：`allowQuit` 与 `shutdownPromise` 两个状态位构成一个小型状态机。
+ * before-quit 先被拦截（preventDefault），走「确认 → stop() 拆卸服务 →
+ * 拿到 shutdown action claim → 放行 quit」的顺序；只有拆卸成功或无服务可拆
+ * 时才置 allowQuit 放行第二次 before-quit。更新安装复用同一条拆卸链，
+ * 只是收尾动作从 app.quit() 换成安装器回调。
+ */
 import { app, dialog } from 'electron'
 import { StartupWorkloadCoordinator } from './app/startupWorkloadCoordinator'
 import { registerWorkspacePreviewSchemes } from './workspace/workspacePreviewProtocol'
@@ -20,12 +37,20 @@ import { elapsedMonotonicMs, readMonotonicNow } from './lib/monotonicTime'
 let appStarted = false
 const APP_NAME = 'OfficeAgent'
 
+/**
+ * 进程入口（幂等）：重复调用（如热重载或意外二次 import）直接返回。
+ *
+ * 时序敏感点：自定义 scheme 必须在 app ready 之前注册，且单实例锁必须在
+ * 创建任何窗口/托盘之前请求——锁被他人持有时应尽早可见地退出。
+ */
 export function startApp(): void {
   if (appStarted) {
     return
   }
   appStarted = true
 
+  // E2E 测试注入独立 userData 目录，避免污染真实用户数据；必须在应用
+  // 首次读取 userData 路径之前设置。
   const e2eUserDataDir = process.env.DEEPCHAT_E2E_USER_DATA_DIR?.trim()
   if (e2eUserDataDir) {
     app.setPath('userData', e2eUserDataDir)
@@ -42,6 +67,8 @@ export function startApp(): void {
     }
   }
 
+  // 自定义协议 scheme 的注册是 ready 前一次性动作，放到 ready 之后会失效，
+  // 因此与窗口创建无关地提前在这里执行。
   registerWorkspacePreviewSchemes()
   registerMcpAppScheme()
   registerResumePreviewScheme()
@@ -147,6 +174,11 @@ export function startApp(): void {
     deepLinkPresent: startupDeepLink !== null
   })
 
+  /**
+   * 更新安装入口（由更新模块回调）：先走完整的 stop() 拆卸拿到关停权，
+   * 再在 claim 内执行安装动作。与普通退出互斥——拆卸已在进行时拒绝安装，
+   * 反之安装失败要把状态机复位回「可正常退出」。
+   */
   const requestUpdateInstall = async (installAction: () => void): Promise<void> => {
     const activeMainProcess = mainProcess
     if (!activeMainProcess) {
@@ -177,6 +209,8 @@ export function startApp(): void {
     }
   }
 
+  // ready 后装配全部主进程服务；启动失败就地弹错误框并退出，
+  // 启动成败都记入 startup 终态日志供遥测聚合。
   app.whenReady().then(async () => {
     ensureRegularAppOnMac()
     try {
@@ -209,6 +243,9 @@ export function startApp(): void {
     }
   })
 
+  // 退出状态机：第一次 before-quit 被 preventDefault 拦下，转入异步拆卸
+  // （confirmShutdown 用户确认 → stop() 拆卸 → claim.run 内部放行退出）。
+  // shutdownPromise 同时充当「拆卸进行中」标志，防止重入产生两条拆卸链。
   app.on('before-quit', (event) => {
     mainProcess?.clearPermissionCaches()
     if (allowQuit) {
@@ -267,7 +304,8 @@ export function startApp(): void {
     })()
   })
 
-  // Handle window-all-closed event
+  // 全部窗口关闭：非 macOS 平台视为退出信号（macOS 惯例是驻留托盘）。
+  // 仅剩悬浮球等非主窗口时不退出，避免后台功能被误杀。
   app.on('window-all-closed', () => {
     mainProcess?.clearPermissionCaches()
     if (!mainProcess) return

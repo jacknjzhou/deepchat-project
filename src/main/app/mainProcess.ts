@@ -1,3 +1,16 @@
+/**
+ * 主进程启动序列。
+ *
+ * 从 appMain 的 whenReady 回调进入，按硬顺序完成：
+ * splash 窗口 → 设置存储/密钥/隐私/代理等基础设置 → 主数据库初始化
+ * （含损坏恢复，进度推送到 splash）→ 配置存储迁移（json → SQLite）→
+ * 自定义协议注册 → 交给 composition.createMainProcessControl 装配全部
+ * 服务 → 关闭 splash。
+ *
+ * 失败路径：任何一步抛错都关闭 splash，然后按装配进度回收——
+ * 已拿到 control 走 stopForCleanup()（完整拆卸），否则只关数据库，
+ * 最后向上抛给 appMain 弹错误框并退出。
+ */
 import { electronApp } from '@electron-toolkit/utils'
 import { app } from 'electron'
 import { createSettingsStore } from '@/config/settingsStore'
@@ -23,6 +36,12 @@ import { mainLogger, setMainLoggingEnabled } from '@/logging'
 
 export type { MainProcessControl } from './composition'
 
+/**
+ * 执行完整启动序列并返回主进程控制句柄。
+ *
+ * 参数 requestUpdateInstall 由 appMain 注入：composition 内的更新模块
+ * 需要在退出-安装时借用 appMain 的关停状态机，这里只做透传。
+ */
 export async function startMainProcess(
   startupWorkloadCoordinator: StartupWorkloadCoordinator,
   startupRunId: string,
@@ -46,6 +65,8 @@ export async function startMainProcess(
     const acpCatalogSettings = new AcpCatalogSettings({ mcpSettings })
     const databaseSecurityService = new DatabaseSecurityService()
     const securityStatus = databaseSecurityService.getStatus()
+    // 数据库加密开启时 splash 需要显示解锁进度；skipDelay 让解锁期不插入
+    // 人为的最小展示时长（用户已经在等待真实工作了）。
     splashWindow.showDatabaseUnlockProgress(
       {
         active: securityStatus.enabled,
@@ -86,6 +107,8 @@ export async function startMainProcess(
     const providerDatabase = new ProviderDatabase(database)
     const mcpDatabase = new McpDatabase(database)
     const agentDatabase = new AgentDatabase(database)
+    // 一次性配置迁移：把旧 json 存量导入各 SQLite 库并返回版本对比结果；
+    // 迁移先于 attach/connect，保证后续读写看到的是已导入的数据。
     const configMigration = migrateConfigStorage({
       database: settingsDatabase,
       providerDatabase,
@@ -105,6 +128,8 @@ export async function startMainProcess(
     proxyConfig.initFromConfig(proxySettings.getMode(), proxySettings.getCustomUrl())
     await registerProtocols(mcpAppSandboxRegistry)
 
+    // 装配全部主进程服务；bindControl 在装配早期回填引用，使后续错误路径
+    // 也能通过 mainProcess 变量触发完整拆卸。
     mainProcess = await createMainProcessControl({
       previousAppVersion: configMigration.previousAppVersion,
       settingsStore,
